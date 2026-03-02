@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "rules": {
+    "unicorn/require-module-specifiers": "off",
+    "no-map-spread": "off"
+  },
+  "settings": {},
+  "env": {
+    "builtin": true,
+    "browser": true
+  },
+  "globals": {},
+  "ignorePatterns": ["build/", ".svelte-kit/", "node_modules/", "static/"]
+}

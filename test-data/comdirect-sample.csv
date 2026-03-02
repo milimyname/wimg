@@ -1,0 +1,16 @@
+"Umsätze Girokonto";"1234567890";
+"Neuer Kontostand";"1.234,56 EUR";
+
+"Buchungstag";"Wertstellung (Valuta)";"Vorgang";"Buchungstext";"Umsatz in EUR"
+"14.02.2025";"14.02.2025";"Lastschrift";"REWE SAGT DANKE 12345//Muenchen/DE";" -45,80"
+"14.02.2025";"14.02.2025";"Lastschrift";"SPOTIFY AB//Stockholm/SE";" -9,99"
+"13.02.2025";"13.02.2025";"Gutschrift";"GEHALT FEB 2025 FIRMA GMBH";" 3.250,00"
+"12.02.2025";"12.02.2025";"Lastschrift";"LIDL DIENSTLEISTUNG//Berlin/DE";" -32,15"
+"12.02.2025";"12.02.2025";"Lastschrift";"DB VERTRIEB GMBH//Frankfurt/DE";" -49,90"
+"11.02.2025";"11.02.2025";"Lastschrift";"ALLIANZ VERSICHERUNG//Muenchen/DE";" -189,00"
+"10.02.2025";"10.02.2025";"Lastschrift";"STADTWERKE MUENCHEN//Muenchen/DE";" -85,50"
+"10.02.2025";"10.02.2025";"Überweisung";"MIETE FEB 2025 AN VERMIETER GMBH";" -950,00"
+"08.02.2025";"08.02.2025";"Lastschrift";"AMAZON EU SARL//Luxembourg/LU";" -27,99"
+"07.02.2025";"07.02.2025";"Lastschrift";"EDEKA ZENTRALE//Hamburg/DE";" -63,42"
+"05.02.2025";"05.02.2025";"Lastschrift";"NETFLIX INTL//Amsterdam/NL";" -13,99"
+"03.02.2025";"03.02.2025";"Gutschrift";"ERSTATTUNG STEUER 2024";" 420,00"

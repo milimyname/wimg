@@ -1,0 +1,26 @@
+# Zig
+libwimg/zig-out/
+libwimg/zig-cache/
+libwimg/.zig-cache/
+
+# SQLite amalgamation (large, downloaded)
+libwimg/vendor/sqlite3.c
+libwimg/vendor/sqlite3.h
+
+# Web
+wimg-web/node_modules/
+wimg-web/.svelte-kit/
+wimg-web/build/
+wimg-web/.output/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+
+# WASM build artifact (generated from zig build)
+wimg-web/static/libwimg.wasm
