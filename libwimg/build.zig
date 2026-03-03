@@ -75,10 +75,10 @@ pub fn build(b: *std.Build) void {
 
         b.installArtifact(wasm_lib);
 
-        // Copy wasm to wimg-web for dev
+        // Copy wasm to wimg-web for dev (path relative to project root)
         const install_to_web = b.addInstallFile(
             wasm_lib.getEmittedBin(),
-            "../wimg-web/static/libwimg.wasm",
+            "../../wimg-web/static/libwimg.wasm",
         );
         install_to_web.step.dependOn(&wasm_lib.step);
         b.getInstallStep().dependOn(&install_to_web.step);
@@ -129,4 +129,14 @@ pub fn build(b: *std.Build) void {
     });
     const run_types_tests = b.addRunArtifact(types_tests);
     test_step.dependOn(&run_types_tests.step);
+
+    const categories_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/categories.zig"),
+            .target = b.resolveTargetQuery(.{}),
+            .optimize = optimize,
+        }),
+    });
+    const run_categories_tests = b.addRunArtifact(categories_tests);
+    test_step.dependOn(&run_categories_tests.step);
 }

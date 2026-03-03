@@ -8,7 +8,7 @@ export default defineConfig({
     headers: {
       // Required for SharedArrayBuffer (OPFS) support
       "Cross-Origin-Opener-Policy": "same-origin",
-      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Embedder-Policy": "credentialless",
     },
   },
 });

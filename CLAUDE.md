@@ -32,10 +32,11 @@ libwimg (Zig)
 ├── → libwimg.wasm      (wasm32-freestanding) ← web
 └── → libwimg.a         (aarch64-apple-ios)   ← iOS / macOS
 
-wimg-web  (Svelte 5 + TailwindCSS + D3)
+wimg-web  (Svelte 5 + TailwindCSS + LayerChart)
 ├── loads libwimg.wasm
 ├── OPFS for SQLite persistence (offline, no server)
 ├── PWA — installable, works fully offline
+├── Claude API (JS-side) for categorization fallback
 └── thin shell: UI only, zero business logic
 
 wimg-ios  (SwiftUI)
@@ -77,7 +78,7 @@ browser file. Works offline. Persists across sessions. No server needed.
 Requires these headers (Vite dev + production host):
 ```
 Cross-Origin-Opener-Policy: same-origin
-Cross-Origin-Embedder-Policy: require-corp
+Cross-Origin-Embedder-Policy: credentialless
 ```
 
 iOS: regular file on disk. Always offline-first by nature.
@@ -94,37 +95,30 @@ Same signatures, same behavior, same SQLite underneath.
 export fn wimg_init(db_path: [*:0]const u8) i32
 export fn wimg_close() void
 export fn wimg_free(ptr: [*]u8, len: usize) void
+export fn wimg_alloc(len: usize) ?[*]u8
 
 // Import
-export fn wimg_import_csv(
-    csv_bytes: [*]const u8,
-    len: usize,
-    out_buf: [*]u8,
-    buf_len: usize,
-) i32  // returns JSON: { imported: 235, duplicates: 12 }
+export fn wimg_import_csv(ptr: [*]const u8, len: usize) i32
+  // returns JSON: { total_rows, imported, skipped_duplicates, errors, format, categorized }
 
 // Transactions
-export fn wimg_get_transactions(
-    month: [*:0]const u8,   // "2026-02", null = all
-    out_buf: [*]u8,
-    buf_len: usize,
-) i32  // returns JSON array of transactions
-
-export fn wimg_set_category(
-    tx_id: [*:0]const u8,
-    category: [*:0]const u8,
-) i32
+export fn wimg_get_transactions() i32       // returns JSON array
+export fn wimg_set_category(id: [*]const u8, id_len: usize, cat: u8) i32
 
 // Summaries
-export fn wimg_get_summary(
-    month: [*:0]const u8,
-    out_buf: [*]u8,
-    buf_len: usize,
-) i32  // returns JSON: { income, expenses, available, by_category[] }
+export fn wimg_get_summary(year: i32, month: i32) i32
+  // returns JSON: { year, month, income, expenses, available, tx_count, by_category[] }
 
 // Debt tracker
-export fn wimg_get_debts(out_buf: [*]u8, buf_len: usize) i32
-export fn wimg_mark_debt_paid(debt_id: [*:0]const u8, amount: i64) i32
+export fn wimg_get_debts() i32              // returns JSON array
+export fn wimg_add_debt(ptr: [*]const u8, len: usize) i32
+export fn wimg_mark_debt_paid(id: [*]const u8, id_len: usize, amount: i64) i32
+export fn wimg_delete_debt(id: [*]const u8, id_len: usize) i32
+
+// Persistence (OPFS)
+export fn wimg_get_db_ptr() ?[*]u8
+export fn wimg_get_db_size() usize
+export fn wimg_restore_db(ptr: [*]const u8, len: usize) i32
 ```
 
 All functions return JSON strings into a caller-provided buffer.
@@ -226,31 +220,37 @@ CREATE TABLE meta (
 
 ### Phase 2 — Core Features
 **Goal:** Actually useful for daily tracking.
-**Time box:** 3 weekends
+**Status: In Progress (March 2026)**
 
 #### libwimg tasks
-- [ ] `categories.zig` — keyword rules engine (REWE→Food, DB→Transport)
-- [ ] `summary.zig` — monthly income / expenses / available / by_category
-- [ ] `summary.zig` — month-over-month delta calculation
+- [x] `categories.zig` — keyword rules engine (REWE→Food, DB→Transport)
+- [x] `summary.zig` — monthly income / expenses / available / by_category
+- [x] `summary.zig` — month-over-month delta calculation
+- [x] `debts` table + CRUD (wimg_get_debts, wimg_add_debt, wimg_mark_debt_paid)
 - [ ] Auto-categorization on import (rules first, Claude API fallback)
-- [ ] `debts` table + CRUD (wimg_get_debts, wimg_mark_debt_paid)
 - [ ] Trade Republic CSV parser (UTF-8, `,` separator, `YYYY-MM-DD`)
 - [ ] Scalable Capital CSV parser (UTF-8, `;` separator)
-- [ ] Claude API call from Zig (HTTP request, JSON parse response)
 
 #### wimg-web tasks
-- [ ] Dashboard screen — Verfügbares Einkommen hero, donut chart, goal bars
-- [ ] Analysis screen — spending breakdown, category drill-down
-- [ ] Debt tracker screen — progress bars, mark paid button
+- [x] Dashboard screen — Verfügbares Einkommen hero, donut chart, budget overview
+- [x] Analysis screen — spending breakdown, category drill-down, donut chart
+- [x] Debt tracker screen — progress bars, mark paid button, overall progress
+- [x] Transaction list — segmented filter (Alle/Ausgaben/Einnahmen), bottom sheet editor
+- [x] Import screen — file drop, Claude AI categorization section
+- [x] PWA manifest + service worker — installable, fully offline
+- [x] Claude API integration (JS-side, not Zig — WASM can't do HTTP)
+- [x] LayerChart donut charts (replaced D3)
+- [x] German UI labels throughout (Finanzguru-inspired)
+- [x] PWA version update system — controlled SW updates, changelog banner, OPFS clear for breaking changes
 - [ ] Monthly review screen — summary + checklist + anomaly flags
-- [ ] PWA manifest + service worker — installable, fully offline
-- [ ] Import screen — format auto-detection display, duplicate count
 
 #### Success criteria
-- [ ] Dashboard shows correct monthly numbers from real data
-- [ ] Claude API categorizes uncategorized transactions on import
-- [ ] Works fully offline after first load (PWA)
-- [ ] Debt payoff tracker reflects real debts (WSW, FOM, Klarna, Friends)
+- [x] Dashboard shows correct monthly numbers from real data
+- [x] Claude API categorizes uncategorized transactions on import
+- [x] PWA manifest + service worker registered
+- [x] Debt payoff tracker with add/mark-paid/delete
+- [ ] Works fully offline after first load (service worker caching)
+- [ ] Monthly review screen
 
 ---
 
@@ -333,7 +333,7 @@ wimg-sync (Zig binary, runs on desktop/server)
 |-------|--------|-----|
 | Shared core | Zig 0.15.2 | Single source of truth for all logic |
 | Storage | SQLite (amalgamation, compiled in) | Local, queryable, no deps |
-| Web UI | Svelte 5 + TailwindCSS + D3 | Reactive, lightweight, you know it |
+| Web UI | Svelte 5 + TailwindCSS + LayerChart | Reactive, lightweight, Svelte-native charts |
 | Web persistence | OPFS | SQLite-on-browser, offline, no server |
 | iOS UI | SwiftUI | Native, links libwimg.a via C ABI |
 | Sync | Last-write-wins on `updated_at` | Simple, correct for single user |
@@ -359,18 +359,30 @@ wimg/
 │       └── types.zig           Shared structs
 │
 ├── wimg-web/
-│   ├── vite.config.ts          COOP/COEP headers, WASM plugin
+│   ├── vite.config.ts          COOP/COEP headers
 │   ├── package.json
+│   ├── static/
+│   │   ├── libwimg.wasm         compiled WASM binary
+│   │   ├── manifest.webmanifest PWA manifest
+│   │   ├── sw.js                service worker
+│   │   └── icon-192/512.png     PWA icons
 │   └── src/
 │       ├── lib/
-│       │   └── wasm.ts         TypeScript wrapper over C ABI
+│       │   ├── wasm.ts          TypeScript wrapper over C ABI
+│       │   ├── claude.ts        Claude API categorization (JS-side)
+│       │   ├── version.ts       APP_VERSION + CHANGELOG registry
+│       │   └── update.svelte.ts SW update detection + activation store
 │       ├── routes/
-│       │   └── +page.svelte
+│       │   ├── +page.svelte     redirect → /dashboard
+│       │   ├── dashboard/       Verfügbares Einkommen hero, donut, overview
+│       │   ├── transactions/    segmented filter, bottom sheet editor
+│       │   ├── analysis/        spending breakdown, category drill-down
+│       │   ├── debts/           progress bars, mark paid
+│       │   └── import/          file drop, Claude categorization
 │       └── components/
-│           ├── Dashboard.svelte
-│           ├── Transactions.svelte
-│           ├── DebtTracker.svelte
-│           └── Import.svelte
+│           ├── DonutChart.svelte    LayerChart PieChart wrapper
+│           ├── MonthPicker.svelte   month/year selector
+│           └── UpdateBanner.svelte  PWA update notification banner
 │
 ├── wimg-ios/                   Phase 3
 │   ├── wimg.xcodeproj
@@ -399,6 +411,10 @@ wimg/
 | Mar 2026 | OPFS for web persistence | True offline SQLite in browser, no server |
 | Mar 2026 | FinTS via separate wimg-sync binary | Can't compile AqBanking to WASM |
 | Mar 2026 | Finanzguru-inspired design | Light, cards, pastel categories, calm |
+| Mar 2026 | LayerChart instead of D3 | Svelte-native, PieChart component, less boilerplate |
+| Mar 2026 | Claude API on JS side, not Zig WASM | WASM can't make HTTP requests; JS calls Anthropic API directly |
+| Mar 2026 | COEP `credentialless` not `require-corp` | `require-corp` breaks Vite HMR WebSocket in dev |
+| Mar 2026 | Controlled SW updates (no skipWaiting) | Users choose when to update; banner shows changelog; OPFS clear for breaking schema changes |
 
 ---
 
@@ -406,9 +422,9 @@ wimg/
 
 | Question | Answer when |
 |----------|-------------|
-| WASM + OPFS: SharedArrayBuffer complexity? | Phase 1 build |
-| libwimg output buffer size — static or dynamic? | Phase 1 build |
-| Claude API calls from Zig WASM — possible? | Phase 2 (HTTP in WASM is restricted) |
+| WASM + OPFS: SharedArrayBuffer complexity? | Resolved Phase 1 — works with credentialless COEP |
+| libwimg output buffer size — static or dynamic? | Resolved Phase 1 — static 64KB buffer |
+| Claude API calls from Zig WASM — possible? | Resolved Phase 2 — No, done on JS side instead |
 | iCloud Drive sync reliability? | Phase 4 |
 | App Store distribution of wimg-ios? | Phase 3 end |
 

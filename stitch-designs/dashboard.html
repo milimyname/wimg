@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+
+<html class="light" lang="de"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>wimg Dashboard Home</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#5c5cd6",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#13131f",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="relative flex min-h-screen w-full flex-col max-w-md mx-auto bg-background-light dark:bg-background-dark pb-24">
+<!-- Top Header & Greeting -->
+<header class="flex items-center p-6 justify-between">
+<div class="flex items-center gap-3">
+<div class="size-10 shrink-0 overflow-hidden rounded-full border-2 border-white shadow-sm bg-primary/10">
+<img class="w-full h-full object-cover" data-alt="User profile avatar of Komiljon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgKLkhzXiry3bXmVlcGDj7nM6uZlQNePKT3WhsRlkCZHDBOZ3XIDsihE2H0W5PAd7ffblARMBW52If6Y5MjWzIAqTARAKl5I-86KdDeP1OTs1Ag0ZOLY2zaC75Mv57nB8l_mquPrzQxkDobBd9TzUBBHoSivJEDEnZSbtKsQKZdFHftHrwAx3mHybYjXu0BBe6pVJRtMVzRDNZcHV2_RmszTjFpC3wi-lgwCOByeWFKoHsbdy2sKjp0YL2t-VRQWljkpSqCDkgQG8J"/>
+</div>
+<div>
+<p class="text-xs text-slate-500 font-medium uppercase tracking-wider">Willkommen zurück</p>
+<h2 class="text-xl font-bold leading-tight">Guten Morgen, Komiljon</h2>
+</div>
+</div>
+<button class="flex size-10 items-center justify-center rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-300">notifications</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="px-6 space-y-4">
+<!-- Hero Card: Verfügbares Einkommen -->
+<div class="w-full bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+<div class="flex justify-between items-start mb-2">
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Verfügbares Einkommen</p>
+<span class="material-symbols-outlined text-primary">account_balance_wallet</span>
+</div>
+<h1 class="text-[40px] font-semibold tracking-tight text-slate-900 dark:text-white">847,32 €</h1>
+<div class="mt-4 flex items-center gap-2">
+<span class="inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+<span class="material-symbols-outlined text-xs mr-1">trending_up</span>
+                        +2.4% vs. Vormonat
+                    </span>
+</div>
+</div>
+<!-- Income/Expenses Grid -->
+<div class="grid grid-cols-2 gap-4">
+<div class="flex flex-col gap-2 rounded-xl bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-100 dark:border-slate-700">
+<div class="size-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+<span class="material-symbols-outlined text-xl">arrow_downward</span>
+</div>
+<div>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-medium">Einnahmen</p>
+<h2 class="text-base font-bold text-emerald-600 dark:text-emerald-400">+ 2.450,00 €</h2>
+</div>
+</div>
+<div class="flex flex-col gap-2 rounded-xl bg-white dark:bg-slate-800 p-4 shadow-sm border border-slate-100 dark:border-slate-700">
+<div class="size-8 rounded-lg bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center text-rose-600 dark:text-rose-400">
+<span class="material-symbols-outlined text-xl">arrow_upward</span>
+</div>
+<div>
+<p class="text-slate-500 dark:text-slate-400 text-xs font-medium">Ausgaben</p>
+<h2 class="text-base font-bold text-rose-600 dark:text-rose-400">- 1.602,68 €</h2>
+</div>
+</div>
+</div>
+<!-- Analysis Section: Donut Chart -->
+<div class="w-full bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-lg font-bold">Budget Übersicht</h3>
+<button class="text-primary text-sm font-semibold">Details</button>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative size-32 shrink-0">
+<!-- Simulated Donut Chart using Gradients/Conic -->
+<div class="size-full rounded-full border-[14px] border-slate-100 dark:border-slate-700 flex items-center justify-center" style="background: conic-gradient(#5c5cd6 0% 45%, #f4a261 45% 75%, #a855f7 75% 100%); mask-image: radial-gradient(circle at 50% 50%, transparent 60%, black 61%);"></div>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-xs text-slate-400">Total</span>
+<span class="text-sm font-bold">1.6k€</span>
+</div>
+</div>
+<div class="flex flex-col gap-3 w-full">
+<div class="flex items-center justify-between text-sm">
+<div class="flex items-center gap-2">
+<div class="size-2 rounded-full bg-primary"></div>
+<span class="text-slate-600 dark:text-slate-300">Wohnen</span>
+</div>
+<span class="font-semibold">45%</span>
+</div>
+<div class="flex items-center justify-between text-sm">
+<div class="flex items-center gap-2">
+<div class="size-2 rounded-full bg-orange-400"></div>
+<span class="text-slate-600 dark:text-slate-300">Freizeit</span>
+</div>
+<span class="font-semibold">30%</span>
+</div>
+<div class="flex items-center justify-between text-sm">
+<div class="flex items-center gap-2">
+<div class="size-2 rounded-full bg-purple-500"></div>
+<span class="text-slate-600 dark:text-slate-300">Sparen</span>
+</div>
+<span class="font-semibold">25%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Savings Goals -->
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<h3 class="text-lg font-bold">Sparziele</h3>
+<span class="material-symbols-outlined text-slate-400">add_circle</span>
+</div>
+<div class="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700">
+<div class="flex justify-between mb-2">
+<span class="text-sm font-medium">Sommerurlaub 2024</span>
+<span class="text-sm font-bold text-primary">750€ / 1.200€</span>
+</div>
+<div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
+<div class="bg-primary h-2 rounded-full" style="width: 62%"></div>
+</div>
+</div>
+</div>
+<!-- Upcoming Payments List -->
+<div class="space-y-3">
+<h3 class="text-lg font-bold">Kommende Zahlungen</h3>
+<div class="bg-white dark:bg-slate-800 rounded-xl divide-y divide-slate-50 dark:divide-slate-700 shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+<div class="flex items-center gap-4 p-4">
+<div class="size-10 rounded-lg bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-400">shopping_bag</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold">Netflix Subscription</p>
+<p class="text-xs text-slate-500">Morgen • Unterhaltung</p>
+</div>
+<p class="text-sm font-bold text-rose-500">- 17,99 €</p>
+</div>
+<div class="flex items-center gap-4 p-4">
+<div class="size-10 rounded-lg bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-400">bolt</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold">Stadtwerke Strom</p>
+<p class="text-xs text-slate-500">In 3 Tagen • Fixkosten</p>
+</div>
+<p class="text-sm font-bold text-rose-500">- 84,00 €</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto border-t border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-lg px-6 pb-6 pt-3 flex justify-between items-center">
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined font-variation-settings: 'FILL' 1">home</span>
+<span class="text-[10px] font-bold">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">pie_chart</span>
+<span class="text-[10px] font-medium">Analyse</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="text-[10px] font-medium">Verträge</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-400" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium">Profil</span>
+</a>
+</nav>
+</div>
+</body></html>

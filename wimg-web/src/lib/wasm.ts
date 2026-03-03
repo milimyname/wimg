@@ -16,6 +16,40 @@ export interface ImportResult {
   imported: number;
   skipped_duplicates: number;
   errors: number;
+  format: string;
+  categorized: number;
+}
+
+export interface MonthlySummary {
+  year: number;
+  month: number;
+  income: number;
+  expenses: number;
+  available: number;
+  tx_count: number;
+  by_category: CategoryBreakdown[];
+}
+
+export interface CategoryBreakdown {
+  id: number;
+  name: string;
+  amount: number;
+  count: number;
+}
+
+export interface Debt {
+  id: string;
+  name: string;
+  total: number;
+  paid: number;
+  monthly: number;
+}
+
+export interface UndoResult {
+  op: string;
+  table: string;
+  row_id: string;
+  column?: string;
 }
 
 export const CATEGORIES: Record<number, { name: string; color: string }> = {
@@ -44,6 +78,18 @@ interface WasmExports {
   wimg_import_csv: (data: number, len: number) => number;
   wimg_get_transactions: () => number;
   wimg_set_category: (id: number, id_len: number, category: number) => number;
+  wimg_get_summary: (year: number, month: number) => number;
+  wimg_get_debts: () => number;
+  wimg_add_debt: (data: number, len: number) => number;
+  wimg_mark_debt_paid: (
+    id: number,
+    id_len: number,
+    amount_cents: bigint,
+  ) => number;
+  wimg_delete_debt: (id: number, id_len: number) => number;
+  wimg_auto_categorize: () => number;
+  wimg_undo: () => number;
+  wimg_redo: () => number;
   wimg_close: () => void;
   wimg_free: (ptr: number, len: number) => void;
   wimg_alloc: (size: number) => number;
@@ -61,7 +107,8 @@ const OPFS_DB_NAME = "wimg.db";
 
 function readLengthPrefixedString(ptr: number): string {
   const mem = new Uint8Array(wasm!.memory.buffer);
-  const len = mem[ptr] | (mem[ptr + 1] << 8) | (mem[ptr + 2] << 16) | (mem[ptr + 3] << 24);
+  const len =
+    mem[ptr] | (mem[ptr + 1] << 8) | (mem[ptr + 2] << 16) | (mem[ptr + 3] << 24);
   return new TextDecoder().decode(mem.slice(ptr + 4, ptr + 4 + len));
 }
 
@@ -86,6 +133,14 @@ function writeString(s: string): number {
   return ptr;
 }
 
+function writeBytes(data: Uint8Array): number {
+  const ptr = wasm!.wimg_alloc(data.length);
+  if (ptr === 0) throw new Error("WASM allocation failed");
+  const mem = new Uint8Array(wasm!.memory.buffer);
+  mem.set(data, ptr);
+  return ptr;
+}
+
 function ensureInit(): void {
   if (!wasm) throw new Error("WASM not initialized. Call init() first.");
 }
@@ -102,7 +157,6 @@ async function opfsLoad(): Promise<Uint8Array | null> {
     console.log(`[wimg] OPFS: loaded ${buffer.byteLength} bytes`);
     return new Uint8Array(buffer);
   } catch {
-    // File doesn't exist yet — first run
     console.log("[wimg] OPFS: no existing database");
     return null;
   }
@@ -132,10 +186,6 @@ async function opfsSave(): Promise<void> {
 
 // --- Public API ---
 
-/**
- * Load and initialize the WASM module + SQLite database.
- * Restores from OPFS if a previous database exists.
- */
 export async function init(): Promise<void> {
   if (wasm) return;
 
@@ -164,20 +214,25 @@ export async function init(): Promise<void> {
     },
   };
 
-  // Satisfy any other imports dynamically
   for (const imp of neededImports) {
     if (!importObject[imp.module]) importObject[imp.module] = {};
     if (!(imp.name in importObject[imp.module])) {
       if (imp.kind === "function") {
         importObject[imp.module][imp.name] = (...args: unknown[]) => {
-          console.warn(`[wimg] unimplemented import: ${imp.module}.${imp.name}`, args);
+          console.warn(
+            `[wimg] unimplemented import: ${imp.module}.${imp.name}`,
+            args,
+          );
           return 0;
         };
       }
     }
   }
 
-  const result = await WebAssembly.instantiate(compiled, importObject as WebAssembly.Imports);
+  const result = await WebAssembly.instantiate(
+    compiled,
+    importObject as WebAssembly.Imports,
+  );
   wasm = result.exports as unknown as WasmExports;
 
   console.log(
@@ -187,7 +242,6 @@ export async function init(): Promise<void> {
       .join(", "),
   );
 
-  // Restore DB from OPFS before opening
   const saved = await opfsLoad();
   if (saved) {
     const loadPtr = wasm.wimg_alloc(saved.length);
@@ -201,7 +255,6 @@ export async function init(): Promise<void> {
     }
   }
 
-  // Initialize SQLite (opens the DB file in the VFS — already populated if restored)
   const pathPtr = writeString("/wimg.db");
   const rc = wasm.wimg_init(pathPtr);
   if (rc !== 0) {
@@ -209,9 +262,6 @@ export async function init(): Promise<void> {
   }
 }
 
-/**
- * Import a CSV file into the database. Auto-saves to OPFS.
- */
 export async function importCsv(csvContent: ArrayBuffer): Promise<ImportResult> {
   ensureInit();
 
@@ -232,7 +282,6 @@ export async function importCsv(csvContent: ArrayBuffer): Promise<ImportResult> 
 
   const importResult = JSON.parse(json) as ImportResult;
 
-  // Persist to OPFS after successful import
   if (importResult.imported > 0) {
     await opfsSave();
   }
@@ -240,9 +289,6 @@ export async function importCsv(csvContent: ArrayBuffer): Promise<ImportResult> 
   return importResult;
 }
 
-/**
- * Get all transactions from the database.
- */
 export function getTransactions(): Transaction[] {
   ensureInit();
 
@@ -255,10 +301,10 @@ export function getTransactions(): Transaction[] {
   return JSON.parse(json) as Transaction[];
 }
 
-/**
- * Set the category for a transaction. Auto-saves to OPFS.
- */
-export async function setCategory(id: string, category: number): Promise<void> {
+export async function setCategory(
+  id: string,
+  category: number,
+): Promise<void> {
   ensureInit();
 
   const idPtr = writeString(id);
@@ -267,13 +313,121 @@ export async function setCategory(id: string, category: number): Promise<void> {
     throw new Error(getLastError("Failed to set category"));
   }
 
-  // Persist category change
   await opfsSave();
 }
 
-/**
- * Close the database.
- */
+export function getSummary(year: number, month: number): MonthlySummary {
+  ensureInit();
+
+  const ptr = wasm!.wimg_get_summary(year, month);
+  if (ptr === 0) {
+    return {
+      year,
+      month,
+      income: 0,
+      expenses: 0,
+      available: 0,
+      tx_count: 0,
+      by_category: [],
+    };
+  }
+
+  const json = readLengthPrefixedString(ptr);
+  wasm!.wimg_free(ptr, 0);
+
+  return JSON.parse(json) as MonthlySummary;
+}
+
+export function getDebts(): Debt[] {
+  ensureInit();
+
+  const ptr = wasm!.wimg_get_debts();
+  if (ptr === 0) return [];
+
+  const json = readLengthPrefixedString(ptr);
+  wasm!.wimg_free(ptr, 0);
+
+  return JSON.parse(json) as Debt[];
+}
+
+export async function addDebt(
+  name: string,
+  total: number,
+  monthly: number,
+): Promise<void> {
+  ensureInit();
+
+  const id = crypto.randomUUID().replace(/-/g, "").slice(0, 32);
+  const json = JSON.stringify({ id, name, total, monthly });
+  const encoded = new TextEncoder().encode(json);
+  const ptr = writeBytes(encoded);
+
+  const rc = wasm!.wimg_add_debt(ptr, encoded.length);
+  if (rc !== 0) {
+    throw new Error(getLastError("Failed to add debt"));
+  }
+
+  await opfsSave();
+}
+
+export async function markDebtPaid(
+  id: string,
+  amountCents: number,
+): Promise<void> {
+  ensureInit();
+
+  const idPtr = writeString(id);
+  const rc = wasm!.wimg_mark_debt_paid(idPtr, id.length, BigInt(amountCents));
+  if (rc !== 0) {
+    throw new Error(getLastError("Failed to mark debt paid"));
+  }
+
+  await opfsSave();
+}
+
+export async function deleteDebt(id: string): Promise<void> {
+  ensureInit();
+
+  const idPtr = writeString(id);
+  const rc = wasm!.wimg_delete_debt(idPtr, id.length);
+  if (rc !== 0) {
+    throw new Error(getLastError("Failed to delete debt"));
+  }
+
+  await opfsSave();
+}
+
+export async function undo(): Promise<UndoResult | null> {
+  ensureInit();
+
+  const ptr = wasm!.wimg_undo();
+  if (ptr === 0) return null;
+
+  const json = readLengthPrefixedString(ptr);
+  wasm!.wimg_free(ptr, 0);
+
+  await opfsSave();
+  return JSON.parse(json) as UndoResult;
+}
+
+export async function redo(): Promise<UndoResult | null> {
+  ensureInit();
+
+  const ptr = wasm!.wimg_redo();
+  if (ptr === 0) return null;
+
+  const json = readLengthPrefixedString(ptr);
+  wasm!.wimg_free(ptr, 0);
+
+  await opfsSave();
+  return JSON.parse(json) as UndoResult;
+}
+
+export function autoCategorize(): number {
+  ensureInit();
+  return wasm!.wimg_auto_categorize();
+}
+
 export function close(): void {
   if (!wasm) return;
   wasm.wimg_close();
