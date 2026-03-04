@@ -1,44 +1,35 @@
 <script lang="ts">
   import {
-    getTransactions,
+    getTransactionsFiltered,
     setCategory,
+    setExcluded,
     undo,
     CATEGORIES,
     type Transaction,
   } from "$lib/wasm";
+  import { formatAmountSigned, formatDateHeading } from "$lib/format";
+  import { accountStore } from "$lib/account.svelte";
   import { toastStore } from "$lib/toast.svelte";
-
-  const CATEGORY_ICONS: Record<number, string> = {
-    0: "?",
-    1: "🛒",
-    2: "🍽️",
-    3: "🚆",
-    4: "🏠",
-    5: "⚡",
-    6: "🎬",
-    7: "🛍️",
-    8: "💊",
-    9: "🛡️",
-    10: "💰",
-    11: "🔄",
-    12: "💵",
-    13: "📱",
-    14: "✈️",
-    15: "🎓",
-    255: "📦",
-  };
+  import BottomSheet from "../../components/BottomSheet.svelte";
 
   type Filter = "all" | "expenses" | "income";
 
-  let transactions = $state<Transaction[]>(getTransactions());
+  let refreshKey = $state(0);
+  let transactions = $derived.by(() => {
+    void refreshKey;
+    return getTransactionsFiltered(accountStore.selected);
+  });
   let filter = $state<Filter>("all");
   let selectedTxn = $state<Transaction | null>(null);
+  let originalTxn = $state<Transaction | null>(null);
   let showSheet = $state(false);
   let searchQuery = $state("");
   let showSearch = $state(false);
+  let showExcluded = $state(false);
 
   let filtered = $derived.by(() => {
     let list = transactions;
+    if (!showExcluded) list = list.filter((t) => !t.excluded);
     if (filter === "expenses") list = list.filter((t) => t.amount < 0);
     if (filter === "income") list = list.filter((t) => t.amount > 0);
     if (searchQuery.trim()) {
@@ -62,55 +53,57 @@
   });
 
   function openDetail(txn: Transaction) {
+    originalTxn = { ...txn };
     selectedTxn = { ...txn };
     showSheet = true;
   }
 
-  function closeSheet() {
+  function dismissSheet() {
+    showSheet = false;
+  }
+
+  function onSheetClosed() {
     showSheet = false;
     selectedTxn = null;
+    originalTxn = null;
   }
 
-  async function handleCategoryChange(category: number) {
+  function handleCategoryChange(category: number) {
     if (!selectedTxn) return;
-    const id = selectedTxn.id;
-    const catName = CATEGORIES[category]?.name ?? "Uncategorized";
     selectedTxn = { ...selectedTxn, category };
-    transactions = transactions.map((t) =>
-      t.id === id ? { ...t, category } : t,
-    );
-    await setCategory(id, category);
-    toastStore.show(`Kategorie: ${catName}`, async () => {
-      await undo();
-      transactions = getTransactions();
-    });
   }
 
-  function formatAmount(amount: number): string {
-    return new Intl.NumberFormat("de-DE", {
-      style: "currency",
-      currency: "EUR",
-      signDisplay: "always",
-    }).format(amount);
+  function handleExcludeToggle() {
+    if (!selectedTxn) return;
+    selectedTxn = { ...selectedTxn, excluded: selectedTxn.excluded ? 0 : 1 };
   }
 
-  function formatDateHeading(dateStr: string): string {
-    const date = new Date(dateStr + "T00:00:00");
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+  async function handleSubmit() {
+    if (!selectedTxn || !originalTxn) return;
+    const id = selectedTxn.id;
+    let changed = false;
 
-    const day = date.getDate();
-    const month = date.toLocaleDateString("de-DE", { month: "long" });
+    if (selectedTxn.category !== originalTxn.category) {
+      await setCategory(id, selectedTxn.category);
+      changed = true;
+    }
 
-    if (date.toDateString() === today.toDateString())
-      return `Heute · ${day}. ${month}`;
-    if (date.toDateString() === yesterday.toDateString())
-      return `Gestern · ${day}. ${month}`;
+    if (selectedTxn.excluded !== originalTxn.excluded) {
+      await setExcluded(id, !!selectedTxn.excluded);
+      changed = true;
+    }
 
-    const weekday = date.toLocaleDateString("de-DE", { weekday: "long" });
-    return `${weekday} · ${day}. ${month}`;
+    if (changed) {
+      refreshKey++;
+      toastStore.show("Änderungen gespeichert", async () => {
+        await undo();
+        refreshKey++;
+      });
+    }
+
+    dismissSheet();
   }
+
 </script>
 
 <!-- Search bar (collapsible) -->
@@ -194,6 +187,14 @@
   </div>
 </div>
 
+<!-- Show excluded toggle -->
+<div class="flex items-center justify-end mb-4 -mt-2">
+  <label class="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
+    <input type="checkbox" bind:checked={showExcluded} class="rounded" />
+    Ausgeblendete anzeigen
+  </label>
+</div>
+
 <!-- Transaction List -->
 {#if transactions.length === 0}
   <div class="text-center py-16 text-(--color-text-secondary)">
@@ -222,6 +223,7 @@
     {#each txns as txn}
       <button
         class="bg-white w-full p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between mb-3 cursor-pointer hover:shadow-md transition-shadow text-left"
+        class:opacity-40={!!txn.excluded}
         onclick={() => openDetail(txn)}
       >
         <div class="flex items-center gap-3">
@@ -229,7 +231,7 @@
             class="w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0"
             style="background-color: {CATEGORIES[txn.category]?.color ?? '#dfe6e9'}15"
           >
-            {CATEGORY_ICONS[txn.category] ?? "📦"}
+            {CATEGORIES[txn.category]?.icon ?? "📦"}
           </div>
           <div>
             <p class="font-bold text-sm leading-tight">{txn.description}</p>
@@ -249,95 +251,111 @@
           class="font-bold text-sm tabular-nums shrink-0 ml-3"
           class:text-emerald-500={txn.amount > 0}
         >
-          {formatAmount(txn.amount)}
+          {formatAmountSigned(txn.amount)}
         </p>
       </button>
     {/each}
   {/each}
 {/if}
 
-<!-- Bottom Sheet Overlay -->
-{#if showSheet && selectedTxn}
-  <div
-    class="fixed inset-0 bg-black/40 z-30 flex flex-col justify-end"
-    onclick={closeSheet}
-    onkeydown={(e) => e.key === "Escape" && closeSheet()}
-    role="dialog"
-    tabindex="-1"
-  >
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events -->
-    <div
-      class="bg-white rounded-t-2xl w-full max-w-2xl mx-auto p-6 pb-10 shadow-2xl"
-      onclick={(e) => e.stopPropagation()}
-      role="document"
-    >
+<!-- Bottom Sheet -->
+{#if selectedTxn}
+  {@const txn = selectedTxn}
+  <BottomSheet open={showSheet} onclose={onSheetClosed}>
+    {#snippet children({ handle, content })}
       <!-- Handle -->
-      <div class="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-8"></div>
+      <div class="pt-3 pb-2 flex justify-center shrink-0" {@attach handle}>
+        <div class="w-10 h-1 bg-gray-300 rounded-full"></div>
+      </div>
 
-      <!-- Icon + Name -->
-      <div class="flex flex-col items-center mb-8">
+      <!-- Content -->
+      <div class="flex-1 min-h-0 px-6 pb-10" {@attach content}>
+        <!-- Icon + Name -->
+        <div class="flex flex-col items-center mb-6 mt-2">
+          <div
+            class="w-14 h-14 rounded-2xl flex items-center justify-center mb-2.5 text-2xl border border-gray-100"
+            style="background-color: {CATEGORIES[txn.category]?.color ??
+              '#dfe6e9'}10"
+          >
+            {CATEGORIES[txn.category]?.icon ?? "📦"}
+          </div>
+          <h2 class="text-lg font-bold text-center leading-tight">
+            {txn.description}
+          </h2>
+          <p class="text-gray-400 text-xs mt-1">
+            {new Date(txn.date + "T00:00:00").toLocaleDateString("de-DE", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
+          </p>
+        </div>
+
+        <!-- Amount -->
         <div
-          class="w-16 h-16 rounded-2xl flex items-center justify-center mb-3 text-3xl border border-gray-100"
-          style="background-color: {CATEGORIES[selectedTxn.category]?.color ??
-            '#dfe6e9'}10"
+          class="flex justify-between items-center py-3.5 border-b border-gray-100"
         >
-          {CATEGORY_ICONS[selectedTxn.category] ?? "📦"}
+          <span class="text-gray-500 font-medium text-sm">Betrag</span>
+          <span
+            class="text-lg font-bold"
+            class:text-emerald-500={txn.amount > 0}
+          >
+            {formatAmountSigned(txn.amount)}
+          </span>
         </div>
-        <h2 class="text-xl font-bold">{selectedTxn.description}</h2>
-        <p class="text-gray-500 text-sm mt-1">
-          {new Date(selectedTxn.date + "T00:00:00").toLocaleDateString(
-            "de-DE",
-            { weekday: "long", day: "numeric", month: "long" },
-          )}
-        </p>
-      </div>
 
-      <!-- Amount -->
-      <div
-        class="flex justify-between items-center py-4 border-b border-gray-100"
-      >
-        <span class="text-gray-500 font-medium">Betrag</span>
-        <span
-          class="text-xl font-bold"
-          class:text-emerald-500={selectedTxn.amount > 0}
+        <!-- Category Selector -->
+        <div class="mt-4 mb-5">
+          <span
+            class="text-gray-500 font-medium text-xs uppercase tracking-wide"
+            >Kategorie</span
+          >
+          <div class="flex flex-wrap gap-2 mt-2.5">
+            {#each Object.entries(CATEGORIES) as [catId, cat]}
+              <button
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border"
+                style="background-color: {Number(catId) === txn.category
+                  ? cat.color + '20'
+                  : '#f9fafb'}; border-color: {Number(catId) === txn.category
+                  ? cat.color + '40'
+                  : 'transparent'}"
+                onclick={() => handleCategoryChange(Number(catId))}
+              >
+                <span
+                  class="w-2 h-2 rounded-full shrink-0"
+                  style="background-color: {cat.color}"
+                ></span>
+                {cat.name}
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Exclude Toggle -->
+        <button
+          class="w-full py-3 rounded-xl cursor-pointer font-semibold text-sm transition-all border mb-3"
+          class:bg-gray-100={!txn.excluded}
+          class:text-gray-700={!txn.excluded}
+          class:border-gray-200={!txn.excluded}
+          class:bg-amber-50={!!txn.excluded}
+          class:text-amber-700={!!txn.excluded}
+          class:border-amber-200={!!txn.excluded}
+          onclick={handleExcludeToggle}
         >
-          {formatAmount(selectedTxn.amount)}
-        </span>
-      </div>
+          {txn.excluded
+            ? "Transaktion einblenden"
+            : "Transaktion ausblenden"}
+        </button>
 
-      <!-- Category Selector -->
-      <div class="mt-5 mb-6">
-        <span class="text-gray-500 font-medium text-sm">Kategorie</span>
-        <div class="flex flex-wrap gap-2 mt-3">
-          {#each Object.entries(CATEGORIES) as [catId, cat]}
-            <button
-              class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer border"
-              style="background-color: {Number(catId) === selectedTxn.category
-                ? cat.color + '20'
-                : '#f9fafb'}; border-color: {Number(catId) ===
-              selectedTxn.category
-                ? cat.color + '40'
-                : 'transparent'}"
-              onclick={() => handleCategoryChange(Number(catId))}
-            >
-              <span
-                class="w-2 h-2 rounded-full shrink-0"
-                style="background-color: {cat.color}"
-              ></span>
-              {cat.name}
-            </button>
-          {/each}
-        </div>
+        <!-- Done Button -->
+        <button
+          class="w-full text-white font-bold py-3.5 rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
+          style="background-color: var(--color-primary)"
+          onclick={handleSubmit}
+        >
+          Fertig
+        </button>
       </div>
-
-      <!-- Done Button -->
-      <button
-        class="w-full text-white font-bold py-3.5 rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
-        style="background-color: var(--color-primary)"
-        onclick={closeSheet}
-      >
-        Fertig
-      </button>
-    </div>
-  </div>
+    {/snippet}
+  </BottomSheet>
 {/if}

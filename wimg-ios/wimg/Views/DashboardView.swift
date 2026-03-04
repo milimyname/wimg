@@ -2,12 +2,16 @@ import SwiftUI
 import Charts
 
 struct DashboardView: View {
+    @Binding var selectedAccount: String?
+    @Binding var accounts: [Account]
     @State private var year: Int
     @State private var month: Int
     @State private var summary: MonthlySummary?
     @State private var recentTransactions: [Transaction] = []
 
-    init() {
+    init(selectedAccount: Binding<String?>, accounts: Binding<[Account]>) {
+        _selectedAccount = selectedAccount
+        _accounts = accounts
         let cal = Calendar.current
         let now = Date()
         _year = State(initialValue: cal.component(.year, from: now))
@@ -55,8 +59,16 @@ struct DashboardView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Übersicht")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    AccountPicker(selectedAccount: $selectedAccount, accounts: accounts) {
+                        accounts = LibWimg.getAccounts()
+                    }
+                }
+            }
             .onChange(of: year) { reload() }
             .onChange(of: month) { reload() }
+            .onChange(of: selectedAccount) { reload() }
             .onAppear { reload() }
             .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
                 reload()
@@ -167,8 +179,8 @@ struct DashboardView: View {
     // MARK: - Data
 
     private func reload() {
-        summary = LibWimg.getSummary(year: year, month: month)
-        let all = LibWimg.getTransactions()
+        summary = LibWimg.getSummaryFiltered(year: year, month: month, account: selectedAccount)
+        let all = LibWimg.getTransactionsFiltered(account: selectedAccount)
         let monthStr = String(format: "%04d-%02d", year, month)
         recentTransactions = all
             .filter { $0.date.hasPrefix(monthStr) }

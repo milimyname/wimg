@@ -51,18 +51,18 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       caches.match(event.request).then(
         (cached) =>
-          cached ||
+          cached ??
           fetch(event.request).then((response) => {
             const clone = response.clone();
             caches.open(CACHE).then((cache) => cache.put(event.request, clone));
             return response;
           }),
-      ),
+      ) as Promise<Response>,
     );
     return;
   }
 
-  // Network-first with cache fallback for navigation / other requests
+  // Network-first with cache fallback for navigation requests
   if (
     event.request.mode === "navigate" ||
     event.request.headers.get("accept")?.includes("text/html")
@@ -74,7 +74,29 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE).then((cache) => cache.put(event.request, clone));
           return response;
         })
-        .catch(() => caches.match(event.request).then((r) => r || caches.match("/"))),
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+          const fallback = await caches.match("/");
+          return fallback ?? new Response("Offline", { status: 503 });
+        }),
     );
+    return;
   }
+
+  // Network-first for all other same-origin requests (JS chunks, CSS, etc.)
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        return cached ?? new Response("Offline", { status: 503 });
+      }),
+  );
 });

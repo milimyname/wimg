@@ -21,6 +21,13 @@ struct ImportView: View {
     // Post-import state
     @State private var importResult: ImportResult?
 
+    // Auto-categorize state
+    @State private var rulesCategorizedCount: Int?
+    @State private var claudeLoading = false
+    @State private var claudeResult: ClaudeResult?
+    @State private var showApiKeyInput = false
+    @State private var apiKeyDraft = ""
+
     private var previewTotals: (income: Double, expenses: Double) {
         guard let txns = parseResult?.transactions else { return (0, 0) }
         var income = 0.0
@@ -50,6 +57,7 @@ struct ImportView: View {
 
                     if stage == .imported, let result = importResult {
                         importedSection(result)
+                        categorizationSection
                     }
 
                     if stage == .idle {
@@ -280,6 +288,195 @@ struct ImportView: View {
         }
     }
 
+    // MARK: - Categorization Section
+
+    private var categorizationSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Kategorisierung")
+                .font(.headline)
+                .padding(.horizontal)
+
+            // Rules Engine
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                        .font(.title3)
+                        .foregroundStyle(.blue)
+                        .frame(width: 36, height: 36)
+                        .background(.blue.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Regel-Engine").font(.subheadline.bold())
+                        Text("Keyword-Regeln auf unkategorisierte Buchungen anwenden")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Button("Starten") {
+                        let count = LibWimg.autoCategorize()
+                        rulesCategorizedCount = count
+                        if count > 0 {
+                            NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+                        }
+                    }
+                    .font(.caption.bold())
+                    .buttonStyle(.borderedProminent)
+                }
+
+                if let count = rulesCategorizedCount {
+                    Text("\(count) Buchungen kategorisiert")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                        .padding(.leading, 48)
+                }
+            }
+            .padding()
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal)
+
+            // Claude AI
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    Image(systemName: "sparkles")
+                        .font(.title3)
+                        .foregroundStyle(.purple)
+                        .frame(width: 36, height: 36)
+                        .background(.purple.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text("Claude AI").font(.subheadline.bold())
+                            if ClaudeAPI.hasKey {
+                                Text("Aktiv")
+                                    .font(.caption2.bold())
+                                    .foregroundStyle(.green)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(.green.opacity(0.1))
+                                    .clipShape(Capsule())
+                            }
+                        }
+                        Text("KI-Kategorisierung für verbleibende Buchungen")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+                }
+
+                // API Key Input
+                if !ClaudeAPI.hasKey || showApiKeyInput {
+                    HStack(spacing: 8) {
+                        SecureField("sk-ant-...", text: $apiKeyDraft)
+                            .font(.caption)
+                            .textFieldStyle(.roundedBorder)
+
+                        Button("Speichern") {
+                            let trimmed = apiKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !trimmed.isEmpty {
+                                ClaudeAPI.setKey(trimmed)
+                                showApiKeyInput = false
+                                apiKeyDraft = ""
+                            }
+                        }
+                        .font(.caption.bold())
+                        .buttonStyle(.borderedProminent)
+                        .disabled(apiKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                    .padding(.leading, 48)
+
+                    Text("Nur lokal gespeichert. Wird nur an die Anthropic API gesendet.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .padding(.leading, 48)
+                }
+
+                // Actions when key exists
+                if ClaudeAPI.hasKey {
+                    HStack(spacing: 8) {
+                        Button {
+                            runClaudeCategorize()
+                        } label: {
+                            if claudeLoading {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Text("Mit Claude kategorisieren")
+                            }
+                        }
+                        .font(.caption.bold())
+                        .buttonStyle(.borderedProminent)
+                        .tint(.purple)
+                        .disabled(claudeLoading)
+
+                        Button(showApiKeyInput ? "Abbrechen" : "Key ändern") {
+                            showApiKeyInput.toggle()
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                        if !showApiKeyInput {
+                            Button("Entfernen") {
+                                ClaudeAPI.removeKey()
+                                showApiKeyInput = false
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                        }
+                    }
+                    .padding(.leading, 48)
+                }
+
+                // Claude Result
+                if let result = claudeResult {
+                    VStack(alignment: .leading, spacing: 4) {
+                        if result.categorized > 0 {
+                            Text("\(result.categorized) Buchungen von Claude kategorisiert")
+                                .font(.caption)
+                                .foregroundStyle(.green)
+                        } else if result.errors.isEmpty {
+                            Text("Keine unkategorisierten Buchungen gefunden")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        ForEach(result.errors, id: \.self) { err in
+                            Text(err)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                    }
+                    .padding(.leading, 48)
+                }
+            }
+            .padding()
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal)
+        }
+    }
+
+    private func runClaudeCategorize() {
+        claudeLoading = true
+        claudeResult = nil
+
+        Task {
+            let transactions = LibWimg.getTransactions()
+            let result = await ClaudeAPI.categorize(transactions: transactions)
+            await MainActor.run {
+                claudeResult = result
+                claudeLoading = false
+                if result.categorized > 0 {
+                    NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+                }
+            }
+        }
+    }
+
     // MARK: - Error
 
     private func errorCard(_ error: String) -> some View {
@@ -395,6 +592,10 @@ struct ImportView: View {
         parseResult = nil
         csvData = nil
         errorMessage = nil
+        rulesCategorizedCount = nil
+        claudeResult = nil
+        claudeLoading = false
+        showApiKeyInput = false
     }
 
     private func formatLabel(_ format: String) -> String {

@@ -15,7 +15,7 @@ pub const DbError = error{
     StepFailed,
 };
 
-const CURRENT_SCHEMA_VERSION = 3;
+const CURRENT_SCHEMA_VERSION = 5;
 const MAX_UNDO_ENTRIES = 50;
 
 pub const Db = struct {
@@ -31,6 +31,8 @@ pub const Db = struct {
         \\  amount_cents INTEGER NOT NULL,
         \\  currency TEXT NOT NULL DEFAULT 'EUR',
         \\  category INTEGER NOT NULL DEFAULT 0,
+        \\  account TEXT NOT NULL DEFAULT '',
+        \\  excluded INTEGER NOT NULL DEFAULT 0,
         \\  updated_at INTEGER NOT NULL DEFAULT 0
         \\);
         \\CREATE INDEX IF NOT EXISTS idx_transactions_date
@@ -52,6 +54,13 @@ pub const Db = struct {
         \\  total INTEGER NOT NULL,
         \\  paid INTEGER NOT NULL DEFAULT 0,
         \\  monthly INTEGER NOT NULL DEFAULT 0,
+        \\  updated_at INTEGER NOT NULL DEFAULT 0
+        \\);
+        \\CREATE TABLE IF NOT EXISTS accounts (
+        \\  id TEXT PRIMARY KEY,
+        \\  name TEXT NOT NULL,
+        \\  bank TEXT NOT NULL DEFAULT '',
+        \\  color TEXT NOT NULL DEFAULT '#4361ee',
         \\  updated_at INTEGER NOT NULL DEFAULT 0
         \\);
         \\CREATE TABLE IF NOT EXISTS undo_history (
@@ -115,9 +124,28 @@ pub const Db = struct {
             ) catch {};
         }
 
+        if (version < 4) {
+            // v4: multi-account support
+            self.exec("ALTER TABLE transactions ADD COLUMN account TEXT NOT NULL DEFAULT '';") catch {};
+            self.exec(
+                \\CREATE TABLE IF NOT EXISTS accounts (
+                \\  id TEXT PRIMARY KEY,
+                \\  name TEXT NOT NULL,
+                \\  bank TEXT NOT NULL DEFAULT '',
+                \\  color TEXT NOT NULL DEFAULT '#4361ee',
+                \\  updated_at INTEGER NOT NULL DEFAULT 0
+                \\);
+            ) catch {};
+        }
+
+        if (version < 5) {
+            // v5: exclude/hide transactions from summaries
+            self.exec("ALTER TABLE transactions ADD COLUMN excluded INTEGER NOT NULL DEFAULT 0;") catch {};
+        }
+
         // Store current version
         if (version < CURRENT_SCHEMA_VERSION) {
-            self.setMeta("schema_version", "3") catch {};
+            self.setMeta("schema_version", "5") catch {};
         }
     }
 
@@ -245,8 +273,8 @@ pub const Db = struct {
     pub fn insertTransaction(self: *Db, txn: *const Transaction) DbError!bool {
         const sql =
             \\INSERT OR IGNORE INTO transactions
-            \\  (id, date_year, date_month, date_day, description, amount_cents, currency, category, updated_at)
-            \\VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9);
+            \\  (id, date_year, date_month, date_day, description, amount_cents, currency, category, account, updated_at)
+            \\VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10);
         ;
 
         var stmt: ?*c.sqlite3_stmt = null;
@@ -281,7 +309,10 @@ pub const Db = struct {
         rc = c.sqlite3_bind_int(s, 8, @intCast(@intFromEnum(txn.category)));
         if (rc != c.SQLITE_OK) return DbError.BindFailed;
 
-        rc = c.sqlite3_bind_int64(s, 9, 0); // updated_at = 0 for new imports
+        rc = c.sqlite3_bind_text(s, 9, @ptrCast(&txn.account), @intCast(txn.account_len), c.SQLITE_STATIC);
+        if (rc != c.SQLITE_OK) return DbError.BindFailed;
+
+        rc = c.sqlite3_bind_int64(s, 10, 0); // updated_at = 0 for new imports
         if (rc != c.SQLITE_OK) return DbError.BindFailed;
 
         rc = c.sqlite3_step(s);
@@ -333,6 +364,35 @@ pub const Db = struct {
         if (c.sqlite3_bind_int(s, 1, @intCast(@intFromEnum(category))) != c.SQLITE_OK) return DbError.BindFailed;
         if (c.sqlite3_bind_text(s, 2, id, 32, c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
         if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+    }
+
+    pub fn setExcluded(self: *Db, id: [*]const u8, id_len: usize, excluded: u8) DbError!void {
+        // Capture old value for undo history
+        const old_val = self.queryInt("SELECT excluded FROM transactions WHERE id = ?1;", id, id_len);
+
+        const sql = "UPDATE transactions SET excluded = ?1 WHERE id = ?2;";
+
+        var stmt: ?*c.sqlite3_stmt = null;
+        const rc0 = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
+        if (rc0 != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+
+        const s = stmt.?;
+
+        if (c.sqlite3_bind_int(s, 1, @intCast(excluded)) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 2, @ptrCast(id), @intCast(id_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+
+        const rc = c.sqlite3_step(s);
+        if (rc != c.SQLITE_DONE) return DbError.StepFailed;
+
+        // Record history: UPDATE on transactions.excluded
+        if (old_val) |old| {
+            var old_buf: [4]u8 = undefined;
+            const old_len = formatInt(&old_buf, @as(u32, @intCast(old))) orelse return;
+            var new_buf: [4]u8 = undefined;
+            const new_len = formatInt(&new_buf, @as(u32, excluded)) orelse return;
+            self.recordHistory(1, "transactions", id[0..id_len], "excluded", old_buf[0..old_len], new_buf[0..new_len]) catch {};
+        }
     }
 
     // --- Debts ---
@@ -654,6 +714,22 @@ pub const Db = struct {
             if (c.sqlite3_bind_int(s, 1, int_val) != c.SQLITE_OK) return DbError.BindFailed;
             if (c.sqlite3_bind_text(s, 2, @ptrCast(row_id.ptr), @intCast(row_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
             if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+        } else if (std.mem.eql(u8, tbl, "transactions") and std.mem.eql(u8, col, "excluded")) {
+            // Parse integer value
+            var int_val: i32 = 0;
+            for (val) |ch| {
+                if (ch >= '0' and ch <= '9') {
+                    int_val = int_val * 10 + @as(i32, ch - '0');
+                }
+            }
+            const sql = "UPDATE transactions SET excluded = ?1 WHERE id = ?2;";
+            var stmt: ?*c.sqlite3_stmt = null;
+            if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+            defer _ = c.sqlite3_finalize(stmt.?);
+            const s = stmt.?;
+            if (c.sqlite3_bind_int(s, 1, int_val) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_text(s, 2, @ptrCast(row_id.ptr), @intCast(row_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
         } else if (std.mem.eql(u8, tbl, "debts") and std.mem.eql(u8, col, "paid")) {
             // Parse i64 value
             const int_val = parseI64(val);
@@ -855,11 +931,25 @@ pub const Db = struct {
     /// Write all transactions as JSON into the provided buffer.
     /// Returns the number of bytes written, or null if buffer is too small.
     pub fn getTransactionsJson(self: *Db, buf: [*]u8, buf_len: usize) DbError!?usize {
-        const sql =
-            \\SELECT id, date_year, date_month, date_day, description, amount_cents, currency, category
+        return self.getTransactionsJsonFiltered(buf, buf_len, null, 0);
+    }
+
+    /// Write transactions as JSON, optionally filtered by account.
+    pub fn getTransactionsJsonFiltered(self: *Db, buf: [*]u8, buf_len: usize, acct_ptr: ?[*]const u8, acct_len: u32) DbError!?usize {
+        const has_filter = acct_ptr != null and acct_len > 0;
+        const sql_all =
+            \\SELECT id, date_year, date_month, date_day, description, amount_cents, currency, category, account, excluded
             \\FROM transactions
             \\ORDER BY date_year DESC, date_month DESC, date_day DESC, rowid DESC;
         ;
+        const sql_filtered =
+            \\SELECT id, date_year, date_month, date_day, description, amount_cents, currency, category, account, excluded
+            \\FROM transactions
+            \\WHERE account = ?1
+            \\ORDER BY date_year DESC, date_month DESC, date_day DESC, rowid DESC;
+        ;
+
+        const sql = if (has_filter) sql_filtered else sql_all;
 
         var stmt: ?*c.sqlite3_stmt = null;
         const rc = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
@@ -867,6 +957,10 @@ pub const Db = struct {
         defer _ = c.sqlite3_finalize(stmt.?);
 
         const s = stmt.?;
+        if (has_filter) {
+            if (c.sqlite3_bind_text(s, 1, @ptrCast(acct_ptr.?), @intCast(acct_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        }
+
         var pos: usize = 0;
 
         // Opening bracket
@@ -886,16 +980,18 @@ pub const Db = struct {
             const amount = c.sqlite3_column_int64(s, 5);
             const curr_ptr = c.sqlite3_column_text(s, 6);
             const cat = c.sqlite3_column_int(s, 7);
+            const a_ptr = c.sqlite3_column_text(s, 8);
+            const a_len: usize = @intCast(c.sqlite3_column_bytes(s, 8));
+            const excluded: u8 = @intCast(c.sqlite3_column_int(s, 9));
 
             if (id_ptr == null or desc_ptr == null or curr_ptr == null) continue;
 
             // Format JSON object
-            const remaining = buf_len - pos;
             const slice = buf[pos..buf_len];
 
             const written = jsonFormatTransaction(
                 slice,
-                remaining,
+                buf_len - pos,
                 first,
                 id_ptr.?,
                 @intCast(year),
@@ -906,6 +1002,8 @@ pub const Db = struct {
                 amount,
                 curr_ptr.?,
                 @intCast(cat),
+                if (a_ptr) |p| p[0..a_len] else "",
+                excluded,
             ) orelse return null;
 
             pos += written;
@@ -918,6 +1016,125 @@ pub const Db = struct {
         pos += 1;
 
         return pos;
+    }
+
+    // --- Accounts ---
+
+    pub fn ensureAccount(self: *Db, account_id: []const u8, display_name: []const u8, color: []const u8) DbError!void {
+        const sql = "INSERT OR IGNORE INTO accounts (id, name, bank, color, updated_at) VALUES (?1, ?2, ?3, ?4, 0);";
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+        const s = stmt.?;
+        if (c.sqlite3_bind_text(s, 1, @ptrCast(account_id.ptr), @intCast(account_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 2, @ptrCast(display_name.ptr), @intCast(display_name.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 3, @ptrCast(account_id.ptr), @intCast(account_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 4, @ptrCast(color.ptr), @intCast(color.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+    }
+
+    pub fn getAccountsJson(self: *Db, buf: [*]u8, buf_len: usize) DbError!?usize {
+        const sql = "SELECT id, name, bank, color FROM accounts ORDER BY name;";
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+
+        const s = stmt.?;
+        var pos: usize = 0;
+
+        if (pos >= buf_len) return null;
+        buf[pos] = '[';
+        pos += 1;
+
+        var first = true;
+        while (c.sqlite3_step(s) == c.SQLITE_ROW) {
+            const id_ptr = c.sqlite3_column_text(s, 0) orelse continue;
+            const id_len: usize = @intCast(c.sqlite3_column_bytes(s, 0));
+            const name_ptr = c.sqlite3_column_text(s, 1) orelse continue;
+            const name_len: usize = @intCast(c.sqlite3_column_bytes(s, 1));
+            const bank_ptr = c.sqlite3_column_text(s, 2) orelse continue;
+            const bank_len: usize = @intCast(c.sqlite3_column_bytes(s, 2));
+            const color_ptr = c.sqlite3_column_text(s, 3) orelse continue;
+            const color_len: usize = @intCast(c.sqlite3_column_bytes(s, 3));
+
+            if (!first) {
+                if (pos >= buf_len) return null;
+                buf[pos] = ',';
+                pos += 1;
+            }
+
+            // {"id":"...","name":"...","bank":"...","color":"..."}
+            const p1 = "{\"id\":\"";
+            if (pos + p1.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p1.len], p1);
+            pos += p1.len;
+            pos += jsonEscapeString(buf[pos..buf_len], id_ptr[0..id_len]) orelse return null;
+
+            const p2 = "\",\"name\":\"";
+            if (pos + p2.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p2.len], p2);
+            pos += p2.len;
+            pos += jsonEscapeString(buf[pos..buf_len], name_ptr[0..name_len]) orelse return null;
+
+            const p3 = "\",\"bank\":\"";
+            if (pos + p3.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p3.len], p3);
+            pos += p3.len;
+            pos += jsonEscapeString(buf[pos..buf_len], bank_ptr[0..bank_len]) orelse return null;
+
+            const p4 = "\",\"color\":\"";
+            if (pos + p4.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p4.len], p4);
+            pos += p4.len;
+            pos += jsonEscapeString(buf[pos..buf_len], color_ptr[0..color_len]) orelse return null;
+
+            const p5 = "\"}";
+            if (pos + p5.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p5.len], p5);
+            pos += p5.len;
+
+            first = false;
+        }
+
+        if (pos >= buf_len) return null;
+        buf[pos] = ']';
+        pos += 1;
+
+        return pos;
+    }
+
+    pub fn insertAccount(self: *Db, id: [*]const u8, id_len: u32, name_val: [*]const u8, name_len: u32, color: [*]const u8, color_len: u32) DbError!void {
+        const sql = "INSERT OR REPLACE INTO accounts (id, name, bank, color, updated_at) VALUES (?1, ?2, ?1, ?3, 0);";
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+        const s = stmt.?;
+        if (c.sqlite3_bind_text(s, 1, id, @intCast(id_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 2, name_val, @intCast(name_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 3, color, @intCast(color_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+    }
+
+    pub fn updateAccount(self: *Db, id: [*]const u8, id_len: u32, name_val: [*]const u8, name_len: u32, color: [*]const u8, color_len: u32) DbError!void {
+        const sql = "UPDATE accounts SET name = ?2, color = ?3 WHERE id = ?1;";
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+        const s = stmt.?;
+        if (c.sqlite3_bind_text(s, 1, id, @intCast(id_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 2, name_val, @intCast(name_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 3, color, @intCast(color_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+    }
+
+    pub fn deleteAccount(self: *Db, id: [*]const u8, id_len: u32) DbError!void {
+        const sql = "DELETE FROM accounts WHERE id = ?1;";
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+        const s = stmt.?;
+        if (c.sqlite3_bind_text(s, 1, id, @intCast(id_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
     }
 };
 
@@ -934,6 +1151,8 @@ fn jsonFormatTransaction(
     amount_cents: i64,
     curr_ptr: [*]const u8,
     category: u8,
+    account: []const u8,
+    excluded: u8,
 ) ?usize {
     _ = buf_len;
 
@@ -993,7 +1212,7 @@ fn jsonFormatTransaction(
     @memcpy(buf[pos .. pos + 3], curr_ptr[0..3]);
     pos += 3;
 
-    // ","category":N}
+    // ","category":N
     const cat_pre = "\",\"category\":";
     if (pos + cat_pre.len > buf.len) return null;
     @memcpy(buf[pos .. pos + cat_pre.len], cat_pre);
@@ -1001,6 +1220,21 @@ fn jsonFormatTransaction(
 
     pos += formatInt(buf[pos..], category) orelse return null;
 
+    // ,"account":"..."
+    const acct_pre = ",\"account\":\"";
+    if (pos + acct_pre.len > buf.len) return null;
+    @memcpy(buf[pos .. pos + acct_pre.len], acct_pre);
+    pos += acct_pre.len;
+    pos += jsonEscapeString(buf[pos..], account) orelse return null;
+
+    // ","excluded":N
+    const excl_pre = "\",\"excluded\":";
+    if (pos + excl_pre.len > buf.len) return null;
+    @memcpy(buf[pos .. pos + excl_pre.len], excl_pre);
+    pos += excl_pre.len;
+    pos += formatInt(buf[pos..], excluded) orelse return null;
+
+    // }
     if (pos >= buf.len) return null;
     buf[pos] = '}';
     pos += 1;
@@ -1141,7 +1375,9 @@ pub fn formatInt(buf: []u8, value: anytype) ?usize {
 
 pub fn jsonEscapeString(buf: []u8, src: []const u8) ?usize {
     var pos: usize = 0;
-    for (src) |ch| {
+    var i: usize = 0;
+    while (i < src.len) {
+        const ch = src[i];
         switch (ch) {
             '"' => {
                 if (pos + 2 > buf.len) return null;
@@ -1185,7 +1421,17 @@ pub fn jsonEscapeString(buf: []u8, src: []const u8) ?usize {
                     buf[pos + 5] = hexDigit(ch & 0x0F);
                     pos += 6;
                 } else if (ch >= 0x80) {
-                    // Non-ASCII byte (e.g. ISO-8859-1): escape as \u00XX
+                    // UTF-8 multi-byte sequence detection
+                    const seq_len = utf8SeqLen(ch);
+                    if (seq_len > 1 and i + seq_len <= src.len and utf8ContinuationsValid(src[i + 1 .. i + seq_len])) {
+                        // Valid UTF-8 sequence — pass through raw (valid in JSON strings)
+                        if (pos + seq_len > buf.len) return null;
+                        @memcpy(buf[pos .. pos + seq_len], src[i .. i + seq_len]);
+                        pos += seq_len;
+                        i += seq_len;
+                        continue;
+                    }
+                    // Lone high byte (ISO-8859-1 fallback): escape as \u00XX
                     if (pos + 6 > buf.len) return null;
                     buf[pos] = '\\';
                     buf[pos + 1] = 'u';
@@ -1201,10 +1447,294 @@ pub fn jsonEscapeString(buf: []u8, src: []const u8) ?usize {
                 }
             },
         }
+        i += 1;
     }
     return pos;
 }
 
+/// Return the expected byte length of a UTF-8 sequence from the lead byte.
+/// Returns 1 for invalid lead bytes (continuation bytes or 0xFE/0xFF).
+fn utf8SeqLen(lead: u8) usize {
+    if (lead & 0xE0 == 0xC0) return 2; // 110xxxxx
+    if (lead & 0xF0 == 0xE0) return 3; // 1110xxxx
+    if (lead & 0xF8 == 0xF0) return 4; // 11110xxx
+    return 1; // not a valid lead byte
+}
+
+/// Check that all bytes are valid UTF-8 continuation bytes (10xxxxxx).
+fn utf8ContinuationsValid(bytes: []const u8) bool {
+    for (bytes) |b| {
+        if (b & 0xC0 != 0x80) return false;
+    }
+    return true;
+}
+
 fn hexDigit(val: u8) u8 {
     return if (val < 10) '0' + val else 'a' + (val - 10);
+}
+
+// ============================================================
+// Tests
+// ============================================================
+
+test "formatInt: zero" {
+    var buf: [20]u8 = undefined;
+    const len = formatInt(&buf, @as(u64, 0)).?;
+    try std.testing.expectEqualStrings("0", buf[0..len]);
+}
+
+test "formatInt: small number" {
+    var buf: [20]u8 = undefined;
+    const len = formatInt(&buf, @as(u64, 42)).?;
+    try std.testing.expectEqualStrings("42", buf[0..len]);
+}
+
+test "formatInt: large number" {
+    var buf: [20]u8 = undefined;
+    const len = formatInt(&buf, @as(u64, 12345)).?;
+    try std.testing.expectEqualStrings("12345", buf[0..len]);
+}
+
+test "formatInt: buffer too small" {
+    var buf: [2]u8 = undefined;
+    try std.testing.expect(formatInt(&buf, @as(u64, 12345)) == null);
+}
+
+test "formatAmount: positive cents" {
+    var buf: [20]u8 = undefined;
+    const len = formatAmount(&buf, 12345).?;
+    try std.testing.expectEqualStrings("123.45", buf[0..len]);
+}
+
+test "formatAmount: negative cents" {
+    var buf: [20]u8 = undefined;
+    const len = formatAmount(&buf, -500).?;
+    try std.testing.expectEqualStrings("-5.00", buf[0..len]);
+}
+
+test "formatAmount: zero" {
+    var buf: [20]u8 = undefined;
+    const len = formatAmount(&buf, 0).?;
+    try std.testing.expectEqualStrings("0.00", buf[0..len]);
+}
+
+test "formatAmount: small cents" {
+    var buf: [20]u8 = undefined;
+    const len = formatAmount(&buf, 7).?;
+    try std.testing.expectEqualStrings("0.07", buf[0..len]);
+}
+
+test "jsonEscapeString: plain ASCII" {
+    var buf: [100]u8 = undefined;
+    const len = jsonEscapeString(&buf, "hello world").?;
+    try std.testing.expectEqualStrings("hello world", buf[0..len]);
+}
+
+test "jsonEscapeString: quotes" {
+    var buf: [100]u8 = undefined;
+    const len = jsonEscapeString(&buf, "say \"hi\"").?;
+    try std.testing.expectEqualStrings("say \\\"hi\\\"", buf[0..len]);
+}
+
+test "jsonEscapeString: backslash" {
+    var buf: [100]u8 = undefined;
+    const len = jsonEscapeString(&buf, "a\\b").?;
+    try std.testing.expectEqualStrings("a\\\\b", buf[0..len]);
+}
+
+test "jsonEscapeString: newline" {
+    var buf: [100]u8 = undefined;
+    const len = jsonEscapeString(&buf, "line1\nline2").?;
+    try std.testing.expectEqualStrings("line1\\nline2", buf[0..len]);
+}
+
+test "jsonEscapeString: control char" {
+    var buf: [100]u8 = undefined;
+    const input = [_]u8{ 'a', 0x01, 'b' };
+    const len = jsonEscapeString(&buf, &input).?;
+    try std.testing.expectEqualStrings("a\\u0001b", buf[0..len]);
+}
+
+test "jsonEscapeString: tab" {
+    var buf: [100]u8 = undefined;
+    const len = jsonEscapeString(&buf, "a\tb").?;
+    try std.testing.expectEqualStrings("a\\tb", buf[0..len]);
+}
+
+test "jsonEscapeString: UTF-8 emoji passed through" {
+    var buf: [100]u8 = undefined;
+    // 🛒 = F0 9F 9B 92 (valid 4-byte UTF-8)
+    const cart = "\xf0\x9f\x9b\x92";
+    const len = jsonEscapeString(&buf, cart).?;
+    try std.testing.expectEqualStrings(cart, buf[0..len]);
+}
+
+test "jsonEscapeString: UTF-8 2-byte char passed through" {
+    var buf: [100]u8 = undefined;
+    // ü = C3 BC (valid 2-byte UTF-8)
+    const input = "\xc3\xbc";
+    const len = jsonEscapeString(&buf, input).?;
+    try std.testing.expectEqualStrings(input, buf[0..len]);
+}
+
+test "jsonEscapeString: UTF-8 3-byte char passed through" {
+    var buf: [100]u8 = undefined;
+    // ⚡ = E2 9A A1 (valid 3-byte UTF-8)
+    const input = "\xe2\x9a\xa1";
+    const len = jsonEscapeString(&buf, input).?;
+    try std.testing.expectEqualStrings(input, buf[0..len]);
+}
+
+test "jsonEscapeString: lone high byte escaped as ISO-8859-1" {
+    var buf: [100]u8 = undefined;
+    // 0xFC alone = ü in ISO-8859-1, but not valid UTF-8 lead (needs continuation)
+    const input = [_]u8{ 'a', 0xFC, 'b' };
+    const len = jsonEscapeString(&buf, &input).?;
+    try std.testing.expectEqualStrings("a\\u00fcb", buf[0..len]);
+}
+
+test "jsonEscapeString: mixed ASCII and emoji" {
+    var buf: [200]u8 = undefined;
+    // "hello 🛒 world"
+    const input = "hello \xf0\x9f\x9b\x92 world";
+    const len = jsonEscapeString(&buf, input).?;
+    try std.testing.expectEqualStrings(input, buf[0..len]);
+}
+
+test "jsonEscapeString: all category icons pass through" {
+    const types_mod = @import("types.zig");
+    const all_cats = [_]types_mod.Category{
+        .uncategorized, .groceries, .dining, .transport,
+        .housing, .utilities, .entertainment, .shopping,
+        .health, .insurance, .income, .transfer,
+        .cash, .subscriptions, .travel, .education,
+        .other,
+    };
+    var buf: [100]u8 = undefined;
+    for (all_cats) |cat| {
+        const icon = cat.icon();
+        const len = jsonEscapeString(&buf, icon).?;
+        // Single-byte icons (like "?") pass through as-is
+        // Multi-byte UTF-8 icons should pass through unchanged
+        try std.testing.expectEqualStrings(icon, buf[0..len]);
+    }
+}
+
+test "formatSignedInt: positive" {
+    var buf: [20]u8 = undefined;
+    const len = formatSignedInt(&buf, 42).?;
+    try std.testing.expectEqualStrings("42", buf[0..len]);
+}
+
+test "formatSignedInt: negative" {
+    var buf: [20]u8 = undefined;
+    const len = formatSignedInt(&buf, -99).?;
+    try std.testing.expectEqualStrings("-99", buf[0..len]);
+}
+
+test "formatSignedInt: zero" {
+    var buf: [20]u8 = undefined;
+    const len = formatSignedInt(&buf, 0).?;
+    try std.testing.expectEqualStrings("0", buf[0..len]);
+}
+
+// --- Stress / edge case tests ---
+
+test "formatInt: max u32" {
+    var buf: [20]u8 = undefined;
+    const len = formatInt(&buf, @as(u64, 4294967295)).?;
+    try std.testing.expectEqualStrings("4294967295", buf[0..len]);
+}
+
+test "formatInt: single digit boundary" {
+    var buf: [20]u8 = undefined;
+    try std.testing.expectEqualStrings("9", buf[0..formatInt(&buf, @as(u64, 9)).?]);
+    try std.testing.expectEqualStrings("10", buf[0..formatInt(&buf, @as(u64, 10)).?]);
+}
+
+test "formatInt: buffer exactly fits" {
+    var buf: [3]u8 = undefined;
+    const len = formatInt(&buf, @as(u64, 999)).?;
+    try std.testing.expectEqualStrings("999", buf[0..len]);
+}
+
+test "formatInt: buffer one byte short" {
+    var buf: [3]u8 = undefined;
+    try std.testing.expect(formatInt(&buf, @as(u64, 1000)) == null);
+}
+
+test "formatAmount: large salary" {
+    var buf: [20]u8 = undefined;
+    const len = formatAmount(&buf, 350000).?; // 3500.00 EUR
+    try std.testing.expectEqualStrings("3500.00", buf[0..len]);
+}
+
+test "formatAmount: very large amount" {
+    var buf: [20]u8 = undefined;
+    const len = formatAmount(&buf, 99999999).?; // 999,999.99
+    try std.testing.expectEqualStrings("999999.99", buf[0..len]);
+}
+
+test "formatAmount: one cent" {
+    var buf: [20]u8 = undefined;
+    const len = formatAmount(&buf, 1).?;
+    try std.testing.expectEqualStrings("0.01", buf[0..len]);
+}
+
+test "formatAmount: buffer too small" {
+    var buf: [3]u8 = undefined;
+    // "0.00" needs 4 chars, buf only has 3
+    try std.testing.expect(formatAmount(&buf, 0) == null);
+}
+
+test "jsonEscapeString: high byte ISO-8859-1" {
+    var buf: [100]u8 = undefined;
+    // ü = 0xFC in ISO-8859-1
+    const input = [_]u8{ 0xFC };
+    const len = jsonEscapeString(&buf, &input).?;
+    try std.testing.expectEqualStrings("\\u00fc", buf[0..len]);
+}
+
+test "jsonEscapeString: mixed special chars" {
+    var buf: [200]u8 = undefined;
+    const len = jsonEscapeString(&buf, "line1\nline2\ttab\"quote\"\\back").?;
+    try std.testing.expectEqualStrings("line1\\nline2\\ttab\\\"quote\\\"\\\\back", buf[0..len]);
+}
+
+test "jsonEscapeString: empty string" {
+    var buf: [10]u8 = undefined;
+    const len = jsonEscapeString(&buf, "").?;
+    try std.testing.expectEqual(@as(usize, 0), len);
+}
+
+test "jsonEscapeString: buffer too small for escape" {
+    var buf: [1]u8 = undefined;
+    // needs 2 bytes for \", but buffer is only 1
+    try std.testing.expect(jsonEscapeString(&buf, "\"") == null);
+}
+
+test "jsonEscapeString: long string with many escapes" {
+    var buf: [2000]u8 = undefined;
+    // 100 quotes = 200 bytes output
+    const input = "\"" ** 100;
+    const len = jsonEscapeString(&buf, input).?;
+    try std.testing.expectEqual(@as(usize, 200), len);
+    // Verify pattern: every pair is \"
+    var i: usize = 0;
+    while (i < 200) : (i += 2) {
+        try std.testing.expectEqual(@as(u8, '\\'), buf[i]);
+        try std.testing.expectEqual(@as(u8, '"'), buf[i + 1]);
+    }
+}
+
+test "formatSignedInt: large negative" {
+    var buf: [20]u8 = undefined;
+    const len = formatSignedInt(&buf, -999999).?;
+    try std.testing.expectEqualStrings("-999999", buf[0..len]);
+}
+
+test "formatSignedInt: large positive" {
+    var buf: [20]u8 = undefined;
+    const len = formatSignedInt(&buf, 999999).?;
+    try std.testing.expectEqualStrings("999999", buf[0..len]);
 }

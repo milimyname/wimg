@@ -34,24 +34,27 @@ struct wimgApp: App {
 }
 
 struct ContentView: View {
+    @State private var selectedAccount: String?
+    @State private var accounts: [Account] = []
+
     var body: some View {
         TabView {
-            DashboardView()
+            DashboardView(selectedAccount: $selectedAccount, accounts: $accounts)
                 .tabItem {
                     Label("Übersicht", systemImage: "chart.pie")
                 }
 
-            TransactionsView()
+            TransactionsView(selectedAccount: $selectedAccount)
                 .tabItem {
                     Label("Umsätze", systemImage: "list.bullet")
                 }
 
-            AnalysisView()
+            AnalysisView(selectedAccount: $selectedAccount)
                 .tabItem {
                     Label("Analyse", systemImage: "chart.bar")
                 }
 
-            ReviewView()
+            ReviewView(selectedAccount: $selectedAccount)
                 .tabItem {
                     Label("Rückblick", systemImage: "calendar")
                 }
@@ -67,5 +70,9 @@ struct ContentView: View {
                 }
         }
         .tint(.blue)
+        .onAppear { accounts = LibWimg.getAccounts() }
+        .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
+            accounts = LibWimg.getAccounts()
+        }
     }
 }

@@ -7,10 +7,13 @@ struct Transaction: Codable, Identifiable {
     let amount: Double
     let currency: String
     let category: Int
+    let account: String?
+    let excluded: Int?
 
     var isExpense: Bool { amount < 0 }
     var isIncome: Bool { amount > 0 }
     var absAmount: Double { abs(amount) }
+    var isExcluded: Bool { (excluded ?? 0) != 0 }
 
     var dateFormatted: String {
         // date comes as "YYYY-MM-DD"

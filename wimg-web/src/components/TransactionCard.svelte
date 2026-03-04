@@ -1,5 +1,6 @@
 <script lang="ts">
   import { CATEGORIES, type Transaction } from "$lib/wasm";
+  import { formatEur } from "$lib/format";
   import CategoryBadge from "./CategoryBadge.svelte";
 
   let {
@@ -9,13 +10,6 @@
     txn: Transaction;
     onCategoryClick?: (id: string) => void;
   } = $props();
-
-  function formatAmount(amount: number): string {
-    return new Intl.NumberFormat("de-DE", {
-      style: "currency",
-      currency: "EUR",
-    }).format(amount);
-  }
 </script>
 
 <div class="flex items-center gap-3 p-4">
@@ -34,6 +28,6 @@
     class:text-green-600={txn.amount > 0}
     class:text-red-600={txn.amount < 0}
   >
-    {formatAmount(txn.amount)}
+    {formatEur(txn.amount)}
   </span>
 </div>

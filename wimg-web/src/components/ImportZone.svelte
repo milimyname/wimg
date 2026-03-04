@@ -8,21 +8,30 @@
   } = $props();
 
   let dragging = $state(false);
+  let dragCounter = 0;
   let importResult = $state<ImportResult | null>(null);
   let error = $state<string | null>(null);
   let importing = $state(false);
 
-  function handleDragOver(e: DragEvent) {
+  function handleDragEnter(e: DragEvent) {
     e.preventDefault();
+    dragCounter++;
     dragging = true;
   }
 
+  function handleDragOver(e: DragEvent) {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+  }
+
   function handleDragLeave() {
-    dragging = false;
+    dragCounter--;
+    if (dragCounter === 0) dragging = false;
   }
 
   async function handleDrop(e: DragEvent) {
     e.preventDefault();
+    dragCounter = 0;
     dragging = false;
     const file = e.dataTransfer?.files[0];
     if (file) await processFile(file);
@@ -56,6 +65,7 @@
   style="border-color: {dragging ? 'var(--color-primary)' : '#d1d5db'}; background-color: {dragging ? 'var(--color-primary-light)' : 'transparent'}"
   role="button"
   tabindex="0"
+  ondragenter={handleDragEnter}
   ondragover={handleDragOver}
   ondragleave={handleDragLeave}
   ondrop={handleDrop}

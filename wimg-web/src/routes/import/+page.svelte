@@ -9,32 +9,14 @@
     type ParseResult,
     type Transaction,
   } from "$lib/wasm";
+  import { formatEur, formatDate } from "$lib/format";
   import {
     categorizeWithClaude,
     getApiKey,
     setApiKey,
     removeApiKey,
   } from "$lib/claude";
-
-  const CATEGORY_ICONS: Record<number, string> = {
-    0: "?",
-    1: "🛒",
-    2: "🍽️",
-    3: "🚆",
-    4: "🏠",
-    5: "⚡",
-    6: "🎬",
-    7: "🛍️",
-    8: "💊",
-    9: "🛡️",
-    10: "💰",
-    11: "🔄",
-    12: "💵",
-    13: "📱",
-    14: "✈️",
-    15: "🎓",
-    255: "📦",
-  };
+  import { accountStore } from "$lib/account.svelte";
 
   type ImportStage = "idle" | "preview" | "imported";
 
@@ -146,6 +128,7 @@
       previewTransactions = allTxns.slice(0, 20);
       showAllPreview = false;
       stage = "imported";
+      accountStore.reload();
     } catch (e) {
       importError = e instanceof Error ? e.message : "Import fehlgeschlagen";
     } finally {
@@ -198,22 +181,6 @@
     }
   }
 
-  function formatEur(amount: number): string {
-    return new Intl.NumberFormat("de-DE", {
-      style: "currency",
-      currency: "EUR",
-    }).format(amount);
-  }
-
-  function formatDate(dateStr: string): string {
-    const d = new Date(dateStr + "T00:00:00");
-    return d.toLocaleDateString("de-DE", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  }
-
   function formatLabel(format: string): string {
     const map: Record<string, string> = {
       comdirect: "Comdirect",
@@ -222,6 +189,15 @@
       scalable_capital: "Scalable Capital",
     };
     return map[format] ?? format;
+  }
+
+  function accountForFormat(format: string): { name: string; color: string } {
+    const map: Record<string, { name: string; color: string }> = {
+      comdirect: { name: "Comdirect", color: "#f5a623" },
+      trade_republic: { name: "Trade Republic", color: "#1a1a2e" },
+      scalable_capital: { name: "Scalable Capital", color: "#6c5ce7" },
+    };
+    return map[format] ?? { name: "Unbekannt", color: "#4361ee" };
   }
 </script>
 
@@ -356,6 +332,22 @@
     </div>
   {/if}
 
+  <!-- Target Account Badge -->
+  {#if parseResult.format && parseResult.format !== "unknown"}
+    {@const acct = accountForFormat(parseResult.format)}
+    <div
+      class="flex items-center gap-2.5 rounded-xl bg-white p-3.5 shadow-sm border border-gray-100 mb-3"
+    >
+      <div
+        class="w-3 h-3 rounded-full shrink-0"
+        style="background-color: {acct.color}"
+      ></div>
+      <p class="text-xs text-gray-500">
+        <span class="font-semibold text-gray-700">Zielkonto:</span> {acct.name}
+      </p>
+    </div>
+  {/if}
+
   <!-- Summary Card -->
   <div
     class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-3"
@@ -402,7 +394,7 @@
               style="background-color: {CATEGORIES[txn.category]?.color ??
                 '#dfe6e9'}15"
             >
-              {CATEGORY_ICONS[txn.category] ?? "📦"}
+              {CATEGORIES[txn.category]?.icon ?? "📦"}
             </div>
             <div class="min-w-0">
               <p class="text-sm font-bold truncate max-w-[180px]">
@@ -482,7 +474,7 @@
           </p>
         </div>
         <p class="text-xs text-gray-400 pl-7">
-          Format automatisch erkannt und verarbeitet
+          Importiert nach <span class="font-semibold text-gray-500">{accountForFormat(importResult.format).name}</span>
         </p>
       </div>
       <div
@@ -593,7 +585,7 @@
               style="background-color: {CATEGORIES[txn.category]?.color ??
                 '#dfe6e9'}15"
             >
-              {CATEGORY_ICONS[txn.category] ?? "📦"}
+              {CATEGORIES[txn.category]?.icon ?? "📦"}
             </div>
             <div class="min-w-0">
               <p class="text-sm font-bold truncate max-w-[180px]">

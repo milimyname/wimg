@@ -53,3 +53,39 @@ fn toLowerAscii(ch: u8) u8 {
     if (ch >= 'A' and ch <= 'Z') return ch + 32;
     return ch;
 }
+
+// ============================================================
+// Tests
+// ============================================================
+
+test "containsIgnoreCase: exact match" {
+    try std.testing.expect(containsIgnoreCase("REWE", "REWE"));
+}
+
+test "containsIgnoreCase: case mismatch" {
+    try std.testing.expect(containsIgnoreCase("REWE Supermarkt", "rewe"));
+}
+
+test "containsIgnoreCase: needle uppercase, haystack lowercase" {
+    try std.testing.expect(containsIgnoreCase("rewe supermarkt", "REWE"));
+}
+
+test "containsIgnoreCase: not found" {
+    try std.testing.expect(!containsIgnoreCase("REWE Supermarkt", "ALDI"));
+}
+
+test "containsIgnoreCase: empty needle" {
+    try std.testing.expect(containsIgnoreCase("hello", ""));
+}
+
+test "containsIgnoreCase: needle longer than haystack" {
+    try std.testing.expect(!containsIgnoreCase("hi", "hello world"));
+}
+
+test "containsIgnoreCase: substring in middle" {
+    try std.testing.expect(containsIgnoreCase("Lastschrift REWE 1234", "rewe"));
+}
+
+test "containsIgnoreCase: both empty" {
+    try std.testing.expect(containsIgnoreCase("", ""));
+}

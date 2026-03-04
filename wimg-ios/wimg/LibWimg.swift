@@ -58,8 +58,16 @@ final class LibWimg {
     // MARK: - Transactions
 
     static func getTransactions() -> [Transaction] {
+        getTransactionsFiltered(account: nil)
+    }
+
+    static func getTransactionsFiltered(account: String?) -> [Transaction] {
         guard isInitialized else { return [] }
-        guard let ptr = wimg_get_transactions() else { return [] }
+        let acctData = Array((account ?? "").utf8)
+        let ptr: UnsafePointer<UInt8>? = acctData.withUnsafeBufferPointer { buf in
+            wimg_get_transactions_filtered(buf.baseAddress!, UInt32(buf.count))
+        }
+        guard let ptr else { return [] }
         defer { wimg_free(ptr, 0) }
         return (try? decodeLengthPrefixed(ptr)) ?? []
     }
@@ -75,6 +83,17 @@ final class LibWimg {
         }
     }
 
+    static func setExcluded(id: String, excluded: Bool) throws {
+        try ensureInit()
+        let idData = Array(id.utf8)
+        let rc = idData.withUnsafeBufferPointer { buf in
+            wimg_set_excluded(buf.baseAddress!, UInt32(buf.count), excluded ? 1 : 0)
+        }
+        if rc != 0 {
+            throw WimgError.operationFailed("setExcluded", lastError())
+        }
+    }
+
     static func autoCategorize() -> Int {
         guard isInitialized else { return 0 }
         let result = wimg_auto_categorize()
@@ -84,14 +103,19 @@ final class LibWimg {
     // MARK: - Summaries
 
     static func getSummary(year: Int, month: Int) -> MonthlySummary {
-        guard isInitialized else {
-            return MonthlySummary(year: year, month: month, income: 0, expenses: 0, available: 0, tx_count: 0, by_category: [])
+        getSummaryFiltered(year: year, month: month, account: nil)
+    }
+
+    static func getSummaryFiltered(year: Int, month: Int, account: String?) -> MonthlySummary {
+        let empty = MonthlySummary(year: year, month: month, income: 0, expenses: 0, available: 0, tx_count: 0, by_category: [])
+        guard isInitialized else { return empty }
+        let acctData = Array((account ?? "").utf8)
+        let ptr: UnsafePointer<UInt8>? = acctData.withUnsafeBufferPointer { buf in
+            wimg_get_summary_filtered(UInt32(year), UInt32(month), buf.baseAddress!, UInt32(buf.count))
         }
-        guard let ptr = wimg_get_summary(UInt32(year), UInt32(month)) else {
-            return MonthlySummary(year: year, month: month, income: 0, expenses: 0, available: 0, tx_count: 0, by_category: [])
-        }
+        guard let ptr else { return empty }
         defer { wimg_free(ptr, 0) }
-        return (try? decodeLengthPrefixed(ptr)) ?? MonthlySummary(year: year, month: month, income: 0, expenses: 0, available: 0, tx_count: 0, by_category: [])
+        return (try? decodeLengthPrefixed(ptr)) ?? empty
     }
 
     // MARK: - Debts
@@ -137,6 +161,54 @@ final class LibWimg {
         }
         if rc != 0 {
             throw WimgError.operationFailed("deleteDebt", lastError())
+        }
+    }
+
+    // MARK: - Accounts
+
+    static func getAccounts() -> [Account] {
+        guard isInitialized else { return [] }
+        guard let ptr = wimg_get_accounts() else { return [] }
+        defer { wimg_free(ptr, 0) }
+        return (try? decodeLengthPrefixed(ptr)) ?? []
+    }
+
+    static func addAccount(id: String, name: String, color: String) throws {
+        try ensureInit()
+        let json = """
+        {"id":"\(id)","name":"\(name)","bank":"","color":"\(color)"}
+        """
+        let data = Array(json.utf8)
+        let rc = data.withUnsafeBufferPointer { buf in
+            wimg_add_account(buf.baseAddress!, UInt32(buf.count))
+        }
+        if rc != 0 {
+            throw WimgError.operationFailed("addAccount", lastError())
+        }
+    }
+
+    static func updateAccount(id: String, name: String, color: String) throws {
+        try ensureInit()
+        let json = """
+        {"id":"\(id)","name":"\(name)","bank":"","color":"\(color)"}
+        """
+        let data = Array(json.utf8)
+        let rc = data.withUnsafeBufferPointer { buf in
+            wimg_update_account(buf.baseAddress!, UInt32(buf.count))
+        }
+        if rc != 0 {
+            throw WimgError.operationFailed("updateAccount", lastError())
+        }
+    }
+
+    static func deleteAccount(id: String) throws {
+        try ensureInit()
+        let idData = Array(id.utf8)
+        let rc = idData.withUnsafeBufferPointer { buf in
+            wimg_delete_account(buf.baseAddress!, UInt32(buf.count))
+        }
+        if rc != 0 {
+            throw WimgError.operationFailed("deleteAccount", lastError())
         }
     }
 

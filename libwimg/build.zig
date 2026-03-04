@@ -155,6 +155,21 @@ pub fn build(b: *std.Build) void {
     });
     const run_categories_tests = b.addRunArtifact(categories_tests);
     test_step.dependOn(&run_categories_tests.step);
+
+    const db_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/db.zig"),
+            .target = b.resolveTargetQuery(.{}),
+            .optimize = optimize,
+        }),
+    });
+    db_tests.root_module.addCSourceFile(.{
+        .file = b.path("vendor/sqlite3.c"),
+        .flags = native_sqlite_flags,
+    });
+    db_tests.linkLibC();
+    const run_db_tests = b.addRunArtifact(db_tests);
+    test_step.dependOn(&run_db_tests.step);
 }
 
 /// Detect Apple SDK via xcrun and configure include/framework/library paths.

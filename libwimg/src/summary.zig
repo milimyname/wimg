@@ -8,17 +8,36 @@ const Category = types.Category;
 /// Generate a monthly summary as JSON into the provided buffer.
 /// Returns bytes written, or null if buffer too small.
 pub fn getSummaryJson(handle: *c.sqlite3, year: u16, month: u8, buf: [*]u8, buf_len: usize) ?usize {
-    // Query: group by category, sum income and expenses separately
-    const sql =
+    return getSummaryJsonFiltered(handle, year, month, buf, buf_len, null, 0);
+}
+
+/// Generate a monthly summary as JSON, optionally filtered by account.
+pub fn getSummaryJsonFiltered(handle: *c.sqlite3, year: u16, month: u8, buf: [*]u8, buf_len: usize, acct_ptr: ?[*]const u8, acct_len: u32) ?usize {
+    const has_filter = acct_ptr != null and acct_len > 0;
+
+    const sql_all =
         \\SELECT category,
         \\  SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END) as income,
         \\  SUM(CASE WHEN amount_cents < 0 THEN amount_cents ELSE 0 END) as expenses,
         \\  COUNT(*) as cnt
         \\FROM transactions
-        \\WHERE date_year = ?1 AND date_month = ?2
+        \\WHERE date_year = ?1 AND date_month = ?2 AND excluded = 0
         \\GROUP BY category
         \\ORDER BY expenses ASC;
     ;
+
+    const sql_filtered =
+        \\SELECT category,
+        \\  SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END) as income,
+        \\  SUM(CASE WHEN amount_cents < 0 THEN amount_cents ELSE 0 END) as expenses,
+        \\  COUNT(*) as cnt
+        \\FROM transactions
+        \\WHERE date_year = ?1 AND date_month = ?2 AND excluded = 0 AND account = ?3
+        \\GROUP BY category
+        \\ORDER BY expenses ASC;
+    ;
+
+    const sql = if (has_filter) sql_filtered else sql_all;
 
     var stmt: ?*c.sqlite3_stmt = null;
     const rc = c.sqlite3_prepare_v2(handle, sql, -1, &stmt, null);
@@ -28,6 +47,9 @@ pub fn getSummaryJson(handle: *c.sqlite3, year: u16, month: u8, buf: [*]u8, buf_
     const s = stmt.?;
     if (c.sqlite3_bind_int(s, 1, @intCast(year)) != c.SQLITE_OK) return null;
     if (c.sqlite3_bind_int(s, 2, @intCast(month)) != c.SQLITE_OK) return null;
+    if (has_filter) {
+        if (c.sqlite3_bind_text(s, 3, @ptrCast(acct_ptr.?), @intCast(acct_len), c.SQLITE_STATIC) != c.SQLITE_OK) return null;
+    }
 
     // Collect results into a fixed array (max 17 categories)
     var total_income: i64 = 0;
@@ -125,7 +147,7 @@ pub fn getSummaryJson(handle: *c.sqlite3, year: u16, month: u8, buf: [*]u8, buf_
         @memcpy(buf[pos .. pos + cp2.len], cp2);
         pos += cp2.len;
 
-        const cat_name = Category.fromInt(cat_ids[i]).name();
+        const cat_name = Category.fromInt(cat_ids[i]).germanName();
         if (pos + cat_name.len > buf_len) return null;
         @memcpy(buf[pos .. pos + cat_name.len], cat_name);
         pos += cat_name.len;

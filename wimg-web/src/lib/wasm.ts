@@ -9,6 +9,15 @@ export interface Transaction {
   amount: number;
   currency: string;
   category: number;
+  account: string;
+  excluded: number;
+}
+
+export interface Account {
+  id: string;
+  name: string;
+  bank: string;
+  color: string;
 }
 
 export interface ImportResult {
@@ -52,25 +61,14 @@ export interface UndoResult {
   column?: string;
 }
 
-export const CATEGORIES: Record<number, { name: string; color: string }> = {
-  0: { name: "Uncategorized", color: "#dfe6e9" },
-  1: { name: "Groceries", color: "#4ecdc4" },
-  2: { name: "Dining", color: "#ff6b6b" },
-  3: { name: "Transport", color: "#45b7d1" },
-  4: { name: "Housing", color: "#96ceb4" },
-  5: { name: "Utilities", color: "#a8d8ea" },
-  6: { name: "Entertainment", color: "#dda0dd" },
-  7: { name: "Shopping", color: "#f7dc6f" },
-  8: { name: "Health", color: "#ff9ff3" },
-  9: { name: "Insurance", color: "#c8d6e5" },
-  10: { name: "Income", color: "#2dc653" },
-  11: { name: "Transfer", color: "#b8b8b8" },
-  12: { name: "Cash", color: "#ffd93d" },
-  13: { name: "Subscriptions", color: "#6c5ce7" },
-  14: { name: "Travel", color: "#fd79a8" },
-  15: { name: "Education", color: "#74b9ff" },
-  255: { name: "Other", color: "#dfe6e9" },
-};
+export interface CategoryInfo {
+  id: number;
+  name: string;
+  color: string;
+  icon: string;
+}
+
+export let CATEGORIES: Record<number, CategoryInfo> = {};
 
 export interface ParseResult {
   format: string;
@@ -85,16 +83,25 @@ interface WasmExports {
   wimg_parse_csv: (data: number, len: number) => number;
   wimg_get_transactions: () => number;
   wimg_set_category: (id: number, id_len: number, category: number) => number;
+  wimg_set_excluded: (id: number, id_len: number, excluded: number) => number;
   wimg_get_summary: (year: number, month: number) => number;
   wimg_get_debts: () => number;
   wimg_add_debt: (data: number, len: number) => number;
-  wimg_mark_debt_paid: (
-    id: number,
-    id_len: number,
-    amount_cents: bigint,
-  ) => number;
+  wimg_mark_debt_paid: (id: number, id_len: number, amount_cents: bigint) => number;
   wimg_delete_debt: (id: number, id_len: number) => number;
   wimg_auto_categorize: () => number;
+  wimg_get_accounts: () => number;
+  wimg_add_account: (data: number, len: number) => number;
+  wimg_update_account: (data: number, len: number) => number;
+  wimg_delete_account: (id: number, id_len: number) => number;
+  wimg_get_transactions_filtered: (acct: number, acct_len: number) => number;
+  wimg_get_summary_filtered: (
+    year: number,
+    month: number,
+    acct: number,
+    acct_len: number,
+  ) => number;
+  wimg_get_categories: () => number;
   wimg_undo: () => number;
   wimg_redo: () => number;
   wimg_close: () => void;
@@ -114,8 +121,7 @@ const OPFS_DB_NAME = "wimg.db";
 
 function readLengthPrefixedString(ptr: number): string {
   const mem = new Uint8Array(wasm!.memory.buffer);
-  const len =
-    mem[ptr] | (mem[ptr + 1] << 8) | (mem[ptr + 2] << 16) | (mem[ptr + 3] << 24);
+  const len = mem[ptr] | (mem[ptr + 1] << 8) | (mem[ptr + 2] << 16) | (mem[ptr + 3] << 24);
   return new TextDecoder().decode(mem.slice(ptr + 4, ptr + 4 + len));
 }
 
@@ -226,20 +232,14 @@ export async function init(): Promise<void> {
     if (!(imp.name in importObject[imp.module])) {
       if (imp.kind === "function") {
         importObject[imp.module][imp.name] = (...args: unknown[]) => {
-          console.warn(
-            `[wimg] unimplemented import: ${imp.module}.${imp.name}`,
-            args,
-          );
+          console.warn(`[wimg] unimplemented import: ${imp.module}.${imp.name}`, args);
           return 0;
         };
       }
     }
   }
 
-  const result = await WebAssembly.instantiate(
-    compiled,
-    importObject as WebAssembly.Imports,
-  );
+  const result = await WebAssembly.instantiate(compiled, importObject as WebAssembly.Imports);
   wasm = result.exports as unknown as WasmExports;
 
   console.log(
@@ -266,6 +266,18 @@ export async function init(): Promise<void> {
   const rc = wasm.wimg_init(pathPtr);
   if (rc !== 0) {
     throw new Error(getLastError("Failed to initialize wimg database"));
+  }
+
+  // Load category metadata from WASM
+  const catPtr = wasm.wimg_get_categories();
+  if (catPtr !== 0) {
+    const catJson = readLengthPrefixedString(catPtr);
+    wasm.wimg_free(catPtr, 0);
+    const catArray = JSON.parse(catJson) as CategoryInfo[];
+    CATEGORIES = {};
+    for (const cat of catArray) {
+      CATEGORIES[cat.id] = cat;
+    }
   }
 }
 
@@ -329,16 +341,25 @@ export function getTransactions(): Transaction[] {
   return JSON.parse(json) as Transaction[];
 }
 
-export async function setCategory(
-  id: string,
-  category: number,
-): Promise<void> {
+export async function setCategory(id: string, category: number): Promise<void> {
   ensureInit();
 
   const idPtr = writeString(id);
   const rc = wasm!.wimg_set_category(idPtr, id.length, category);
   if (rc !== 0) {
     throw new Error(getLastError("Failed to set category"));
+  }
+
+  await opfsSave();
+}
+
+export async function setExcluded(id: string, excluded: boolean): Promise<void> {
+  ensureInit();
+
+  const idPtr = writeString(id);
+  const rc = wasm!.wimg_set_excluded(idPtr, id.length, excluded ? 1 : 0);
+  if (rc !== 0) {
+    throw new Error(getLastError("Failed to set excluded"));
   }
 
   await opfsSave();
@@ -378,11 +399,7 @@ export function getDebts(): Debt[] {
   return JSON.parse(json) as Debt[];
 }
 
-export async function addDebt(
-  name: string,
-  total: number,
-  monthly: number,
-): Promise<void> {
+export async function addDebt(name: string, total: number, monthly: number): Promise<void> {
   ensureInit();
 
   const id = crypto.randomUUID().replace(/-/g, "").slice(0, 32);
@@ -398,10 +415,7 @@ export async function addDebt(
   await opfsSave();
 }
 
-export async function markDebtPaid(
-  id: string,
-  amountCents: number,
-): Promise<void> {
+export async function markDebtPaid(id: string, amountCents: number): Promise<void> {
   ensureInit();
 
   const idPtr = writeString(id);
@@ -454,6 +468,110 @@ export async function redo(): Promise<UndoResult | null> {
 export function autoCategorize(): number {
   ensureInit();
   return wasm!.wimg_auto_categorize();
+}
+
+export function getAccounts(): Account[] {
+  ensureInit();
+
+  const ptr = wasm!.wimg_get_accounts();
+  if (ptr === 0) return [];
+
+  const json = readLengthPrefixedString(ptr);
+  wasm!.wimg_free(ptr, 0);
+
+  return JSON.parse(json) as Account[];
+}
+
+export async function addAccount(id: string, name: string, color: string): Promise<void> {
+  ensureInit();
+
+  const json = JSON.stringify({ id, name, color });
+  const encoded = new TextEncoder().encode(json);
+  const ptr = writeBytes(encoded);
+
+  const rc = wasm!.wimg_add_account(ptr, encoded.length);
+  if (rc !== 0) {
+    throw new Error(getLastError("Failed to add account"));
+  }
+
+  await opfsSave();
+}
+
+export async function updateAccount(id: string, name: string, color: string): Promise<void> {
+  ensureInit();
+
+  const json = JSON.stringify({ id, name, color });
+  const encoded = new TextEncoder().encode(json);
+  const ptr = writeBytes(encoded);
+
+  const rc = wasm!.wimg_update_account(ptr, encoded.length);
+  if (rc !== 0) {
+    throw new Error(getLastError("Failed to update account"));
+  }
+
+  await opfsSave();
+}
+
+export async function deleteAccount(id: string): Promise<void> {
+  ensureInit();
+
+  const idPtr = writeString(id);
+  const rc = wasm!.wimg_delete_account(idPtr, id.length);
+  if (rc !== 0) {
+    throw new Error(getLastError("Failed to delete account"));
+  }
+
+  await opfsSave();
+}
+
+export function getTransactionsFiltered(account?: string | null): Transaction[] {
+  ensureInit();
+
+  if (!account) {
+    return getTransactions();
+  }
+
+  const acctEncoded = new TextEncoder().encode(account);
+  const acctPtr = writeBytes(acctEncoded);
+  const ptr = wasm!.wimg_get_transactions_filtered(acctPtr, acctEncoded.length);
+  if (ptr === 0) return [];
+
+  const json = readLengthPrefixedString(ptr);
+  wasm!.wimg_free(ptr, 0);
+
+  return JSON.parse(json) as Transaction[];
+}
+
+export function getSummaryFiltered(
+  year: number,
+  month: number,
+  account?: string | null,
+): MonthlySummary {
+  ensureInit();
+
+  if (!account) {
+    return getSummary(year, month);
+  }
+
+  const acctEncoded = new TextEncoder().encode(account);
+  const acctPtr = writeBytes(acctEncoded);
+  const ptr = wasm!.wimg_get_summary_filtered(year, month, acctPtr, acctEncoded.length);
+  if (ptr === 0) {
+    return {
+      year,
+      month,
+      income: 0,
+      expenses: 0,
+      available: 0,
+      tx_count: 0,
+      by_category: [],
+    };
+  }
+
+  const json = readLengthPrefixedString(ptr);
+  wasm!.wimg_free(ptr, 0);
+
+  return JSON.parse(json) as MonthlySummary;
 }
 
 export function close(): void {

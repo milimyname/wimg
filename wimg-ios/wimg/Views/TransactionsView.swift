@@ -1,11 +1,13 @@
 import SwiftUI
 
 struct TransactionsView: View {
+    @Binding var selectedAccount: String?
     @State private var transactions: [Transaction] = []
     @State private var searchText = ""
     @State private var filter: TxFilter = .all
     @State private var selectedTransaction: Transaction?
     @State private var undoMessage: String?
+    @State private var showExcluded = false
 
     enum TxFilter: String, CaseIterable {
         case all = "Alle"
@@ -15,6 +17,10 @@ struct TransactionsView: View {
 
     private var filtered: [Transaction] {
         var result = transactions
+
+        if !showExcluded {
+            result = result.filter { !$0.isExcluded }
+        }
 
         switch filter {
         case .all: break
@@ -63,6 +69,18 @@ struct TransactionsView: View {
                                         selectedTransaction = tx
                                     }
                                     .listRowInsets(EdgeInsets())
+                                    .opacity(tx.isExcluded ? 0.4 : 1.0)
+                                    .swipeActions(edge: .trailing) {
+                                        Button {
+                                            toggleExcluded(tx)
+                                        } label: {
+                                            Label(
+                                                tx.isExcluded ? "Einblenden" : "Ausblenden",
+                                                systemImage: tx.isExcluded ? "eye" : "eye.slash"
+                                            )
+                                        }
+                                        .tint(tx.isExcluded ? .blue : .orange)
+                                    }
                                 }
                             } header: {
                                 Text(formatDateHeader(date))
@@ -73,7 +91,18 @@ struct TransactionsView: View {
                 }
             }
             .navigationTitle("Umsätze")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showExcluded.toggle()
+                    } label: {
+                        Image(systemName: showExcluded ? "eye" : "eye.slash")
+                            .foregroundStyle(showExcluded ? .blue : .secondary)
+                    }
+                }
+            }
             .searchable(text: $searchText, prompt: "Suchen...")
+            .onChange(of: selectedAccount) { reload() }
             .onAppear { reload() }
             .refreshable { reload() }
             .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
@@ -97,7 +126,7 @@ struct TransactionsView: View {
     }
 
     private func reload() {
-        transactions = LibWimg.getTransactions().sorted { $0.date > $1.date }
+        transactions = LibWimg.getTransactionsFiltered(account: selectedAccount).sorted { $0.date > $1.date }
     }
 
     private func showUndo(_ message: String) {
@@ -105,6 +134,14 @@ struct TransactionsView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
             withAnimation { if undoMessage == message { undoMessage = nil } }
         }
+    }
+
+    private func toggleExcluded(_ tx: Transaction) {
+        let newExcluded = !tx.isExcluded
+        try? LibWimg.setExcluded(id: tx.id, excluded: newExcluded)
+        reload()
+        NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+        showUndo(newExcluded ? "Ausgeblendet" : "Eingeblendet")
     }
 
     private func performUndo() {

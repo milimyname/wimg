@@ -12,24 +12,6 @@
   --color-success: #2dc653;
   --color-danger: #e63946;
   --color-warning: #fca311;
-
-  /* Category colors */
-  --color-cat-groceries: #4ecdc4;
-  --color-cat-dining: #ff6b6b;
-  --color-cat-transport: #45b7d1;
-  --color-cat-housing: #96ceb4;
-  --color-cat-utilities: #a8d8ea;
-  --color-cat-entertainment: #dda0dd;
-  --color-cat-shopping: #f7dc6f;
-  --color-cat-health: #ff9ff3;
-  --color-cat-insurance: #c8d6e5;
-  --color-cat-income: #2dc653;
-  --color-cat-transfer: #b8b8b8;
-  --color-cat-cash: #ffd93d;
-  --color-cat-subscriptions: #6c5ce7;
-  --color-cat-travel: #fd79a8;
-  --color-cat-education: #74b9ff;
-  --color-cat-other: #dfe6e9;
 }
 
 body {
@@ -38,15 +20,41 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
+/* iOS-style stacked card effect when BottomSheet is open */
+html.sheet-active {
+  background: #000;
+}
+
+html.sheet-active body {
+  background: transparent;
+}
+
+/* Front card: the actual page content */
+.page-shell {
+  position: relative;
+  z-index: 1;
+  transform-origin: top center;
+}
+
+/* Only apply transform when sheet is open — keeps position:fixed working normally */
+html.sheet-active .page-shell {
+  --_p: var(--sheet-progress, 0);
+  transform: scale(calc(1 - var(--_p) * 0.06))
+    translateY(calc(var(--_p) * 14px));
+  border-radius: calc(var(--_p) * 14px);
+  overflow: clip;
+  will-change: transform;
+}
+
 .lc-root-container {
-/* Default marks color when not using explicit color or color scale */
---color-primary: var(--color-blue-500);
- 
-/* Progressively darker shades representing surfaces (backgrounds). */
---color-surface-100: var(--color-white);
---color-surface-200: var(--color-gray-100);
---color-surface-300: var(--color-gray-300);
- 
-/* Content (text) color */
---color-surface-content: var(--color-gray-900);
+  /* Default marks color when not using explicit color or color scale */
+  --color-primary: var(--color-blue-500);
+
+  /* Progressively darker shades representing surfaces (backgrounds). */
+  --color-surface-100: var(--color-white);
+  --color-surface-200: var(--color-gray-100);
+  --color-surface-300: var(--color-gray-300);
+
+  /* Content (text) color */
+  --color-surface-content: var(--color-gray-900);
 }

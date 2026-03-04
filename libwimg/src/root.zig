@@ -41,7 +41,7 @@ fn log(comptime fmt: []const u8, args: anytype) void {
 }
 
 // --- WASM memory management ---
-var wasm_buf: [4 * 1024 * 1024]u8 = undefined; // 4 MB scratch space
+var wasm_buf: [8 * 1024 * 1024]u8 = undefined; // 8 MB scratch space
 var fba = std.heap.FixedBufferAllocator.init(&wasm_buf);
 
 // Global database instance
@@ -93,7 +93,7 @@ export fn wimg_import_csv(data: [*]const u8, len: u32) ?[*]const u8 {
 
     const csv_data = data[0..len];
 
-    // Parse CSV into transactions (max 10000 per import)
+    // Batch-parse CSV into transactions (10K buffer reused per batch)
     const max_txns = 10000;
     const txn_buf = fba.allocator().alloc(Transaction, max_txns) catch {
         setError("wimg_import_csv: failed to allocate transaction buffer", .{});
@@ -101,51 +101,70 @@ export fn wimg_import_csv(data: [*]const u8, len: u32) ?[*]const u8 {
     };
     defer fba.allocator().free(txn_buf);
 
-    var result: ImportResult = undefined;
-    const format = parser.parseCsv(csv_data, txn_buf, &result);
-
-    log("wimg_import_csv: format={s}, parsed {d} rows, {d} transactions, {d} errors", .{
-        format.name(), result.total_rows, result.imported, result.errors,
-    });
-
-    // Insert parsed transactions into DB
-    var actual_imported: u32 = 0;
-    var duplicates: u32 = 0;
-    var insert_errors: u32 = 0;
-
-    for (txn_buf[0..result.imported]) |*txn| {
-        const inserted = database.insertTransaction(txn) catch |err| {
-            insert_errors += 1;
-            if (insert_errors <= 3) {
-                setError("wimg_import_csv: insert failed: {s}", .{@errorName(err)});
-            }
-            continue;
-        };
-        if (inserted) {
-            actual_imported += 1;
-        } else {
-            duplicates += 1;
-        }
-    }
-
-    result.imported = actual_imported;
-    result.skipped_duplicates = duplicates;
-    result.errors += insert_errors;
-
-    // Auto-categorize newly imported uncategorized transactions
+    var cursor = parser.ParseCursor{};
+    var result = ImportResult{
+        .total_rows = 0,
+        .imported = 0,
+        .skipped_duplicates = 0,
+        .errors = 0,
+    };
     var categorized: u32 = 0;
-    for (txn_buf[0..actual_imported + duplicates]) |*txn| {
-        if (txn.category != .uncategorized) continue;
+    var account_created = false;
 
-        const matched = categories.matchRules(database.handle, txn.descriptionSlice());
-        if (matched != .uncategorized) {
-            database.setCategoryById(&txn.id, matched) catch continue;
-            categorized += 1;
+    while (cursor.byte_offset < csv_data.len) {
+        var batch_result: ImportResult = undefined;
+        parser.parseCsvBatch(csv_data, &cursor, txn_buf, &batch_result);
+
+        if (batch_result.imported == 0 and batch_result.total_rows == 0) break;
+
+        // Insert batch into DB
+        var batch_imported: u32 = 0;
+        var batch_duplicates: u32 = 0;
+        var batch_insert_errors: u32 = 0;
+
+        for (txn_buf[0..batch_result.imported]) |*txn| {
+            const inserted = database.insertTransaction(txn) catch |err| {
+                batch_insert_errors += 1;
+                if (result.errors + batch_insert_errors <= 3) {
+                    setError("wimg_import_csv: insert failed: {s}", .{@errorName(err)});
+                }
+                continue;
+            };
+            if (inserted) {
+                batch_imported += 1;
+            } else {
+                batch_duplicates += 1;
+            }
         }
+
+        // Auto-categorize this batch
+        for (txn_buf[0..batch_result.imported]) |*txn| {
+            if (txn.category != .uncategorized) continue;
+            const matched = categories.matchRules(database.handle, txn.descriptionSlice());
+            if (matched != .uncategorized) {
+                database.setCategoryById(&txn.id, matched) catch continue;
+                categorized += 1;
+            }
+        }
+
+        // Accumulate totals
+        result.total_rows += batch_result.total_rows;
+        result.imported += batch_imported;
+        result.skipped_duplicates += batch_duplicates;
+        result.errors += batch_result.errors + batch_insert_errors;
     }
 
-    log("wimg_import_csv: {d} imported, {d} duplicates, {d} errors, {d} auto-categorized", .{
-        actual_imported, duplicates, result.errors, categorized,
+    const format = cursor.format;
+
+    // Auto-create account entry for this bank format (once)
+    if (!account_created) {
+        const account_info = accountInfoForFormat(format);
+        database.ensureAccount(account_info.id, account_info.name, account_info.color) catch {};
+        account_created = true;
+    }
+
+    log("wimg_import_csv: format={s}, {d} imported, {d} duplicates, {d} errors, {d} auto-categorized", .{
+        format.name(), result.imported, result.skipped_duplicates, result.errors, categorized,
     });
 
     // Serialize result to JSON (with format and categorized count)
@@ -165,7 +184,7 @@ export fn wimg_parse_csv(data: [*]const u8, len: u32) ?[*]const u8 {
 
     const csv_data = data[0..len];
 
-    const max_txns = 10000;
+    const max_txns = 2000;
     const txn_buf = fba.allocator().alloc(Transaction, max_txns) catch {
         setError("wimg_parse_csv: failed to allocate transaction buffer", .{});
         return null;
@@ -212,7 +231,7 @@ export fn wimg_parse_csv(data: [*]const u8, len: u32) ?[*]const u8 {
 
     // Write each transaction using db.zig helpers
     for (txn_buf[0..result.imported], 0..) |*txn, i| {
-        const s = buf[pos..buf_size + 4];
+        const s = buf[pos .. buf_size + 4];
         const written = formatPreviewTransaction(
             s,
             i == 0,
@@ -224,6 +243,7 @@ export fn wimg_parse_csv(data: [*]const u8, len: u32) ?[*]const u8 {
             txn.amount_cents,
             &txn.currency,
             @intFromEnum(txn.category),
+            txn.accountSlice(),
         ) orelse {
             setError("wimg_parse_csv: buffer overflow at transaction {d}", .{i});
             fba.allocator().free(buf);
@@ -264,6 +284,7 @@ fn formatPreviewTransaction(
     amount_cents: i64,
     currency: *const [3]u8,
     category: u8,
+    account: []const u8,
 ) ?usize {
     var pos: usize = 0;
 
@@ -321,16 +342,24 @@ fn formatPreviewTransaction(
     @memcpy(buf[pos .. pos + 3], currency);
     pos += 3;
 
-    // ","category":N}
+    // ","category":N
     const p6 = "\",\"category\":";
     if (pos + p6.len > buf.len) return null;
     @memcpy(buf[pos .. pos + p6.len], p6);
     pos += p6.len;
     pos += db_mod.formatInt(buf[pos..], category) orelse return null;
 
-    if (pos >= buf.len) return null;
-    buf[pos] = '}';
-    pos += 1;
+    // ,"account":"..."
+    const p7 = ",\"account\":\"";
+    if (pos + p7.len > buf.len) return null;
+    @memcpy(buf[pos .. pos + p7.len], p7);
+    pos += p7.len;
+    pos += db_mod.jsonEscapeString(buf[pos..], account) orelse return null;
+
+    const p8 = "\"}";
+    if (pos + p8.len > buf.len) return null;
+    @memcpy(buf[pos .. pos + p8.len], p8);
+    pos += p8.len;
 
     return pos;
 }
@@ -412,6 +441,19 @@ export fn wimg_set_category(id: [*]const u8, id_len: u32, category: u8) i32 {
     };
     database.setCategory(id, id_len, category) catch |err| {
         setError("wimg_set_category: failed: {s}", .{@errorName(err)});
+        return -1;
+    };
+    return 0;
+}
+
+/// Set the excluded flag for a transaction.
+export fn wimg_set_excluded(id: [*]const u8, id_len: u32, excluded: u8) i32 {
+    var database = global_db orelse {
+        setError("wimg_set_excluded: database not initialized", .{});
+        return -1;
+    };
+    database.setExcluded(id, id_len, excluded) catch |err| {
+        setError("wimg_set_excluded: failed: {s}", .{@errorName(err)});
         return -1;
     };
     return 0;
@@ -617,6 +659,248 @@ export fn wimg_redo() ?[*]const u8 {
     return buf.ptr;
 }
 
+// --- Accounts ---
+
+/// Get all accounts as JSON array.
+export fn wimg_get_accounts() ?[*]const u8 {
+    var database = global_db orelse {
+        setError("wimg_get_accounts: database not initialized", .{});
+        return null;
+    };
+
+    const buf_size: usize = 8 * 1024;
+    const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
+        setError("wimg_get_accounts: failed to allocate buffer", .{});
+        return null;
+    };
+
+    const json_len = database.getAccountsJson(buf.ptr + 4, buf_size) catch |err| {
+        setError("wimg_get_accounts: query failed: {s}", .{@errorName(err)});
+        fba.allocator().free(buf);
+        return null;
+    } orelse {
+        setError("wimg_get_accounts: buffer too small", .{});
+        fba.allocator().free(buf);
+        return null;
+    };
+
+    const len_bytes: [4]u8 = @bitCast(@as(u32, @intCast(json_len)));
+    buf[0] = len_bytes[0];
+    buf[1] = len_bytes[1];
+    buf[2] = len_bytes[2];
+    buf[3] = len_bytes[3];
+
+    return buf.ptr;
+}
+
+/// Add an account. JSON input: {"id":"...","name":"...","color":"#..."}
+export fn wimg_add_account(data: [*]const u8, len: u32) i32 {
+    var database = global_db orelse {
+        setError("wimg_add_account: database not initialized", .{});
+        return -1;
+    };
+
+    const json = data[0..len];
+    const id = jsonExtractString(json, "\"id\"") orelse {
+        setError("wimg_add_account: missing id field", .{});
+        return -1;
+    };
+    const name_val = jsonExtractString(json, "\"name\"") orelse {
+        setError("wimg_add_account: missing name field", .{});
+        return -1;
+    };
+    const color = jsonExtractString(json, "\"color\"") orelse "#4361ee";
+
+    database.insertAccount(
+        id.ptr,
+        @intCast(id.len),
+        name_val.ptr,
+        @intCast(name_val.len),
+        color.ptr,
+        @intCast(color.len),
+    ) catch |err| {
+        setError("wimg_add_account: insert failed: {s}", .{@errorName(err)});
+        return -1;
+    };
+    return 0;
+}
+
+/// Update an account. JSON input: {"id":"...","name":"...","color":"#..."}
+export fn wimg_update_account(data: [*]const u8, len: u32) i32 {
+    var database = global_db orelse {
+        setError("wimg_update_account: database not initialized", .{});
+        return -1;
+    };
+
+    const json = data[0..len];
+    const id = jsonExtractString(json, "\"id\"") orelse {
+        setError("wimg_update_account: missing id field", .{});
+        return -1;
+    };
+    const name_val = jsonExtractString(json, "\"name\"") orelse {
+        setError("wimg_update_account: missing name field", .{});
+        return -1;
+    };
+    const color = jsonExtractString(json, "\"color\"") orelse "#4361ee";
+
+    database.updateAccount(
+        id.ptr,
+        @intCast(id.len),
+        name_val.ptr,
+        @intCast(name_val.len),
+        color.ptr,
+        @intCast(color.len),
+    ) catch |err| {
+        setError("wimg_update_account: update failed: {s}", .{@errorName(err)});
+        return -1;
+    };
+    return 0;
+}
+
+/// Delete an account by ID.
+export fn wimg_delete_account(id: [*]const u8, id_len: u32) i32 {
+    var database = global_db orelse {
+        setError("wimg_delete_account: database not initialized", .{});
+        return -1;
+    };
+
+    database.deleteAccount(id, id_len) catch |err| {
+        setError("wimg_delete_account: failed: {s}", .{@errorName(err)});
+        return -1;
+    };
+    return 0;
+}
+
+/// Get transactions filtered by account. Pass empty string / 0 len for all.
+export fn wimg_get_transactions_filtered(acct: [*]const u8, acct_len: u32) ?[*]const u8 {
+    var database = global_db orelse {
+        setError("wimg_get_transactions_filtered: database not initialized", .{});
+        return null;
+    };
+
+    const buf_size: usize = 1024 * 1024;
+    const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
+        setError("wimg_get_transactions_filtered: failed to allocate buffer", .{});
+        return null;
+    };
+
+    const json_len = database.getTransactionsJsonFiltered(buf.ptr + 4, buf_size, acct, acct_len) catch |err| {
+        setError("wimg_get_transactions_filtered: query failed: {s}", .{@errorName(err)});
+        fba.allocator().free(buf);
+        return null;
+    } orelse {
+        setError("wimg_get_transactions_filtered: buffer too small", .{});
+        fba.allocator().free(buf);
+        return null;
+    };
+
+    const len_bytes: [4]u8 = @bitCast(@as(u32, @intCast(json_len)));
+    buf[0] = len_bytes[0];
+    buf[1] = len_bytes[1];
+    buf[2] = len_bytes[2];
+    buf[3] = len_bytes[3];
+
+    return buf.ptr;
+}
+
+/// Get summary filtered by account.
+export fn wimg_get_summary_filtered(year: u32, month: u32, acct: [*]const u8, acct_len: u32) ?[*]const u8 {
+    const database = global_db orelse {
+        setError("wimg_get_summary_filtered: database not initialized", .{});
+        return null;
+    };
+
+    const buf_size: usize = 8 * 1024;
+    const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
+        setError("wimg_get_summary_filtered: failed to allocate buffer", .{});
+        return null;
+    };
+
+    const json_len = summary.getSummaryJsonFiltered(
+        database.handle,
+        @intCast(year),
+        @intCast(month),
+        buf.ptr + 4,
+        buf_size,
+        acct,
+        acct_len,
+    ) orelse {
+        setError("wimg_get_summary_filtered: failed to generate summary", .{});
+        fba.allocator().free(buf);
+        return null;
+    };
+
+    const len_bytes: [4]u8 = @bitCast(@as(u32, @intCast(json_len)));
+    buf[0] = len_bytes[0];
+    buf[1] = len_bytes[1];
+    buf[2] = len_bytes[2];
+    buf[3] = len_bytes[3];
+
+    return buf.ptr;
+}
+
+/// Get all category metadata as a JSON array (static, no DB needed).
+/// Returns length-prefixed JSON: [{"id":0,"name":"...","color":"#...","icon":"..."}, ...]
+export fn wimg_get_categories() ?[*]const u8 {
+    const Category = types.Category;
+    const all_cats = [_]Category{
+        .uncategorized, .groceries,   .dining,    .transport,
+        .housing,       .utilities,   .entertainment, .shopping,
+        .health,        .insurance,   .income,    .transfer,
+        .cash,          .subscriptions, .travel,  .education,
+        .other,
+    };
+
+    var buf: [4096]u8 = undefined;
+    var pos: usize = 0;
+
+    buf[pos] = '[';
+    pos += 1;
+
+    for (all_cats, 0..) |cat, i| {
+        if (i > 0) {
+            buf[pos] = ',';
+            pos += 1;
+        }
+
+        const p1 = "{\"id\":";
+        @memcpy(buf[pos .. pos + p1.len], p1);
+        pos += p1.len;
+        pos += db_mod.formatInt(buf[pos..], @as(u32, @intFromEnum(cat))) orelse return null;
+
+        const p2 = ",\"name\":\"";
+        @memcpy(buf[pos .. pos + p2.len], p2);
+        pos += p2.len;
+
+        const name = cat.germanName();
+        pos += db_mod.jsonEscapeString(buf[pos..], name) orelse return null;
+
+        const p3 = "\",\"color\":\"";
+        @memcpy(buf[pos .. pos + p3.len], p3);
+        pos += p3.len;
+
+        const color = cat.color();
+        @memcpy(buf[pos .. pos + color.len], color);
+        pos += color.len;
+
+        const p4 = "\",\"icon\":\"";
+        @memcpy(buf[pos .. pos + p4.len], p4);
+        pos += p4.len;
+
+        const icon = cat.icon();
+        pos += db_mod.jsonEscapeString(buf[pos..], icon) orelse return null;
+
+        const p5 = "\"}";
+        @memcpy(buf[pos .. pos + p5.len], p5);
+        pos += p5.len;
+    }
+
+    buf[pos] = ']';
+    pos += 1;
+
+    return makeLengthPrefixed(buf[0..pos]);
+}
+
 /// Close the database and free resources.
 export fn wimg_close() void {
     if (global_db) |*database| {
@@ -764,4 +1048,15 @@ fn findSubstring(haystack: []const u8, needle: []const u8) ?usize {
         if (std.mem.eql(u8, haystack[i .. i + needle.len], needle)) return i;
     }
     return null;
+}
+
+const AccountInfo = struct { id: []const u8, name: []const u8, color: []const u8 };
+
+fn accountInfoForFormat(format: parser.CsvFormat) AccountInfo {
+    return switch (format) {
+        .comdirect => .{ .id = "comdirect", .name = "Comdirect", .color = "#f5a623" },
+        .trade_republic => .{ .id = "trade_republic", .name = "Trade Republic", .color = "#1a1a2e" },
+        .scalable_capital => .{ .id = "scalable_capital", .name = "Scalable Capital", .color = "#6c5ce7" },
+        .unknown => .{ .id = "unknown", .name = "Unbekannt", .color = "#4361ee" },
+    };
 }

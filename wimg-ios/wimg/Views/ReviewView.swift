@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ReviewView: View {
+    @Binding var selectedAccount: String?
     @State private var year: Int
     @State private var month: Int
     @State private var summary: MonthlySummary?
@@ -12,7 +13,8 @@ struct ReviewView: View {
         "Juli", "August", "September", "Oktober", "November", "Dezember",
     ]
 
-    init() {
+    init(selectedAccount: Binding<String?>) {
+        _selectedAccount = selectedAccount
         let cal = Calendar.current
         let now = Date()
         _year = State(initialValue: cal.component(.year, from: now))
@@ -102,6 +104,7 @@ struct ReviewView: View {
             .navigationTitle("\(monthNames[month - 1]) Rückblick")
             .onChange(of: year) { reload() }
             .onChange(of: month) { reload() }
+            .onChange(of: selectedAccount) { reload() }
             .onAppear { reload() }
             .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
                 reload()
@@ -392,13 +395,13 @@ struct ReviewView: View {
     // MARK: - Data
 
     private func reload() {
-        summary = LibWimg.getSummary(year: year, month: month)
+        summary = LibWimg.getSummaryFiltered(year: year, month: month, account: selectedAccount)
 
         let pm = month == 1 ? 12 : month - 1
         let py = month == 1 ? year - 1 : year
-        prevSummary = LibWimg.getSummary(year: py, month: pm)
+        prevSummary = LibWimg.getSummaryFiltered(year: py, month: pm, account: selectedAccount)
 
-        let all = LibWimg.getTransactions()
+        let all = LibWimg.getTransactionsFiltered(account: selectedAccount)
         let prefix = String(format: "%04d-%02d", year, month)
         monthTransactions = all.filter { $0.date.hasPrefix(prefix) }
     }

@@ -1,31 +1,13 @@
 <script lang="ts">
   import {
-    getSummary,
-    getTransactions,
+    getSummaryFiltered,
+    getTransactionsFiltered,
     CATEGORIES,
     type Transaction,
   } from "$lib/wasm";
+  import { formatEur, formatDateShort } from "$lib/format";
+  import { accountStore } from "$lib/account.svelte";
   import MonthPicker from "../../components/MonthPicker.svelte";
-
-  const CATEGORY_ICONS: Record<number, string> = {
-    0: "?",
-    1: "🛒",
-    2: "🍽️",
-    3: "🚆",
-    4: "🏠",
-    5: "⚡",
-    6: "🎬",
-    7: "🛍️",
-    8: "💊",
-    9: "🛡️",
-    10: "💰",
-    11: "🔄",
-    12: "💵",
-    13: "📱",
-    14: "✈️",
-    15: "🎓",
-    255: "📦",
-  };
 
   const monthNames = [
     "Januar",
@@ -46,12 +28,12 @@
   let year = $state(now.getFullYear());
   let month = $state(now.getMonth() + 1);
 
-  let summary = $derived.by(() => getSummary(year, month));
+  let summary = $derived.by(() => getSummaryFiltered(year, month, accountStore.selected));
 
   let prevSummary = $derived.by(() => {
     const pm = month === 1 ? 12 : month - 1;
     const py = month === 1 ? year - 1 : year;
-    return getSummary(py, pm);
+    return getSummaryFiltered(py, pm, accountStore.selected);
   });
 
   let saved = $derived(summary.income + summary.expenses);
@@ -64,7 +46,7 @@
 
   // All transactions for this month
   let monthTransactions = $derived.by(() => {
-    return getTransactions().filter((t: Transaction) => {
+    return getTransactionsFiltered(accountStore.selected).filter((t: Transaction) => {
       const [ty, tm] = t.date.split("-").map(Number);
       return ty === year && tm === month;
     });
@@ -147,18 +129,6 @@
       .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
       .slice(0, 5),
   );
-
-  function formatEur(amount: number): string {
-    return new Intl.NumberFormat("de-DE", {
-      style: "currency",
-      currency: "EUR",
-    }).format(amount);
-  }
-
-  function formatDate(dateStr: string): string {
-    const d = new Date(dateStr + "T00:00:00");
-    return d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
-  }
 
   function savingsMessage(): string {
     if (saved > 0) return "Dein Sparziel wurde erreicht. Super Leistung!";
@@ -255,7 +225,7 @@
               class="w-10 h-10 rounded-full flex items-center justify-center text-lg"
               style="background-color: {CATEGORIES[cat.id]?.color ?? '#dfe6e9'}20"
             >
-              {CATEGORY_ICONS[cat.id] ?? "📦"}
+              {CATEGORIES[cat.id]?.icon ?? "📦"}
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center justify-between mb-1">
@@ -315,7 +285,7 @@
                   {item.description}
                 </p>
                 <p class="text-xs text-gray-400">
-                  Abgeschlossen am {formatDate(item.date)}
+                  Abgeschlossen am {formatDateShort(item.date)}
                 </p>
               </div>
             </div>

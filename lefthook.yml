@@ -1,0 +1,33 @@
+# pre-commit:
+#   parallel: true
+#   commands:
+#     zig-fmt:
+#       root: libwimg/
+#       glob: "*.zig"
+#       run: zig fmt --check src/
+
+#     web-fmt:
+#       root: wimg-web/
+#       glob: "*.{ts,svelte,js}"
+#       run: bunx oxfmt --check
+
+#     web-lint:
+#       root: wimg-web/
+#       glob: "*.{ts,svelte,js}"
+#       run: bunx oxlint
+
+# pre-push:
+#   parallel: true
+#   commands:
+#     web-check:
+#       root: wimg-web/
+#       run: bun run check
+
+#     web-build:
+#       root: wimg-web/
+#       run: bun run build
+
+#     ios-build:
+#       root: wimg-ios/
+#       glob: "*.swift"
+#       run: xcodebuild build -project wimg.xcodeproj -scheme wimg -destination 'generic/platform=iOS Simulator' -quiet

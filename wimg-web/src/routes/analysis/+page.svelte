@@ -1,32 +1,14 @@
 <script lang="ts">
   import {
-    getSummary,
-    getTransactions,
+    getSummaryFiltered,
+    getTransactionsFiltered,
     CATEGORIES,
     type Transaction,
   } from "$lib/wasm";
+  import { formatEur } from "$lib/format";
+  import { accountStore } from "$lib/account.svelte";
   import MonthPicker from "../../components/MonthPicker.svelte";
   import DonutChart from "../../components/DonutChart.svelte";
-
-  const CATEGORY_ICONS: Record<number, string> = {
-    0: "?",
-    1: "🛒",
-    2: "🍽️",
-    3: "🚆",
-    4: "🏠",
-    5: "⚡",
-    6: "🎬",
-    7: "🛍️",
-    8: "💊",
-    9: "🛡️",
-    10: "💰",
-    11: "🔄",
-    12: "💵",
-    13: "📱",
-    14: "✈️",
-    15: "🎓",
-    255: "📦",
-  };
 
   const now = new Date();
   let year = $state(now.getFullYear());
@@ -34,15 +16,15 @@
 
   let expandedCategory = $state<number | null>(null);
 
-  let summary = $derived.by(() => getSummary(year, month));
+  let summary = $derived.by(() => getSummaryFiltered(year, month, accountStore.selected));
 
   let prevSummary = $derived.by(() => {
     const pm = month === 1 ? 12 : month - 1;
     const py = month === 1 ? year - 1 : year;
-    return getSummary(py, pm);
+    return getSummaryFiltered(py, pm, accountStore.selected);
   });
 
-  let allTransactions = $derived.by(() => getTransactions());
+  let allTransactions = $derived.by(() => getTransactionsFiltered(accountStore.selected));
 
   let categoryTransactions = $derived.by(() => {
     if (expandedCategory === null) return [];
@@ -65,13 +47,6 @@
     const pct = ((totalExpenses - prevTotalExpenses) / prevTotalExpenses) * 100;
     return Math.round(pct);
   });
-
-  function formatEur(amount: number): string {
-    return new Intl.NumberFormat("de-DE", {
-      style: "currency",
-      currency: "EUR",
-    }).format(Math.abs(amount));
-  }
 
   function getPrevAmount(catId: number): number {
     const prev = prevSummary.by_category.find((c) => c.id === catId);
@@ -181,7 +156,7 @@
               class="w-10 h-10 rounded-lg flex items-center justify-center text-lg"
               style="background-color: {CATEGORIES[cat.id]?.color ?? '#dfe6e9'}20"
             >
-              {CATEGORY_ICONS[cat.id] ?? "📦"}
+              {CATEGORIES[cat.id]?.icon ?? "📦"}
             </div>
             <div>
               <p class="text-sm font-bold">{cat.name}</p>
@@ -247,7 +222,7 @@
                 >{txn.description}</span
               >
               <span class="font-medium tabular-nums shrink-0"
-                >{formatEur(txn.amount)}</span
+                >{formatEur(Math.abs(txn.amount))}</span
               >
             </div>
           {/each}

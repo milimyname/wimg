@@ -7,6 +7,7 @@
     undo,
     type Debt,
   } from "$lib/wasm";
+  import { formatEur } from "$lib/format";
   import { toastStore } from "$lib/toast.svelte";
 
   let debts = $state<Debt[]>(getDebts());
@@ -29,13 +30,6 @@
       : 0,
   );
   let activeCount = $derived(debts.filter((d) => d.total - d.paid > 0).length);
-
-  function formatEur(amount: number): string {
-    return new Intl.NumberFormat("de-DE", {
-      style: "currency",
-      currency: "EUR",
-    }).format(amount);
-  }
 
   async function handleAddDebt() {
     const total = parseFloat(formTotal.replace(",", "."));

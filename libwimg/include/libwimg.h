@@ -50,6 +50,9 @@ const uint8_t *wimg_get_transactions(void);
 // Set the category for a transaction by ID. Returns 0 on success, -1 on error.
 int32_t wimg_set_category(const uint8_t *id, uint32_t id_len, uint8_t category);
 
+// Set the excluded flag for a transaction. excluded=1 hides from summaries, excluded=0 restores.
+int32_t wimg_set_excluded(const uint8_t *id, uint32_t id_len, uint8_t excluded);
+
 // Re-run auto-categorization on all uncategorized transactions.
 // Returns number of newly categorized, or -1 on error.
 int32_t wimg_auto_categorize(void);
@@ -74,6 +77,31 @@ int32_t wimg_mark_debt_paid(const uint8_t *id, uint32_t id_len, int64_t amount_c
 
 // Delete a debt by ID.
 int32_t wimg_delete_debt(const uint8_t *id, uint32_t id_len);
+
+// --- Accounts ---
+
+// Get all accounts as a length-prefixed JSON array.
+const uint8_t *wimg_get_accounts(void);
+
+// Add an account. Input is JSON: {"id":"...","name":"...","color":"#..."}
+int32_t wimg_add_account(const uint8_t *data, uint32_t len);
+
+// Update an account. Input is JSON: {"id":"...","name":"...","color":"#..."}
+int32_t wimg_update_account(const uint8_t *data, uint32_t len);
+
+// Delete an account by ID.
+int32_t wimg_delete_account(const uint8_t *id, uint32_t id_len);
+
+// Get transactions filtered by account (empty string = all).
+const uint8_t *wimg_get_transactions_filtered(const uint8_t *acct, uint32_t acct_len);
+
+// Get summary filtered by account.
+const uint8_t *wimg_get_summary_filtered(uint32_t year, uint32_t month, const uint8_t *acct, uint32_t acct_len);
+
+// --- Categories ---
+
+// Get all category metadata as a length-prefixed JSON array (static, no DB needed).
+const uint8_t *wimg_get_categories(void);
 
 // --- Undo/Redo ---
 

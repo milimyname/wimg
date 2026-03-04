@@ -71,6 +71,7 @@ struct DebtsView: View {
             .sheet(isPresented: $showAddSheet) {
                 AddDebtSheet {
                     reload()
+                    showUndo("Schuld hinzugefügt")
                 }
             }
             .alert("Zahlung eintragen", isPresented: .init(

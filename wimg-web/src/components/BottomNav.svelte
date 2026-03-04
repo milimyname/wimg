@@ -16,6 +16,7 @@
 
 <nav
   class="fixed bottom-0 left-0 right-0 bg-white border-t border-(--color-border) z-20"
+  style="padding-bottom: env(safe-area-inset-bottom, 0px)"
 >
   <div class="max-w-2xl mx-auto flex">
     {#each tabs as tab}

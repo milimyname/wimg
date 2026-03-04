@@ -1,43 +1,27 @@
 <script lang="ts">
   import {
-    getSummary,
-    getTransactions,
+    getSummaryFiltered,
+    getTransactionsFiltered,
     CATEGORIES,
     type Transaction,
   } from "$lib/wasm";
+  import { formatEur } from "$lib/format";
+  import { accountStore } from "$lib/account.svelte";
   import MonthPicker from "../../components/MonthPicker.svelte";
   import DonutChart from "../../components/DonutChart.svelte";
-
-  const CATEGORY_ICONS: Record<number, string> = {
-    0: "?",
-    1: "🛒",
-    2: "🍽️",
-    3: "🚆",
-    4: "🏠",
-    5: "⚡",
-    6: "🎬",
-    7: "🛍️",
-    8: "💊",
-    9: "🛡️",
-    10: "💰",
-    11: "🔄",
-    12: "💵",
-    13: "📱",
-    14: "✈️",
-    15: "🎓",
-    255: "📦",
-  };
 
   const now = new Date();
   let year = $state(now.getFullYear());
   let month = $state(now.getMonth() + 1);
 
-  let summary = $derived.by(() => getSummary(year, month));
+  let summary = $derived.by(() =>
+    getSummaryFiltered(year, month, accountStore.selected),
+  );
 
   let prevSummary = $derived.by(() => {
     const pm = month === 1 ? 12 : month - 1;
     const py = month === 1 ? year - 1 : year;
-    return getSummary(py, pm);
+    return getSummaryFiltered(py, pm, accountStore.selected);
   });
 
   let delta = $derived.by(() => {
@@ -51,7 +35,7 @@
 
   // Latest transactions for "Kommende Zahlungen" preview
   let recentTransactions = $derived.by(() => {
-    return getTransactions()
+    return getTransactionsFiltered(accountStore.selected)
       .filter((t: Transaction) => {
         const [ty, tm] = t.date.split("-").map(Number);
         return ty === year && tm === month;
@@ -63,13 +47,6 @@
   let expenseCategories = $derived.by(() =>
     summary.by_category.filter((c) => c.id !== 10 && c.id !== 11),
   );
-
-  function formatEur(amount: number): string {
-    return new Intl.NumberFormat("de-DE", {
-      style: "currency",
-      currency: "EUR",
-    }).format(amount);
-  }
 
   function greeting(): string {
     const h = new Date().getHours();
@@ -261,8 +238,18 @@
       <div
         class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
         </svg>
       </div>
       <span class="text-sm font-semibold">Schulden</span>
@@ -274,8 +261,18 @@
       <div
         class="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        <svg
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+          />
         </svg>
       </div>
       <span class="text-sm font-semibold">Rückblick</span>
@@ -303,7 +300,7 @@
               style="background-color: {CATEGORIES[txn.category]?.color ??
                 '#dfe6e9'}15"
             >
-              {CATEGORY_ICONS[txn.category] ?? "📦"}
+              {CATEGORIES[txn.category]?.icon ?? "📦"}
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-bold truncate">{txn.description}</p>
