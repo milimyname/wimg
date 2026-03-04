@@ -1174,11 +1174,37 @@ pub fn jsonEscapeString(buf: []u8, src: []const u8) ?usize {
                 pos += 2;
             },
             else => {
-                if (pos >= buf.len) return null;
-                buf[pos] = ch;
-                pos += 1;
+                if (ch < 0x20) {
+                    // Control characters: escape as \u00XX
+                    if (pos + 6 > buf.len) return null;
+                    buf[pos] = '\\';
+                    buf[pos + 1] = 'u';
+                    buf[pos + 2] = '0';
+                    buf[pos + 3] = '0';
+                    buf[pos + 4] = hexDigit(ch >> 4);
+                    buf[pos + 5] = hexDigit(ch & 0x0F);
+                    pos += 6;
+                } else if (ch >= 0x80) {
+                    // Non-ASCII byte (e.g. ISO-8859-1): escape as \u00XX
+                    if (pos + 6 > buf.len) return null;
+                    buf[pos] = '\\';
+                    buf[pos + 1] = 'u';
+                    buf[pos + 2] = '0';
+                    buf[pos + 3] = '0';
+                    buf[pos + 4] = hexDigit(ch >> 4);
+                    buf[pos + 5] = hexDigit(ch & 0x0F);
+                    pos += 6;
+                } else {
+                    if (pos >= buf.len) return null;
+                    buf[pos] = ch;
+                    pos += 1;
+                }
             },
         }
     }
     return pos;
+}
+
+fn hexDigit(val: u8) u8 {
+    return if (val < 10) '0' + val else 'a' + (val - 10);
 }

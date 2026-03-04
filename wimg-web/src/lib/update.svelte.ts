@@ -1,12 +1,9 @@
-import { APP_VERSION, CHANGELOG } from "./version";
-import type { ChangelogEntry } from "./version";
+import { APP_VERSION, RELEASES_URL, IS_BREAKING } from "./version";
 
 const VERSION_KEY = "wimg-last-version";
 
 let showBanner = $state(false);
 let waitingSW: ServiceWorker | null = $state(null);
-let newEntries: ChangelogEntry[] = $state([]);
-let hasBreaking = $state(false);
 
 function getLastVersion(): string | null {
   return localStorage.getItem(VERSION_KEY);
@@ -16,16 +13,8 @@ function setLastVersion(version: string) {
   localStorage.setItem(VERSION_KEY, version);
 }
 
-function getNewEntries(lastVersion: string | null): ChangelogEntry[] {
-  if (!lastVersion) return [];
-  return CHANGELOG.filter((entry) => entry.version > lastVersion);
-}
-
 function trackWaitingSW(sw: ServiceWorker) {
   waitingSW = sw;
-  const entries = getNewEntries(getLastVersion());
-  newEntries = entries.length > 0 ? entries : CHANGELOG.slice(0, 1);
-  hasBreaking = newEntries.some((e) => e.breaking);
   showBanner = true;
 }
 
@@ -33,14 +22,14 @@ export const updateStore = {
   get showBanner() {
     return showBanner;
   },
-  get newEntries() {
-    return newEntries;
-  },
   get hasBreaking() {
-    return hasBreaking;
+    return IS_BREAKING;
   },
   get targetVersion() {
     return APP_VERSION;
+  },
+  get releasesUrl() {
+    return RELEASES_URL;
   },
 
   init() {

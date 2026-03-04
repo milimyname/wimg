@@ -1,23 +1,8 @@
-export const APP_VERSION = "0.2.0";
+declare const __APP_VERSION__: string;
 
-export interface ChangelogEntry {
-  version: string;
-  title: string;
-  items: string[];
-  breaking: boolean;
-}
+export const APP_VERSION: string = __APP_VERSION__;
 
-export const CHANGELOG: ChangelogEntry[] = [
-  {
-    version: "0.2.0",
-    title: "Phase 2: Kernfunktionen",
-    items: [
-      "Dashboard mit Verfügbarem Einkommen",
-      "Ausgabenanalyse mit Donut-Diagramm",
-      "Schulden-Tracker mit Fortschrittsbalken",
-      "Claude AI Kategorisierung beim Import",
-      "PWA — installierbar & offline nutzbar",
-    ],
-    breaking: false,
-  },
-];
+export const RELEASES_URL = "https://github.com/milimyname/wimg/releases";
+
+// Set to true when a release includes schema changes that require OPFS clear
+export const IS_BREAKING = false;

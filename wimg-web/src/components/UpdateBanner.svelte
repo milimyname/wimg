@@ -1,11 +1,5 @@
 <script lang="ts">
   import { updateStore } from "$lib/update.svelte";
-
-  const MAX_ITEMS = 3;
-
-  const allItems = $derived(updateStore.newEntries.flatMap((e) => e.items));
-  const displayItems = $derived(allItems.slice(0, MAX_ITEMS));
-  const moreCount = $derived(allItems.length - MAX_ITEMS);
 </script>
 
 {#if updateStore.showBanner}
@@ -19,21 +13,14 @@
           >
         </p>
 
-        {#if displayItems.length > 0}
-          <ul class="mt-2 space-y-1 text-sm text-(--color-muted)">
-            {#each displayItems as item}
-              <li class="flex items-start gap-1.5">
-                <span class="mt-0.5 shrink-0 text-xs text-blue-400">●</span>
-                {item}
-              </li>
-            {/each}
-            {#if moreCount > 0}
-              <li class="text-xs text-(--color-muted)">
-                ...und {moreCount} mehr
-              </li>
-            {/if}
-          </ul>
-        {/if}
+        <a
+          href={updateStore.releasesUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="mt-1.5 inline-block text-sm text-blue-600 hover:underline"
+        >
+          Was ist neu? &rarr;
+        </a>
 
         {#if updateStore.hasBreaking}
           <div

@@ -15,6 +15,17 @@ pub fn build(b: *std.Build) void {
     // Stub libc include path for wasm32-freestanding
     const libc_include = b.path("vendor/libc");
 
+    // Common SQLite flags shared between native targets (iOS, macOS, etc.)
+    const native_sqlite_flags: []const []const u8 = &.{
+        "-DSQLITE_OMIT_LOAD_EXTENSION=1",
+        "-DSQLITE_THREADSAFE=0",
+        "-DSQLITE_TEMP_STORE=2",
+        "-DSQLITE_OMIT_DEPRECATED=1",
+        "-DSQLITE_OMIT_SHARED_CACHE=1",
+        "-DSQLITE_DQS=0",
+        "-DSQLITE_DEFAULT_MEMSTATUS=0",
+    };
+
     // --- WASM library (primary target) ---
     if (is_wasm) {
         const wasm_lib = b.addExecutable(.{
@@ -83,7 +94,7 @@ pub fn build(b: *std.Build) void {
         install_to_web.step.dependOn(&wasm_lib.step);
         b.getInstallStep().dependOn(&install_to_web.step);
     } else {
-        // --- Native library (for testing / iOS) ---
+        // --- Native library (for testing / iOS / macOS) ---
         const lib = b.addLibrary(.{
             .name = "wimg",
             .linkage = .static,
@@ -96,15 +107,20 @@ pub fn build(b: *std.Build) void {
 
         lib.root_module.addCSourceFile(.{
             .file = b.path("vendor/sqlite3.c"),
-            .flags = &.{
-                "-DSQLITE_OMIT_LOAD_EXTENSION=1",
-                "-DSQLITE_THREADSAFE=0",
-                "-DSQLITE_TEMP_STORE=2",
-            },
+            .flags = native_sqlite_flags,
         });
-        lib.linkSystemLibrary("c");
+
+        // Apple targets: use findNative to detect SDK via xcrun (Ghostty pattern)
+        if (target.result.os.tag.isDarwin()) {
+            addAppleSdkPaths(b, lib) catch @panic("Apple SDK not found — is Xcode installed?");
+        } else {
+            lib.linkLibC();
+        }
 
         b.installArtifact(lib);
+
+        // Install C header for Swift bridging
+        b.installFile("include/libwimg.h", "include/libwimg.h");
     }
 
     // --- Tests ---
@@ -139,4 +155,41 @@ pub fn build(b: *std.Build) void {
     });
     const run_categories_tests = b.addRunArtifact(categories_tests);
     test_step.dependOn(&run_categories_tests.step);
+}
+
+/// Detect Apple SDK via xcrun and configure include/framework/library paths.
+/// Adapted from ghostty-org/ghostty pkg/apple-sdk/build.zig.
+fn addAppleSdkPaths(b: *std.Build, step: *std.Build.Step.Compile) !void {
+    const target_val = step.rootModuleTarget();
+
+    const libc = try std.zig.LibCInstallation.findNative(.{
+        .allocator = b.allocator,
+        .target = &target_val,
+        .verbose = false,
+    });
+
+    // Render libc.txt compatible with Zig's --libc flag
+    var stream: std.io.Writer.Allocating = .init(b.allocator);
+    defer stream.deinit();
+    try libc.render(&stream.writer);
+
+    const wf = b.addWriteFiles();
+    const path = wf.add("libc.txt", stream.written());
+    step.setLibCFile(path);
+
+    // Framework path: go up from sys_include_dir to find System/Library/Frameworks
+    if (libc.sys_include_dir) |sys_include| {
+        const down1 = std.fs.path.dirname(sys_include).?;
+        const down2 = std.fs.path.dirname(down1).?;
+        const framework_path = try std.fs.path.join(b.allocator, &.{
+            down2, "System", "Library", "Frameworks",
+        });
+        const library_path = try std.fs.path.join(b.allocator, &.{
+            down1, "lib",
+        });
+
+        step.root_module.addSystemFrameworkPath(.{ .cwd_relative = framework_path });
+        step.root_module.addSystemIncludePath(.{ .cwd_relative = sys_include });
+        step.root_module.addLibraryPath(.{ .cwd_relative = library_path });
+    }
 }

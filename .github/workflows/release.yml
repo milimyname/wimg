@@ -1,0 +1,141 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Zig fmt check
+        working-directory: libwimg
+        run: zig fmt --check src/
+
+      - name: Zig tests
+        working-directory: libwimg
+        run: zig build test
+
+      - name: Install web dependencies
+        working-directory: wimg-web
+        run: bun install --frozen-lockfile
+
+      - name: oxfmt check
+        working-directory: wimg-web
+        run: bunx oxfmt --check
+
+      - name: oxlint
+        working-directory: wimg-web
+        run: bunx oxlint
+
+      - name: svelte-check
+        working-directory: wimg-web
+        run: bun run check
+
+  build-wasm:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - name: Build WASM
+        working-directory: libwimg
+        run: zig build --release=small
+
+      - name: Upload WASM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libwimg-wasm
+          path: libwimg/zig-out/bin/libwimg.wasm
+
+  build-ios:
+    needs: check
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - name: Build iOS (aarch64)
+        working-directory: libwimg
+        run: |
+          mkdir -p build-ios/{ios,sim}
+
+          echo "=== aarch64-ios ==="
+          zig build -Dtarget=aarch64-ios --release=small
+          cp zig-out/lib/libwimg.a build-ios/ios/libwimg.a
+
+          echo "=== aarch64-ios-simulator ==="
+          zig build -Dtarget=aarch64-ios-simulator --release=small
+          cp zig-out/lib/libwimg.a build-ios/sim/libwimg.a
+
+      - name: Create XCFramework
+        working-directory: libwimg
+        run: |
+          xcodebuild -create-xcframework \
+            -library build-ios/ios/libwimg.a -headers include \
+            -library build-ios/sim/libwimg.a -headers include \
+            -output build-ios/libwimg.xcframework
+
+      - name: Zip XCFramework
+        working-directory: libwimg/build-ios
+        run: zip -r libwimg.xcframework.zip libwimg.xcframework
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libwimg-ios
+          path: libwimg/build-ios/libwimg.xcframework.zip
+
+  release:
+    needs: [build-wasm, build-ios]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+
+          # Release notes from commits since previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD)
+          else
+            NOTES=$(git log --pretty=format:"- %s" HEAD~20..HEAD)
+          fi
+
+          echo "$NOTES" > release-notes.md
+
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file release-notes.md \
+            artifacts/libwimg-wasm/libwimg.wasm \
+            artifacts/libwimg-ios/libwimg.xcframework.zip

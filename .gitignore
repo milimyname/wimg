@@ -2,16 +2,51 @@
 libwimg/zig-out/
 libwimg/zig-cache/
 libwimg/.zig-cache/
+libwimg/build-ios/
 
 # SQLite amalgamation (large, downloaded)
 libwimg/vendor/sqlite3.c
 libwimg/vendor/sqlite3.h
 
-# Web
+# WASM build artifact (generated from zig build)
+wimg-web/static/libwimg.wasm
+
+# Web — dependencies & build
 wimg-web/node_modules/
 wimg-web/.svelte-kit/
 wimg-web/build/
 wimg-web/.output/
+wimg-web/.vercel/
+wimg-web/.netlify/
+wimg-web/.wrangler/
+.svelte-kit/
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# iOS — generated/built artifacts
+wimg-ios/Frameworks/
+wimg-ios/wimg.xcodeproj/
+wimg-ios/wimg/Info.plist
+
+# Xcode
+*.xcworkspace
+xcuserdata/
+DerivedData/
+*.ipa
+*.dSYM/
+*.app
+*.xcarchive
+
+# IDE / tooling
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.agents/
+.claude/
 
 # OS
 .DS_Store
@@ -22,5 +57,9 @@ Thumbs.db
 .env.*
 !.env.example
 
-# WASM build artifact (generated from zig build)
-wimg-web/static/libwimg.wasm
+# Skills
+skills-lock.json
+
+# Logs
+*.log
+npm-debug.log*

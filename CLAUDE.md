@@ -227,9 +227,9 @@ CREATE TABLE meta (
 - [x] `summary.zig` — monthly income / expenses / available / by_category
 - [x] `summary.zig` — month-over-month delta calculation
 - [x] `debts` table + CRUD (wimg_get_debts, wimg_add_debt, wimg_mark_debt_paid)
-- [ ] Auto-categorization on import (rules first, Claude API fallback)
-- [ ] Trade Republic CSV parser (UTF-8, `,` separator, `YYYY-MM-DD`)
-- [ ] Scalable Capital CSV parser (UTF-8, `;` separator)
+- [x] Auto-categorization on import (rules first, Claude API fallback)
+- [x] Trade Republic CSV parser (UTF-8, `,` separator, `YYYY-MM-DD`)
+- [x] Scalable Capital CSV parser (UTF-8, `;` separator)
 
 #### wimg-web tasks
 - [x] Dashboard screen — Verfügbares Einkommen hero, donut chart, budget overview
@@ -242,15 +242,15 @@ CREATE TABLE meta (
 - [x] LayerChart donut charts (replaced D3)
 - [x] German UI labels throughout (Finanzguru-inspired)
 - [x] PWA version update system — controlled SW updates, changelog banner, OPFS clear for breaking changes
-- [ ] Monthly review screen — summary + checklist + anomaly flags
+- [x] Monthly review screen — summary + checklist + anomaly flags
 
 #### Success criteria
 - [x] Dashboard shows correct monthly numbers from real data
 - [x] Claude API categorizes uncategorized transactions on import
 - [x] PWA manifest + service worker registered
 - [x] Debt payoff tracker with add/mark-paid/delete
-- [ ] Works fully offline after first load (service worker caching)
-- [ ] Monthly review screen
+- [x] Works fully offline after first load (service worker caching)
+- [x] Monthly review screen
 
 ---
 
@@ -281,35 +281,50 @@ CREATE TABLE meta (
 
 ---
 
-### Phase 4 — Sync + FinTS
-**Goal:** Data follows you across devices. Comdirect auto-import.
+### Phase 4 — Pure Zig FinTS + Sync
+**Goal:** Direct bank connection from native app. No third-party. Data stays on device.
 **Time box:** TBD
 
-#### Sync
-- [ ] Export/import wimg.db as file (manual sync via iCloud Drive)
-- [ ] Last-write-wins merge: compare `updated_at`, keep higher
-- [ ] `wimg_merge(other_db_bytes, len)` — C ABI function for merge
-- [ ] iCloud Drive integration in Swift (automatic file sync)
-- [ ] Optional: lightweight WebSocket relay for web ↔ iOS push sync
+#### Pure Zig FinTS Client (inside libwimg, native targets only)
+FinTS 3.0 over HTTPS: build text segments → Base64 → HTTP POST to bank.
+No AqBanking, no GPL deps, no external libraries. Reference: python-fints source.
 
-#### FinTS / AqBanking (Zig native binary, not WASM)
-- [ ] Separate `wimg-sync` Zig binary (not libwimg — can't WASM this)
-- [ ] AqBanking C interop (`libaqbanking-dev`, `libgwenhywfar-dev`)
-- [ ] Comdirect FinTS connection + photoTAN flow
-- [ ] Fetch transactions → write directly to wimg.db
-- [ ] Run as background daemon or on-demand CLI
+- [ ] `fints.zig` — FinTS message builder + parser + HTTP transport (~1500 lines)
+      Segments: HNHBK/HNHBS (envelope), HKIDN (auth), HKVVB (product),
+      HKTAN/HITAN (TAN flow), HKSPA/HISPA (accounts), HKKAZ/HIKAZ (statements)
+- [ ] `mt940.zig` — MT940 bank statement parser (date, description, amount)
+- [ ] `banks.zig` — hardcoded list of top ~50 German banks with FinTS URLs
+- [ ] C ABI exports (native only, not WASM):
+      `wimg_fints_connect`, `wimg_fints_send_tan`,
+      `wimg_fints_fetch`, `wimg_fints_get_banks`
+- [ ] photoTAN challenge handling (return image data to caller)
+- [ ] iOS/macOS: direct FinTS from device via `std.http.Client`
+- [ ] Web: stays CSV-only (browser can't do FinTS due to CORS)
+
+#### Sync (opt-in, self-hosted server)
+Row-level sync using existing `updated_at` columns. Server is a tiny self-hosted
+SQLite + HTTP API (~200 lines). Devices push/pull changed rows since last sync.
+Last-write-wins per row. No CRDTs.
 
 ```
-wimg-sync (Zig binary, runs on desktop/server)
-  → fetches from Comdirect via FinTS/AqBanking
-  → writes to wimg.db
-  → wimg-web and wimg-ios pick up via iCloud sync
+POST /sync  — device sends changed rows since last sync timestamp
+GET  /sync?since=<ts>  — returns rows newer than timestamp
 ```
+
+- [ ] `wimg_get_changes(since_ts)` — C ABI: return rows with updated_at > ts as JSON
+- [ ] `wimg_apply_changes(json)` — C ABI: merge incoming rows (LWW per updated_at)
+- [ ] `wimg-sync-server/` — self-hosted Docker container (Python/Go, tiny)
+- [ ] Sync UI in iOS app: server URL + API key config, manual "Sync" button
+- [ ] Sync UI in web app: same config, manual sync
+- [ ] Auto-sync on app open + after mutations (optional)
+- [ ] End-to-end encryption (for when users self-host on shared infra)
 
 #### Success criteria
+- [ ] Native app connects to Comdirect via FinTS, fetches real transactions
+- [ ] TAN flow works (photoTAN challenge → user enters code → transactions load)
+- [ ] Works with multiple German banks (ING, DKB, Commerzbank, etc.)
 - [ ] Change category on iPhone → appears on web after sync
-- [ ] wimg-sync fetches last 30 days from Comdirect automatically
-- [ ] No data loss on concurrent edits (last-write-wins)
+- [ ] No data loss on concurrent edits (last-write-wins per row)
 
 ---
 

@@ -1,10 +1,12 @@
 <script lang="ts">
   import {
+    parseCsv,
     importCsv,
     autoCategorize,
     getTransactions,
     CATEGORIES,
     type ImportResult,
+    type ParseResult,
     type Transaction,
   } from "$lib/wasm";
   import {
@@ -34,14 +36,22 @@
     255: "📦",
   };
 
+  type ImportStage = "idle" | "preview" | "imported";
+
+  let stage = $state<ImportStage>("idle");
   let dragging = $state(false);
   let importing = $state(false);
+  let parsing = $state(false);
   let importError = $state<string | null>(null);
   let importResult = $state<ImportResult | null>(null);
 
-  // Preview of recently imported transactions
-  let previewTransactions = $state<Transaction[]>([]);
+  // Preview state
+  let parseResult = $state<ParseResult | null>(null);
+  let csvBuffer = $state<ArrayBuffer | null>(null);
   let showAllPreview = $state(false);
+
+  // Post-import preview
+  let previewTransactions = $state<Transaction[]>([]);
 
   // Auto-categorize
   let recategorizeCount = $state<number | null>(null);
@@ -56,9 +66,27 @@
     errors: string[];
   } | null>(null);
 
-  let previewSlice = $derived(
-    showAllPreview ? previewTransactions : previewTransactions.slice(0, 3),
-  );
+  let previewSlice = $derived.by(() => {
+    if (stage === "preview" && parseResult) {
+      const txns = parseResult.transactions;
+      return showAllPreview ? txns : txns.slice(0, 5);
+    }
+    if (stage === "imported") {
+      return showAllPreview ? previewTransactions : previewTransactions.slice(0, 3);
+    }
+    return [];
+  });
+
+  let previewTotals = $derived.by(() => {
+    if (!parseResult) return { income: 0, expenses: 0 };
+    let income = 0;
+    let expenses = 0;
+    for (const txn of parseResult.transactions) {
+      if (txn.amount >= 0) income += txn.amount;
+      else expenses += txn.amount;
+    }
+    return { income, expenses };
+  });
 
   function handleDragOver(e: DragEvent) {
     e.preventDefault();
@@ -88,16 +116,36 @@
     try {
       importError = null;
       importResult = null;
+      parseResult = null;
       recategorizeCount = null;
       claudeResult = null;
-      importing = true;
+      parsing = true;
       const buffer = await file.arrayBuffer();
-      importResult = await importCsv(buffer);
+      csvBuffer = buffer;
+      parseResult = parseCsv(buffer);
+      stage = "preview";
+      showAllPreview = false;
+    } catch (e) {
+      importError = e instanceof Error ? e.message : "Parsing fehlgeschlagen";
+      stage = "idle";
+    } finally {
+      parsing = false;
+    }
+  }
+
+  async function confirmImport() {
+    if (!csvBuffer) return;
+    try {
+      importError = null;
+      importing = true;
+      importResult = await importCsv(csvBuffer);
+      csvBuffer = null;
 
       // Load recently added transactions for preview
       const allTxns = getTransactions();
       previewTransactions = allTxns.slice(0, 20);
       showAllPreview = false;
+      stage = "imported";
     } catch (e) {
       importError = e instanceof Error ? e.message : "Import fehlgeschlagen";
     } finally {
@@ -105,10 +153,15 @@
     }
   }
 
+  function cancelPreview() {
+    parseResult = null;
+    csvBuffer = null;
+    stage = "idle";
+  }
+
   function handleAutoCategorize() {
     const count = autoCategorize();
     recategorizeCount = count;
-    // Refresh preview
     previewTransactions = getTransactions().slice(0, 20);
   }
 
@@ -134,7 +187,6 @@
     try {
       const transactions = getTransactions();
       claudeResult = await categorizeWithClaude(transactions);
-      // Refresh preview
       previewTransactions = getTransactions().slice(0, 20);
     } catch (e) {
       claudeResult = {
@@ -167,6 +219,7 @@
       comdirect: "Comdirect",
       trade_republic: "Trade Republic",
       scalable: "Scalable Capital",
+      scalable_capital: "Scalable Capital",
     };
     return map[format] ?? format;
   }
@@ -174,90 +227,92 @@
 
 <h2 class="text-lg font-bold text-center mb-4">CSV Import</h2>
 
-<!-- Drop Zone -->
-<div
-  class="flex flex-col items-center gap-5 rounded-xl border-2 border-dashed px-6 py-10 mb-4 transition-all cursor-pointer bg-white"
-  style="border-color: {dragging
-    ? 'var(--color-primary)'
-    : 'rgba(var(--color-primary-rgb, 67, 97, 238), 0.25)'}"
-  role="button"
-  tabindex="0"
-  ondragover={handleDragOver}
-  ondragleave={handleDragLeave}
-  ondrop={handleDrop}
-  onclick={() => document.getElementById("file-input")?.click()}
-  onkeydown={(e) =>
-    e.key === "Enter" && document.getElementById("file-input")?.click()}
->
-  <input
-    id="file-input"
-    type="file"
-    accept=".csv"
-    class="hidden"
-    onchange={handleFileInput}
-  />
+<!-- Drop Zone (idle + preview stages) -->
+{#if stage === "idle" || stage === "preview"}
+  <div
+    class="flex flex-col items-center gap-5 rounded-xl border-2 border-dashed px-6 py-10 mb-4 transition-all cursor-pointer bg-white"
+    style="border-color: {dragging
+      ? 'var(--color-primary)'
+      : 'rgba(var(--color-primary-rgb, 67, 97, 238), 0.25)'}"
+    role="button"
+    tabindex="0"
+    ondragover={handleDragOver}
+    ondragleave={handleDragLeave}
+    ondrop={handleDrop}
+    onclick={() => document.getElementById("file-input")?.click()}
+    onkeydown={(e) =>
+      e.key === "Enter" && document.getElementById("file-input")?.click()}
+  >
+    <input
+      id="file-input"
+      type="file"
+      accept=".csv"
+      class="hidden"
+      onchange={handleFileInput}
+    />
 
-  {#if importing}
-    <div
-      class="animate-spin w-10 h-10 border-4 border-t-transparent rounded-full"
-      style="border-color: var(--color-primary); border-top-color: transparent"
-    ></div>
-    <p class="text-sm text-gray-500">Importiere...</p>
-  {:else}
-    <div
-      class="w-16 h-16 rounded-full flex items-center justify-center"
-      style="background-color: var(--color-primary-light, #e8e0ff)"
-    >
-      {#if dragging}
-        <svg
-          class="w-8 h-8"
-          style="color: var(--color-primary)"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 4v16m8-8H4"
-          />
-        </svg>
-      {:else}
-        <svg
-          class="w-8 h-8"
-          style="color: var(--color-primary)"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-          />
-        </svg>
-      {/if}
-    </div>
-    <div class="text-center">
-      <p class="text-lg font-bold">CSV-Datei hochladen</p>
-      <p class="text-sm text-gray-400 mt-1 max-w-[240px]">
-        Ziehe deine Bankdatei hierhin oder tippe zum Durchsuchen
-      </p>
-    </div>
-    <button
-      class="px-6 py-2.5 rounded-full text-sm font-bold text-white shadow-md cursor-pointer hover:opacity-90 transition-opacity"
-      style="background-color: var(--color-primary)"
-      onclick={(e) => {
-        e.stopPropagation();
-        document.getElementById("file-input")?.click();
-      }}
-    >
-      Datei auswählen
-    </button>
-  {/if}
-</div>
+    {#if parsing}
+      <div
+        class="animate-spin w-10 h-10 border-4 border-t-transparent rounded-full"
+        style="border-color: var(--color-primary); border-top-color: transparent"
+      ></div>
+      <p class="text-sm text-gray-500">Analysiere...</p>
+    {:else}
+      <div
+        class="w-16 h-16 rounded-full flex items-center justify-center"
+        style="background-color: var(--color-primary-light, #e8e0ff)"
+      >
+        {#if dragging}
+          <svg
+            class="w-8 h-8"
+            style="color: var(--color-primary)"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+        {:else}
+          <svg
+            class="w-8 h-8"
+            style="color: var(--color-primary)"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+            />
+          </svg>
+        {/if}
+      </div>
+      <div class="text-center">
+        <p class="text-lg font-bold">CSV-Datei hochladen</p>
+        <p class="text-sm text-gray-400 mt-1 max-w-[240px]">
+          Ziehe deine Bankdatei hierhin oder tippe zum Durchsuchen
+        </p>
+      </div>
+      <button
+        class="px-6 py-2.5 rounded-full text-sm font-bold text-white shadow-md cursor-pointer hover:opacity-90 transition-opacity"
+        style="background-color: var(--color-primary)"
+        onclick={(e) => {
+          e.stopPropagation();
+          document.getElementById("file-input")?.click();
+        }}
+      >
+        Datei auswählen
+      </button>
+    {/if}
+  </div>
+{/if}
 
 <!-- Error -->
 {#if importError}
@@ -268,8 +323,140 @@
   </div>
 {/if}
 
-<!-- Post-Import Results -->
-{#if importResult}
+<!-- CSV Preview (stage: preview) -->
+{#if stage === "preview" && parseResult}
+  <!-- Format Badge -->
+  {#if parseResult.format && parseResult.format !== "unknown"}
+    <div
+      class="flex items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm border border-gray-100 mb-3"
+    >
+      <div class="flex flex-col gap-1 flex-1">
+        <div class="flex items-center gap-2">
+          <svg
+            class="w-5 h-5 text-blue-500 shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+          <p class="text-base font-bold">
+            {formatLabel(parseResult.format)} CSV erkannt
+          </p>
+        </div>
+        <p class="text-xs text-gray-400 pl-7">
+          {parseResult.total_rows} Zeilen gelesen
+        </p>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Summary Card -->
+  <div
+    class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-3"
+  >
+    <p class="text-sm font-bold text-blue-900">
+      {parseResult.transactions.length} Buchungen gefunden
+    </p>
+    <div class="flex gap-4 mt-2">
+      {#if previewTotals.income > 0}
+        <p class="text-xs text-emerald-600">
+          +{formatEur(previewTotals.income)} Einnahmen
+        </p>
+      {/if}
+      {#if previewTotals.expenses < 0}
+        <p class="text-xs text-rose-500">
+          {formatEur(previewTotals.expenses)} Ausgaben
+        </p>
+      {/if}
+    </div>
+  </div>
+
+  <!-- Preview Transaction List -->
+  {#if parseResult.transactions.length > 0}
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="text-base font-bold">Vorschau</h3>
+      {#if parseResult.transactions.length > 5}
+        <button
+          class="text-xs font-semibold cursor-pointer"
+          style="color: var(--color-primary)"
+          onclick={() => (showAllPreview = !showAllPreview)}
+        >
+          {showAllPreview ? "Weniger" : `Alle ${parseResult.transactions.length} anzeigen`}
+        </button>
+      {/if}
+    </div>
+    <div class="flex flex-col gap-2 mb-4">
+      {#each previewSlice as txn}
+        <div
+          class="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-50 shadow-sm"
+        >
+          <div class="flex items-center gap-3">
+            <div
+              class="w-10 h-10 rounded-full flex items-center justify-center text-lg"
+              style="background-color: {CATEGORIES[txn.category]?.color ??
+                '#dfe6e9'}15"
+            >
+              {CATEGORY_ICONS[txn.category] ?? "📦"}
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-bold truncate max-w-[180px]">
+                {txn.description}
+              </p>
+              <p class="text-xs text-gray-400">
+                {formatDate(txn.date)} &middot; {CATEGORIES[txn.category]
+                  ?.name ?? "Sonstiges"}
+              </p>
+            </div>
+          </div>
+          <p
+            class="text-sm font-bold tabular-nums shrink-0"
+            class:text-rose-500={txn.amount < 0}
+            class:text-emerald-500={txn.amount > 0}
+          >
+            {txn.amount < 0 ? "-" : "+"}{formatEur(Math.abs(txn.amount))}
+          </p>
+        </div>
+      {/each}
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex gap-3 mb-4">
+      <button
+        onclick={confirmImport}
+        disabled={importing}
+        class="flex-1 px-6 py-3 rounded-xl text-sm font-bold text-white cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 shadow-md"
+        style="background-color: var(--color-primary)"
+      >
+        {#if importing}
+          <span class="flex items-center justify-center gap-2">
+            <span
+              class="animate-spin w-4 h-4 border-2 border-t-transparent rounded-full border-white inline-block"
+            ></span>
+            Importiere...
+          </span>
+        {:else}
+          Importieren ({parseResult.transactions.length} Buchungen)
+        {/if}
+      </button>
+      <button
+        onclick={cancelPreview}
+        disabled={importing}
+        class="px-5 py-3 rounded-xl text-sm font-bold text-gray-500 bg-gray-100 cursor-pointer hover:bg-gray-200 transition-colors disabled:opacity-50"
+      >
+        Abbrechen
+      </button>
+    </div>
+  {/if}
+{/if}
+
+<!-- Post-Import Results (stage: imported) -->
+{#if stage === "imported" && importResult}
   <!-- Detected Format Card -->
   {#if importResult.format && importResult.format !== "unknown"}
     <div
@@ -430,6 +617,14 @@
     </div>
   {/if}
 
+  <!-- Import another file button -->
+  <button
+    onclick={() => { stage = "idle"; importResult = null; parseResult = null; previewTransactions = []; showAllPreview = false; }}
+    class="w-full mb-4 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 bg-white cursor-pointer hover:bg-gray-50 transition-colors"
+  >
+    Weitere Datei importieren
+  </button>
+
   <!-- Categorization Section -->
   <div class="mb-4">
     <h3 class="text-base font-bold mb-3">Kategorisierung</h3>
@@ -586,8 +781,8 @@
   </div>
 {/if}
 
-<!-- Supported Formats (show when no import yet) -->
-{#if !importResult}
+<!-- Supported Formats (show when idle) -->
+{#if stage === "idle"}
   <div class="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
     <h3 class="text-sm font-bold mb-3">Unterstützte Formate</h3>
     <div class="space-y-3">

@@ -72,10 +72,17 @@ export const CATEGORIES: Record<number, { name: string; color: string }> = {
   255: { name: "Other", color: "#dfe6e9" },
 };
 
+export interface ParseResult {
+  format: string;
+  total_rows: number;
+  transactions: Transaction[];
+}
+
 interface WasmExports {
   memory: WebAssembly.Memory;
   wimg_init: (path: number) => number;
   wimg_import_csv: (data: number, len: number) => number;
+  wimg_parse_csv: (data: number, len: number) => number;
   wimg_get_transactions: () => number;
   wimg_set_category: (id: number, id_len: number, category: number) => number;
   wimg_get_summary: (year: number, month: number) => number;
@@ -260,6 +267,27 @@ export async function init(): Promise<void> {
   if (rc !== 0) {
     throw new Error(getLastError("Failed to initialize wimg database"));
   }
+}
+
+export function parseCsv(csvContent: ArrayBuffer): ParseResult {
+  ensureInit();
+
+  const data = new Uint8Array(csvContent);
+  const ptr = wasm!.wimg_alloc(data.length);
+  if (ptr === 0) throw new Error("WASM allocation failed");
+
+  const mem = new Uint8Array(wasm!.memory.buffer);
+  mem.set(data, ptr);
+
+  const resultPtr = wasm!.wimg_parse_csv(ptr, data.length);
+  if (resultPtr === 0) {
+    throw new Error(getLastError("CSV parsing failed"));
+  }
+
+  const json = readLengthPrefixedString(resultPtr);
+  wasm!.wimg_free(resultPtr, 0);
+
+  return JSON.parse(json) as ParseResult;
 }
 
 export async function importCsv(csvContent: ArrayBuffer): Promise<ImportResult> {

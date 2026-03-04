@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const types = @import("types.zig");
 const db_mod = @import("db.zig");
 const parser = @import("parser.zig");
@@ -9,7 +10,9 @@ const Db = db_mod.Db;
 const Transaction = types.Transaction;
 const ImportResult = types.ImportResult;
 
-// --- JS interop: imported logging function ---
+const is_wasm = builtin.cpu.arch == .wasm32;
+
+// --- JS interop: imported logging function (WASM only) ---
 extern fn js_console_log(ptr: [*]const u8, len: u32) void;
 
 // --- Error reporting ---
@@ -24,13 +27,17 @@ fn setError(comptime fmt: []const u8, args: anytype) void {
         return;
     };
     error_len = @intCast(slice.len);
-    js_console_log(&error_buf, error_len);
+    if (is_wasm) {
+        js_console_log(&error_buf, error_len);
+    }
 }
 
 fn log(comptime fmt: []const u8, args: anytype) void {
     var buf: [512]u8 = undefined;
     const slice = std.fmt.bufPrint(&buf, fmt, args) catch return;
-    js_console_log(&buf, @intCast(slice.len));
+    if (is_wasm) {
+        js_console_log(&buf, @intCast(slice.len));
+    }
 }
 
 // --- WASM memory management ---
@@ -149,6 +156,183 @@ export fn wimg_import_csv(data: [*]const u8, len: u32) ?[*]const u8 {
     };
 
     return makeLengthPrefixed(json_buf[0..json_len]);
+}
+
+/// Parse CSV without importing into the database (preview only).
+/// Returns a length-prefixed JSON string with format, total_rows, and transactions array.
+export fn wimg_parse_csv(data: [*]const u8, len: u32) ?[*]const u8 {
+    log("wimg_parse_csv: len={d}", .{len});
+
+    const csv_data = data[0..len];
+
+    const max_txns = 10000;
+    const txn_buf = fba.allocator().alloc(Transaction, max_txns) catch {
+        setError("wimg_parse_csv: failed to allocate transaction buffer", .{});
+        return null;
+    };
+    defer fba.allocator().free(txn_buf);
+
+    var result: ImportResult = undefined;
+    const format = parser.parseCsv(csv_data, txn_buf, &result);
+
+    log("wimg_parse_csv: format={s}, parsed {d} rows, {d} transactions", .{
+        format.name(), result.total_rows, result.imported,
+    });
+
+    // Apply rule-based categorization (preview includes predicted categories)
+    if (global_db) |database| {
+        for (txn_buf[0..result.imported]) |*txn| {
+            if (txn.category != .uncategorized) continue;
+            const matched = categories.matchRules(database.handle, txn.descriptionSlice());
+            if (matched != .uncategorized) {
+                txn.category = matched;
+            }
+        }
+    }
+
+    // Serialize to JSON using manual building (same pattern as db.zig)
+    const buf_size: usize = 1024 * 1024; // 1 MB
+    const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
+        setError("wimg_parse_csv: failed to allocate output buffer", .{});
+        return null;
+    };
+
+    var pos: usize = 4; // skip length prefix
+    const out = buf[4..];
+
+    // Header: {"format":"...","total_rows":N,"transactions":[
+    const hdr = std.fmt.bufPrint(out, "{{\"format\":\"{s}\",\"total_rows\":{d},\"transactions\":[", .{
+        format.name(), result.total_rows,
+    }) catch {
+        setError("wimg_parse_csv: failed to format header", .{});
+        fba.allocator().free(buf);
+        return null;
+    };
+    pos += hdr.len;
+
+    // Write each transaction using db.zig helpers
+    for (txn_buf[0..result.imported], 0..) |*txn, i| {
+        const s = buf[pos..buf_size + 4];
+        const written = formatPreviewTransaction(
+            s,
+            i == 0,
+            &txn.id,
+            txn.date.year,
+            txn.date.month,
+            txn.date.day,
+            txn.descriptionSlice(),
+            txn.amount_cents,
+            &txn.currency,
+            @intFromEnum(txn.category),
+        ) orelse {
+            setError("wimg_parse_csv: buffer overflow at transaction {d}", .{i});
+            fba.allocator().free(buf);
+            return null;
+        };
+        pos += written;
+    }
+
+    // Close: ]}
+    if (pos + 2 > buf_size + 4) {
+        fba.allocator().free(buf);
+        return null;
+    }
+    buf[pos] = ']';
+    buf[pos + 1] = '}';
+    pos += 2;
+
+    const json_len = pos - 4;
+    const len_bytes: [4]u8 = @bitCast(@as(u32, @intCast(json_len)));
+    buf[0] = len_bytes[0];
+    buf[1] = len_bytes[1];
+    buf[2] = len_bytes[2];
+    buf[3] = len_bytes[3];
+
+    return buf.ptr;
+}
+
+/// Format a single transaction as JSON for the preview response.
+/// Reuses db.zig helpers for amount formatting and JSON escaping.
+fn formatPreviewTransaction(
+    buf: []u8,
+    first: bool,
+    id: *const [32]u8,
+    year: u16,
+    month: u8,
+    day: u8,
+    desc: []const u8,
+    amount_cents: i64,
+    currency: *const [3]u8,
+    category: u8,
+) ?usize {
+    var pos: usize = 0;
+
+    if (!first) {
+        if (pos >= buf.len) return null;
+        buf[pos] = ',';
+        pos += 1;
+    }
+
+    // {"id":"
+    const p1 = "{\"id\":\"";
+    if (pos + p1.len + 32 > buf.len) return null;
+    @memcpy(buf[pos .. pos + p1.len], p1);
+    pos += p1.len;
+    @memcpy(buf[pos .. pos + 32], id);
+    pos += 32;
+
+    // ","date":"YYYY-MM-DD"
+    const p2 = "\",\"date\":\"";
+    if (pos + p2.len + 10 > buf.len) return null;
+    @memcpy(buf[pos .. pos + p2.len], p2);
+    pos += p2.len;
+    // Manual date formatting
+    buf[pos] = '0' + @as(u8, @intCast(year / 1000));
+    buf[pos + 1] = '0' + @as(u8, @intCast((year / 100) % 10));
+    buf[pos + 2] = '0' + @as(u8, @intCast((year / 10) % 10));
+    buf[pos + 3] = '0' + @as(u8, @intCast(year % 10));
+    buf[pos + 4] = '-';
+    buf[pos + 5] = '0' + month / 10;
+    buf[pos + 6] = '0' + month % 10;
+    buf[pos + 7] = '-';
+    buf[pos + 8] = '0' + day / 10;
+    buf[pos + 9] = '0' + day % 10;
+    pos += 10;
+
+    // ","description":"
+    const p3 = "\",\"description\":\"";
+    if (pos + p3.len > buf.len) return null;
+    @memcpy(buf[pos .. pos + p3.len], p3);
+    pos += p3.len;
+    pos += db_mod.jsonEscapeString(buf[pos..], desc) orelse return null;
+
+    // ","amount":
+    const p4 = "\",\"amount\":";
+    if (pos + p4.len > buf.len) return null;
+    @memcpy(buf[pos .. pos + p4.len], p4);
+    pos += p4.len;
+    pos += db_mod.formatAmount(buf[pos..], amount_cents) orelse return null;
+
+    // ,"currency":"EUR"
+    const p5 = ",\"currency\":\"";
+    if (pos + p5.len + 3 > buf.len) return null;
+    @memcpy(buf[pos .. pos + p5.len], p5);
+    pos += p5.len;
+    @memcpy(buf[pos .. pos + 3], currency);
+    pos += 3;
+
+    // ","category":N}
+    const p6 = "\",\"category\":";
+    if (pos + p6.len > buf.len) return null;
+    @memcpy(buf[pos .. pos + p6.len], p6);
+    pos += p6.len;
+    pos += db_mod.formatInt(buf[pos..], category) orelse return null;
+
+    if (pos >= buf.len) return null;
+    buf[pos] = '}';
+    pos += 1;
+
+    return pos;
 }
 
 /// Re-run auto-categorization on all uncategorized transactions.
@@ -454,21 +638,32 @@ export fn wimg_alloc(size: u32) ?[*]u8 {
     return buf.ptr;
 }
 
-// --- DB persistence (OPFS) ---
+// --- DB persistence (OPFS) — WASM only ---
+// These functions use the in-memory VFS which only exists for wasm32.
+// On native (iOS/macOS), SQLite uses the real filesystem directly.
+
+comptime {
+    if (is_wasm) {
+        @export(&wimg_db_ptr, .{ .name = "wimg_db_ptr" });
+        @export(&wimg_db_size, .{ .name = "wimg_db_size" });
+        @export(&wimg_db_load, .{ .name = "wimg_db_load" });
+    }
+}
+
 extern fn wasm_vfs_get_db_ptr(name: [*:0]const u8) ?[*]const u8;
 extern fn wasm_vfs_get_db_size(name: [*:0]const u8) i32;
 extern fn wasm_vfs_load_db(name: [*:0]const u8, data: [*]const u8, size: i32) i32;
 
-export fn wimg_db_ptr() ?[*]const u8 {
+fn wimg_db_ptr() callconv(.c) ?[*]const u8 {
     return wasm_vfs_get_db_ptr("/wimg.db");
 }
 
-export fn wimg_db_size() u32 {
+fn wimg_db_size() callconv(.c) u32 {
     const size = wasm_vfs_get_db_size("/wimg.db");
     return if (size > 0) @intCast(size) else 0;
 }
 
-export fn wimg_db_load(data: [*]const u8, size: u32) i32 {
+fn wimg_db_load(data: [*]const u8, size: u32) callconv(.c) i32 {
     log("wimg_db_load: loading {d} bytes", .{size});
     const rc = wasm_vfs_load_db("/wimg.db", data, @intCast(size));
     if (rc != 0) {
