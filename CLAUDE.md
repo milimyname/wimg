@@ -98,22 +98,35 @@ export fn wimg_free(ptr: [*]u8, len: usize) void
 export fn wimg_alloc(len: usize) ?[*]u8
 
 // Import
+export fn wimg_parse_csv(ptr: [*]const u8, len: usize) ?[*]const u8
+  // returns JSON: { format, total_rows, transactions[] } — preview only, no DB write
 export fn wimg_import_csv(ptr: [*]const u8, len: usize) i32
   // returns JSON: { total_rows, imported, skipped_duplicates, errors, format, categorized }
 
 // Transactions
 export fn wimg_get_transactions() i32       // returns JSON array
 export fn wimg_set_category(id: [*]const u8, id_len: usize, cat: u8) i32
+export fn wimg_auto_categorize() i32        // returns count categorized
 
 // Summaries
 export fn wimg_get_summary(year: i32, month: i32) i32
   // returns JSON: { year, month, income, expenses, available, tx_count, by_category[] }
+
+// Accounts
+export fn wimg_get_accounts() ?[*]const u8  // returns JSON array
+export fn wimg_add_account(ptr: [*]const u8, len: usize) i32
+export fn wimg_update_account(ptr: [*]const u8, len: usize) i32
+export fn wimg_delete_account(id: [*]const u8, id_len: usize) i32
 
 // Debt tracker
 export fn wimg_get_debts() i32              // returns JSON array
 export fn wimg_add_debt(ptr: [*]const u8, len: usize) i32
 export fn wimg_mark_debt_paid(id: [*]const u8, id_len: usize, amount: i64) i32
 export fn wimg_delete_debt(id: [*]const u8, id_len: usize) i32
+
+// Undo/Redo
+export fn wimg_undo() ?[*]const u8
+export fn wimg_redo() ?[*]const u8
 
 // Persistence (OPFS)
 export fn wimg_get_db_ptr() ?[*]u8
@@ -129,14 +142,24 @@ Negative return = error. Caller owns the buffer.
 ## SQLite Schema
 
 ```sql
+CREATE TABLE accounts (
+  id          TEXT PRIMARY KEY,        -- "comdirect-main", "scalable", etc.
+  name        TEXT NOT NULL,           -- "Comdirect Girokonto"
+  type        TEXT NOT NULL,           -- checking, investment, savings, cash
+  currency    TEXT DEFAULT 'EUR',
+  owner       TEXT,                    -- "Komiljon", "Familie", "Kind"
+  color       TEXT,                    -- hex, for UI differentiation
+  updated_at  INTEGER NOT NULL
+);
+
 CREATE TABLE transactions (
-  id          TEXT PRIMARY KEY,        -- hash of date+desc+amount
+  id          TEXT PRIMARY KEY,        -- hash of date+desc+amount+account
   date        TEXT NOT NULL,           -- ISO: 2026-02-14
   description TEXT NOT NULL,
   amount      INTEGER NOT NULL,        -- cents, negative = expense
   currency    TEXT DEFAULT 'EUR',
   category    TEXT,
-  account     TEXT,
+  account     TEXT REFERENCES accounts(id), -- FK to accounts table
   raw         TEXT,                    -- original CSV row
   updated_at  INTEGER NOT NULL         -- unix ms, last write wins
 );
@@ -218,9 +241,9 @@ CREATE TABLE meta (
 
 ---
 
-### Phase 2 — Core Features
+### ✅ Phase 2 — Core Features
 **Goal:** Actually useful for daily tracking.
-**Status: In Progress (March 2026)**
+**Status: Done (March 2026)**
 
 #### libwimg tasks
 - [x] `categories.zig` — keyword rules engine (REWE→Food, DB→Transport)
@@ -230,13 +253,15 @@ CREATE TABLE meta (
 - [x] Auto-categorization on import (rules first, Claude API fallback)
 - [x] Trade Republic CSV parser (UTF-8, `,` separator, `YYYY-MM-DD`)
 - [x] Scalable Capital CSV parser (UTF-8, `;` separator)
+- [x] `wimg_parse_csv` — preview CSV without importing
+- [x] `wimg_undo` / `wimg_redo` — undo/redo support
 
 #### wimg-web tasks
 - [x] Dashboard screen — Verfügbares Einkommen hero, donut chart, budget overview
 - [x] Analysis screen — spending breakdown, category drill-down, donut chart
 - [x] Debt tracker screen — progress bars, mark paid button, overall progress
 - [x] Transaction list — segmented filter (Alle/Ausgaben/Einnahmen), bottom sheet editor
-- [x] Import screen — file drop, Claude AI categorization section
+- [x] Import screen — file drop, CSV preview, Claude AI categorization section
 - [x] PWA manifest + service worker — installable, fully offline
 - [x] Claude API integration (JS-side, not Zig — WASM can't do HTTP)
 - [x] LayerChart donut charts (replaced D3)
@@ -254,30 +279,82 @@ CREATE TABLE meta (
 
 ---
 
-### Phase 3 — SwiftUI iOS App
+### ✅ Phase 3 — SwiftUI iOS App
 **Goal:** Same app on iPhone, same data, same libwimg.
-**Time box:** 4 weekends
+**Status: Done (March 2026)**
 
 #### libwimg tasks
-- [ ] Compile libwimg to `aarch64-apple-ios` and `x86_64-apple-ios-simulator`
-- [ ] Build XCFramework wrapping libwimg.a
-- [ ] Ensure all C ABI functions work identically on iOS target
-- [ ] iOS-specific SQLite file path handling (Documents directory)
+- [x] Compile libwimg to `aarch64-apple-ios` and `aarch64-apple-ios-simulator`
+- [x] Build XCFramework wrapping libwimg.a (`scripts/build-ios.sh`)
+- [x] All C ABI functions work identically on iOS target
+- [x] iOS-specific SQLite file path handling (Documents directory)
+- [x] C header `libwimg.h` with all exports
 
 #### wimg-ios tasks
-- [ ] Xcode project, link libwimg XCFramework
-- [ ] Swift wrapper: `LibWimg.swift` — typed Swift API over C ABI
-- [ ] Dashboard view (SwiftUI, mirrors wimg-web design)
-- [ ] Transaction list view
-- [ ] Import view — Files app picker → CSV → libwimg
-- [ ] Category editor sheet
-- [ ] Debt tracker view
-- [ ] Monthly review view
+- [x] XcodeGen project (`project.yml` → `xcodegen generate`)
+- [x] Swift wrapper: `LibWimg.swift` — typed Swift API over C ABI
+- [x] Dashboard view (SwiftUI, mirrors wimg-web design)
+- [x] Transaction list view with segmented filter + search
+- [x] Import view — Files app picker → CSV preview → confirm import
+- [x] Category editor sheet
+- [x] Debt tracker view with add/pay/delete
+- [x] Monthly review view — savings card, anomalies, checklist, stats
+- [x] Undo toast after category change and debt actions
+
+#### Build scripts
+- [x] `scripts/build-wasm.sh` — build WASM + copy to wimg-web/static
+- [x] `scripts/build-ios.sh` — build XCFramework + copy to Frameworks
+- [x] `scripts/gen-xcodeproj.sh` — regenerate Xcode project from project.yml
+- [x] `scripts/build-all.sh` — all three in sequence
+- [x] `scripts/dev-web.sh` — start wimg-web dev server
 
 #### Success criteria
-- [ ] Runs on iPhone simulator and real device
-- [ ] Same CSV imported on web and iOS produces identical SQLite state
-- [ ] All screens functional, Finanzguru-inspired design
+- [x] Runs on iPhone simulator and real device
+- [x] Same CSV imported on web and iOS produces identical SQLite state
+- [x] All screens functional, Finanzguru-inspired design
+
+---
+
+### Phase 3.5 — Multi-Account Support
+**Goal:** Track multiple bank accounts, view together or separately.
+**Time box:** 1-2 weekends
+
+Real-world use case:
+```
+Comdirect Girokonto     (main, salary)
+Scalable Capital        (ETF investments)
+Trade Republic          (older investments)
+Shared account          (rent, groceries with partner)
+```
+
+#### libwimg tasks
+- [ ] `accounts` table — CREATE TABLE with id, name, type, currency, owner, color
+- [ ] Schema migration — add `accounts` table, auto-create default account for existing data
+- [ ] `wimg_get_accounts`, `wimg_add_account`, `wimg_update_account`, `wimg_delete_account`
+- [ ] Auto-populate `account` on CSV import (Comdirect → "Comdirect", TR → "Trade Republic", etc.)
+- [ ] Auto-create account entry on first import of each format
+- [ ] `wimg_get_transactions` — optional account filter parameter
+- [ ] `wimg_get_summary` — optional account filter parameter
+- [ ] Include `account` field in transaction hash (same tx in different accounts = not duplicate)
+
+#### wimg-web tasks
+- [ ] Account switcher dropdown in nav/header (Alle Konten / single account)
+- [ ] Account management page — add/edit/delete accounts, set color/owner
+- [ ] Dashboard filters by selected account
+- [ ] Transaction list filters by selected account
+- [ ] Analysis screen filters by selected account
+- [ ] Import shows which account the CSV will be assigned to
+
+#### wimg-ios tasks
+- [ ] Account switcher in nav (same pattern as web)
+- [ ] Account management view
+- [ ] All screens respect selected account filter
+
+#### Success criteria
+- [ ] Import Comdirect + TR CSVs → each tagged to correct account
+- [ ] Dashboard shows "Alle Konten" aggregated by default
+- [ ] Switch to single account → all numbers/transactions filter correctly
+- [ ] Manually add accounts (cash, shared, etc.)
 
 ---
 
@@ -361,56 +438,89 @@ GET  /sync?since=<ts>  — returns rows newer than timestamp
 
 ```
 wimg/
+├── scripts/
+│   ├── build-wasm.sh          build WASM + copy to wimg-web/static
+│   ├── build-ios.sh           build XCFramework + copy to Frameworks
+│   ├── gen-xcodeproj.sh       regenerate .xcodeproj from project.yml
+│   ├── build-all.sh           all three above
+│   └── dev-web.sh             start wimg-web dev server
+│
+├── .github/workflows/
+│   └── release.yml            CI: check → build-wasm + build-ios → GitHub release
+│
 ├── libwimg/
 │   ├── build.zig
+│   ├── include/
+│   │   └── libwimg.h            C header for iOS bridging
 │   ├── vendor/
-│   │   └── sqlite3.c          sqlite amalgamation (download once)
+│   │   └── sqlite3.c           sqlite amalgamation (download once)
 │   └── src/
-│       ├── root.zig            C ABI exports
-│       ├── db.zig              SQLite wrapper
-│       ├── parser.zig          CSV parsers
-│       ├── categories.zig      Rules + Claude API
-│       ├── summary.zig         Calculations
-│       └── types.zig           Shared structs
+│       ├── root.zig             C ABI exports
+│       ├── db.zig               SQLite wrapper + schema + migrations
+│       ├── parser.zig           CSV parsers (Comdirect, TR, Scalable)
+│       ├── categories.zig       Rules + Claude API
+│       ├── summary.zig          Calculations
+│       └── types.zig            Shared structs
 │
 ├── wimg-web/
-│   ├── vite.config.ts          COOP/COEP headers
+│   ├── vite.config.ts           COOP/COEP headers + __APP_VERSION__
 │   ├── package.json
 │   ├── static/
 │   │   ├── libwimg.wasm         compiled WASM binary
 │   │   ├── manifest.webmanifest PWA manifest
-│   │   ├── sw.js                service worker
 │   │   └── icon-192/512.png     PWA icons
 │   └── src/
+│       ├── service-worker.ts    SvelteKit service worker (offline caching)
 │       ├── lib/
 │       │   ├── wasm.ts          TypeScript wrapper over C ABI
 │       │   ├── claude.ts        Claude API categorization (JS-side)
-│       │   ├── version.ts       APP_VERSION + CHANGELOG registry
-│       │   └── update.svelte.ts SW update detection + activation store
+│       │   ├── version.ts       APP_VERSION + GitHub releases link
+│       │   ├── update.svelte.ts SW update detection + activation store
+│       │   └── toast.svelte.ts  Undo snackbar store
 │       ├── routes/
 │       │   ├── +page.svelte     redirect → /dashboard
 │       │   ├── dashboard/       Verfügbares Einkommen hero, donut, overview
 │       │   ├── transactions/    segmented filter, bottom sheet editor
 │       │   ├── analysis/        spending breakdown, category drill-down
 │       │   ├── debts/           progress bars, mark paid
-│       │   └── import/          file drop, Claude categorization
+│       │   ├── import/          file drop, CSV preview, Claude categorization
+│       │   └── review/          monthly review, anomalies, checklist
 │       └── components/
 │           ├── DonutChart.svelte    LayerChart PieChart wrapper
 │           ├── MonthPicker.svelte   month/year selector
+│           ├── Toast.svelte         undo snackbar
 │           └── UpdateBanner.svelte  PWA update notification banner
 │
-├── wimg-ios/                   Phase 3
-│   ├── wimg.xcodeproj
-│   ├── LibWimg.swift           Swift wrapper over C ABI
-│   └── Views/
-│       ├── DashboardView.swift
-│       ├── TransactionsView.swift
-│       └── ImportView.swift
+├── wimg-ios/
+│   ├── project.yml              XcodeGen spec (→ xcodegen generate)
+│   ├── wimg.xcodeproj           generated, not manually edited
+│   ├── Frameworks/
+│   │   └── libwimg.xcframework  built by scripts/build-ios.sh
+│   └── wimg/
+│       ├── wimgApp.swift        entry point + TabView (6 tabs)
+│       ├── LibWimg.swift        Swift wrapper over C ABI
+│       ├── wimg-Bridging-Header.h
+│       ├── Models/
+│       │   ├── Transaction.swift  Transaction, ImportResult, ParseResult
+│       │   ├── Summary.swift      MonthlySummary, CategoryBreakdown
+│       │   ├── Category.swift     WimgCategory enum (colors, icons)
+│       │   ├── Debt.swift
+│       │   └── Notifications.swift
+│       ├── Views/
+│       │   ├── DashboardView.swift
+│       │   ├── TransactionsView.swift  + CategoryEditorSheet
+│       │   ├── AnalysisView.swift
+│       │   ├── ReviewView.swift
+│       │   ├── DebtsView.swift    + AddDebtSheet
+│       │   └── ImportView.swift
+│       └── Components/
+│           ├── MonthPicker.swift
+│           ├── TransactionCard.swift  + formatAmountShort()
+│           ├── CategoryBadge.swift
+│           └── UndoToast.swift
 │
 └── wimg-sync/                  Phase 4
-    ├── build.zig
-    └── src/
-        └── main.zig            FinTS via AqBanking → wimg.db
+    └── (TBD)
 ```
 
 ---
@@ -430,6 +540,8 @@ wimg/
 | Mar 2026 | Claude API on JS side, not Zig WASM | WASM can't make HTTP requests; JS calls Anthropic API directly |
 | Mar 2026 | COEP `credentialless` not `require-corp` | `require-corp` breaks Vite HMR WebSocket in dev |
 | Mar 2026 | Controlled SW updates (no skipWaiting) | Users choose when to update; banner shows changelog; OPFS clear for breaking schema changes |
+| Mar 2026 | XcodeGen for iOS project | Auto-discovers Swift files, no manual pbxproj editing |
+| Mar 2026 | Multi-account as Phase 3.5 | Transactions already have `account` column; minimal schema change, big UX win |
 
 ---
 

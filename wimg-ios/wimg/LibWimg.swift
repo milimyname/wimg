@@ -25,7 +25,21 @@ final class LibWimg {
         isInitialized = false
     }
 
-    // MARK: - Import
+    // MARK: - Parse & Import
+
+    static func parseCSV(_ data: Data) throws -> ParseResult {
+        try ensureInit()
+        return try data.withUnsafeBytes { rawBuffer in
+            guard let ptr = rawBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+                throw WimgError.allocationFailed
+            }
+            guard let resultPtr = wimg_parse_csv(ptr, UInt32(data.count)) else {
+                throw WimgError.importFailed(lastError())
+            }
+            defer { wimg_free(resultPtr, 0) }
+            return try decodeLengthPrefixed(resultPtr)
+        }
+    }
 
     static func importCSV(_ data: Data) throws -> ImportResult {
         try ensureInit()

@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.wimg
   deploymentTarget:
     iOS: "17.0"
+  xcodeVersion: "16.0"
 
 targets:
   wimg:
@@ -10,19 +11,30 @@ targets:
     platform: iOS
     sources:
       - path: wimg
+        excludes:
+          - "**/.DS_Store"
     settings:
       base:
         SWIFT_VERSION: "5.10"
         PRODUCT_BUNDLE_IDENTIFIER: com.wimg.app
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: 1
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_IDENTITY: "iPhone Developer"
         SWIFT_OBJC_BRIDGING_HEADER: "wimg/wimg-Bridging-Header.h"
+        FRAMEWORK_SEARCH_PATHS:
+          - "$(inherited)"
+          - "\"Frameworks\""
         HEADER_SEARCH_PATHS:
           - "$(inherited)"
           - "$(PROJECT_DIR)/Frameworks/libwimg.xcframework/ios-arm64/Headers"
           - "$(PROJECT_DIR)/Frameworks/libwimg.xcframework/ios-arm64-simulator/Headers"
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
     dependencies:
       - framework: Frameworks/libwimg.xcframework
+        embed: true
     info:
       path: wimg/Info.plist
       properties:

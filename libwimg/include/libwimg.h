@@ -31,6 +31,12 @@ const uint8_t *wimg_get_error(void);
 
 // --- Import ---
 
+// Parse a CSV file without importing (preview only). Auto-detects format.
+// Returns pointer to length-prefixed JSON: {"format":"...","total_rows":N,"transactions":[...]}
+// Each transaction: {"id":"...","date":"YYYY-MM-DD","description":"...","amount":X.XX,"currency":"EUR","category":N}
+// Returns NULL on error.
+const uint8_t *wimg_parse_csv(const uint8_t *data, uint32_t len);
+
 // Import a CSV file. Auto-detects format (Comdirect, Trade Republic, Scalable).
 // Returns pointer to length-prefixed JSON: {"total_rows":N,"imported":N,"skipped_duplicates":N,"errors":N,"format":"...","categorized":N}
 // Returns NULL on error.

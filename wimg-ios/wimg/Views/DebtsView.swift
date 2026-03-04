@@ -5,6 +5,7 @@ struct DebtsView: View {
     @State private var showAddSheet = false
     @State private var payDebtId: String?
     @State private var payAmount = ""
+    @State private var undoMessage: String?
 
     private var totalDebt: Double {
         debts.reduce(0) { $0 + $1.total }
@@ -86,6 +87,7 @@ struct DebtsView: View {
                         payDebtId = nil
                         payAmount = ""
                         reload()
+                        showUndo("Zahlung eingetragen")
                     }
                 }
                 Button("Abbrechen", role: .cancel) {
@@ -94,6 +96,14 @@ struct DebtsView: View {
                 }
             }
             .onAppear { reload() }
+            .overlay(alignment: .bottom) {
+                if let msg = undoMessage {
+                    UndoToast(message: msg) {
+                        performUndo()
+                    }
+                    .padding(.bottom, 8)
+                }
+            }
         }
     }
 
@@ -110,6 +120,7 @@ struct DebtsView: View {
                     Button("Löschen", role: .destructive) {
                         try? LibWimg.deleteDebt(id: debt.id)
                         reload()
+                        showUndo("Schuld gelöscht")
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -144,6 +155,21 @@ struct DebtsView: View {
 
     private func reload() {
         debts = LibWimg.getDebts()
+    }
+
+    private func showUndo(_ message: String) {
+        withAnimation { undoMessage = message }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            withAnimation { if undoMessage == message { undoMessage = nil } }
+        }
+    }
+
+    private func performUndo() {
+        if LibWimg.undo() != nil {
+            reload()
+            NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+        }
+        withAnimation { undoMessage = nil }
     }
 }
 

@@ -5,6 +5,7 @@ struct TransactionsView: View {
     @State private var searchText = ""
     @State private var filter: TxFilter = .all
     @State private var selectedTransaction: Transaction?
+    @State private var undoMessage: String?
 
     enum TxFilter: String, CaseIterable {
         case all = "Alle"
@@ -81,6 +82,15 @@ struct TransactionsView: View {
             .sheet(item: $selectedTransaction) { tx in
                 CategoryEditorSheet(transaction: tx) {
                     reload()
+                    showUndo("Kategorie geändert")
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if let msg = undoMessage {
+                    UndoToast(message: msg) {
+                        performUndo()
+                    }
+                    .padding(.bottom, 8)
                 }
             }
         }
@@ -88,6 +98,21 @@ struct TransactionsView: View {
 
     private func reload() {
         transactions = LibWimg.getTransactions().sorted { $0.date > $1.date }
+    }
+
+    private func showUndo(_ message: String) {
+        withAnimation { undoMessage = message }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            withAnimation { if undoMessage == message { undoMessage = nil } }
+        }
+    }
+
+    private func performUndo() {
+        if LibWimg.undo() != nil {
+            reload()
+            NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+        }
+        withAnimation { undoMessage = nil }
     }
 
     private func formatDateHeader(_ dateStr: String) -> String {

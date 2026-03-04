@@ -51,6 +51,11 @@ struct ContentView: View {
                     Label("Analyse", systemImage: "chart.bar")
                 }
 
+            ReviewView()
+                .tabItem {
+                    Label("Rückblick", systemImage: "calendar")
+                }
+
             DebtsView()
                 .tabItem {
                     Label("Schulden", systemImage: "creditcard")

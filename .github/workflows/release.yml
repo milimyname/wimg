@@ -55,14 +55,13 @@ jobs:
           version: 0.15.2
 
       - name: Build WASM
-        working-directory: libwimg
-        run: zig build --release=small
+        run: ./scripts/build-wasm.sh
 
       - name: Upload WASM artifact
         uses: actions/upload-artifact@v4
         with:
           name: libwimg-wasm
-          path: libwimg/zig-out/bin/libwimg.wasm
+          path: wimg-web/static/libwimg.wasm
 
   build-ios:
     needs: check
@@ -74,26 +73,14 @@ jobs:
         with:
           version: 0.15.2
 
-      - name: Build iOS (aarch64)
-        working-directory: libwimg
-        run: |
-          mkdir -p build-ios/{ios,sim}
+      - name: Install XcodeGen
+        run: brew install xcodegen
 
-          echo "=== aarch64-ios ==="
-          zig build -Dtarget=aarch64-ios --release=small
-          cp zig-out/lib/libwimg.a build-ios/ios/libwimg.a
+      - name: Build iOS XCFramework
+        run: ./scripts/build-ios.sh
 
-          echo "=== aarch64-ios-simulator ==="
-          zig build -Dtarget=aarch64-ios-simulator --release=small
-          cp zig-out/lib/libwimg.a build-ios/sim/libwimg.a
-
-      - name: Create XCFramework
-        working-directory: libwimg
-        run: |
-          xcodebuild -create-xcframework \
-            -library build-ios/ios/libwimg.a -headers include \
-            -library build-ios/sim/libwimg.a -headers include \
-            -output build-ios/libwimg.xcframework
+      - name: Generate Xcode project
+        run: ./scripts/gen-xcodeproj.sh
 
       - name: Zip XCFramework
         working-directory: libwimg/build-ios

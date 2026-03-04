@@ -34,3 +34,9 @@ struct ImportResult: Codable {
     let format: String
     let categorized: Int
 }
+
+struct ParseResult: Codable {
+    let format: String
+    let total_rows: Int
+    let transactions: [Transaction]
+}
