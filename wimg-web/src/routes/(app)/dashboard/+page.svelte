@@ -7,8 +7,8 @@
   } from "$lib/wasm";
   import { formatEur } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
-  import MonthPicker from "../../components/MonthPicker.svelte";
-  import DonutChart from "../../components/DonutChart.svelte";
+  import MonthPicker from "../../../components/MonthPicker.svelte";
+  import DonutChart from "../../../components/DonutChart.svelte";
 
   const now = new Date();
   let year = $state(now.getFullYear());

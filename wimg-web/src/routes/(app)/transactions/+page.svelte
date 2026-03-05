@@ -10,7 +10,7 @@
   import { formatAmountSigned, formatDateHeading } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
   import { toastStore } from "$lib/toast.svelte";
-  import BottomSheet from "../../components/BottomSheet.svelte";
+  import BottomSheet from "../../../components/BottomSheet.svelte";
 
   type Filter = "all" | "expenses" | "income";
 

@@ -7,7 +7,7 @@
   } from "$lib/wasm";
   import { formatEur, formatDateShort } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
-  import MonthPicker from "../../components/MonthPicker.svelte";
+  import MonthPicker from "../../../components/MonthPicker.svelte";
 
   const monthNames = [
     "Januar",
