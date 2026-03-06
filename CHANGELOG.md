@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.7 (2026-03-06)
+
+- Enhance release workflow and script with pre-flight checks and Cloudflare Pages project creation
+
 ## v0.4.6 (2026-03-06)
 
 - fix svelte-check: add @types/node, a11y labels, empty CSS rule
