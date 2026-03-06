@@ -7,34 +7,27 @@
 
 import { getChanges, applyChanges, opfsSave, type SyncRow } from "./wasm";
 import { accountStore } from "./account.svelte";
-
-const SYNC_API =
-  typeof window !== "undefined" && window.location.hostname === "localhost"
-    ? "http://localhost:8787"
-    : "https://wimg-sync.mili-my.name";
-
-const LS_KEY_SYNC = "wimg_sync_key";
-const LS_KEY_LAST_SYNC = "wimg_sync_last_ts";
+import { SYNC_API_URL, LS_SYNC_KEY, LS_SYNC_LAST_TS } from "./config";
 
 export function getSyncKey(): string | null {
-  return localStorage.getItem(LS_KEY_SYNC);
+  return localStorage.getItem(LS_SYNC_KEY);
 }
 
 export function setSyncKey(key: string): void {
-  localStorage.setItem(LS_KEY_SYNC, key);
+  localStorage.setItem(LS_SYNC_KEY, key);
 }
 
 export function clearSyncKey(): void {
-  localStorage.removeItem(LS_KEY_SYNC);
-  localStorage.removeItem(LS_KEY_LAST_SYNC);
+  localStorage.removeItem(LS_SYNC_KEY);
+  localStorage.removeItem(LS_SYNC_LAST_TS);
 }
 
 export function getLastSyncTimestamp(): number {
-  return Number(localStorage.getItem(LS_KEY_LAST_SYNC) || "0");
+  return Number(localStorage.getItem(LS_SYNC_LAST_TS) || "0");
 }
 
 function setLastSyncTimestamp(ts: number): void {
-  localStorage.setItem(LS_KEY_LAST_SYNC, String(ts));
+  localStorage.setItem(LS_SYNC_LAST_TS, String(ts));
 }
 
 export function isSyncEnabled(): boolean {
@@ -46,7 +39,7 @@ export async function syncPush(syncKey: string): Promise<number> {
   const changes: SyncRow[] = getChanges(lastSync);
   if (changes.length === 0) return 0;
 
-  const res = await fetch(`${SYNC_API}/sync/${syncKey}`, {
+  const res = await fetch(`${SYNC_API_URL}/sync/${syncKey}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ rows: changes }),
@@ -64,7 +57,7 @@ export async function syncPush(syncKey: string): Promise<number> {
 export async function syncPull(syncKey: string): Promise<number> {
   const lastSync = getLastSyncTimestamp();
 
-  const res = await fetch(`${SYNC_API}/sync/${syncKey}?since=${lastSync}`);
+  const res = await fetch(`${SYNC_API_URL}/sync/${syncKey}?since=${lastSync}`);
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Sync pull failed: ${res.status} ${body}`);

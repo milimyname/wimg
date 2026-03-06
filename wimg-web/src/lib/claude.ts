@@ -7,20 +7,18 @@
  */
 
 import { CATEGORIES, type Transaction, setCategory } from "./wasm";
-
-const API_KEY_STORAGE = "wimg_claude_api_key";
-const API_URL = "https://api.anthropic.com/v1/messages";
+import { CLAUDE_API_URL, CLAUDE_MODEL, CLAUDE_BATCH_SIZE, LS_CLAUDE_API_KEY } from "./config";
 
 export function getApiKey(): string | null {
-  return localStorage.getItem(API_KEY_STORAGE);
+  return localStorage.getItem(LS_CLAUDE_API_KEY);
 }
 
 export function setApiKey(key: string): void {
-  localStorage.setItem(API_KEY_STORAGE, key);
+  localStorage.setItem(LS_CLAUDE_API_KEY, key);
 }
 
 export function removeApiKey(): void {
-  localStorage.removeItem(API_KEY_STORAGE);
+  localStorage.removeItem(LS_CLAUDE_API_KEY);
 }
 
 /** Build category name→id map for Claude's response parsing. */
@@ -60,13 +58,12 @@ export async function categorizeWithClaude(transactions: Transaction[]): Promise
     return { categorized: 0, errors: [] };
   }
 
-  const BATCH_SIZE = 50;
   const nameToId = categoryNameToId();
   let categorized = 0;
   const errors: string[] = [];
 
-  for (let i = 0; i < uncategorized.length; i += BATCH_SIZE) {
-    const batch = uncategorized.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < uncategorized.length; i += CLAUDE_BATCH_SIZE) {
+    const batch = uncategorized.slice(i, i + CLAUDE_BATCH_SIZE);
     const descriptions = batch
       .map(
         (tx, idx) =>
@@ -88,7 +85,7 @@ Respond with ONLY a JSON array of objects, one per transaction, in order:
 Use the exact category names from the list above. If unsure, use "Other".`;
 
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch(CLAUDE_API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -97,7 +94,7 @@ Use the exact category names from the list above. If unsure, use "Other".`;
           "anthropic-dangerous-direct-browser-access": "true",
         },
         body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
+          model: CLAUDE_MODEL,
           max_tokens: 1024,
           messages: [{ role: "user", content: prompt }],
         }),
@@ -119,7 +116,7 @@ Use the exact category names from the list above. If unsure, use "Other".`;
       // Extract JSON array from response
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
-        errors.push(`Could not parse response for batch ${Math.floor(i / BATCH_SIZE) + 1}`);
+        errors.push(`Could not parse response for batch ${Math.floor(i / CLAUDE_BATCH_SIZE) + 1}`);
         continue;
       }
 
@@ -140,7 +137,7 @@ Use the exact category names from the list above. If unsure, use "Other".`;
       }
     } catch (e) {
       errors.push(
-        `Batch ${Math.floor(i / BATCH_SIZE) + 1} failed: ${e instanceof Error ? e.message : "Unknown error"}`,
+        `Batch ${Math.floor(i / CLAUDE_BATCH_SIZE) + 1} failed: ${e instanceof Error ? e.message : "Unknown error"}`,
       );
     }
   }

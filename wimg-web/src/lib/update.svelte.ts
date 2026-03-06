@@ -1,17 +1,16 @@
 import { APP_VERSION, RELEASES_URL, IS_BREAKING } from "./version";
-
-const VERSION_KEY = "wimg-last-version";
+import { LS_LAST_VERSION } from "./config";
 
 let showBanner = $state(false);
 let sheetOpen = $state(false);
 let waitingSW: ServiceWorker | null = $state(null);
 
 function getLastVersion(): string | null {
-  return localStorage.getItem(VERSION_KEY);
+  return localStorage.getItem(LS_LAST_VERSION);
 }
 
 function setLastVersion(version: string) {
-  localStorage.setItem(VERSION_KEY, version);
+  localStorage.setItem(LS_LAST_VERSION, version);
 }
 
 function trackWaitingSW(sw: ServiceWorker) {

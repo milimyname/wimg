@@ -374,7 +374,7 @@ struct SettingsView: View {
 
                     Divider()
 
-                    Link(destination: URL(string: "https://github.com/milimyname/wimg/releases")!) {
+                    Link(destination: URL(string: WimgConfig.releasesURL)!) {
                         HStack {
                             Text("GitHub")
                                 .font(.subheadline)

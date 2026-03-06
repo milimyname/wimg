@@ -7,8 +7,8 @@ struct ClaudeResult {
 
 /// Claude API integration for iOS — mirrors wimg-web/src/lib/claude.ts
 enum ClaudeAPI {
-    private static let storageKey = "wimg_claude_api_key"
-    private static let apiURL = "https://api.anthropic.com/v1/messages"
+    private static let storageKey = WimgConfig.udClaudeAPIKey
+    private static let apiURL = WimgConfig.claudeAPIURL
 
     static var hasKey: Bool {
         getKey() != nil
@@ -54,7 +54,7 @@ enum ClaudeAPI {
             return ClaudeResult(categorized: 0, errors: [])
         }
 
-        let batchSize = 50
+        let batchSize = WimgConfig.claudeBatchSize
         let map = nameToId()
         var totalCategorized = 0
         var errors: [String] = []
@@ -132,7 +132,7 @@ enum ClaudeAPI {
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 
         let body: [String: Any] = [
-            "model": "claude-haiku-4-5-20251001",
+            "model": WimgConfig.claudeModel,
             "max_tokens": 1024,
             "messages": [["role": "user", "content": prompt]],
         ]

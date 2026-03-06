@@ -4,14 +4,9 @@ import Foundation
 actor SyncService {
     static let shared = SyncService()
 
-    #if DEBUG
-    private let baseURL = "http://localhost:8787"
-    #else
-    private let baseURL = "https://wimg-sync.mili-my.name"
-    #endif
-
-    private let keyDefault = "wimg_sync_key"
-    private let tsDefault = "wimg_sync_last_ts"
+    private let baseURL = WimgConfig.syncBaseURL
+    private let keyDefault = WimgConfig.udSyncKey
+    private let tsDefault = WimgConfig.udSyncLastTS
 
     var syncKey: String? {
         get { UserDefaults.standard.string(forKey: keyDefault) }
