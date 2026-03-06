@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.4.6 (2026-03-06)
+
+- fix svelte-check: add @types/node, a11y labels, empty CSS rule
+- release: v0.4.5
+- fix oxfmt formatting
+
 ## v0.4.5 (2026-03-06)
 
 - fix oxfmt formatting
