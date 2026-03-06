@@ -8,7 +8,7 @@ pre-commit:
 
     web-fmt:
       root: wimg-web/
-      glob: "*.{ts,svelte,js}"
+      glob: "*.{ts,svelte,js,css,html}"
       run: bunx oxfmt --check
 
     web-lint:
