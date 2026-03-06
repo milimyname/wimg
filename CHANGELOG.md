@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.10 (2026-03-06)
+
+- Add settings, sync worker, JSON unescape fix, and UI improvements
+
 ## v0.4.9 (2026-03-06)
 
 - Update Zig test command in release workflow to remove optimization flag for improved consistency
