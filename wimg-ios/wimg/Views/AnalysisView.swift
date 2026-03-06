@@ -18,38 +18,44 @@ struct AnalysisView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 20) {
                     MonthPicker(year: $year, month: $month)
                         .padding(.top, 8)
 
                     if let cats = summary?.by_category, !cats.isEmpty {
-                        // Donut
-                        Chart(cats) { cat in
-                            SectorMark(
-                                angle: .value("Betrag", cat.amount),
-                                innerRadius: .ratio(0.6),
-                                angularInset: 1
-                            )
-                            .foregroundStyle(WimgCategory.from(cat.id).color)
-                        }
-                        .frame(height: 220)
-                        .padding(.horizontal)
+                        // Donut chart card
+                        VStack(spacing: 16) {
+                            Chart(cats) { cat in
+                                SectorMark(
+                                    angle: .value("Betrag", cat.amount),
+                                    innerRadius: .ratio(0.6),
+                                    angularInset: 1.5
+                                )
+                                .foregroundStyle(WimgCategory.from(cat.id).color)
+                                .cornerRadius(4)
+                            }
+                            .frame(height: 220)
+                            .padding(.horizontal, 20)
 
-                        // Total
-                        Text("Gesamt: \(formatAmountShort(summary?.expenses ?? 0))")
-                            .font(.title3.bold())
+                            // Total
+                            Text("Gesamt: \(formatAmountShort(summary?.expenses ?? 0))")
+                                .font(.system(.title3, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.text)
+                        }
+                        .padding(.vertical, 20)
+                        .wimgCard(radius: WimgTheme.radiusLarge)
+                        .padding(.horizontal)
 
                         // Category breakdown
                         VStack(spacing: 0) {
                             ForEach(cats) { cat in
                                 categoryRow(cat, total: summary?.expenses ?? 1)
                                 if cat.id != cats.last?.id {
-                                    Divider().padding(.leading, 52)
+                                    Divider().padding(.leading, 64)
                                 }
                             }
                         }
-                        .background(.regularMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .wimgCard(radius: WimgTheme.radiusLarge)
                         .padding(.horizontal)
                     } else {
                         ContentUnavailableView(
@@ -59,9 +65,9 @@ struct AnalysisView: View {
                         )
                     }
                 }
-                .padding(.bottom, 20)
+                .padding(.bottom, 24)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(WimgTheme.bg)
             .navigationTitle("Analyse")
             .onChange(of: year) { reload() }
             .onChange(of: month) { reload() }
@@ -77,39 +83,52 @@ struct AnalysisView: View {
         let category = WimgCategory.from(cat.id)
         let pct = total > 0 ? cat.amount / total : 0
 
-        return HStack(spacing: 12) {
+        return HStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(category.color.opacity(0.15))
-                    .frame(width: 36, height: 36)
+                    .fill(category.color.opacity(0.12))
+                    .frame(width: 44, height: 44)
                 Image(systemName: category.icon)
-                    .font(.system(size: 14))
+                    .font(.system(size: 16))
                     .foregroundStyle(category.color)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text(cat.name)
-                        .font(.subheadline.bold())
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.text)
                     Spacer()
                     Text(formatAmountShort(cat.amount))
-                        .font(.subheadline)
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.text)
                 }
-                ProgressView(value: pct)
-                    .tint(category.color)
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color(.systemGray5))
+                            .frame(height: 6)
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(category.color)
+                            .frame(width: geo.size.width * pct, height: 6)
+                    }
+                }
+                .frame(height: 6)
+
                 HStack {
                     Text("\(cat.count) Umsätze")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .font(.system(.caption2, design: .rounded, weight: .medium))
+                        .foregroundStyle(WimgTheme.textSecondary)
                     Spacer()
                     Text(String(format: "%.0f%%", pct * 100))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .font(.system(.caption2, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.textSecondary)
                 }
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
     }
 
     private func reload() {

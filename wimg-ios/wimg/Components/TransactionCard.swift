@@ -12,39 +12,37 @@ struct TransactionCard: View {
         Button {
             onTap?()
         } label: {
-            HStack(spacing: 12) {
+            HStack(spacing: 14) {
                 // Category icon
                 ZStack {
                     Circle()
-                        .fill(category.color.opacity(0.15))
-                        .frame(width: 40, height: 40)
+                        .fill(category.color.opacity(0.12))
+                        .frame(width: 48, height: 48)
                     Image(systemName: category.icon)
-                        .font(.system(size: 16))
+                        .font(.system(size: 18))
                         .foregroundStyle(category.color)
                 }
 
                 // Description + category
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(transaction.description)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
                         .lineLimit(1)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(WimgTheme.text)
 
                     Text(category.name)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(WimgTheme.textSecondary)
                 }
 
                 Spacer()
 
                 // Amount
                 Text(formatAmount(transaction.amount))
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(transaction.isIncome ? .green : .primary)
+                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                    .foregroundStyle(transaction.isIncome ? .green : WimgTheme.text)
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, 10)
             .padding(.horizontal, 16)
         }
         .buttonStyle(.plain)
@@ -54,9 +52,9 @@ struct TransactionCard: View {
 func formatAmount(_ amount: Double) -> String {
     let formatted = String(format: "%.2f", abs(amount))
     let sign = amount < 0 ? "-" : (amount > 0 ? "+" : "")
-    return "\(sign)\(formatted) €"
+    return "\(sign)\(formatted) \u{20AC}"
 }
 
 func formatAmountShort(_ amount: Double) -> String {
-    String(format: "%.2f €", amount)
+    String(format: "%.2f \u{20AC}", amount)
 }

@@ -3,23 +3,22 @@
 
   const DURATION = 5;
   const R = 9;
-  const C = 2 * Math.PI * R; // circumference ≈ 56.55
+  const C = 2 * Math.PI * R; // circumference
 </script>
 
 {#if toastStore.visible}
   <div
-    class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-lg"
+    class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-lg"
   >
     <div
-      class="bg-gray-900 text-white rounded-xl px-4 py-3 shadow-lg flex items-center justify-between gap-3"
+      class="bg-(--color-text) text-white rounded-2xl px-5 py-3.5 shadow-[var(--shadow-soft)] flex items-center justify-between gap-3"
     >
-      <span class="text-sm font-medium truncate">{toastStore.message}</span>
+      <span class="text-sm font-bold truncate">{toastStore.message}</span>
       <div class="flex items-center gap-2 shrink-0">
         {#if toastStore.hasUndo}
           <button
             onclick={() => toastStore.triggerUndo()}
-            class="text-sm font-bold cursor-pointer hover:opacity-80 transition-opacity"
-            style="color: var(--color-primary-light)"
+            class="text-sm font-bold cursor-pointer hover:opacity-80 transition-opacity text-(--color-accent)"
           >
             Rückgängig
           </button>

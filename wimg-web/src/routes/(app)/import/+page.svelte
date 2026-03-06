@@ -123,7 +123,6 @@
       importResult = await importCsv(csvBuffer);
       csvBuffer = null;
 
-      // Load recently added transactions for preview
       const allTxns = getTransactions();
       previewTransactions = allTxns.slice(0, 20);
       showAllPreview = false;
@@ -197,19 +196,17 @@
       trade_republic: { name: "Trade Republic", color: "#1a1a2e" },
       scalable_capital: { name: "Scalable Capital", color: "#6c5ce7" },
     };
-    return map[format] ?? { name: "Unbekannt", color: "#4361ee" };
+    return map[format] ?? { name: "Unbekannt", color: "#1A1A1A" };
   }
 </script>
 
-<h2 class="text-lg font-bold text-center mb-4">CSV Import</h2>
+<h2 class="text-xl font-display font-extrabold text-center mb-5">CSV Import</h2>
 
 <!-- Drop Zone (idle + preview stages) -->
 {#if stage === "idle" || stage === "preview"}
   <div
-    class="flex flex-col items-center gap-5 rounded-xl border-2 border-dashed px-6 py-10 mb-4 transition-all cursor-pointer bg-white"
-    style="border-color: {dragging
-      ? 'var(--color-primary)'
-      : 'rgba(var(--color-primary-rgb, 67, 97, 238), 0.25)'}"
+    class="flex flex-col items-center gap-5 rounded-3xl border-2 border-dashed px-6 py-10 mb-5 transition-all cursor-pointer bg-white shadow-[var(--shadow-card)]"
+    style="border-color: {dragging ? 'var(--color-text)' : '#e0dcd6'}"
     role="button"
     tabindex="0"
     ondragover={handleDragOver}
@@ -229,56 +226,29 @@
 
     {#if parsing}
       <div
-        class="animate-spin w-10 h-10 border-4 border-t-transparent rounded-full"
-        style="border-color: var(--color-primary); border-top-color: transparent"
+        class="animate-spin w-10 h-10 border-4 border-(--color-text) border-t-transparent rounded-full"
       ></div>
-      <p class="text-sm text-gray-500">Analysiere...</p>
+      <p class="text-sm text-(--color-text-secondary) font-medium">Analysiere...</p>
     {:else}
-      <div
-        class="w-16 h-16 rounded-full flex items-center justify-center"
-        style="background-color: var(--color-primary-light, #e8e0ff)"
-      >
+      <div class="bg-gray-100 p-5 rounded-full mb-2">
         {#if dragging}
-          <svg
-            class="w-8 h-8"
-            style="color: var(--color-primary)"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 4v16m8-8H4"
-            />
+          <svg class="w-8 h-8 text-(--color-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
         {:else}
-          <svg
-            class="w-8 h-8"
-            style="color: var(--color-primary)"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-            />
+          <svg class="w-8 h-8 text-(--color-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
         {/if}
       </div>
       <div class="text-center">
-        <p class="text-lg font-bold">CSV-Datei hochladen</p>
-        <p class="text-sm text-gray-400 mt-1 max-w-[240px]">
+        <p class="text-xl font-display font-extrabold">CSV-Datei hochladen</p>
+        <p class="text-sm text-(--color-text-secondary) mt-1.5 max-w-[240px] font-medium">
           Ziehe deine Bankdatei hierhin oder tippe zum Durchsuchen
         </p>
       </div>
       <button
-        class="px-6 py-2.5 rounded-full text-sm font-bold text-white shadow-md cursor-pointer hover:opacity-90 transition-opacity"
-        style="background-color: var(--color-primary)"
+        class="px-8 py-3 rounded-full text-sm font-bold bg-(--color-text) text-white shadow-md cursor-pointer hover:opacity-90 transition-opacity"
         onclick={(e) => {
           e.stopPropagation();
           document.getElementById("file-input")?.click();
@@ -292,9 +262,7 @@
 
 <!-- Error -->
 {#if importError}
-  <div
-    class="bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-red-700 text-sm"
-  >
+  <div class="bg-red-50 rounded-3xl p-5 mb-4 text-red-700 text-sm font-medium">
     {importError}
   </div>
 {/if}
@@ -303,31 +271,24 @@
 {#if stage === "preview" && parseResult}
   <!-- Format Badge -->
   {#if parseResult.format && parseResult.format !== "unknown"}
-    <div
-      class="flex items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm border border-gray-100 mb-3"
-    >
+    <div class="flex items-center justify-between gap-4 rounded-3xl bg-emerald-50 p-5 mb-3">
       <div class="flex flex-col gap-1 flex-1">
         <div class="flex items-center gap-2">
-          <svg
-            class="w-5 h-5 text-blue-500 shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
+          <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p class="text-base font-bold">
+          <p class="text-base font-bold text-emerald-800">
             {formatLabel(parseResult.format)} CSV erkannt
           </p>
         </div>
-        <p class="text-xs text-gray-400 pl-7">
+        <p class="text-xs text-emerald-600 pl-7">
           {parseResult.total_rows} Zeilen gelesen
         </p>
+      </div>
+      <div class="w-12 h-12 bg-white/50 rounded-full flex items-center justify-center">
+        <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        </svg>
       </div>
     </div>
   {/if}
@@ -335,34 +296,27 @@
   <!-- Target Account Badge -->
   {#if parseResult.format && parseResult.format !== "unknown"}
     {@const acct = accountForFormat(parseResult.format)}
-    <div
-      class="flex items-center gap-2.5 rounded-xl bg-white p-3.5 shadow-sm border border-gray-100 mb-3"
-    >
-      <div
-        class="w-3 h-3 rounded-full shrink-0"
-        style="background-color: {acct.color}"
-      ></div>
-      <p class="text-xs text-gray-500">
-        <span class="font-semibold text-gray-700">Zielkonto:</span> {acct.name}
+    <div class="flex items-center gap-2.5 rounded-2xl bg-white p-4 shadow-[var(--shadow-card)] mb-3">
+      <div class="w-3 h-3 rounded-full shrink-0" style="background-color: {acct.color}"></div>
+      <p class="text-xs text-(--color-text-secondary)">
+        <span class="font-bold text-(--color-text)">Zielkonto:</span> {acct.name}
       </p>
     </div>
   {/if}
 
   <!-- Summary Card -->
-  <div
-    class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-3"
-  >
+  <div class="bg-blue-50 rounded-3xl p-5 mb-4">
     <p class="text-sm font-bold text-blue-900">
       {parseResult.transactions.length} Buchungen gefunden
     </p>
     <div class="flex gap-4 mt-2">
       {#if previewTotals.income > 0}
-        <p class="text-xs text-emerald-600">
+        <p class="text-xs text-emerald-600 font-bold">
           +{formatEur(previewTotals.income)} Einnahmen
         </p>
       {/if}
       {#if previewTotals.expenses < 0}
-        <p class="text-xs text-rose-500">
+        <p class="text-xs text-rose-500 font-bold">
           {formatEur(previewTotals.expenses)} Ausgaben
         </p>
       {/if}
@@ -371,45 +325,38 @@
 
   <!-- Preview Transaction List -->
   {#if parseResult.transactions.length > 0}
-    <div class="flex items-center justify-between mb-2">
-      <h3 class="text-base font-bold">Vorschau</h3>
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-lg font-display font-bold">Vorschau</h3>
       {#if parseResult.transactions.length > 5}
         <button
-          class="text-xs font-semibold cursor-pointer"
-          style="color: var(--color-primary)"
+          class="text-xs font-bold cursor-pointer text-(--color-text-secondary) hover:text-(--color-text) transition-colors"
           onclick={() => (showAllPreview = !showAllPreview)}
         >
           {showAllPreview ? "Weniger" : `Alle ${parseResult.transactions.length} anzeigen`}
         </button>
       {/if}
     </div>
-    <div class="flex flex-col gap-2 mb-4">
+    <div class="flex flex-col gap-3 mb-5">
       {#each previewSlice as txn}
-        <div
-          class="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-50 shadow-sm"
-        >
-          <div class="flex items-center gap-3">
+        <div class="flex items-center justify-between p-4 bg-white rounded-3xl shadow-[var(--shadow-card)]">
+          <div class="flex items-center gap-3.5">
             <div
-              class="w-10 h-10 rounded-full flex items-center justify-center text-lg"
-              style="background-color: {CATEGORIES[txn.category]?.color ??
-                '#dfe6e9'}15"
+              class="w-12 h-12 rounded-full flex items-center justify-center text-lg shrink-0"
+              style="background-color: {CATEGORIES[txn.category]?.color ?? '#dfe6e9'}15"
             >
               {CATEGORIES[txn.category]?.icon ?? "📦"}
             </div>
             <div class="min-w-0">
-              <p class="text-sm font-bold truncate max-w-[180px]">
-                {txn.description}
-              </p>
-              <p class="text-xs text-gray-400">
-                {formatDate(txn.date)} &middot; {CATEGORIES[txn.category]
-                  ?.name ?? "Sonstiges"}
+              <p class="text-sm font-bold truncate max-w-[180px]">{txn.description}</p>
+              <p class="text-xs text-(--color-text-secondary) mt-0.5 font-medium">
+                {formatDate(txn.date)} &middot; {CATEGORIES[txn.category]?.name ?? "Sonstiges"}
               </p>
             </div>
           </div>
           <p
-            class="text-sm font-bold tabular-nums shrink-0"
+            class="text-sm font-extrabold tabular-nums shrink-0"
             class:text-rose-500={txn.amount < 0}
-            class:text-emerald-500={txn.amount > 0}
+            class:text-emerald-600={txn.amount > 0}
           >
             {txn.amount < 0 ? "-" : "+"}{formatEur(Math.abs(txn.amount))}
           </p>
@@ -418,32 +365,32 @@
     </div>
 
     <!-- Action Buttons -->
-    <div class="flex gap-3 mb-4">
+    <div class="flex flex-col gap-3 mb-5">
       <button
         onclick={confirmImport}
         disabled={importing}
-        class="flex-1 px-6 py-3 rounded-xl text-sm font-bold text-white cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 shadow-md"
-        style="background-color: var(--color-primary)"
+        class="w-full px-6 py-4 rounded-full text-base font-display font-extrabold bg-(--color-accent) text-(--color-text) cursor-pointer hover:bg-(--color-accent-hover) transition-colors disabled:opacity-50 shadow-[var(--shadow-soft)]"
       >
         {#if importing}
           <span class="flex items-center justify-center gap-2">
-            <span
-              class="animate-spin w-4 h-4 border-2 border-t-transparent rounded-full border-white inline-block"
-            ></span>
+            <span class="animate-spin w-4 h-4 border-2 border-t-transparent rounded-full border-(--color-text) inline-block"></span>
             Importiere...
           </span>
         {:else}
-          Importieren ({parseResult.transactions.length} Buchungen)
+          {parseResult.transactions.length} Buchungen importieren
         {/if}
       </button>
       <button
         onclick={cancelPreview}
         disabled={importing}
-        class="px-5 py-3 rounded-xl text-sm font-bold text-gray-500 bg-gray-100 cursor-pointer hover:bg-gray-200 transition-colors disabled:opacity-50"
+        class="w-full px-6 py-3 rounded-full text-sm font-bold text-(--color-text-secondary) bg-gray-100 cursor-pointer hover:bg-gray-200 transition-colors disabled:opacity-50"
       >
         Abbrechen
       </button>
     </div>
+    <p class="text-center text-(--color-text-secondary) text-[10px] uppercase tracking-widest font-bold mb-4">
+      Local-first &middot; Sicherer Import
+    </p>
   {/if}
 {/if}
 
@@ -451,70 +398,25 @@
 {#if stage === "imported" && importResult}
   <!-- Detected Format Card -->
   {#if importResult.format && importResult.format !== "unknown"}
-    <div
-      class="flex items-center justify-between gap-4 rounded-xl bg-white p-4 shadow-sm border border-gray-100 mb-3"
-    >
+    <div class="flex items-center justify-between gap-4 rounded-3xl bg-white p-5 shadow-[var(--shadow-card)] mb-3">
       <div class="flex flex-col gap-1 flex-1">
         <div class="flex items-center gap-2">
-          <svg
-            class="w-5 h-5 text-emerald-500 shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
+          <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p class="text-base font-bold">
-            {formatLabel(importResult.format)} CSV erkannt
-          </p>
+          <p class="text-base font-bold">{formatLabel(importResult.format)} CSV erkannt</p>
         </div>
-        <p class="text-xs text-gray-400 pl-7">
-          Importiert nach <span class="font-semibold text-gray-500">{accountForFormat(importResult.format).name}</span>
+        <p class="text-xs text-(--color-text-secondary) pl-7">
+          Importiert nach <span class="font-bold text-(--color-text)">{accountForFormat(importResult.format).name}</span>
         </p>
-      </div>
-      <div
-        class="w-14 h-14 rounded-lg flex items-center justify-center"
-        style="background-color: var(--color-primary-light, #f0edff)"
-      >
-        <svg
-          class="w-7 h-7 opacity-40"
-          style="color: var(--color-primary)"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-          />
-        </svg>
       </div>
     </div>
   {/if}
 
   <!-- Import Summary -->
-  <div
-    class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mb-3 flex gap-3"
-  >
-    <svg
-      class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M5 13l4 4L19 7"
-      />
+  <div class="bg-emerald-50 rounded-3xl p-5 mb-3 flex gap-3">
+    <svg class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
     </svg>
     <div>
       <p class="text-sm font-bold text-emerald-900">Import abgeschlossen</p>
@@ -532,27 +434,14 @@
 
   <!-- Duplicate Warning -->
   {#if importResult.skipped_duplicates > 0}
-    <div
-      class="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-3 flex gap-3"
-    >
-      <svg
-        class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-        />
+    <div class="bg-amber-50 rounded-3xl p-5 mb-3 flex gap-3">
+      <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
       </svg>
       <div>
         <p class="text-sm font-bold text-amber-900">Duplikat-Hinweis</p>
         <p class="text-xs text-amber-700 mt-1">
-          {importResult.skipped_duplicates} Buchungen waren bereits vorhanden und
-          wurden übersprungen.
+          {importResult.skipped_duplicates} Buchungen waren bereits vorhanden und wurden übersprungen.
         </p>
       </div>
     </div>
@@ -560,47 +449,40 @@
 
   <!-- Transaction Preview -->
   {#if previewTransactions.length > 0}
-    <div class="flex items-center justify-between mb-2 mt-5">
-      <h3 class="text-base font-bold">
+    <div class="flex items-center justify-between mb-3 mt-6">
+      <h3 class="text-lg font-display font-bold">
         Vorschau ({previewTransactions.length} Buchungen)
       </h3>
       {#if previewTransactions.length > 3}
         <button
-          class="text-xs font-semibold cursor-pointer"
-          style="color: var(--color-primary)"
+          class="text-xs font-bold cursor-pointer text-(--color-text-secondary) hover:text-(--color-text) transition-colors"
           onclick={() => (showAllPreview = !showAllPreview)}
         >
           {showAllPreview ? "Weniger" : "Alle anzeigen"}
         </button>
       {/if}
     </div>
-    <div class="flex flex-col gap-2 mb-5">
+    <div class="flex flex-col gap-3 mb-5">
       {#each previewSlice as txn}
-        <div
-          class="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-50 shadow-sm"
-        >
-          <div class="flex items-center gap-3">
+        <div class="flex items-center justify-between p-4 bg-white rounded-3xl shadow-[var(--shadow-card)]">
+          <div class="flex items-center gap-3.5">
             <div
-              class="w-10 h-10 rounded-full flex items-center justify-center text-lg"
-              style="background-color: {CATEGORIES[txn.category]?.color ??
-                '#dfe6e9'}15"
+              class="w-12 h-12 rounded-full flex items-center justify-center text-lg shrink-0"
+              style="background-color: {CATEGORIES[txn.category]?.color ?? '#dfe6e9'}15"
             >
               {CATEGORIES[txn.category]?.icon ?? "📦"}
             </div>
             <div class="min-w-0">
-              <p class="text-sm font-bold truncate max-w-[180px]">
-                {txn.description}
-              </p>
-              <p class="text-xs text-gray-400">
-                {formatDate(txn.date)} &middot; {CATEGORIES[txn.category]
-                  ?.name ?? "Sonstiges"}
+              <p class="text-sm font-bold truncate max-w-[180px]">{txn.description}</p>
+              <p class="text-xs text-(--color-text-secondary) mt-0.5 font-medium">
+                {formatDate(txn.date)} &middot; {CATEGORIES[txn.category]?.name ?? "Sonstiges"}
               </p>
             </div>
           </div>
           <p
-            class="text-sm font-bold tabular-nums shrink-0"
+            class="text-sm font-extrabold tabular-nums shrink-0"
             class:text-rose-500={txn.amount < 0}
-            class:text-emerald-500={txn.amount > 0}
+            class:text-emerald-600={txn.amount > 0}
           >
             {txn.amount < 0 ? "-" : "+"}{formatEur(Math.abs(txn.amount))}
           </p>
@@ -612,89 +494,59 @@
   <!-- Import another file button -->
   <button
     onclick={() => { stage = "idle"; importResult = null; parseResult = null; previewTransactions = []; showAllPreview = false; }}
-    class="w-full mb-4 px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 bg-white cursor-pointer hover:bg-gray-50 transition-colors"
+    class="w-full mb-4 px-4 py-3 rounded-2xl text-sm font-bold text-(--color-text-secondary) bg-white shadow-[var(--shadow-card)] cursor-pointer hover:shadow-[var(--shadow-soft)] transition-shadow"
   >
     Weitere Datei importieren
   </button>
 
   <!-- Categorization Section -->
-  <div class="mb-4">
-    <h3 class="text-base font-bold mb-3">Kategorisierung</h3>
+  <div class="mb-5">
+    <h3 class="text-lg font-display font-bold mb-4">Kategorisierung</h3>
 
     <!-- Auto-Categorize (Rules) -->
-    <div class="bg-white rounded-xl border border-gray-100 p-4 mb-3">
+    <div class="bg-white rounded-3xl shadow-[var(--shadow-card)] p-5 mb-3">
       <div class="flex items-center gap-3">
-        <div
-          class="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-          style="background-color: var(--color-primary-light, #f0edff)"
-        >
-          <svg
-            class="w-5 h-5"
-            style="color: var(--color-primary)"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
+        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-(--color-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         </div>
         <div class="flex-1">
           <p class="text-sm font-bold">Regel-Engine</p>
-          <p class="text-xs text-gray-400">
+          <p class="text-xs text-(--color-text-secondary)">
             Keyword-Regeln auf alle unkategorisierten Buchungen anwenden
           </p>
         </div>
         <button
           onclick={handleAutoCategorize}
-          class="px-4 py-2 rounded-lg text-xs font-bold text-white cursor-pointer hover:opacity-90 transition-opacity"
-          style="background-color: var(--color-primary)"
+          class="px-4 py-2 rounded-full text-xs font-bold bg-(--color-text) text-white cursor-pointer hover:opacity-90 transition-opacity"
         >
           Starten
         </button>
       </div>
       {#if recategorizeCount !== null}
-        <p class="text-xs text-emerald-600 mt-2 pl-13">
+        <p class="text-xs text-emerald-600 mt-2 pl-13 font-bold">
           {recategorizeCount} Buchungen kategorisiert
         </p>
       {/if}
     </div>
 
     <!-- Claude AI Categorization -->
-    <div class="bg-white rounded-xl border border-gray-100 p-4">
+    <div class="bg-white rounded-3xl shadow-[var(--shadow-card)] p-5">
       <div class="flex items-center gap-3">
-        <div
-          class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center shrink-0"
-        >
-          <svg
-            class="w-5 h-5 text-purple-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-            />
+        <div class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
           </svg>
         </div>
         <div class="flex-1">
           <div class="flex items-center gap-2">
             <p class="text-sm font-bold">Claude AI</p>
             {#if hasKey}
-              <span
-                class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full"
-                >Aktiv</span
-              >
+              <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">Aktiv</span>
             {/if}
           </div>
-          <p class="text-xs text-gray-400">
+          <p class="text-xs text-(--color-text-secondary)">
             KI-gestützte Kategorisierung für verbleibende Buchungen
           </p>
         </div>
@@ -708,18 +560,17 @@
               type="password"
               bind:value={apiKey}
               placeholder="sk-ant-..."
-              class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs"
+              class="flex-1 bg-gray-50 rounded-2xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-(--color-accent)"
             />
             <button
               onclick={handleSaveKey}
               disabled={!apiKey.trim()}
-              class="px-3 py-2 rounded-lg text-xs font-bold text-white cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50"
-              style="background-color: var(--color-primary)"
+              class="px-3 py-2 rounded-full text-xs font-bold bg-(--color-text) text-white cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               Speichern
             </button>
           </div>
-          <p class="text-[10px] text-gray-400 mt-1.5">
+          <p class="text-[10px] text-(--color-text-secondary) mt-1.5">
             Nur lokal gespeichert. Wird nur an die Anthropic API gesendet.
           </p>
         </div>
@@ -731,13 +582,13 @@
           <button
             onclick={handleClaudeCategorize}
             disabled={claudeLoading}
-            class="px-4 py-2 rounded-lg text-xs font-bold text-white cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 bg-purple-600"
+            class="px-4 py-2 rounded-full text-xs font-bold text-white cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 bg-purple-600"
           >
             {claudeLoading ? "Kategorisiere..." : "Mit Claude kategorisieren"}
           </button>
           <button
             onclick={() => (showKeyInput = !showKeyInput)}
-            class="text-xs text-gray-400 px-2 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
+            class="text-xs text-(--color-text-secondary) px-2 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
           >
             {showKeyInput ? "Abbrechen" : "Key ändern"}
           </button>
@@ -756,11 +607,11 @@
       {#if claudeResult}
         <div class="mt-2 pl-13">
           {#if claudeResult.categorized > 0}
-            <p class="text-xs text-emerald-600">
+            <p class="text-xs text-emerald-600 font-bold">
               {claudeResult.categorized} Buchungen von Claude kategorisiert
             </p>
           {:else if claudeResult.errors.length === 0}
-            <p class="text-xs text-gray-400">
+            <p class="text-xs text-(--color-text-secondary)">
               Keine unkategorisierten Buchungen gefunden
             </p>
           {/if}
@@ -775,48 +626,38 @@
 
 <!-- Supported Formats (show when idle) -->
 {#if stage === "idle"}
-  <div class="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-    <h3 class="text-sm font-bold mb-3">Unterstützte Formate</h3>
-    <div class="space-y-3">
-      <div class="flex items-center gap-3">
-        <div
-          class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0"
-        >
-          <span class="text-blue-600 text-xs font-bold">CD</span>
+  <div class="bg-white rounded-3xl shadow-[var(--shadow-card)] p-5">
+    <h3 class="text-base font-display font-bold mb-4">Unterstützte Formate</h3>
+    <div class="space-y-4">
+      <div class="flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+          <span class="text-amber-700 text-xs font-extrabold">CD</span>
         </div>
         <div>
-          <p class="text-sm font-semibold">Comdirect</p>
-          <p class="text-xs text-gray-400">
-            Semikolon, ISO-8859-1, dd.MM.yyyy
-          </p>
+          <p class="text-sm font-bold">Comdirect</p>
+          <p class="text-xs text-(--color-text-secondary)">Semikolon, ISO-8859-1, dd.MM.yyyy</p>
         </div>
       </div>
-      <div class="flex items-center gap-3">
-        <div
-          class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center shrink-0"
-        >
-          <span class="text-green-600 text-xs font-bold">TR</span>
+      <div class="flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+          <span class="text-gray-700 text-xs font-extrabold">TR</span>
         </div>
         <div>
-          <p class="text-sm font-semibold">Trade Republic</p>
-          <p class="text-xs text-gray-400">Komma, UTF-8, YYYY-MM-DD</p>
+          <p class="text-sm font-bold">Trade Republic</p>
+          <p class="text-xs text-(--color-text-secondary)">Komma, UTF-8, YYYY-MM-DD</p>
         </div>
       </div>
-      <div class="flex items-center gap-3">
-        <div
-          class="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center shrink-0"
-        >
-          <span class="text-purple-600 text-xs font-bold">SC</span>
+      <div class="flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
+          <span class="text-purple-700 text-xs font-extrabold">SC</span>
         </div>
         <div>
-          <p class="text-sm font-semibold">Scalable Capital</p>
-          <p class="text-xs text-gray-400">Semikolon, UTF-8, flexible Daten</p>
+          <p class="text-sm font-bold">Scalable Capital</p>
+          <p class="text-xs text-(--color-text-secondary)">Semikolon, UTF-8, flexible Daten</p>
         </div>
       </div>
     </div>
-    <p
-      class="text-center text-[10px] text-gray-400 mt-4 uppercase tracking-widest font-medium"
-    >
+    <p class="text-center text-[10px] text-(--color-text-secondary) mt-5 uppercase tracking-widest font-bold">
       Local-first &middot; Sicherer Import
     </p>
   </div>

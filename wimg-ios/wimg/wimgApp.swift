@@ -12,12 +12,14 @@ struct wimgApp: App {
                         .font(.largeTitle)
                         .foregroundStyle(.red)
                     Text("Initialisierung fehlgeschlagen")
-                        .font(.headline)
+                        .font(.system(.headline, design: .rounded, weight: .bold))
                     Text(error)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(WimgTheme.textSecondary)
                 }
                 .padding()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(WimgTheme.bg)
             } else {
                 ContentView()
             }
@@ -69,7 +71,7 @@ struct ContentView: View {
                     Label("Import", systemImage: "square.and.arrow.down")
                 }
         }
-        .tint(.blue)
+        .tint(WimgTheme.text)
         .onAppear { accounts = LibWimg.getAccounts() }
         .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
             accounts = LibWimg.getAccounts()

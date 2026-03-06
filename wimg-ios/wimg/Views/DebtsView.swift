@@ -19,45 +19,59 @@ struct DebtsView: View {
         totalDebt > 0 ? totalPaid / totalDebt : 0
     }
 
+    private var activeCount: Int {
+        debts.filter { $0.total - $0.paid > 0 }.count
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
-                    // Overall progress
-                    VStack(spacing: 8) {
-                        Text("Schulden gesamt")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text(formatAmountShort(totalDebt - totalPaid))
-                            .font(.system(size: 30, weight: .bold, design: .rounded))
-                        ProgressView(value: overallProgress)
-                            .tint(.blue)
-                            .padding(.horizontal, 40)
-                        Text(String(format: "%.0f%% abbezahlt", overallProgress * 100))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                VStack(spacing: 20) {
+                    // Overall progress hero
+                    if !debts.isEmpty {
+                        heroCard
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                    // Section header
+                    HStack {
+                        Text("Deine Schulden")
+                            .font(.system(.title2, design: .rounded, weight: .black))
+                            .foregroundStyle(WimgTheme.text)
+                        Spacer()
+
+                        if !debts.isEmpty {
+                            Text("\(activeCount) Aktiv")
+                                .font(.system(.caption, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.text)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 6)
+                                .background(WimgTheme.accent)
+                                .clipShape(Capsule())
+                        }
+                    }
                     .padding(.horizontal)
 
-                    if debts.isEmpty {
-                        ContentUnavailableView(
-                            "Keine Schulden",
-                            systemImage: "checkmark.circle",
-                            description: Text("Tippe + um eine Schuld hinzuzufügen.")
-                        )
+                    if debts.isEmpty && !showAddSheet {
+                        VStack(spacing: 8) {
+                            Text("\u{1F4B3}")
+                                .font(.system(size: 48))
+                            Text("Keine Schulden")
+                                .font(.system(.title3, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.text)
+                            Text("Füge Schulden hinzu um den Fortschritt zu tracken")
+                                .font(.system(.subheadline, design: .rounded))
+                                .foregroundStyle(WimgTheme.textSecondary)
+                        }
+                        .padding(.vertical, 40)
                     } else {
                         ForEach(debts) { debt in
                             debtCard(debt)
                         }
                     }
                 }
-                .padding(.bottom, 20)
+                .padding(.bottom, 24)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(WimgTheme.bg)
             .navigationTitle("Schulden")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -65,6 +79,7 @@ struct DebtsView: View {
                         showAddSheet = true
                     } label: {
                         Image(systemName: "plus")
+                            .fontWeight(.bold)
                     }
                 }
             }
@@ -78,7 +93,7 @@ struct DebtsView: View {
                 get: { payDebtId != nil },
                 set: { if !$0 { payDebtId = nil; payAmount = "" } }
             )) {
-                TextField("Betrag (€)", text: $payAmount)
+                TextField("Betrag (\u{20AC})", text: $payAmount)
                     .keyboardType(.decimalPad)
                 Button("Bezahlen") {
                     if let id = payDebtId,
@@ -108,11 +123,142 @@ struct DebtsView: View {
         }
     }
 
+    // MARK: - Hero Card
+
+    private var heroCard: some View {
+        ZStack(alignment: .topTrailing) {
+            Circle()
+                .fill(.white.opacity(0.25))
+                .frame(width: 140, height: 140)
+                .blur(radius: 30)
+                .offset(x: 40, y: -40)
+
+            VStack(spacing: 12) {
+                Text("Verbleibende Schulden")
+                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text.opacity(0.7))
+                    .textCase(.uppercase)
+                    .tracking(1)
+
+                Text(formatAmountShort(totalDebt - totalPaid))
+                    .font(.system(size: 36, weight: .black, design: .rounded))
+                    .foregroundStyle(WimgTheme.text)
+                    .tracking(-1)
+
+                VStack(spacing: 8) {
+                    HStack {
+                        Text("Fortschritt")
+                            .font(.system(.caption, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.text.opacity(0.6))
+                        Spacer()
+                        Text(String(format: "%.0f%%", overallProgress * 100))
+                            .font(.system(.subheadline, design: .rounded, weight: .black))
+                            .foregroundStyle(WimgTheme.text)
+                    }
+
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(.white.opacity(0.4))
+                                .frame(height: 12)
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(WimgTheme.text)
+                                .frame(width: geo.size.width * overallProgress, height: 12)
+                        }
+                    }
+                    .frame(height: 12)
+                }
+                .padding(.top, 4)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(24)
+        }
+        .wimgHero()
+        .padding(.horizontal)
+    }
+
+    // MARK: - Debt Card
+
     private func debtCard(_ debt: Debt) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let remaining = debt.total - debt.paid
+        let pct = debt.total > 0 ? debt.paid / debt.total : 0
+        let isPaidOff = remaining <= 0
+
+        return VStack(spacing: 16) {
+            // Header
             HStack {
-                Text(debt.name)
-                    .font(.headline)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(debt.name)
+                        .font(.system(.headline, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.text)
+                    if debt.monthly > 0 {
+                        Text("Monatlich: \(formatAmountShort(debt.monthly))")
+                            .font(.system(.caption, design: .rounded, weight: .medium))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                    }
+                }
+                Spacer()
+
+                if isPaidOff {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 14))
+                        Text("Abbezahlt")
+                    }
+                    .font(.system(.caption, design: .rounded, weight: .bold))
+                    .foregroundStyle(.green)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Color.green.opacity(0.1))
+                    .clipShape(Capsule())
+                } else {
+                    Button {
+                        payDebtId = debt.id
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 14))
+                            Text("Bezahlt")
+                        }
+                        .font(.system(.caption, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.text)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(WimgTheme.accent)
+                        .clipShape(Capsule())
+                    }
+                }
+            }
+
+            // Progress
+            VStack(spacing: 6) {
+                HStack {
+                    Text("\(formatAmountShort(remaining)) übrig")
+                        .font(.system(.caption, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
+                    Spacer()
+                    Text(String(format: "%.0f%% erledigt", pct * 100))
+                        .font(.system(.caption, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.text)
+                }
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(Color(.systemGray5))
+                            .frame(height: 10)
+                        RoundedRectangle(cornerRadius: 5)
+                            .fill(isPaidOff ? Color.green : WimgTheme.text)
+                            .frame(width: geo.size.width * pct, height: 10)
+                    }
+                }
+                .frame(height: 10)
+            }
+
+            // Delete action
+            HStack {
                 Spacer()
                 Menu {
                     Button("Zahlung eintragen") {
@@ -124,33 +270,15 @@ struct DebtsView: View {
                         showUndo("Schuld gelöscht")
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .foregroundStyle(.secondary)
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                        .frame(width: 32, height: 32)
                 }
             }
-
-            ProgressView(value: debt.progress)
-                .tint(debt.isPaidOff ? .green : .blue)
-
-            HStack {
-                Text(formatAmountShort(debt.paid))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(formatAmountShort(debt.total))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if debt.monthly > 0 {
-                Text("Monatlich: \(formatAmountShort(debt.monthly))")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
         }
-        .padding()
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(20)
+        .wimgCard(radius: WimgTheme.radiusMedium)
         .padding(.horizontal)
     }
 
@@ -186,26 +314,72 @@ struct AddDebtSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Details") {
-                    TextField("Name (z.B. FOM, Klarna)", text: $name)
-                    TextField("Gesamtbetrag (€)", text: $total)
-                        .keyboardType(.decimalPad)
-                    TextField("Monatliche Rate (€, optional)", text: $monthly)
-                        .keyboardType(.decimalPad)
+            ScrollView {
+                VStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Name")
+                            .font(.system(.caption, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                            .textCase(.uppercase)
+                            .tracking(0.5)
+                        TextField("z.B. FOM, Klarna", text: $name)
+                            .font(.system(.body, design: .rounded))
+                            .padding(14)
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Gesamtbetrag")
+                            .font(.system(.caption, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                            .textCase(.uppercase)
+                            .tracking(0.5)
+                        TextField("z.B. 1234,56", text: $total)
+                            .font(.system(.body, design: .rounded))
+                            .keyboardType(.decimalPad)
+                            .padding(14)
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Monatliche Rate (optional)")
+                            .font(.system(.caption, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                            .textCase(.uppercase)
+                            .tracking(0.5)
+                        TextField("z.B. 50,00", text: $monthly)
+                            .font(.system(.body, design: .rounded))
+                            .keyboardType(.decimalPad)
+                            .padding(14)
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+
+                    Button {
+                        save()
+                    } label: {
+                        Text("Hinzufügen")
+                            .font(.system(.headline, design: .rounded, weight: .bold))
+                            .frame(maxWidth: .infinity)
+                            .padding(16)
+                            .background(WimgTheme.accent)
+                            .foregroundStyle(WimgTheme.text)
+                            .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusSmall, style: .continuous))
+                    }
+                    .disabled(name.isEmpty || total.isEmpty)
+                    .opacity(name.isEmpty || total.isEmpty ? 0.5 : 1)
+                    .padding(.top, 8)
                 }
+                .padding(20)
             }
+            .background(WimgTheme.bg)
             .navigationTitle("Schuld hinzufügen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Abbrechen") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Speichern") {
-                        save()
-                    }
-                    .disabled(name.isEmpty || total.isEmpty)
                 }
             }
         }

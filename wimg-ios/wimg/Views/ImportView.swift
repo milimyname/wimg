@@ -67,7 +67,7 @@ struct ImportView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 40)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(WimgTheme.bg)
             .navigationTitle("Import")
             .fileImporter(
                 isPresented: $isPickerPresented,
@@ -82,39 +82,47 @@ struct ImportView: View {
     // MARK: - File Picker Card
 
     private var filePickerCard: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "doc.badge.arrow.up")
-                .font(.system(size: 48))
-                .foregroundStyle(.blue)
+        VStack(spacing: 20) {
+            ZStack {
+                Circle()
+                    .fill(WimgTheme.accent.opacity(0.2))
+                    .frame(width: 80, height: 80)
+                Image(systemName: "doc.badge.arrow.up")
+                    .font(.system(size: 32))
+                    .foregroundStyle(WimgTheme.text)
+            }
 
-            Text("CSV-Datei importieren")
-                .font(.title3.bold())
+            VStack(spacing: 6) {
+                Text("CSV-Datei importieren")
+                    .font(.system(.title3, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text)
 
-            Text("Comdirect, Trade Republic oder Scalable Capital")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+                Text("Comdirect, Trade Republic oder Scalable Capital")
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(WimgTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
 
             Button {
                 isPickerPresented = true
             } label: {
                 Label("Datei auswählen", systemImage: "folder")
-                    .font(.headline)
+                    .font(.system(.headline, design: .rounded, weight: .bold))
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(.blue)
+                    .padding(16)
+                    .background(WimgTheme.text)
                     .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .clipShape(Capsule())
             }
             .disabled(isParsing || isImporting)
 
             if isParsing {
                 ProgressView("Analysiere...")
+                    .font(.system(.caption, design: .rounded))
             }
         }
-        .padding(24)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(28)
+        .wimgCard(radius: WimgTheme.radiusLarge)
         .padding(.horizontal)
     }
 
@@ -124,46 +132,53 @@ struct ImportView: View {
         VStack(spacing: 16) {
             // Format badge
             if result.format != "unknown" {
-                HStack(spacing: 10) {
-                    Image(systemName: "doc.text")
-                        .foregroundStyle(.blue)
-                    VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.green.opacity(0.1))
+                            .frame(width: 40, height: 40)
+                        Image(systemName: "doc.text.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.green)
+                    }
+                    VStack(alignment: .leading, spacing: 3) {
                         Text("\(formatLabel(result.format)) CSV erkannt")
-                            .font(.subheadline.bold())
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.text)
                         Text("\(result.total_rows) Zeilen gelesen")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundStyle(WimgTheme.textSecondary)
                     }
                     Spacer()
                 }
-                .padding()
-                .background(.regularMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(16)
+                .background(Color.green.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusMedium, style: .continuous))
                 .padding(.horizontal)
             }
 
             // Summary
             VStack(spacing: 8) {
                 Text("\(result.transactions.count) Buchungen gefunden")
-                    .font(.headline)
+                    .font(.system(.headline, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text)
 
                 HStack(spacing: 16) {
                     if previewTotals.income > 0 {
-                        Label(formatAmountShort(previewTotals.income), systemImage: "arrow.down.circle")
-                            .font(.caption)
+                        Label(formatAmountShort(previewTotals.income), systemImage: "arrow.down.circle.fill")
+                            .font(.system(.caption, design: .rounded, weight: .medium))
                             .foregroundStyle(.green)
                     }
                     if previewTotals.expenses < 0 {
-                        Label(formatAmountShort(previewTotals.expenses), systemImage: "arrow.up.circle")
-                            .font(.caption)
+                        Label(formatAmountShort(previewTotals.expenses), systemImage: "arrow.up.circle.fill")
+                            .font(.system(.caption, design: .rounded, weight: .medium))
                             .foregroundStyle(.red)
                     }
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.blue.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(20)
+            .wimgCard(radius: WimgTheme.radiusMedium)
             .padding(.horizontal)
 
             // Transaction preview list
@@ -171,19 +186,18 @@ struct ImportView: View {
                 ForEach(result.transactions.prefix(10)) { txn in
                     TransactionCard(transaction: txn)
                     if txn.id != result.transactions.prefix(10).last?.id {
-                        Divider().padding(.leading, 52)
+                        Divider().padding(.leading, 78)
                     }
                 }
 
                 if result.transactions.count > 10 {
                     Text("... und \(result.transactions.count - 10) weitere")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.vertical, 12)
+                        .font(.system(.caption, design: .rounded, weight: .medium))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                        .padding(.vertical, 14)
                 }
             }
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .wimgCard(radius: WimgTheme.radiusLarge)
             .padding(.horizontal)
 
             // Action buttons
@@ -194,17 +208,17 @@ struct ImportView: View {
                     Group {
                         if isImporting {
                             ProgressView()
-                                .tint(.white)
+                                .tint(WimgTheme.text)
                         } else {
                             Text("Importieren (\(result.transactions.count))")
                         }
                     }
-                    .font(.headline)
+                    .font(.system(.headline, design: .rounded, weight: .bold))
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(.blue)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(16)
+                    .background(WimgTheme.accent)
+                    .foregroundStyle(WimgTheme.text)
+                    .clipShape(Capsule())
                 }
                 .disabled(isImporting)
 
@@ -212,11 +226,12 @@ struct ImportView: View {
                     cancelPreview()
                 } label: {
                     Text("Abbrechen")
-                        .font(.headline)
-                        .padding()
+                        .font(.system(.headline, design: .rounded, weight: .bold))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
                         .background(Color(.systemGray5))
-                        .foregroundStyle(.primary)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .foregroundStyle(WimgTheme.text)
+                        .clipShape(Capsule())
                 }
                 .disabled(isImporting)
             }
@@ -229,47 +244,63 @@ struct ImportView: View {
     private func importedSection(_ result: ImportResult) -> some View {
         VStack(spacing: 16) {
             // Success card
-            VStack(spacing: 12) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 40))
-                    .foregroundStyle(.green)
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.green.opacity(0.1))
+                        .frame(width: 64, height: 64)
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.green)
+                }
 
                 Text("Import erfolgreich!")
-                    .font(.headline)
+                    .font(.system(.headline, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text)
 
-                Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 6) {
+                Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
                     GridRow {
-                        Text("Format").foregroundStyle(.secondary)
-                        Text(formatLabel(result.format)).fontWeight(.medium)
+                        Text("Format")
+                            .foregroundStyle(WimgTheme.textSecondary)
+                        Text(formatLabel(result.format))
+                            .fontWeight(.semibold)
                     }
                     GridRow {
-                        Text("Importiert").foregroundStyle(.secondary)
-                        Text("\(result.imported)").fontWeight(.medium)
+                        Text("Importiert")
+                            .foregroundStyle(WimgTheme.textSecondary)
+                        Text("\(result.imported)")
+                            .fontWeight(.semibold)
                     }
                     if result.categorized > 0 {
                         GridRow {
-                            Text("Kategorisiert").foregroundStyle(.secondary)
-                            Text("\(result.categorized)").fontWeight(.medium)
+                            Text("Kategorisiert")
+                                .foregroundStyle(WimgTheme.textSecondary)
+                            Text("\(result.categorized)")
+                                .fontWeight(.semibold)
                         }
                     }
                     if result.skipped_duplicates > 0 {
                         GridRow {
-                            Text("Duplikate").foregroundStyle(.orange)
-                            Text("\(result.skipped_duplicates)").fontWeight(.medium)
+                            Text("Duplikate")
+                                .foregroundStyle(.orange)
+                            Text("\(result.skipped_duplicates)")
+                                .fontWeight(.semibold)
                         }
                     }
                     if result.errors > 0 {
                         GridRow {
-                            Text("Fehler").foregroundStyle(.red)
-                            Text("\(result.errors)").fontWeight(.medium).foregroundStyle(.red)
+                            Text("Fehler")
+                                .foregroundStyle(.red)
+                            Text("\(result.errors)")
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.red)
                         }
                     }
                 }
-                .font(.subheadline)
+                .font(.system(.subheadline, design: .rounded))
             }
-            .padding(20)
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .padding(24)
+            .wimgCard(radius: WimgTheme.radiusLarge)
             .padding(.horizontal)
 
             // Import another
@@ -277,12 +308,12 @@ struct ImportView: View {
                 resetToIdle()
             } label: {
                 Label("Weitere Datei importieren", systemImage: "plus.circle")
-                    .font(.subheadline.bold())
+                    .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .frame(maxWidth: .infinity)
-                    .padding()
+                    .padding(16)
                     .background(Color(.systemGray5))
-                    .foregroundStyle(.primary)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .foregroundStyle(WimgTheme.text)
+                    .clipShape(Capsule())
             }
             .padding(.horizontal)
         }
@@ -293,24 +324,29 @@ struct ImportView: View {
     private var categorizationSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Kategorisierung")
-                .font(.headline)
+                .font(.system(.title3, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal)
 
             // Rules Engine
             VStack(spacing: 12) {
-                HStack(spacing: 12) {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.title3)
-                        .foregroundStyle(.blue)
-                        .frame(width: 36, height: 36)
-                        .background(.blue.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.blue.opacity(0.1))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.blue)
+                    }
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Regel-Engine").font(.subheadline.bold())
-                        Text("Keyword-Regeln auf unkategorisierte Buchungen anwenden")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Regel-Engine")
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.text)
+                        Text("Keyword-Regeln anwenden")
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundStyle(WimgTheme.textSecondary)
                     }
 
                     Spacer()
@@ -322,48 +358,55 @@ struct ImportView: View {
                             NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
                         }
                     }
-                    .font(.caption.bold())
-                    .buttonStyle(.borderedProminent)
+                    .font(.system(.caption, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(WimgTheme.accent)
+                    .clipShape(Capsule())
                 }
 
                 if let count = rulesCategorizedCount {
                     Text("\(count) Buchungen kategorisiert")
-                        .font(.caption)
+                        .font(.system(.caption, design: .rounded, weight: .medium))
                         .foregroundStyle(.green)
-                        .padding(.leading, 48)
+                        .padding(.leading, 58)
                 }
             }
-            .padding()
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(16)
+            .wimgCard(radius: WimgTheme.radiusMedium)
             .padding(.horizontal)
 
             // Claude AI
             VStack(spacing: 12) {
-                HStack(spacing: 12) {
-                    Image(systemName: "sparkles")
-                        .font(.title3)
-                        .foregroundStyle(.purple)
-                        .frame(width: 36, height: 36)
-                        .background(.purple.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.purple.opacity(0.1))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.purple)
+                    }
 
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
-                            Text("Claude AI").font(.subheadline.bold())
+                            Text("Claude AI")
+                                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.text)
                             if ClaudeAPI.hasKey {
                                 Text("Aktiv")
-                                    .font(.caption2.bold())
+                                    .font(.system(.caption2, design: .rounded, weight: .bold))
                                     .foregroundStyle(.green)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
                                     .background(.green.opacity(0.1))
                                     .clipShape(Capsule())
                             }
                         }
                         Text("KI-Kategorisierung für verbleibende Buchungen")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundStyle(WimgTheme.textSecondary)
                     }
 
                     Spacer()
@@ -373,8 +416,10 @@ struct ImportView: View {
                 if !ClaudeAPI.hasKey || showApiKeyInput {
                     HStack(spacing: 8) {
                         SecureField("sk-ant-...", text: $apiKeyDraft)
-                            .font(.caption)
-                            .textFieldStyle(.roundedBorder)
+                            .font(.system(.caption, design: .rounded))
+                            .padding(10)
+                            .background(Color(.systemGray6))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                         Button("Speichern") {
                             let trimmed = apiKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -384,16 +429,20 @@ struct ImportView: View {
                                 apiKeyDraft = ""
                             }
                         }
-                        .font(.caption.bold())
-                        .buttonStyle(.borderedProminent)
+                        .font(.system(.caption, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.text)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(WimgTheme.accent)
+                        .clipShape(Capsule())
                         .disabled(apiKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
-                    .padding(.leading, 48)
+                    .padding(.leading, 58)
 
                     Text("Nur lokal gespeichert. Wird nur an die Anthropic API gesendet.")
-                        .font(.caption2)
+                        .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(.tertiary)
-                        .padding(.leading, 48)
+                        .padding(.leading, 58)
                 }
 
                 // Actions when key exists
@@ -409,27 +458,30 @@ struct ImportView: View {
                                 Text("Mit Claude kategorisieren")
                             }
                         }
-                        .font(.caption.bold())
-                        .buttonStyle(.borderedProminent)
-                        .tint(.purple)
+                        .font(.system(.caption, design: .rounded, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color.purple)
+                        .clipShape(Capsule())
                         .disabled(claudeLoading)
 
                         Button(showApiKeyInput ? "Abbrechen" : "Key ändern") {
                             showApiKeyInput.toggle()
                         }
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
 
                         if !showApiKeyInput {
                             Button("Entfernen") {
                                 ClaudeAPI.removeKey()
                                 showApiKeyInput = false
                             }
-                            .font(.caption)
+                            .font(.system(.caption, design: .rounded))
                             .foregroundStyle(.red)
                         }
                     }
-                    .padding(.leading, 48)
+                    .padding(.leading, 58)
                 }
 
                 // Claude Result
@@ -437,25 +489,24 @@ struct ImportView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         if result.categorized > 0 {
                             Text("\(result.categorized) Buchungen von Claude kategorisiert")
-                                .font(.caption)
+                                .font(.system(.caption, design: .rounded, weight: .medium))
                                 .foregroundStyle(.green)
                         } else if result.errors.isEmpty {
                             Text("Keine unkategorisierten Buchungen gefunden")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.system(.caption, design: .rounded))
+                                .foregroundStyle(WimgTheme.textSecondary)
                         }
                         ForEach(result.errors, id: \.self) { err in
                             Text(err)
-                                .font(.caption)
+                                .font(.system(.caption, design: .rounded))
                                 .foregroundStyle(.red)
                         }
                     }
-                    .padding(.leading, 48)
+                    .padding(.leading, 58)
                 }
             }
-            .padding()
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(16)
+            .wimgCard(radius: WimgTheme.radiusMedium)
             .padding(.horizontal)
         }
     }
@@ -480,18 +531,17 @@ struct ImportView: View {
     // MARK: - Error
 
     private func errorCard(_ error: String) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.title2)
+        VStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 28))
                 .foregroundStyle(.red)
             Text(error)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.system(.subheadline, design: .rounded))
+                .foregroundStyle(WimgTheme.textSecondary)
                 .multilineTextAlignment(.center)
         }
-        .padding()
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(20)
+        .wimgCard(radius: WimgTheme.radiusMedium)
         .padding(.horizontal)
     }
 
@@ -500,29 +550,35 @@ struct ImportView: View {
     private var supportedFormats: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Unterstützte Formate")
-                .font(.headline)
+                .font(.system(.title3, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.text)
 
-            formatRow(code: "CD", name: "Comdirect", detail: "Semikolon, ISO-8859-1", color: .blue)
-            formatRow(code: "TR", name: "Trade Republic", detail: "Komma, UTF-8", color: .green)
-            formatRow(code: "SC", name: "Scalable Capital", detail: "Semikolon, UTF-8", color: .purple)
+            formatRow(icon: "building.columns", name: "Comdirect", detail: "Semikolon, ISO-8859-1", color: .blue)
+            formatRow(icon: "chart.line.uptrend.xyaxis", name: "Trade Republic", detail: "Komma, UTF-8", color: .green)
+            formatRow(icon: "arrow.up.right", name: "Scalable Capital", detail: "Semikolon, UTF-8", color: .purple)
         }
-        .padding()
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(20)
+        .wimgCard(radius: WimgTheme.radiusLarge)
         .padding(.horizontal)
     }
 
-    private func formatRow(code: String, name: String, detail: String, color: Color) -> some View {
-        HStack(spacing: 12) {
-            Text(code)
-                .font(.caption.bold())
-                .foregroundStyle(color)
-                .frame(width: 36, height: 36)
-                .background(color.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(name).font(.subheadline.bold())
-                Text(detail).font(.caption).foregroundStyle(.secondary)
+    private func formatRow(icon: String, name: String, detail: String, color: Color) -> some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.1))
+                    .frame(width: 40, height: 40)
+                Image(systemName: icon)
+                    .font(.system(size: 16))
+                    .foregroundStyle(color)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(name)
+                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text)
+                Text(detail)
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(WimgTheme.textSecondary)
             }
             Spacer()
         }

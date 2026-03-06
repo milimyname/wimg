@@ -40,7 +40,7 @@ struct ReviewView: View {
     }
 
     private var checklist: [(description: String, amount: Double, date: String)] {
-        let recurringCats = [4, 5, 9, 13] // Housing, Utilities, Insurance, Subscriptions
+        let recurringCats = [4, 5, 9, 13]
         var items: [(String, Double, String)] = []
 
         for catId in recurringCats {
@@ -71,7 +71,7 @@ struct ReviewView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 20) {
                     MonthPicker(year: $year, month: $month)
                         .padding(.top, 8)
 
@@ -91,16 +91,22 @@ struct ReviewView: View {
 
                         statsGrid
                     } else {
-                        ContentUnavailableView(
-                            "Keine Daten",
-                            systemImage: "doc.text",
-                            description: Text("Keine Transaktionen für diesen Monat.")
-                        )
+                        VStack(spacing: 8) {
+                            Text("\u{1F4CB}")
+                                .font(.system(size: 48))
+                            Text("Keine Daten für diesen Monat")
+                                .font(.system(.title3, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.text)
+                            Text("CSV importieren um zu starten")
+                                .font(.system(.subheadline, design: .rounded))
+                                .foregroundStyle(WimgTheme.textSecondary)
+                        }
+                        .padding(.vertical, 40)
                     }
                 }
-                .padding(.bottom, 20)
+                .padding(.bottom, 24)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(WimgTheme.bg)
             .navigationTitle("\(monthNames[month - 1]) Rückblick")
             .onChange(of: year) { reload() }
             .onChange(of: month) { reload() }
@@ -115,38 +121,51 @@ struct ReviewView: View {
     // MARK: - Savings Card
 
     private var savingsCard: some View {
-        VStack(spacing: 8) {
-            Text(saved >= 0 ? "Gespart" : "Defizit")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
+        ZStack(alignment: .topTrailing) {
+            Circle()
+                .fill(.white.opacity(0.25))
+                .frame(width: 140, height: 140)
+                .blur(radius: 30)
+                .offset(x: 40, y: -40)
 
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            VStack(spacing: 8) {
+                Text(saved >= 0 ? "Gespart" : "Defizit")
+                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text.opacity(0.7))
+                    .textCase(.uppercase)
+                    .tracking(1)
+
                 Text(formatAmountShort(abs(saved)))
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                    .foregroundStyle(saved >= 0 ? .green : .red)
+                    .font(.system(size: 40, weight: .black, design: .rounded))
+                    .foregroundStyle(WimgTheme.text)
+                    .tracking(-1)
 
                 if let delta = savingsDelta {
-                    Text("\(delta >= 0 ? "+" : "")\(delta)%")
-                        .font(.caption.bold())
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(delta >= 0 ? Color.green.opacity(0.1) : Color.red.opacity(0.1))
-                        .foregroundStyle(delta >= 0 ? .green : .red)
-                        .clipShape(Capsule())
+                    HStack(spacing: 4) {
+                        Image(systemName: delta >= 0 ? "arrow.up.right" : "arrow.down.right")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("\(delta >= 0 ? "+" : "")\(delta)% vs. \(monthNames[month == 1 ? 11 : month - 2])")
+                            .font(.system(.caption, design: .rounded, weight: .bold))
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(WimgTheme.text)
+                    .clipShape(Capsule())
+                    .padding(.top, 4)
                 }
-            }
 
-            Text(savingsMessage)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+                Text(savingsMessage)
+                    .font(.system(.caption, design: .rounded, weight: .medium))
+                    .foregroundStyle(WimgTheme.text.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 4)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 28)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .wimgHero()
         .padding(.horizontal)
     }
 
@@ -160,25 +179,35 @@ struct ReviewView: View {
 
     private var incomeExpenseRow: some View {
         HStack(spacing: 12) {
-            statBox(title: "Einnahmen", amount: summary?.income ?? 0, color: .green)
-            statBox(title: "Ausgaben", amount: abs(summary?.expenses ?? 0), color: .red)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Einnahmen")
+                    .font(.system(.caption, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.textSecondary)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                Text(formatAmountShort(summary?.income ?? 0))
+                    .font(.system(.headline, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .wimgCard(radius: WimgTheme.radiusMedium)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Ausgaben")
+                    .font(.system(.caption, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.textSecondary)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                Text(formatAmountShort(abs(summary?.expenses ?? 0)))
+                    .font(.system(.headline, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .wimgCard(radius: WimgTheme.radiusMedium)
         }
         .padding(.horizontal)
-    }
-
-    private func statBox(title: String, amount: Double, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-            Text(formatAmountShort(amount))
-                .font(.headline)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     // MARK: - Top Categories
@@ -186,57 +215,62 @@ struct ReviewView: View {
     private var topCategoriesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Top Kategorien")
-                .font(.headline)
+                .font(.system(.title3, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal)
 
-            VStack(spacing: 0) {
+            VStack(spacing: 12) {
                 ForEach(topCategories) { cat in
                     let category = WimgCategory.from(cat.id)
                     let pct = abs(summary?.expenses ?? 1) > 0
                         ? abs(cat.amount) / abs(summary?.expenses ?? 1)
                         : 0
 
-                    HStack(spacing: 12) {
+                    HStack(spacing: 14) {
                         ZStack {
                             Circle()
-                                .fill(category.color.opacity(0.15))
-                                .frame(width: 36, height: 36)
+                                .fill(category.color.opacity(0.12))
+                                .frame(width: 48, height: 48)
                             Image(systemName: category.icon)
-                                .font(.system(size: 14))
+                                .font(.system(size: 18))
                                 .foregroundStyle(category.color)
                         }
 
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Text(cat.name)
-                                    .font(.subheadline.bold())
+                                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                    .foregroundStyle(WimgTheme.text)
                                 Spacer()
                                 Text(formatAmountShort(abs(cat.amount)))
-                                    .font(.subheadline)
+                                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                    .foregroundStyle(WimgTheme.text)
                             }
-                            ProgressView(value: pct)
-                                .tint(category.color)
-                            HStack {
-                                Text("\(cat.count) Umsätze")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
+
+                            HStack(spacing: 8) {
+                                GeometryReader { geo in
+                                    ZStack(alignment: .leading) {
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .fill(Color(.systemGray5))
+                                            .frame(height: 6)
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .fill(category.color)
+                                            .frame(width: geo.size.width * pct, height: 6)
+                                    }
+                                }
+                                .frame(height: 6)
+
                                 Text(String(format: "%.0f%%", pct * 100))
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                    .font(.system(.caption2, design: .rounded, weight: .bold))
+                                    .foregroundStyle(WimgTheme.textSecondary)
+                                    .frame(width: 32, alignment: .trailing)
                             }
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-
-                    if cat.id != topCategories.last?.id {
-                        Divider().padding(.leading, 64)
-                    }
+                    .padding(16)
+                    .wimgCard(radius: WimgTheme.radiusMedium)
                 }
             }
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
             .padding(.horizontal)
         }
     }
@@ -246,34 +280,40 @@ struct ReviewView: View {
     private var checklistSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Zahlungs-Checkliste")
-                .font(.headline)
+                .font(.system(.title3, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal)
 
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 ForEach(checklist, id: \.description) { item in
-                    HStack(spacing: 12) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(.green)
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.green.opacity(0.1))
+                                .frame(width: 48, height: 48)
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(.green)
+                        }
 
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: 3) {
                             Text(item.description)
-                                .font(.subheadline.bold())
+                                .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .lineLimit(1)
+                                .foregroundStyle(WimgTheme.text)
                             Text("am \(formatDateShort(item.date))")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.system(.caption, design: .rounded, weight: .medium))
+                                .foregroundStyle(WimgTheme.textSecondary)
                         }
 
                         Spacer()
 
                         Text(formatAmountShort(abs(item.amount)))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.text)
                     }
-                    .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(16)
+                    .wimgCard(radius: WimgTheme.radiusMedium)
                 }
             }
             .padding(.horizontal)
@@ -284,55 +324,73 @@ struct ReviewView: View {
 
     private var anomalySection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Anomalien")
-                .font(.headline)
+            Text("Markierte Anomalien")
+                .font(.system(.title3, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal)
 
             if anomalies.isEmpty {
-                HStack(spacing: 12) {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.title2)
-                        .foregroundStyle(.green)
-                    VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.green.opacity(0.1))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(.green)
+                    }
+                    VStack(alignment: .leading, spacing: 3) {
                         Text("Keine Auffälligkeiten")
-                            .font(.subheadline.bold())
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                            .foregroundStyle(Color.green)
                         Text("Keine ungewöhnlichen Preiserhöhungen erkannt.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundStyle(Color.green.opacity(0.7))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
-                .background(Color.green.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(20)
+                .background(Color.green.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusLarge, style: .continuous))
                 .padding(.horizontal)
             } else {
                 ForEach(anomalies, id: \.category) { item in
                     let category = WimgCategory.from(item.category)
                     let pct = item.previous > 0 ? Int((item.increase / item.previous) * 100) : 0
 
-                    HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("\(category.name): +\(formatAmountShort(item.increase))")
-                                .font(.subheadline.bold())
-                            Text("\(pct)% mehr als im Vormonat")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            HStack(spacing: 16) {
-                                Text("Vorher: \(formatAmountShort(item.previous))")
-                                Text("Jetzt: \(formatAmountShort(item.current))")
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(.white.opacity(0.1))
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: "chart.line.uptrend.xyaxis")
+                                    .font(.system(size: 16))
+                                    .foregroundStyle(.white)
                             }
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Preiserhöhung erkannt")
+                                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                    .foregroundStyle(.white)
+                                Text("\(category.name): +\(formatAmountShort(item.increase)) (\(pct)% mehr)")
+                                    .font(.system(.caption, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.7))
+                            }
                         }
+
+                        HStack(spacing: 16) {
+                            Text("Vormonat: \(formatAmountShort(item.previous))")
+                            Text("Aktuell: \(formatAmountShort(item.current))")
+                        }
+                        .font(.system(.caption2, design: .rounded, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.5))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .background(Color.orange.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(20)
+                    .background(WimgTheme.text)
+                    .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusLarge, style: .continuous))
+                    .shadow(color: .black.opacity(0.08), radius: 16, y: 4)
                     .padding(.horizontal)
                 }
             }
@@ -344,7 +402,8 @@ struct ReviewView: View {
     private var statsGrid: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Statistiken")
-                .font(.headline)
+                .font(.system(.title3, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
@@ -367,19 +426,19 @@ struct ReviewView: View {
     }
 
     private func statTile(title: String, value: String, color: Color? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.system(.caption, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.textSecondary)
                 .textCase(.uppercase)
+                .tracking(0.5)
             Text(value)
-                .font(.title3.bold())
-                .foregroundStyle(color ?? .primary)
+                .font(.system(.title3, design: .rounded, weight: .bold))
+                .foregroundStyle(color ?? WimgTheme.text)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(16)
+        .wimgCard(radius: WimgTheme.radiusMedium)
     }
 
     private var daysInMonth: Int {

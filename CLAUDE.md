@@ -230,7 +230,7 @@ CREATE TABLE meta (
 - [x] OPFS setup + COEP/COOP headers via hooks.server.ts
 - [x] `wasm.ts` — load libwimg.wasm, wrap exports with typed TS functions
 - [x] Import screen — file drop → call `wimg_import_csv` → show result
-- [x] Transaction list — grouped by date, card per transaction (Finanzguru style)
+- [x] Transaction list — grouped by date, card per transaction
 - [x] Category editor — tap transaction → change category
 - [x] oxfmt + oxlint tooling
 
@@ -265,7 +265,7 @@ CREATE TABLE meta (
 - [x] PWA manifest + service worker — installable, fully offline
 - [x] Claude API integration (JS-side, not Zig — WASM can't do HTTP)
 - [x] LayerChart donut charts (replaced D3)
-- [x] German UI labels throughout (Finanzguru-inspired)
+- [x] German UI labels throughout
 - [x] PWA version update system — controlled SW updates, changelog banner, OPFS clear for breaking changes
 - [x] Monthly review screen — summary + checklist + anomaly flags
 
@@ -311,13 +311,13 @@ CREATE TABLE meta (
 #### Success criteria
 - [x] Runs on iPhone simulator and real device
 - [x] Same CSV imported on web and iOS produces identical SQLite state
-- [x] All screens functional, Finanzguru-inspired design
+- [x] All screens functional, friendly fintech design
 
 ---
 
-### Phase 3.5 — Multi-Account Support
+### ✅ Phase 3.5 — Multi-Account Support
 **Goal:** Track multiple bank accounts, view together or separately.
-**Time box:** 1-2 weekends
+**Status: Done (March 2026)**
 
 Real-world use case:
 ```
@@ -328,33 +328,33 @@ Shared account          (rent, groceries with partner)
 ```
 
 #### libwimg tasks
-- [ ] `accounts` table — CREATE TABLE with id, name, type, currency, owner, color
-- [ ] Schema migration — add `accounts` table, auto-create default account for existing data
-- [ ] `wimg_get_accounts`, `wimg_add_account`, `wimg_update_account`, `wimg_delete_account`
-- [ ] Auto-populate `account` on CSV import (Comdirect → "Comdirect", TR → "Trade Republic", etc.)
-- [ ] Auto-create account entry on first import of each format
-- [ ] `wimg_get_transactions` — optional account filter parameter
-- [ ] `wimg_get_summary` — optional account filter parameter
-- [ ] Include `account` field in transaction hash (same tx in different accounts = not duplicate)
+- [x] `accounts` table — CREATE TABLE with id, name, type, currency, owner, color
+- [x] Schema migration — add `accounts` table, auto-create default account for existing data
+- [x] `wimg_get_accounts`, `wimg_add_account`, `wimg_update_account`, `wimg_delete_account`
+- [x] Auto-populate `account` on CSV import (Comdirect → "Comdirect", TR → "Trade Republic", etc.)
+- [x] Auto-create account entry on first import of each format
+- [x] `wimg_get_transactions` — optional account filter parameter (`wimg_get_transactions_filtered`)
+- [x] `wimg_get_summary` — optional account filter parameter (`wimg_get_summary_filtered`)
+- [x] Include `account` field in transaction hash (same tx in different accounts = not duplicate)
 
 #### wimg-web tasks
-- [ ] Account switcher dropdown in nav/header (Alle Konten / single account)
-- [ ] Account management page — add/edit/delete accounts, set color/owner
-- [ ] Dashboard filters by selected account
-- [ ] Transaction list filters by selected account
-- [ ] Analysis screen filters by selected account
-- [ ] Import shows which account the CSV will be assigned to
+- [x] Account switcher dropdown in nav/header (Alle Konten / single account)
+- [x] Account management page — add/edit/delete accounts, set color/owner
+- [x] Dashboard filters by selected account
+- [x] Transaction list filters by selected account
+- [x] Analysis screen filters by selected account
+- [x] Import shows which account the CSV will be assigned to
 
 #### wimg-ios tasks
-- [ ] Account switcher in nav (same pattern as web)
-- [ ] Account management view
-- [ ] All screens respect selected account filter
+- [x] Account switcher in nav (same pattern as web)
+- [x] Account management view
+- [x] All screens respect selected account filter
 
 #### Success criteria
-- [ ] Import Comdirect + TR CSVs → each tagged to correct account
-- [ ] Dashboard shows "Alle Konten" aggregated by default
-- [ ] Switch to single account → all numbers/transactions filter correctly
-- [ ] Manually add accounts (cash, shared, etc.)
+- [x] Import Comdirect + TR CSVs → each tagged to correct account
+- [x] Dashboard shows "Alle Konten" aggregated by default
+- [x] Switch to single account → all numbers/transactions filter correctly
+- [x] Manually add accounts (cash, shared, etc.)
 
 ---
 
@@ -362,23 +362,45 @@ Shared account          (rent, groceries with partner)
 **Goal:** Direct bank connection from native app. No third-party. Data stays on device.
 **Time box:** TBD
 
-#### Pure Zig FinTS Client (inside libwimg, native targets only)
+#### ✅ Phase 4A — Pure Zig FinTS Client (Done, March 2026)
 FinTS 3.0 over HTTPS: build text segments → Base64 → HTTP POST to bank.
 No AqBanking, no GPL deps, no external libraries. Reference: python-fints source.
 
-- [ ] `fints.zig` — FinTS message builder + parser + HTTP transport (~1500 lines)
+- [x] `fints.zig` — FinTS 3.0 message builder + parser + dialog state machine (~570 lines)
       Segments: HNHBK/HNHBS (envelope), HKIDN (auth), HKVVB (product),
-      HKTAN/HITAN (TAN flow), HKSPA/HISPA (accounts), HKKAZ/HIKAZ (statements)
-- [ ] `mt940.zig` — MT940 bank statement parser (date, description, amount)
-- [ ] `banks.zig` — hardcoded list of top ~50 German banks with FinTS URLs
-- [ ] C ABI exports (native only, not WASM):
+      HKTAN/HITAN (TAN flow), HKKAZ/HIKAZ (statements)
+- [x] `fints_http.zig` — HTTPS transport via `std.http.Client` (~100 lines)
+- [x] `mt940.zig` — MT940 bank statement parser with ?XX subfields + SVWZ+ (~540 lines)
+- [x] `banks.zig` — hardcoded list of 24 German banks with FinTS URLs (~130 lines)
+- [x] C ABI exports (native only, not WASM):
       `wimg_fints_connect`, `wimg_fints_send_tan`,
       `wimg_fints_fetch`, `wimg_fints_get_banks`
+- [x] iOS/macOS: direct FinTS from device via `std.http.Client`
+- [x] Web: stays CSV-only (browser can't do FinTS due to CORS)
+- [x] iOS FinTSView.swift — bank picker, credentials, TAN challenge, fetch flow (7th tab)
+- [x] Swift wrappers in LibWimg.swift + FinTS.swift models
+- [x] Integration test: MT940 → DB pipeline (476 total tests passing)
 - [ ] photoTAN challenge handling (return image data to caller)
-- [ ] iOS/macOS: direct FinTS from device via `std.http.Client`
-- [ ] Web: stays CSV-only (browser can't do FinTS due to CORS)
+- [ ] FinTS product ID registration (see below)
+- [ ] Keychain storage for credentials on iOS
 
-#### Sync (opt-in, self-hosted server)
+#### FinTS Product Registration
+
+Required to connect to real German banks. Free, one-time, shared by all wimg users.
+
+1. Download registration form from https://www.fints.org/de/hersteller/produktregistrierung
+2. Fill out:
+   - **Firma/Name:** Komiljon Maksudov
+   - **Produktbezeichnung:** wimg
+   - **Produktkategorie:** Finanzverwaltungssoftware / Mobile App
+   - **Kurzbeschreibung:** Persönliche Finanzverwaltung (iOS/Web), FinTS 3.0 Kontoabruf
+3. Email to: `registrierung@hbci-zka.de`
+4. Wait 5-10 business days → receive 25-char product ID
+5. Hardcode product ID in libwimg (all users share it)
+
+**Status:** Not yet submitted
+
+#### Phase 4B — Sync (opt-in, self-hosted server)
 Row-level sync using existing `updated_at` columns. Server is a tiny self-hosted
 SQLite + HTTP API (~200 lines). Devices push/pull changed rows since last sync.
 Last-write-wins per row. No CRDTs.
@@ -455,12 +477,16 @@ wimg/
 │   ├── vendor/
 │   │   └── sqlite3.c           sqlite amalgamation (download once)
 │   └── src/
-│       ├── root.zig             C ABI exports
+│       ├── root.zig             C ABI exports (+ FinTS native-only exports)
 │       ├── db.zig               SQLite wrapper + schema + migrations
 │       ├── parser.zig           CSV parsers (Comdirect, TR, Scalable)
 │       ├── categories.zig       Rules + Claude API
 │       ├── summary.zig          Calculations
-│       └── types.zig            Shared structs
+│       ├── types.zig            Shared structs
+│       ├── fints.zig            FinTS 3.0 protocol engine (native only)
+│       ├── fints_http.zig       HTTPS transport (native only)
+│       ├── mt940.zig            MT940 bank statement parser
+│       └── banks.zig            German bank list (BLZ + FinTS URLs)
 │
 ├── wimg-web/
 │   ├── vite.config.ts           COOP/COEP headers + __APP_VERSION__
@@ -497,8 +523,8 @@ wimg/
 │   ├── Frameworks/
 │   │   └── libwimg.xcframework  built by scripts/build-ios.sh
 │   └── wimg/
-│       ├── wimgApp.swift        entry point + TabView (6 tabs)
-│       ├── LibWimg.swift        Swift wrapper over C ABI
+│       ├── wimgApp.swift        entry point + TabView (7 tabs)
+│       ├── LibWimg.swift        Swift wrapper over C ABI (+ FinTS methods)
 │       ├── wimg-Bridging-Header.h
 │       ├── Models/
 │       │   ├── Transaction.swift  Transaction, ImportResult, ParseResult
@@ -535,7 +561,7 @@ wimg/
 | Mar 2026 | Last-write-wins sync | Single user, two devices — CRDT overkill |
 | Mar 2026 | OPFS for web persistence | True offline SQLite in browser, no server |
 | Mar 2026 | FinTS via separate wimg-sync binary | Can't compile AqBanking to WASM |
-| Mar 2026 | Finanzguru-inspired design | Light, cards, pastel categories, calm |
+| Mar 2026 | Friendly fintech design | Light, cards, warm tones, calm |
 | Mar 2026 | LayerChart instead of D3 | Svelte-native, PieChart component, less boilerplate |
 | Mar 2026 | Claude API on JS side, not Zig WASM | WASM can't make HTTP requests; JS calls Anthropic API directly |
 | Mar 2026 | COEP `credentialless` not `require-corp` | `require-corp` breaks Vite HMR WebSocket in dev |

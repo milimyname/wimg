@@ -26,11 +26,12 @@
   });
 </script>
 
-<div class="min-h-screen bg-(--color-bg) page-shell" style="padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px))">
-  <header
-    class="sticky top-0 z-10 bg-white/80 backdrop-blur-sm border-b border-(--color-border) px-4 py-3 flex items-center justify-between"
-  >
-    <h1 class="text-xl font-bold text-(--color-primary)">wimg</h1>
+<div
+  class="min-h-screen bg-(--color-bg) page-shell"
+  style="padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px))"
+>
+  <header class="sticky top-0 z-10 bg-(--color-bg)/90 backdrop-blur-xl px-5 py-4 flex items-center justify-between">
+    <h1 class="text-xl font-display font-extrabold text-(--color-text)">wimg</h1>
     <AccountSwitcher />
   </header>
 
@@ -39,19 +40,19 @@
   {#if loading}
     <div class="flex items-center justify-center py-20">
       <div
-        class="animate-spin w-8 h-8 border-4 border-(--color-primary) border-t-transparent rounded-full"
+        class="animate-spin w-8 h-8 border-4 border-(--color-text) border-t-transparent rounded-full"
       ></div>
     </div>
   {:else if error}
-    <main class="max-w-2xl mx-auto px-4 py-6">
+    <main class="max-w-lg mx-auto px-5 py-6">
       <div
-        class="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700"
+        class="bg-red-50 rounded-3xl p-5 text-red-700 text-sm"
       >
         {error}
       </div>
     </main>
   {:else}
-    <main class="max-w-2xl mx-auto px-4 py-6">
+    <main class="max-w-lg mx-auto px-5 py-2">
       {@render children()}
     </main>
   {/if}

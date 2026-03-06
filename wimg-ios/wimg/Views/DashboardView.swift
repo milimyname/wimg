@@ -21,7 +21,7 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 20) {
                     MonthPicker(year: $year, month: $month)
                         .padding(.top, 8)
 
@@ -33,14 +33,14 @@ struct DashboardView: View {
                         summaryCard(
                             title: "Einnahmen",
                             amount: summary?.income ?? 0,
-                            color: .green,
-                            icon: "arrow.down.circle"
+                            icon: "arrow.down.circle.fill",
+                            iconColor: .green
                         )
                         summaryCard(
                             title: "Ausgaben",
                             amount: summary?.expenses ?? 0,
-                            color: .red,
-                            icon: "arrow.up.circle"
+                            icon: "arrow.up.circle.fill",
+                            iconColor: .red
                         )
                     }
                     .padding(.horizontal)
@@ -55,9 +55,9 @@ struct DashboardView: View {
                         recentSection
                     }
                 }
-                .padding(.bottom, 20)
+                .padding(.bottom, 24)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(WimgTheme.bg)
             .navigationTitle("Übersicht")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -79,100 +79,129 @@ struct DashboardView: View {
     // MARK: - Cards
 
     private var availableCard: some View {
-        VStack(spacing: 4) {
-            Text("Verfügbar")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Text(formatAmountShort(summary?.available ?? 0))
-                .font(.system(size: 34, weight: .bold, design: .rounded))
-                .foregroundStyle(
-                    (summary?.available ?? 0) >= 0 ? Color.primary : Color.red
-                )
-            Text("\(summary?.tx_count ?? 0) Transaktionen")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        ZStack(alignment: .topTrailing) {
+            // Decorative blur circle
+            Circle()
+                .fill(.white.opacity(0.25))
+                .frame(width: 140, height: 140)
+                .blur(radius: 30)
+                .offset(x: 40, y: -40)
+
+            VStack(spacing: 6) {
+                Text("Verfügbar")
+                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text.opacity(0.7))
+                    .textCase(.uppercase)
+                    .tracking(1)
+
+                Text(formatAmountShort(summary?.available ?? 0))
+                    .font(.system(size: 40, weight: .black, design: .rounded))
+                    .foregroundStyle(WimgTheme.text)
+                    .tracking(-1)
+
+                Text("\(summary?.tx_count ?? 0) Transaktionen")
+                    .font(.system(.caption, design: .rounded, weight: .medium))
+                    .foregroundStyle(WimgTheme.text.opacity(0.6))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 28)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .wimgHero()
         .padding(.horizontal)
     }
 
-    private func summaryCard(title: String, amount: Double, color: Color, icon: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
+    private func summaryCard(title: String, amount: Double, icon: String, iconColor: Color) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .foregroundStyle(color)
+                    .font(.system(size: 16))
+                    .foregroundStyle(iconColor)
                 Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(.caption, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.textSecondary)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
             }
             Text(formatAmountShort(amount))
-                .font(.title3.bold())
+                .font(.system(.title3, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.text)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(16)
+        .wimgCard(radius: WimgTheme.radiusMedium)
     }
 
     // MARK: - Donut
 
     private func donutSection(_ categories: [CategoryBreakdown]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             Text("Ausgaben nach Kategorie")
-                .font(.headline)
-                .padding(.horizontal)
+                .font(.system(.title3, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.text)
+                .padding(.horizontal, 20)
 
             Chart(categories) { cat in
                 SectorMark(
                     angle: .value("Betrag", cat.amount),
                     innerRadius: .ratio(0.6),
-                    angularInset: 1
+                    angularInset: 1.5
                 )
                 .foregroundStyle(WimgCategory.from(cat.id).color)
+                .cornerRadius(4)
             }
-            .frame(height: 200)
-            .padding(.horizontal)
+            .frame(height: 220)
+            .padding(.horizontal, 20)
 
             // Legend
-            ForEach(categories.prefix(5)) { cat in
-                HStack {
-                    Circle()
-                        .fill(WimgCategory.from(cat.id).color)
-                        .frame(width: 10, height: 10)
-                    Text(cat.name)
-                        .font(.subheadline)
-                    Spacer()
-                    Text(formatAmountShort(cat.amount))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+            VStack(spacing: 0) {
+                ForEach(categories.prefix(5)) { cat in
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(WimgCategory.from(cat.id).color)
+                            .frame(width: 10, height: 10)
+                        Text(cat.name)
+                            .font(.system(.subheadline, design: .rounded, weight: .medium))
+                            .foregroundStyle(WimgTheme.text)
+                        Spacer()
+                        Text(formatAmountShort(cat.amount))
+                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+
+                    if cat.id != categories.prefix(5).last?.id {
+                        Divider().padding(.leading, 40)
+                    }
                 }
-                .padding(.horizontal)
             }
         }
-        .padding(.vertical, 12)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.vertical, 20)
+        .wimgCard(radius: WimgTheme.radiusLarge)
         .padding(.horizontal)
     }
 
     // MARK: - Recent Transactions
 
     private var recentSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Letzte Umsätze")
-                .font(.headline)
-                .padding(.horizontal)
+                .font(.system(.title3, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.text)
+                .padding(.horizontal, 20)
 
-            ForEach(recentTransactions.prefix(5)) { tx in
-                TransactionCard(transaction: tx)
+            VStack(spacing: 0) {
+                ForEach(recentTransactions.prefix(5)) { tx in
+                    TransactionCard(transaction: tx)
+
+                    if tx.id != recentTransactions.prefix(5).last?.id {
+                        Divider().padding(.leading, 78)
+                    }
+                }
             }
         }
-        .padding(.vertical, 12)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.vertical, 16)
+        .wimgCard(radius: WimgTheme.radiusLarge)
         .padding(.horizontal)
     }
 

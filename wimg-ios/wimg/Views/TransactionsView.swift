@@ -52,7 +52,8 @@ struct TransactionsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .padding()
+                .padding(.horizontal)
+                .padding(.vertical, 12)
 
                 if grouped.isEmpty {
                     ContentUnavailableView(
@@ -84,12 +85,18 @@ struct TransactionsView: View {
                                 }
                             } header: {
                                 Text(formatDateHeader(date))
+                                    .font(.system(.caption, design: .rounded, weight: .bold))
+                                    .foregroundStyle(WimgTheme.textSecondary)
+                                    .textCase(.uppercase)
+                                    .tracking(0.5)
                             }
                         }
                     }
                     .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
                 }
             }
+            .background(WimgTheme.bg)
             .navigationTitle("Umsätze")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -97,7 +104,7 @@ struct TransactionsView: View {
                         showExcluded.toggle()
                     } label: {
                         Image(systemName: showExcluded ? "eye" : "eye.slash")
-                            .foregroundStyle(showExcluded ? .blue : .secondary)
+                            .foregroundStyle(showExcluded ? WimgTheme.text : WimgTheme.textSecondary)
                     }
                 }
             }
@@ -185,27 +192,52 @@ struct CategoryEditorSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    HStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    // Transaction info header
+                    VStack(spacing: 8) {
                         Text(transaction.description)
-                            .font(.headline)
-                        Spacer()
+                            .font(.system(.headline, design: .rounded, weight: .bold))
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
                         Text(formatAmount(transaction.amount))
-                            .font(.headline)
-                            .foregroundStyle(transaction.isIncome ? .green : .primary)
+                            .font(.system(.title2, design: .rounded, weight: .black))
+                            .foregroundStyle(transaction.isIncome ? .green : WimgTheme.text)
                     }
-                }
+                    .frame(maxWidth: .infinity)
+                    .padding(24)
+                    .wimgHero()
+                    .padding(.horizontal)
 
-                Section("Kategorie wählen") {
-                    if transaction.isIncome {
-                        categoryRow(.income)
-                    }
-                    ForEach(expenseCategories) { cat in
-                        categoryRow(cat)
+                    // Category grid
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Kategorie wählen")
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                            .textCase(.uppercase)
+                            .tracking(0.5)
+                            .padding(.horizontal, 20)
+
+                        VStack(spacing: 0) {
+                            if transaction.isIncome {
+                                categoryRow(.income)
+                                Divider().padding(.leading, 60)
+                            }
+                            ForEach(expenseCategories) { cat in
+                                categoryRow(cat)
+                                if cat.id != expenseCategories.last?.id {
+                                    Divider().padding(.leading, 60)
+                                }
+                            }
+                        }
+                        .wimgCard(radius: WimgTheme.radiusMedium)
+                        .padding(.horizontal)
                     }
                 }
+                .padding(.top, 16)
+                .padding(.bottom, 24)
             }
+            .background(WimgTheme.bg)
             .navigationTitle("Kategorie")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -223,18 +255,29 @@ struct CategoryEditorSheet: View {
             onDismiss()
             dismiss()
         } label: {
-            HStack {
-                Image(systemName: cat.icon)
-                    .foregroundStyle(cat.color)
-                    .frame(width: 24)
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(cat.color.opacity(0.12))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: cat.icon)
+                        .font(.system(size: 16))
+                        .foregroundStyle(cat.color)
+                }
+
                 Text(cat.name)
-                    .foregroundStyle(.primary)
+                    .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    .foregroundStyle(WimgTheme.text)
+
                 Spacer()
+
                 if transaction.category == cat.rawValue {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(.blue)
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(WimgTheme.text)
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
         }
     }
 }

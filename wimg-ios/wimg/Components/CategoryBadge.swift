@@ -4,16 +4,15 @@ struct CategoryBadge: View {
     let category: WimgCategory
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 5) {
             Image(systemName: category.icon)
                 .font(.caption2)
             Text(category.name)
-                .font(.caption)
-                .fontWeight(.medium)
+                .font(.system(.caption, design: .rounded, weight: .semibold))
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(category.color.opacity(0.2))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(category.color.opacity(0.12))
         .foregroundStyle(category.color)
         .clipShape(Capsule())
     }

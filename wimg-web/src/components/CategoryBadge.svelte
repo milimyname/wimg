@@ -7,11 +7,11 @@
 </script>
 
 <button
-  class="w-10 h-10 rounded-full flex items-center justify-center text-xs font-medium shrink-0 transition-transform hover:scale-110"
+  class="w-12 h-12 rounded-full flex items-center justify-center text-lg shrink-0 transition-transform hover:scale-105"
   class:cursor-pointer={!!onclick}
-  style="background-color: {cat.color}20; color: {cat.color}"
+  style="background-color: {cat.color}15"
   {onclick}
   title={cat.name}
 >
-  {cat.name.slice(0, 2)}
+  {cat.icon ?? cat.name.slice(0, 2)}
 </button>

@@ -7,7 +7,7 @@ struct UndoToast: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(message)
-                .font(.subheadline)
+                .font(.system(.subheadline, design: .rounded, weight: .medium))
                 .foregroundStyle(.white)
 
             Spacer()
@@ -15,13 +15,13 @@ struct UndoToast: View {
             Button("Rückgängig") {
                 onUndo()
             }
-            .font(.subheadline.bold())
-            .foregroundStyle(.yellow)
+            .font(.system(.subheadline, design: .rounded, weight: .bold))
+            .foregroundStyle(WimgTheme.accent)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(.black.opacity(0.85))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .background(WimgTheme.text.opacity(0.92))
+        .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusSmall, style: .continuous))
         .padding(.horizontal)
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }

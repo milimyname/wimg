@@ -69,19 +69,24 @@ struct AccountPicker: View {
                 Label("Konto hinzufügen", systemImage: "plus")
             }
         } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: 6) {
                 if let id = selectedAccount,
                    let acct = accounts.first(where: { $0.id == id }) {
                     Circle()
-                        .fill(Color(hex: acct.color) ?? .blue)
+                        .fill(Color(hex: acct.color) ?? .gray)
                         .frame(width: 8, height: 8)
                 }
                 Text(label)
-                    .font(.subheadline.bold())
+                    .font(.system(.subheadline, design: .rounded, weight: .bold))
                 Image(systemName: "chevron.down")
-                    .font(.caption2)
+                    .font(.caption2.bold())
             }
-            .foregroundStyle(.primary)
+            .foregroundStyle(WimgTheme.text)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(WimgTheme.cardBg)
+            .clipShape(Capsule())
+            .shadow(color: .black.opacity(0.04), radius: 4, y: 1)
         }
         .sheet(isPresented: $showAddSheet) {
             AccountFormSheet(mode: .add) {
@@ -139,12 +144,12 @@ struct AccountFormSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
-    @State private var selectedColor = "#4361ee"
+    @State private var selectedColor = "#1A1A1A"
     @State private var showDeleteConfirm = false
 
     private let presetColors = [
-        "#4361ee", "#f5a623", "#1a1a2e", "#6c5ce7",
-        "#2dc653", "#ff6b6b", "#45b7d1", "#fd79a8",
+        "#1A1A1A", "#f5a623", "#6c5ce7", "#2dc653",
+        "#ff6b6b", "#45b7d1", "#fd79a8", "#e17055",
     ]
 
     private var isEditing: Bool {
@@ -162,13 +167,14 @@ struct AccountFormSheet: View {
             Form {
                 Section("Name") {
                     TextField("z.B. Bargeld, Haushalt...", text: $name)
+                        .font(.system(.body, design: .rounded))
                 }
 
                 Section("Farbe") {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 8), spacing: 12) {
                         ForEach(presetColors, id: \.self) { color in
                             Circle()
-                                .fill(Color(hex: color) ?? .blue)
+                                .fill(Color(hex: color) ?? .gray)
                                 .frame(width: 32, height: 32)
                                 .overlay {
                                     if color == selectedColor {
@@ -207,6 +213,7 @@ struct AccountFormSheet: View {
                     Button(isEditing ? "Sichern" : "Erstellen") {
                         save()
                     }
+                    .fontWeight(.bold)
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
