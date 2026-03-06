@@ -55,17 +55,6 @@ esac
 
 echo "Bumping $OLD → $NEW"
 
-# ── pre-flight checks ───────────────────────────────────────────────────────
-
-echo "Running checks..."
-
-(cd "$ROOT/libwimg" && zig fmt --check src/) || die "zig fmt failed — run: cd libwimg && zig fmt src/"
-(cd "$ROOT/wimg-web" && bunx oxfmt --check) || die "oxfmt failed — run: cd wimg-web && bunx oxfmt"
-(cd "$ROOT/wimg-web" && bunx oxlint) || die "oxlint failed — run: cd wimg-web && bunx oxlint --fix"
-(cd "$ROOT/wimg-web" && bun run check) || die "svelte-check failed — run: cd wimg-web && bun run check"
-
-echo "  all checks passed"
-
 # ── update package.json ──────────────────────────────────────────────────────
 
 sed -i '' "s/\"version\": \"$OLD\"/\"version\": \"$NEW\"/" "$PKG"

@@ -16,7 +16,12 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(ASSETS))
+      .then((cache) =>
+        cache.addAll([
+          ...ASSETS,
+          "/", // SPA HTML shell — not in build/files, must be cached explicitly
+        ]),
+      )
       .then(() => void 0),
   );
 });
