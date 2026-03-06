@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import {
     parseCsv,
     importCsv,
@@ -12,6 +13,7 @@
   import { formatEur, formatDate } from "$lib/format";
   import { categorizeWithClaude, getApiKey } from "$lib/claude";
   import { accountStore } from "$lib/account.svelte";
+  import { dropStore } from "$lib/drop.svelte";
 
   type ImportStage = "idle" | "preview" | "imported";
 
@@ -182,6 +184,14 @@
     };
     return map[format] ?? { name: "Unbekannt", color: "#1A1A1A" };
   }
+
+  onMount(() => {
+    const file = dropStore.file;
+    if (file) {
+      dropStore.clear();
+      processFile(file);
+    }
+  });
 </script>
 
 <h2 class="text-xl font-display font-extrabold text-center mb-5">CSV Import</h2>

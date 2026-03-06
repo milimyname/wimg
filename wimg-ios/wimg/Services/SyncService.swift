@@ -7,7 +7,7 @@ actor SyncService {
     #if DEBUG
     private let baseURL = "http://localhost:8787"
     #else
-    private let baseURL = "https://wimg-sync.milimyname.workers.dev"
+    private let baseURL = "https://wimg-sync.mili-my.name"
     #endif
 
     private let keyDefault = "wimg_sync_key"

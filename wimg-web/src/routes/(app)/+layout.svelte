@@ -1,16 +1,52 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
   import { init } from "$lib/wasm";
   import { accountStore } from "$lib/account.svelte";
   import { updateStore } from "$lib/update.svelte";
+  import { dropStore } from "$lib/drop.svelte";
   import BottomNav from "../../components/BottomNav.svelte";
   import Toast from "../../components/Toast.svelte";
   import UpdateBanner from "../../components/UpdateBanner.svelte";
   import AccountSwitcher from "../../components/AccountSwitcher.svelte";
+  import GlobalDropOverlay from "../../components/GlobalDropOverlay.svelte";
 
   let { children } = $props();
   let loading = $state(true);
   let error = $state<string | null>(null);
+  let showDrop = $state(false);
+  let dragCounter = 0;
+
+  function hasFiles(e: DragEvent): boolean {
+    return e.dataTransfer?.types.includes("Files") ?? false;
+  }
+
+  function handleDragEnter(e: DragEvent) {
+    if (!hasFiles(e)) return;
+    dragCounter++;
+    if (dragCounter === 1) showDrop = true;
+  }
+
+  function handleDragLeave() {
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      showDrop = false;
+    }
+  }
+
+  function handleDrop(e: DragEvent) {
+    e.preventDefault();
+    dragCounter = 0;
+    showDrop = false;
+  }
+
+  function handleFileDrop(file: File) {
+    showDrop = false;
+    dragCounter = 0;
+    dropStore.set(file);
+    goto("/import");
+  }
 
   onMount(async () => {
     try {
@@ -60,3 +96,11 @@
 </div>
 
 <Toast />
+
+<svelte:window
+  ondragenter={handleDragEnter}
+  ondragleave={handleDragLeave}
+  ondrop={handleDrop}
+/>
+
+<GlobalDropOverlay visible={showDrop} ondrop={handleFileDrop} />

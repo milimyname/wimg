@@ -2,7 +2,7 @@
  * Sync service — orchestrates push/pull with the Cloudflare Worker API.
  *
  * Dev:  http://localhost:8787 (wrangler dev)
- * Prod: https://wimg-sync.<user>.workers.dev
+ * Prod: https://wimg-sync.mili-my.name
  */
 
 import { getChanges, applyChanges, opfsSave, type SyncRow } from "./wasm";
@@ -11,7 +11,7 @@ import { accountStore } from "./account.svelte";
 const SYNC_API =
   typeof window !== "undefined" && window.location.hostname === "localhost"
     ? "http://localhost:8787"
-    : "https://wimg-sync.milimyname.workers.dev";
+    : "https://wimg-sync.mili-my.name";
 
 const LS_KEY_SYNC = "wimg_sync_key";
 const LS_KEY_LAST_SYNC = "wimg_sync_last_ts";
