@@ -9,32 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  # Download SQLite once, share across jobs
-  sqlite:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cache SQLite amalgamation
-        id: sqlite-cache
-        uses: actions/cache@v4
-        with:
-          path: sqlite-amalgamation
-          key: sqlite-3470200
-
-      - name: Download SQLite amalgamation
-        if: steps.sqlite-cache.outputs.cache-hit != 'true'
-        run: |
-          curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3470200.zip -o sqlite.zip
-          unzip -o sqlite.zip
-          mv sqlite-amalgamation-3470200 sqlite-amalgamation
-
-      - name: Upload SQLite artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sqlite-amalgamation
-          path: sqlite-amalgamation
-
   check:
-    needs: sqlite
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,12 +20,13 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
-      - name: Download SQLite artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: sqlite-amalgamation
-          path: libwimg/vendor
-
+      - name: Download SQLite amalgamation
+        working-directory: libwimg/vendor
+        run: |
+          curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3470200.zip -o sqlite.zip
+          unzip -o sqlite.zip
+          cp sqlite-amalgamation-3470200/sqlite3.c sqlite3.c
+          cp sqlite-amalgamation-3470200/sqlite3.h sqlite3.h
 
       - name: Cache Zig build artifacts
         uses: actions/cache@v4
@@ -96,7 +72,7 @@ jobs:
         working-directory: wimg-sync
         run: bunx tsc --noEmit
 
-  build-wasm:
+  build-and-deploy-web:
     needs: check
     runs-on: ubuntu-latest
     steps:
@@ -106,12 +82,15 @@ jobs:
         with:
           version: 0.15.2
 
-      - name: Download SQLite artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: sqlite-amalgamation
-          path: libwimg/vendor
+      - uses: oven-sh/setup-bun@v2
 
+      - name: Download SQLite amalgamation
+        working-directory: libwimg/vendor
+        run: |
+          curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3470200.zip -o sqlite.zip
+          unzip -o sqlite.zip
+          cp sqlite-amalgamation-3470200/sqlite3.c sqlite3.c
+          cp sqlite-amalgamation-3470200/sqlite3.h sqlite3.h
 
       - name: Cache Zig build artifacts
         uses: actions/cache@v4
@@ -134,6 +113,21 @@ jobs:
           name: libwimg-wasm
           path: wimg-web/static/libwimg.wasm
 
+      - name: Install web dependencies
+        working-directory: wimg-web
+        run: bun install --frozen-lockfile
+
+      - name: Build web
+        working-directory: wimg-web
+        run: bun run build
+
+      - name: Deploy to Cloudflare Pages
+        working-directory: wimg-web
+        run: bunx wrangler pages deploy .svelte-kit/cloudflare --project-name wimg-web --branch main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
   build-ios:
     needs: check
     runs-on: macos-latest
@@ -147,12 +141,13 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Download SQLite artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: sqlite-amalgamation
-          path: libwimg/vendor
-
+      - name: Download SQLite amalgamation
+        working-directory: libwimg/vendor
+        run: |
+          curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3470200.zip -o sqlite.zip
+          unzip -o sqlite.zip
+          cp sqlite-amalgamation-3470200/sqlite3.c sqlite3.c
+          cp sqlite-amalgamation-3470200/sqlite3.h sqlite3.h
 
       - name: Cache Zig build artifacts
         uses: actions/cache@v4
@@ -182,55 +177,33 @@ jobs:
           name: libwimg-ios
           path: libwimg/build-ios/libwimg.xcframework.zip
 
-  deploy-cloudflare:
-    needs: build-wasm
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-
-      - name: Download WASM artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: libwimg-wasm
-          path: wimg-web/static
-
-      - name: Install dependencies
-        working-directory: wimg-web
-        run: bun install --frozen-lockfile
-
-      - name: Build
-        working-directory: wimg-web
-        run: bun run build
-
-      - name: Create Cloudflare Pages project if needed
-        working-directory: wimg-web
-        run: bunx wrangler pages project create wimg-web --production-branch main 2>/dev/null || true
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      - name: Deploy to Cloudflare Pages
-        working-directory: wimg-web
-        run: bunx wrangler pages deploy .svelte-kit/cloudflare --project-name wimg-web --branch main
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
   deploy-sync:
     needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check for wimg-sync changes
+        id: sync-changes
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -q '^wimg-sync/'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: oven-sh/setup-bun@v2
+        if: steps.sync-changes.outputs.changed == 'true'
 
       - name: Install dependencies
+        if: steps.sync-changes.outputs.changed == 'true'
         working-directory: wimg-sync
         run: bun install --frozen-lockfile
 
       - name: Deploy Worker
+        if: steps.sync-changes.outputs.changed == 'true'
         working-directory: wimg-sync
         run: bunx wrangler deploy
         env:
@@ -238,7 +211,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   release:
-    needs: [build-wasm, build-ios]
+    needs: [build-and-deploy-web, build-ios]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -256,7 +229,6 @@ jobs:
         run: |
           TAG=${GITHUB_REF#refs/tags/}
 
-          # Release notes from commits since previous tag
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -n "$PREV_TAG" ]; then
             NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD)
