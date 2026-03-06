@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.3 (2026-03-06)
+
+- add release script and changelog
+
 ## v0.4.2 (2026-03-06)
 
 - Update lefthook configuration and version numbers for iOS and web projects
