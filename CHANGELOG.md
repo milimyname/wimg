@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.13 (2026-03-06)
+
+- Enhance release workflow by caching SQLite amalgamation and Zig build artifacts
+
 ## v0.4.12 (2026-03-06)
 
 - Refactor API key and URL management to use centralized configuration
