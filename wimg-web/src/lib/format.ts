@@ -44,10 +44,8 @@ export function formatDateHeading(dateStr: string): string {
   const day = date.getDate();
   const month = date.toLocaleDateString("de-DE", { month: "long" });
 
-  if (date.toDateString() === today.toDateString())
-    return `Heute · ${day}. ${month}`;
-  if (date.toDateString() === yesterday.toDateString())
-    return `Gestern · ${day}. ${month}`;
+  if (date.toDateString() === today.toDateString()) return `Heute · ${day}. ${month}`;
+  if (date.toDateString() === yesterday.toDateString()) return `Gestern · ${day}. ${month}`;
 
   const weekday = date.toLocaleDateString("de-DE", { weekday: "long" });
   return `${weekday} · ${day}. ${month}`;
