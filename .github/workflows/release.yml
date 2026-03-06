@@ -51,10 +51,6 @@ jobs:
           name: sqlite-amalgamation
           path: libwimg/vendor
 
-      - name: Place SQLite files
-        run: |
-          cp libwimg/vendor/sqlite-amalgamation/sqlite3.c libwimg/vendor/sqlite3.c
-          cp libwimg/vendor/sqlite-amalgamation/sqlite3.h libwimg/vendor/sqlite3.h
 
       - name: Cache Zig build artifacts
         uses: actions/cache@v4
@@ -63,7 +59,7 @@ jobs:
             ~/.cache/zig
             libwimg/.zig-cache
             libwimg/zig-out
-          key: ${{ runner.os }}-zig-0.15.2-${{ hashFiles('libwimg/build.zig', 'libwimg/build.zig.zon', 'libwimg/src/**/*.zig', '.github/workflows/release.yml') }}
+          key: ${{ runner.os }}-zig-0.15.2-${{ hashFiles('libwimg/build.zig', 'libwimg/src/**/*.zig', '.github/workflows/release.yml') }}
           restore-keys: |
             ${{ runner.os }}-zig-0.15.2-
             ${{ runner.os }}-zig-
@@ -116,10 +112,6 @@ jobs:
           name: sqlite-amalgamation
           path: libwimg/vendor
 
-      - name: Place SQLite files
-        run: |
-          cp libwimg/vendor/sqlite-amalgamation/sqlite3.c libwimg/vendor/sqlite3.c
-          cp libwimg/vendor/sqlite-amalgamation/sqlite3.h libwimg/vendor/sqlite3.h
 
       - name: Cache Zig build artifacts
         uses: actions/cache@v4
@@ -128,7 +120,7 @@ jobs:
             ~/.cache/zig
             libwimg/.zig-cache
             libwimg/zig-out
-          key: ${{ runner.os }}-zig-0.15.2-${{ hashFiles('libwimg/build.zig', 'libwimg/build.zig.zon', 'libwimg/src/**/*.zig', '.github/workflows/release.yml') }}
+          key: ${{ runner.os }}-zig-0.15.2-${{ hashFiles('libwimg/build.zig', 'libwimg/src/**/*.zig', '.github/workflows/release.yml') }}
           restore-keys: |
             ${{ runner.os }}-zig-0.15.2-
             ${{ runner.os }}-zig-
@@ -161,10 +153,6 @@ jobs:
           name: sqlite-amalgamation
           path: libwimg/vendor
 
-      - name: Place SQLite files
-        run: |
-          cp libwimg/vendor/sqlite-amalgamation/sqlite3.c libwimg/vendor/sqlite3.c
-          cp libwimg/vendor/sqlite-amalgamation/sqlite3.h libwimg/vendor/sqlite3.h
 
       - name: Cache Zig build artifacts
         uses: actions/cache@v4
@@ -173,7 +161,7 @@ jobs:
             ~/.cache/zig
             libwimg/.zig-cache
             libwimg/zig-out
-          key: ${{ runner.os }}-zig-0.15.2-${{ hashFiles('libwimg/build.zig', 'libwimg/build.zig.zon', 'libwimg/src/**/*.zig', '.github/workflows/release.yml') }}
+          key: ${{ runner.os }}-zig-0.15.2-${{ hashFiles('libwimg/build.zig', 'libwimg/src/**/*.zig', '.github/workflows/release.yml') }}
           restore-keys: |
             ${{ runner.os }}-zig-0.15.2-
             ${{ runner.os }}-zig-
