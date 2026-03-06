@@ -237,9 +237,9 @@ pub fn buildAuthInit(session: *const FintsSession, buf: []u8) ?usize {
     // HKTAN — TAN process init (two-step, version 7)
     inner_pos += writeSegment(&inner_buf, inner_pos, "HKTAN", 5, session.hitan_version, &.{
         "4", // process variant 4 = init
-        "",  // segment reference
-        "",  // ATC
-        "",  // TAN media name
+        "", // segment reference
+        "", // ATC
+        "", // TAN media name
     }) orelse return null;
 
     return writeSecurityEnvelope(session, buf, inner_buf[0..inner_pos]);
@@ -254,11 +254,11 @@ pub fn buildFetchStatements(session: *const FintsSession, from: []const u8, to: 
     // Version 7 uses MT940
     inner_pos += writeSegment(&inner_buf, inner_pos, "HKKAZ", 3, 7, &.{
         "1", // account reference (simplified)
-        "",  // all accounts
+        "", // all accounts
         from,
         to,
-        "",  // max entries
-        "",  // start token
+        "", // max entries
+        "", // start token
     }) orelse return null;
 
     // HKTAN
@@ -473,15 +473,15 @@ fn writeSecurityEnvelope(session: *const FintsSession, buf: []u8, inner: []const
     // HNVSK — Security header (segment 998)
     // Simplified PIN/TAN mode
     sec_pos += writeSegment(&sec_buf, sec_pos, "HNVSK", 998, 3, &.{
-        "998",        // security profile
-        "1",          // security function
-        "1",          // security class
-        "",           // role
-        "1",          // version
-        "0",          // date (ignored for PIN/TAN)
-        "1",          // encryption algorithm
+        "998", // security profile
+        "1", // security function
+        "1", // security class
+        "", // role
+        "1", // version
+        "0", // date (ignored for PIN/TAN)
+        "1", // encryption algorithm
         "2:2:13:@8@00000000:5:1", // key name (simplified)
-        "0",          // compression
+        "0", // compression
     }) orelse return null;
 
     // Build inner segment with PIN authentication
