@@ -111,6 +111,35 @@ const uint8_t *wimg_undo(void);
 // Redo the last undone action. Returns length-prefixed JSON, or NULL.
 const uint8_t *wimg_redo(void);
 
+// --- FinTS (native only — not available in WASM builds) ---
+#if !defined(LIBWIMG_WASM)
+
+// Connect to a bank via FinTS 3.0.
+// Input JSON: {"blz":"20041133","user":"...","pin":"...","product":"..."}
+// Returns length-prefixed JSON:
+//   {"status":"ok"} on success
+//   {"status":"tan_required","challenge":"..."} if TAN needed
+//   {"status":"error","message":"..."} on failure
+const uint8_t *wimg_fints_connect(const uint8_t *data, uint32_t len);
+
+// Submit a TAN for the current FinTS dialog.
+// Input JSON: {"tan":"123456"}
+// Returns length-prefixed JSON: {"status":"ok"} or {"status":"error","message":"..."}
+const uint8_t *wimg_fints_send_tan(const uint8_t *data, uint32_t len);
+
+// Fetch bank statements via FinTS.
+// Input JSON: {"from":"2026-01-01","to":"2026-03-01"}
+// Fetches MT940 statements, parses them, and inserts into DB.
+// Returns length-prefixed JSON: {"imported":N,"duplicates":N}
+// May return {"status":"tan_required","challenge":"..."} if TAN is needed.
+const uint8_t *wimg_fints_fetch(const uint8_t *data, uint32_t len);
+
+// Get list of supported banks as JSON array.
+// Each entry: {"blz":"...","name":"...","url":"..."}
+const uint8_t *wimg_fints_get_banks(void);
+
+#endif // !LIBWIMG_WASM
+
 #ifdef __cplusplus
 }
 #endif

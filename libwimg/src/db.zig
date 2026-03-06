@@ -1604,10 +1604,10 @@ test "jsonEscapeString: mixed ASCII and emoji" {
 test "jsonEscapeString: all category icons pass through" {
     const types_mod = @import("types.zig");
     const all_cats = [_]types_mod.Category{
-        .uncategorized, .groceries, .dining, .transport,
-        .housing, .utilities, .entertainment, .shopping,
-        .health, .insurance, .income, .transfer,
-        .cash, .subscriptions, .travel, .education,
+        .uncategorized, .groceries,     .dining,        .transport,
+        .housing,       .utilities,     .entertainment, .shopping,
+        .health,        .insurance,     .income,        .transfer,
+        .cash,          .subscriptions, .travel,        .education,
         .other,
     };
     var buf: [100]u8 = undefined;
@@ -1690,7 +1690,7 @@ test "formatAmount: buffer too small" {
 test "jsonEscapeString: high byte ISO-8859-1" {
     var buf: [100]u8 = undefined;
     // ü = 0xFC in ISO-8859-1
-    const input = [_]u8{ 0xFC };
+    const input = [_]u8{0xFC};
     const len = jsonEscapeString(&buf, &input).?;
     try std.testing.expectEqualStrings("\\u00fc", buf[0..len]);
 }
@@ -1737,4 +1737,77 @@ test "formatSignedInt: large positive" {
     var buf: [20]u8 = undefined;
     const len = formatSignedInt(&buf, 999999).?;
     try std.testing.expectEqualStrings("999999", buf[0..len]);
+}
+
+// ============================================================
+// Integration: MT940 → DB pipeline
+// ============================================================
+
+test "MT940 → DB: parse and insert transactions from bank statement" {
+    const mt940 = @import("mt940.zig");
+
+    // Real-world-like MT940 bank statement
+    const mt940_data =
+        \\:20:STARTUMS
+        \\:25:20041133/1234567890
+        \\:28C:0/1
+        \\:60F:C260301EUR5000,00
+        \\:61:2603010301D45,99NMSC
+        \\:86:?00KARTENZAHLUNG?20SVWZ+REWE SAGT DANKE 54321?30COBADEFF?31DE89370400440532013000?32REWE Markt GmbH
+        \\:61:2603020302D9,90NMSC
+        \\:86:?00LASTSCHRIFT?20SVWZ+Netflix Monatsabo?32NETFLIX INTL
+        \\:61:2603050305C3500,00NMSC
+        \\:86:?00GEHALT/LOHN?20SVWZ+GEHALT MAERZ 2026?32ARBEITGEBER GMBH
+        \\:61:2603100310D750,00NMSC
+        \\:86:?00DAUERAUFTRAG?20SVWZ+Miete Maerz 2026?32VERMIETER GMBH
+        \\:62F:C260310EUR3694,11
+        \\-
+    ;
+
+    // Parse MT940
+    var txns: [100]Transaction = undefined;
+    const result = mt940.parseMt940(mt940_data, "Comdirect", &txns);
+    try std.testing.expectEqual(@as(u32, 4), result.count);
+    try std.testing.expectEqual(@as(u32, 0), result.errors);
+
+    // Open in-memory DB
+    var db = try Db.init(":memory:");
+    defer db.close();
+
+    // Insert all transactions
+    var imported: u32 = 0;
+    var duplicates: u32 = 0;
+    for (txns[0..result.count]) |*txn| {
+        const inserted = try db.insertTransaction(txn);
+        if (inserted) imported += 1 else duplicates += 1;
+    }
+    try std.testing.expectEqual(@as(u32, 4), imported);
+    try std.testing.expectEqual(@as(u32, 0), duplicates);
+
+    // Re-insert same transactions → all should be duplicates
+    var dup2: u32 = 0;
+    for (txns[0..result.count]) |*txn| {
+        const inserted = try db.insertTransaction(txn);
+        if (!inserted) dup2 += 1;
+    }
+    try std.testing.expectEqual(@as(u32, 4), dup2);
+
+    // Query back and verify via JSON
+    const buf_size: usize = 64 * 1024;
+    var json_buf: [buf_size]u8 = undefined;
+    const json_len = try db.getTransactionsJson(&json_buf, buf_size) orelse return error.TestUnexpectedResult;
+    const json = json_buf[0..json_len];
+
+    // Verify key data is present in the JSON output
+    try std.testing.expect(std.mem.indexOf(u8, json, "REWE SAGT DANKE") != null);
+    try std.testing.expect(std.mem.indexOf(u8, json, "Netflix Monatsabo") != null);
+    try std.testing.expect(std.mem.indexOf(u8, json, "GEHALT MAERZ 2026") != null);
+    try std.testing.expect(std.mem.indexOf(u8, json, "Miete Maerz 2026") != null);
+    try std.testing.expect(std.mem.indexOf(u8, json, "Comdirect") != null);
+
+    // Verify amounts: -45.99, -9.90, +3500.00, -750.00
+    try std.testing.expect(std.mem.indexOf(u8, json, "-45.99") != null);
+    try std.testing.expect(std.mem.indexOf(u8, json, "-9.90") != null or std.mem.indexOf(u8, json, "-9.9") != null);
+    try std.testing.expect(std.mem.indexOf(u8, json, "3500.0") != null);
+    try std.testing.expect(std.mem.indexOf(u8, json, "-750.0") != null);
 }

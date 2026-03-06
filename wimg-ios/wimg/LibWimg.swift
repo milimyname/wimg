@@ -235,6 +235,62 @@ final class LibWimg {
         return try? decodeLengthPrefixed(ptr)
     }
 
+    // MARK: - FinTS (native-only bank connection)
+
+    static func fintsGetBanks() -> [BankInfo] {
+        guard let ptr = wimg_fints_get_banks() else { return [] }
+        defer { wimg_free(ptr, 0) }
+        return (try? decodeLengthPrefixed(ptr)) ?? []
+    }
+
+    static func fintsConnect(blz: String, user: String, pin: String, product: String = "0000000000000000000000000") throws -> FintsStatusResult {
+        try ensureInit()
+        let json = """
+        {"blz":"\(blz)","user":"\(user)","pin":"\(pin)","product":"\(product)"}
+        """
+        let data = Array(json.utf8)
+        let ptr: UnsafePointer<UInt8>? = data.withUnsafeBufferPointer { buf in
+            wimg_fints_connect(buf.baseAddress!, UInt32(buf.count))
+        }
+        guard let ptr else {
+            throw WimgError.operationFailed("fintsConnect", lastError())
+        }
+        defer { wimg_free(ptr, 0) }
+        return try decodeLengthPrefixed(ptr)
+    }
+
+    static func fintsSendTan(tan: String) throws -> FintsStatusResult {
+        try ensureInit()
+        let json = """
+        {"tan":"\(tan)"}
+        """
+        let data = Array(json.utf8)
+        let ptr: UnsafePointer<UInt8>? = data.withUnsafeBufferPointer { buf in
+            wimg_fints_send_tan(buf.baseAddress!, UInt32(buf.count))
+        }
+        guard let ptr else {
+            throw WimgError.operationFailed("fintsSendTan", lastError())
+        }
+        defer { wimg_free(ptr, 0) }
+        return try decodeLengthPrefixed(ptr)
+    }
+
+    static func fintsFetch(from: String, to: String) throws -> FintsFetchResult {
+        try ensureInit()
+        let json = """
+        {"from":"\(from)","to":"\(to)"}
+        """
+        let data = Array(json.utf8)
+        let ptr: UnsafePointer<UInt8>? = data.withUnsafeBufferPointer { buf in
+            wimg_fints_fetch(buf.baseAddress!, UInt32(buf.count))
+        }
+        guard let ptr else {
+            throw WimgError.operationFailed("fintsFetch", lastError())
+        }
+        defer { wimg_free(ptr, 0) }
+        return try decodeLengthPrefixed(ptr)
+    }
+
     // MARK: - Private Helpers
 
     private static func dbPath() -> String {

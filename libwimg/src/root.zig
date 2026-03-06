@@ -12,6 +12,12 @@ const ImportResult = types.ImportResult;
 
 const is_wasm = builtin.cpu.arch == .wasm32;
 
+// FinTS modules — native only (WASM can't do HTTPS)
+const fints_mod = if (!is_wasm) @import("fints.zig") else struct {};
+const fints_http_mod = if (!is_wasm) @import("fints_http.zig") else struct {};
+const mt940_mod = if (!is_wasm) @import("mt940.zig") else struct {};
+const banks_mod = if (!is_wasm) @import("banks.zig") else struct {};
+
 // --- JS interop: imported logging function (WASM only) ---
 extern fn js_console_log(ptr: [*]const u8, len: u32) void;
 
@@ -844,10 +850,10 @@ export fn wimg_get_summary_filtered(year: u32, month: u32, acct: [*]const u8, ac
 export fn wimg_get_categories() ?[*]const u8 {
     const Category = types.Category;
     const all_cats = [_]Category{
-        .uncategorized, .groceries,   .dining,    .transport,
-        .housing,       .utilities,   .entertainment, .shopping,
-        .health,        .insurance,   .income,    .transfer,
-        .cash,          .subscriptions, .travel,  .education,
+        .uncategorized, .groceries,     .dining,        .transport,
+        .housing,       .utilities,     .entertainment, .shopping,
+        .health,        .insurance,     .income,        .transfer,
+        .cash,          .subscriptions, .travel,        .education,
         .other,
     };
 
@@ -955,6 +961,269 @@ fn wimg_db_load(data: [*]const u8, size: u32) callconv(.c) i32 {
         return -1;
     }
     return 0;
+}
+
+// --- FinTS (native-only) ---
+
+// Global FinTS session state — only exists on native targets
+var fints_session: if (!is_wasm) fints_mod.FintsSession else void = if (!is_wasm) fints_mod.FintsSession.init("", "", "", "") else {};
+
+comptime {
+    if (!is_wasm) {
+        @export(&wimg_fints_connect, .{ .name = "wimg_fints_connect" });
+        @export(&wimg_fints_send_tan, .{ .name = "wimg_fints_send_tan" });
+        @export(&wimg_fints_fetch, .{ .name = "wimg_fints_fetch" });
+        @export(&wimg_fints_get_banks, .{ .name = "wimg_fints_get_banks" });
+    }
+}
+
+/// Connect to a bank via FinTS. Input JSON: {"blz":"...","user":"...","pin":"..."}
+/// Returns length-prefixed JSON: {"status":"ok"} or {"status":"tan_required","challenge":"..."}
+fn wimg_fints_connect(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
+    if (is_wasm) return null;
+
+    const json = data[0..len];
+
+    const blz = jsonExtractString(json, "\"blz\"") orelse {
+        setError("wimg_fints_connect: missing blz field", .{});
+        return null;
+    };
+    const user = jsonExtractString(json, "\"user\"") orelse {
+        setError("wimg_fints_connect: missing user field", .{});
+        return null;
+    };
+    const pin = jsonExtractString(json, "\"pin\"") orelse {
+        setError("wimg_fints_connect: missing pin field", .{});
+        return null;
+    };
+    const product = jsonExtractString(json, "\"product\"") orelse "0000000000000000000000000";
+
+    // Look up bank
+    const bank = banks_mod.findByBlz(blz) orelse {
+        setError("wimg_fints_connect: unknown BLZ {s}", .{blz});
+        return null;
+    };
+
+    // Initialize session
+    fints_session = fints_mod.FintsSession.init(blz, bank.urlSlice(), user, pin);
+    const prod_len = @min(product.len, 25);
+    @memcpy(fints_session.product_id[0..prod_len], product[0..prod_len]);
+    fints_session.product_id_len = @intCast(prod_len);
+
+    // Step 1: Anonymous init to fetch BPD
+    var msg_buf: [8192]u8 = undefined;
+    const anon_len = fints_mod.buildAnonInit(&fints_session, &msg_buf) orelse {
+        setError("wimg_fints_connect: failed to build anon init", .{});
+        return null;
+    };
+
+    var resp_buf: [65536]u8 = undefined;
+    const resp_len = fints_http_mod.sendFintsMessage(
+        std.heap.page_allocator,
+        fints_session.urlSlice(),
+        msg_buf[0..anon_len],
+        &resp_buf,
+    ) catch {
+        setError("wimg_fints_connect: HTTP request failed", .{});
+        return null;
+    };
+
+    var anon_resp = fints_mod.ParsedResponse.init();
+    fints_mod.parseResponse(&fints_session, resp_buf[0..resp_len], &anon_resp);
+    fints_session.msg_num += 1;
+
+    // Step 2: Authenticated init
+    const auth_len = fints_mod.buildAuthInit(&fints_session, &msg_buf) orelse {
+        setError("wimg_fints_connect: failed to build auth init", .{});
+        return null;
+    };
+
+    const auth_resp_len = fints_http_mod.sendFintsMessage(
+        std.heap.page_allocator,
+        fints_session.urlSlice(),
+        msg_buf[0..auth_len],
+        &resp_buf,
+    ) catch {
+        setError("wimg_fints_connect: auth HTTP request failed", .{});
+        return null;
+    };
+
+    var auth_resp = fints_mod.ParsedResponse.init();
+    fints_mod.parseResponse(&fints_session, resp_buf[0..auth_resp_len], &auth_resp);
+    fints_session.msg_num += 1;
+
+    // Clear PIN from memory after auth
+    fints_session.clearPin();
+
+    // Check result
+    if (auth_resp.hasError()) {
+        var result_buf: [512]u8 = undefined;
+        const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"error\",\"message\":\"Authentication failed\"}}", .{}) catch return null;
+        return makeLengthPrefixed(result_json);
+    }
+
+    if (fints_session.has_pending_tan) {
+        var result_buf: [512]u8 = undefined;
+        const challenge = fints_session.challenge[0..fints_session.challenge_len];
+        const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"tan_required\",\"challenge\":\"{s}\"}}", .{challenge}) catch return null;
+        return makeLengthPrefixed(result_json);
+    }
+
+    return makeLengthPrefixed("{\"status\":\"ok\"}");
+}
+
+/// Submit a TAN. Input JSON: {"tan":"123456"}
+/// Returns length-prefixed JSON: {"status":"ok"} or {"status":"error","message":"..."}
+fn wimg_fints_send_tan(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
+    if (is_wasm) return null;
+
+    const json = data[0..len];
+    const tan = jsonExtractString(json, "\"tan\"") orelse {
+        setError("wimg_fints_send_tan: missing tan field", .{});
+        return null;
+    };
+
+    var msg_buf: [8192]u8 = undefined;
+    const msg_len = fints_mod.buildTanResponse(&fints_session, tan, &msg_buf) orelse {
+        setError("wimg_fints_send_tan: failed to build TAN response", .{});
+        return null;
+    };
+
+    var resp_buf: [65536]u8 = undefined;
+    const resp_len = fints_http_mod.sendFintsMessage(
+        std.heap.page_allocator,
+        fints_session.urlSlice(),
+        msg_buf[0..msg_len],
+        &resp_buf,
+    ) catch {
+        setError("wimg_fints_send_tan: HTTP request failed", .{});
+        return null;
+    };
+
+    var resp = fints_mod.ParsedResponse.init();
+    fints_mod.parseResponse(&fints_session, resp_buf[0..resp_len], &resp);
+    fints_session.msg_num += 1;
+
+    if (resp.hasError()) {
+        return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"TAN rejected\"}");
+    }
+
+    fints_session.has_pending_tan = false;
+    return makeLengthPrefixed("{\"status\":\"ok\"}");
+}
+
+/// Fetch bank statements. Input JSON: {"from":"2026-01-01","to":"2026-03-01"}
+/// Fetches MT940 data, parses it, inserts transactions into DB.
+/// Returns length-prefixed JSON: {"imported":N,"duplicates":N}
+fn wimg_fints_fetch(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
+    if (is_wasm) return null;
+
+    var database = global_db orelse {
+        setError("wimg_fints_fetch: database not initialized", .{});
+        return null;
+    };
+
+    const json = data[0..len];
+    const from = jsonExtractString(json, "\"from\"") orelse "";
+    const to = jsonExtractString(json, "\"to\"") orelse "";
+
+    // Build and send HKKAZ request
+    var msg_buf: [8192]u8 = undefined;
+    const msg_len = fints_mod.buildFetchStatements(&fints_session, from, to, &msg_buf) orelse {
+        setError("wimg_fints_fetch: failed to build fetch request", .{});
+        return null;
+    };
+
+    var resp_buf: [65536]u8 = undefined;
+    const resp_len = fints_http_mod.sendFintsMessage(
+        std.heap.page_allocator,
+        fints_session.urlSlice(),
+        msg_buf[0..msg_len],
+        &resp_buf,
+    ) catch {
+        setError("wimg_fints_fetch: HTTP request failed", .{});
+        return null;
+    };
+
+    var resp = fints_mod.ParsedResponse.init();
+    fints_mod.parseResponse(&fints_session, resp_buf[0..resp_len], &resp);
+    fints_session.msg_num += 1;
+
+    // Check if TAN is required for statement fetch
+    if (fints_session.has_pending_tan) {
+        var result_buf: [512]u8 = undefined;
+        const challenge = fints_session.challenge[0..fints_session.challenge_len];
+        const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"tan_required\",\"challenge\":\"{s}\"}}", .{challenge}) catch return null;
+        return makeLengthPrefixed(result_json);
+    }
+
+    if (resp.mt940_len == 0) {
+        return makeLengthPrefixed("{\"imported\":0,\"duplicates\":0}");
+    }
+
+    // Parse MT940 data
+    const bank = banks_mod.findByBlz(&fints_session.blz);
+    const account_name = if (bank) |b| b.nameSlice() else "FinTS";
+
+    var txn_buf: [2000]Transaction = undefined;
+    const mt940_result = mt940_mod.parseMt940(
+        resp.mt940_data[0..resp.mt940_len],
+        account_name,
+        &txn_buf,
+    );
+
+    // Insert into database
+    var imported: u32 = 0;
+    var duplicates: u32 = 0;
+
+    for (txn_buf[0..mt940_result.count]) |*txn| {
+        const inserted = database.insertTransaction(txn) catch {
+            continue;
+        };
+        if (inserted) {
+            imported += 1;
+            // Auto-categorize
+            if (txn.category == .uncategorized) {
+                const matched = categories.matchRules(database.handle, txn.descriptionSlice());
+                if (matched != .uncategorized) {
+                    database.setCategoryById(&txn.id, matched) catch {};
+                }
+            }
+        } else {
+            duplicates += 1;
+        }
+    }
+
+    // Auto-create account entry
+    database.ensureAccount(account_name, account_name, "#4361ee") catch {};
+
+    // End dialog
+    const end_len = fints_mod.buildDialogEnd(&fints_session, &msg_buf);
+    if (end_len) |el| {
+        _ = fints_http_mod.sendFintsMessage(
+            std.heap.page_allocator,
+            fints_session.urlSlice(),
+            msg_buf[0..el],
+            &resp_buf,
+        ) catch {};
+    }
+
+    var result_buf: [256]u8 = undefined;
+    const result_json = std.fmt.bufPrint(&result_buf, "{{\"imported\":{d},\"duplicates\":{d}}}", .{ imported, duplicates }) catch return null;
+    return makeLengthPrefixed(result_json);
+}
+
+/// Get the list of supported banks as JSON.
+/// Returns length-prefixed JSON array.
+fn wimg_fints_get_banks() callconv(.c) ?[*]const u8 {
+    if (is_wasm) return null;
+
+    var buf: [16384]u8 = undefined;
+    const len = banks_mod.toJson(&buf) orelse {
+        setError("wimg_fints_get_banks: buffer too small", .{});
+        return null;
+    };
+    return makeLengthPrefixed(buf[0..len]);
 }
 
 // --- Helpers ---

@@ -170,6 +170,47 @@ pub fn build(b: *std.Build) void {
     db_tests.linkLibC();
     const run_db_tests = b.addRunArtifact(db_tests);
     test_step.dependOn(&run_db_tests.step);
+
+    // FinTS modules (native-only)
+    const banks_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/banks.zig"),
+            .target = b.resolveTargetQuery(.{}),
+            .optimize = optimize,
+        }),
+    });
+    const run_banks_tests = b.addRunArtifact(banks_tests);
+    test_step.dependOn(&run_banks_tests.step);
+
+    const mt940_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/mt940.zig"),
+            .target = b.resolveTargetQuery(.{}),
+            .optimize = optimize,
+        }),
+    });
+    const run_mt940_tests = b.addRunArtifact(mt940_tests);
+    test_step.dependOn(&run_mt940_tests.step);
+
+    const fints_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/fints.zig"),
+            .target = b.resolveTargetQuery(.{}),
+            .optimize = optimize,
+        }),
+    });
+    const run_fints_tests = b.addRunArtifact(fints_tests);
+    test_step.dependOn(&run_fints_tests.step);
+
+    const fints_http_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/fints_http.zig"),
+            .target = b.resolveTargetQuery(.{}),
+            .optimize = optimize,
+        }),
+    });
+    const run_fints_http_tests = b.addRunArtifact(fints_http_tests);
+    test_step.dependOn(&run_fints_http_tests.step);
 }
 
 /// Detect Apple SDK via xcrun and configure include/framework/library paths.

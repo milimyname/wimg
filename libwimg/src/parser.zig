@@ -660,7 +660,7 @@ fn parseEnglishAmount(s: []const u8) ?i64 {
 // Hash + Helpers
 // ============================================================
 
-fn computeHash(date: Date, description: []const u8, amount: i64, account: []const u8) [32]u8 {
+pub fn computeHash(date: Date, description: []const u8, amount: i64, account: []const u8) [32]u8 {
     var hasher = std.hash.Fnv1a_128.init();
 
     var date_buf: [10]u8 = undefined;
@@ -695,7 +695,7 @@ fn computeHash(date: Date, description: []const u8, amount: i64, account: []cons
     return result;
 }
 
-fn setAccount(txn: *Transaction, name: []const u8) void {
+pub fn setAccount(txn: *Transaction, name: []const u8) void {
     const len = @min(name.len, 64);
     @memcpy(txn.account[0..len], name[0..len]);
     txn.account_len = @intCast(len);
@@ -938,7 +938,7 @@ test "parseGermanAmount empty" {
 }
 
 test "parseGermanAmount no decimals" {
-    try std.testing.expectEqual(@as(i64, 100), parseGermanAmount("1") .?);
+    try std.testing.expectEqual(@as(i64, 100), parseGermanAmount("1").?);
 }
 
 test "parseGermanAmount single decimal" {

@@ -65,23 +65,23 @@ pub const Category = enum(u8) {
 
     pub fn color(self: Category) []const u8 {
         return switch (self) {
-            .uncategorized => "#dfe6e9",
-            .groceries => "#4ecdc4",
-            .dining => "#ff6b6b",
-            .transport => "#45b7d1",
-            .housing => "#96ceb4",
-            .utilities => "#a8d8ea",
-            .entertainment => "#dda0dd",
-            .shopping => "#f7dc6f",
-            .health => "#ff9ff3",
-            .insurance => "#c8d6e5",
-            .income => "#2dc653",
+            .uncategorized => "#d4d4d4",
+            .groceries => "#525252",
+            .dining => "#737373",
+            .transport => "#6b7280",
+            .housing => "#57534e",
+            .utilities => "#78716c",
+            .entertainment => "#9ca3af",
+            .shopping => "#a3a3a3",
+            .health => "#64748b",
+            .insurance => "#94a3b8",
+            .income => "#22c55e",
             .transfer => "#b8b8b8",
-            .cash => "#ffd93d",
-            .subscriptions => "#6c5ce7",
-            .travel => "#fd79a8",
-            .education => "#74b9ff",
-            .other => "#dfe6e9",
+            .cash => "#a1a1aa",
+            .subscriptions => "#71717a",
+            .travel => "#8b8b8b",
+            .education => "#858585",
+            .other => "#d4d4d4",
         };
     }
 
@@ -180,10 +180,10 @@ test "Category.germanName returns correct German names" {
 
 test "Category.germanName all values non-empty" {
     const all = [_]Category{
-        .uncategorized, .groceries,  .dining,     .transport,
-        .housing,       .utilities,  .entertainment, .shopping,
-        .health,        .insurance,  .income,     .transfer,
-        .cash,          .subscriptions, .travel,  .education,
+        .uncategorized, .groceries,     .dining,        .transport,
+        .housing,       .utilities,     .entertainment, .shopping,
+        .health,        .insurance,     .income,        .transfer,
+        .cash,          .subscriptions, .travel,        .education,
         .other,
     };
     for (all) |cat| {
@@ -193,10 +193,10 @@ test "Category.germanName all values non-empty" {
 
 test "Category.color starts with # and has length 7" {
     const all = [_]Category{
-        .uncategorized, .groceries,  .dining,     .transport,
-        .housing,       .utilities,  .entertainment, .shopping,
-        .health,        .insurance,  .income,     .transfer,
-        .cash,          .subscriptions, .travel,  .education,
+        .uncategorized, .groceries,     .dining,        .transport,
+        .housing,       .utilities,     .entertainment, .shopping,
+        .health,        .insurance,     .income,        .transfer,
+        .cash,          .subscriptions, .travel,        .education,
         .other,
     };
     for (all) |cat| {
@@ -207,8 +207,8 @@ test "Category.color starts with # and has length 7" {
 }
 
 test "Category.color specific values" {
-    try std.testing.expectEqualStrings("#4ecdc4", Category.groceries.color());
-    try std.testing.expectEqualStrings("#2dc653", Category.income.color());
+    try std.testing.expectEqualStrings("#525252", Category.groceries.color());
+    try std.testing.expectEqualStrings("#22c55e", Category.income.color());
 }
 
 test "Category.icon uncategorized is ?" {
@@ -221,10 +221,10 @@ test "Category.icon groceries is multi-byte UTF-8" {
 
 test "Category.icon all values non-empty" {
     const all = [_]Category{
-        .uncategorized, .groceries,  .dining,     .transport,
-        .housing,       .utilities,  .entertainment, .shopping,
-        .health,        .insurance,  .income,     .transfer,
-        .cash,          .subscriptions, .travel,  .education,
+        .uncategorized, .groceries,     .dining,        .transport,
+        .housing,       .utilities,     .entertainment, .shopping,
+        .health,        .insurance,     .income,        .transfer,
+        .cash,          .subscriptions, .travel,        .education,
         .other,
     };
     for (all) |cat| {
