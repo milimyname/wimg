@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.5 (2026-03-06)
+
+- fix oxfmt formatting
+
 ## v0.4.4 (2026-03-06)
 
 - add release script, changelog, and fix CI sqlite download
