@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.11 (2026-03-06)
+
+- Enhance file import functionality and update deployment configuration
+
 ## v0.4.10 (2026-03-06)
 
 - Add settings, sync worker, JSON unescape fix, and UI improvements
