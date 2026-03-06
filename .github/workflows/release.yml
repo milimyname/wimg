@@ -9,7 +9,32 @@ permissions:
   contents: write
 
 jobs:
+  # Download SQLite once, share across jobs
+  sqlite:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cache SQLite amalgamation
+        id: sqlite-cache
+        uses: actions/cache@v4
+        with:
+          path: sqlite-amalgamation
+          key: sqlite-3470200
+
+      - name: Download SQLite amalgamation
+        if: steps.sqlite-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3470200.zip -o sqlite.zip
+          unzip -o sqlite.zip
+          mv sqlite-amalgamation-3470200 sqlite-amalgamation
+
+      - name: Upload SQLite artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite-amalgamation
+          path: sqlite-amalgamation
+
   check:
+    needs: sqlite
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,13 +45,28 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
-      - name: Download SQLite amalgamation
-        working-directory: libwimg/vendor
+      - name: Download SQLite artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sqlite-amalgamation
+          path: libwimg/vendor
+
+      - name: Place SQLite files
         run: |
-          curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3470200.zip -o sqlite.zip
-          unzip -o sqlite.zip
-          cp sqlite-amalgamation-3470200/sqlite3.c sqlite3.c
-          cp sqlite-amalgamation-3470200/sqlite3.h sqlite3.h
+          cp libwimg/vendor/sqlite-amalgamation/sqlite3.c libwimg/vendor/sqlite3.c
+          cp libwimg/vendor/sqlite-amalgamation/sqlite3.h libwimg/vendor/sqlite3.h
+
+      - name: Cache Zig build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/zig
+            libwimg/.zig-cache
+            libwimg/zig-out
+          key: ${{ runner.os }}-zig-0.15.2-${{ hashFiles('libwimg/build.zig', 'libwimg/build.zig.zon', 'libwimg/src/**/*.zig', '.github/workflows/release.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-zig-0.15.2-
+            ${{ runner.os }}-zig-
 
       - name: Zig fmt check
         working-directory: libwimg
@@ -34,7 +74,7 @@ jobs:
 
       - name: Zig tests
         working-directory: libwimg
-        run: zig build test -Doptimize=ReleaseFast
+        run: zig build test
 
       - name: Install web dependencies
         working-directory: wimg-web
@@ -70,13 +110,28 @@ jobs:
         with:
           version: 0.15.2
 
-      - name: Download SQLite amalgamation
-        working-directory: libwimg/vendor
+      - name: Download SQLite artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sqlite-amalgamation
+          path: libwimg/vendor
+
+      - name: Place SQLite files
         run: |
-          curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3470200.zip -o sqlite.zip
-          unzip -o sqlite.zip
-          cp sqlite-amalgamation-3470200/sqlite3.c sqlite3.c
-          cp sqlite-amalgamation-3470200/sqlite3.h sqlite3.h
+          cp libwimg/vendor/sqlite-amalgamation/sqlite3.c libwimg/vendor/sqlite3.c
+          cp libwimg/vendor/sqlite-amalgamation/sqlite3.h libwimg/vendor/sqlite3.h
+
+      - name: Cache Zig build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/zig
+            libwimg/.zig-cache
+            libwimg/zig-out
+          key: ${{ runner.os }}-zig-0.15.2-${{ hashFiles('libwimg/build.zig', 'libwimg/build.zig.zon', 'libwimg/src/**/*.zig', '.github/workflows/release.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-zig-0.15.2-
+            ${{ runner.os }}-zig-
 
       - name: Build WASM
         run: ./scripts/build-wasm.sh
@@ -100,13 +155,28 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Download SQLite amalgamation
-        working-directory: libwimg/vendor
+      - name: Download SQLite artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sqlite-amalgamation
+          path: libwimg/vendor
+
+      - name: Place SQLite files
         run: |
-          curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3470200.zip -o sqlite.zip
-          unzip -o sqlite.zip
-          cp sqlite-amalgamation-3470200/sqlite3.c sqlite3.c
-          cp sqlite-amalgamation-3470200/sqlite3.h sqlite3.h
+          cp libwimg/vendor/sqlite-amalgamation/sqlite3.c libwimg/vendor/sqlite3.c
+          cp libwimg/vendor/sqlite-amalgamation/sqlite3.h libwimg/vendor/sqlite3.h
+
+      - name: Cache Zig build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/zig
+            libwimg/.zig-cache
+            libwimg/zig-out
+          key: ${{ runner.os }}-zig-0.15.2-${{ hashFiles('libwimg/build.zig', 'libwimg/build.zig.zon', 'libwimg/src/**/*.zig', '.github/workflows/release.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-zig-0.15.2-
+            ${{ runner.os }}-zig-
 
       - name: Build iOS XCFramework
         run: ./scripts/build-ios.sh
