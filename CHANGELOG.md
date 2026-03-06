@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.15 (2026-03-07)
+
+- Refactor release workflow to enhance SQLite handling and streamline deployment
+
 ## v0.4.14 (2026-03-06)
 
 - Refactor release workflow to streamline SQLite file handling and improve caching
