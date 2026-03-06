@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.8 (2026-03-06)
+
+- Refactor release process and enhance service worker caching
+
 ## v0.4.7 (2026-03-06)
 
 - Enhance release workflow and script with pre-flight checks and Cloudflare Pages project creation
