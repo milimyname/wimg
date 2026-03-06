@@ -92,6 +92,35 @@ jobs:
           name: libwimg-ios
           path: libwimg/build-ios/libwimg.xcframework.zip
 
+  deploy-cloudflare:
+    needs: build-wasm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Download WASM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: libwimg-wasm
+          path: wimg-web/static
+
+      - name: Install dependencies
+        working-directory: wimg-web
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        working-directory: wimg-web
+        run: bun run build
+
+      - name: Deploy to Cloudflare Pages
+        working-directory: wimg-web
+        run: bunx wrangler pages deploy .svelte-kit/cloudflare --project-name wimg
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
   release:
     needs: [build-wasm, build-ios]
     runs-on: ubuntu-latest
