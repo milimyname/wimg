@@ -337,7 +337,7 @@
 
 <style>
   .sheet-portal {
-    /* Portal container — lives on document.body */
+    display: contents;
   }
 
   .sheet-root {

@@ -180,6 +180,7 @@
                 class="w-5 h-5 rounded-full cursor-pointer border-2 transition-all"
                 style="background-color: {c}; border-color: {c === editColor ? '#333' : 'transparent'}"
                 onclick={() => (editColor = c)}
+                aria-label="Farbe {c}"
               ></button>
             {/each}
           </div>
@@ -268,6 +269,7 @@
                     class="w-5 h-5 rounded-full cursor-pointer border-2 transition-all"
                     style="background-color: {c}; border-color: {c === newColor ? '#333' : 'transparent'}"
                     onclick={() => (newColor = c)}
+                    aria-label="Farbe {c}"
                   ></button>
                 {/each}
               </div>

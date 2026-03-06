@@ -26,6 +26,7 @@
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@tailwindcss/vite": "^4.2.1",
     "@types/d3": "^7.4.3",
+    "@types/node": "^25.3.5",
     "oxfmt": "^0.36.0",
     "oxlint": "^1.51.0",
     "svelte": "^5.51.0",
