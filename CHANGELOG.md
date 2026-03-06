@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.14 (2026-03-06)
+
+- Refactor release workflow to streamline SQLite file handling and improve caching
+
 ## v0.4.13 (2026-03-06)
 
 - Enhance release workflow by caching SQLite amalgamation and Zig build artifacts
