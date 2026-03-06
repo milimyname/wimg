@@ -34,7 +34,7 @@ jobs:
 
       - name: Zig tests
         working-directory: libwimg
-        run: zig build test -Doptimize=ReleaseFast
+        run: zig build test
 
       - name: Install web dependencies
         working-directory: wimg-web
