@@ -111,6 +111,16 @@ const uint8_t *wimg_undo(void);
 // Redo the last undone action. Returns length-prefixed JSON, or NULL.
 const uint8_t *wimg_redo(void);
 
+// --- Sync ---
+
+// Get all rows changed since `since_ts` (unix ms). Returns length-prefixed JSON.
+// Format: {"rows":[{"table":"...","id":"...","data":{...},"updated_at":N},...]}
+const uint8_t *wimg_get_changes(int64_t since_ts);
+
+// Apply incoming sync changes (JSON). Returns count of applied rows, or -1 on error.
+// Input: {"rows":[{"table":"...","id":"...","data":{...},"updated_at":N},...]}
+int32_t wimg_apply_changes(const uint8_t *data, uint32_t len);
+
 // --- FinTS (native only — not available in WASM builds) ---
 #if !defined(LIBWIMG_WASM)
 

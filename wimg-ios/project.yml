@@ -24,7 +24,7 @@ targets:
         SWIFT_OBJC_BRIDGING_HEADER: "wimg/wimg-Bridging-Header.h"
         FRAMEWORK_SEARCH_PATHS:
           - "$(inherited)"
-          - "\"Frameworks\""
+          - '"Frameworks"'
         HEADER_SEARCH_PATHS:
           - "$(inherited)"
           - "$(PROJECT_DIR)/Frameworks/libwimg.xcframework/ios-arm64/Headers"

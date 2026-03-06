@@ -3,6 +3,7 @@ import { APP_VERSION, RELEASES_URL, IS_BREAKING } from "./version";
 const VERSION_KEY = "wimg-last-version";
 
 let showBanner = $state(false);
+let sheetOpen = $state(false);
 let waitingSW: ServiceWorker | null = $state(null);
 
 function getLastVersion(): string | null {
@@ -30,6 +31,12 @@ export const updateStore = {
   },
   get releasesUrl() {
     return RELEASES_URL;
+  },
+  get sheetOpen() {
+    return sheetOpen;
+  },
+  set sheetOpen(v: boolean) {
+    sheetOpen = v;
   },
 
   init() {

@@ -235,6 +235,40 @@ final class LibWimg {
         return try? decodeLengthPrefixed(ptr)
     }
 
+    // MARK: - Sync
+
+    struct SyncRow: Codable {
+        let table: String
+        let id: String
+        let data: [String: AnyCodable]
+        let updated_at: Int
+    }
+
+    struct SyncPayload: Codable {
+        let rows: [SyncRow]
+    }
+
+    static func getChanges(sinceMs: Int) -> [SyncRow] {
+        guard isInitialized else { return [] }
+        guard let ptr = wimg_get_changes(Int64(sinceMs)) else { return [] }
+        defer { wimg_free(ptr, 0) }
+        let payload: SyncPayload? = try? decodeLengthPrefixed(ptr)
+        return payload?.rows ?? []
+    }
+
+    static func applyChanges(_ rows: [SyncRow]) throws -> Int {
+        try ensureInit()
+        let payload = SyncPayload(rows: rows)
+        let data = try JSONEncoder().encode(payload)
+        let rc = Array(data).withUnsafeBufferPointer { buf in
+            wimg_apply_changes(buf.baseAddress!, UInt32(buf.count))
+        }
+        if rc < 0 {
+            throw WimgError.operationFailed("applyChanges", lastError())
+        }
+        return Int(rc)
+    }
+
     // MARK: - FinTS (native-only bank connection)
 
     static func fintsGetBanks() -> [BankInfo] {

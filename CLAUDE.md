@@ -76,6 +76,7 @@ Web: OPFS (Origin Private File System) — SQLite writes directly to a local
 browser file. Works offline. Persists across sessions. No server needed.
 
 Requires these headers (Vite dev + production host):
+
 ```
 Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: credentialless
@@ -201,6 +202,7 @@ CREATE TABLE meta (
 ---
 
 ### ✅ Phase 0 — Zig Fundamentals
+
 **Status: Done (March 2026)**
 
 - [x] Basic syntax, types, comptime
@@ -213,9 +215,11 @@ CREATE TABLE meta (
 ---
 
 ### ✅ Phase 1 — libwimg MVP + Web Shell
+
 **Status: Done (March 2026)**
 
 #### libwimg tasks
+
 - [x] `build.zig` — compile libwimg + sqlite3.c to WASM (657KB release)
 - [x] `types.zig` — Transaction, ImportResult structs
 - [x] `db.zig` — SQLite init, schema creation, basic insert/query
@@ -226,6 +230,7 @@ CREATE TABLE meta (
 - [x] Custom in-memory VFS (`wasm_vfs.c`) + libc shim (`libc_shim.c`)
 
 #### wimg-web tasks
+
 - [x] Vite + Svelte 5 + TailwindCSS v4 scaffold
 - [x] OPFS setup + COEP/COOP headers via hooks.server.ts
 - [x] `wasm.ts` — load libwimg.wasm, wrap exports with typed TS functions
@@ -235,6 +240,7 @@ CREATE TABLE meta (
 - [x] oxfmt + oxlint tooling
 
 #### Success criteria
+
 - [x] Drop real Comdirect CSV → transactions appear in browser
 - [x] Change a category → persists after page refresh (OPFS)
 - [x] Binary compiles for both `wasm32-freestanding` and `aarch64-apple-macos`
@@ -242,10 +248,12 @@ CREATE TABLE meta (
 ---
 
 ### ✅ Phase 2 — Core Features
+
 **Goal:** Actually useful for daily tracking.
 **Status: Done (March 2026)**
 
 #### libwimg tasks
+
 - [x] `categories.zig` — keyword rules engine (REWE→Food, DB→Transport)
 - [x] `summary.zig` — monthly income / expenses / available / by_category
 - [x] `summary.zig` — month-over-month delta calculation
@@ -257,6 +265,7 @@ CREATE TABLE meta (
 - [x] `wimg_undo` / `wimg_redo` — undo/redo support
 
 #### wimg-web tasks
+
 - [x] Dashboard screen — Verfügbares Einkommen hero, donut chart, budget overview
 - [x] Analysis screen — spending breakdown, category drill-down, donut chart
 - [x] Debt tracker screen — progress bars, mark paid button, overall progress
@@ -270,6 +279,7 @@ CREATE TABLE meta (
 - [x] Monthly review screen — summary + checklist + anomaly flags
 
 #### Success criteria
+
 - [x] Dashboard shows correct monthly numbers from real data
 - [x] Claude API categorizes uncategorized transactions on import
 - [x] PWA manifest + service worker registered
@@ -280,10 +290,12 @@ CREATE TABLE meta (
 ---
 
 ### ✅ Phase 3 — SwiftUI iOS App
+
 **Goal:** Same app on iPhone, same data, same libwimg.
 **Status: Done (March 2026)**
 
 #### libwimg tasks
+
 - [x] Compile libwimg to `aarch64-apple-ios` and `aarch64-apple-ios-simulator`
 - [x] Build XCFramework wrapping libwimg.a (`scripts/build-ios.sh`)
 - [x] All C ABI functions work identically on iOS target
@@ -291,6 +303,7 @@ CREATE TABLE meta (
 - [x] C header `libwimg.h` with all exports
 
 #### wimg-ios tasks
+
 - [x] XcodeGen project (`project.yml` → `xcodegen generate`)
 - [x] Swift wrapper: `LibWimg.swift` — typed Swift API over C ABI
 - [x] Dashboard view (SwiftUI, mirrors wimg-web design)
@@ -302,6 +315,7 @@ CREATE TABLE meta (
 - [x] Undo toast after category change and debt actions
 
 #### Build scripts
+
 - [x] `scripts/build-wasm.sh` — build WASM + copy to wimg-web/static
 - [x] `scripts/build-ios.sh` — build XCFramework + copy to Frameworks
 - [x] `scripts/gen-xcodeproj.sh` — regenerate Xcode project from project.yml
@@ -309,6 +323,7 @@ CREATE TABLE meta (
 - [x] `scripts/dev-web.sh` — start wimg-web dev server
 
 #### Success criteria
+
 - [x] Runs on iPhone simulator and real device
 - [x] Same CSV imported on web and iOS produces identical SQLite state
 - [x] All screens functional, friendly fintech design
@@ -316,10 +331,12 @@ CREATE TABLE meta (
 ---
 
 ### ✅ Phase 3.5 — Multi-Account Support
+
 **Goal:** Track multiple bank accounts, view together or separately.
 **Status: Done (March 2026)**
 
 Real-world use case:
+
 ```
 Comdirect Girokonto     (main, salary)
 Scalable Capital        (ETF investments)
@@ -328,6 +345,7 @@ Shared account          (rent, groceries with partner)
 ```
 
 #### libwimg tasks
+
 - [x] `accounts` table — CREATE TABLE with id, name, type, currency, owner, color
 - [x] Schema migration — add `accounts` table, auto-create default account for existing data
 - [x] `wimg_get_accounts`, `wimg_add_account`, `wimg_update_account`, `wimg_delete_account`
@@ -338,6 +356,7 @@ Shared account          (rent, groceries with partner)
 - [x] Include `account` field in transaction hash (same tx in different accounts = not duplicate)
 
 #### wimg-web tasks
+
 - [x] Account switcher dropdown in nav/header (Alle Konten / single account)
 - [x] Account management page — add/edit/delete accounts, set color/owner
 - [x] Dashboard filters by selected account
@@ -346,11 +365,13 @@ Shared account          (rent, groceries with partner)
 - [x] Import shows which account the CSV will be assigned to
 
 #### wimg-ios tasks
+
 - [x] Account switcher in nav (same pattern as web)
 - [x] Account management view
 - [x] All screens respect selected account filter
 
 #### Success criteria
+
 - [x] Import Comdirect + TR CSVs → each tagged to correct account
 - [x] Dashboard shows "Alle Konten" aggregated by default
 - [x] Switch to single account → all numbers/transactions filter correctly
@@ -359,10 +380,12 @@ Shared account          (rent, groceries with partner)
 ---
 
 ### Phase 4 — Pure Zig FinTS + Sync
+
 **Goal:** Direct bank connection from native app. No third-party. Data stays on device.
 **Time box:** TBD
 
 #### ✅ Phase 4A — Pure Zig FinTS Client (Done, March 2026)
+
 FinTS 3.0 over HTTPS: build text segments → Base64 → HTTP POST to bank.
 No AqBanking, no GPL deps, no external libraries. Reference: python-fints source.
 
@@ -400,34 +423,116 @@ Required to connect to real German banks. Free, one-time, shared by all wimg use
 
 **Status:** Not yet submitted
 
-#### Phase 4B — Sync (opt-in, self-hosted server)
-Row-level sync using existing `updated_at` columns. Server is a tiny self-hosted
-SQLite + HTTP API (~200 lines). Devices push/pull changed rows since last sync.
-Last-write-wins per row. No CRDTs.
+#### Phase 4B — Sync (Cloudflare R2 + Workers)
+
+Row-level sync using existing `updated_at` columns. Cloudflare Worker + R2
+as storage backend. ~50 lines of TypeScript. Last-write-wins per row. No CRDTs.
+Designed to be self-hostable: same API, swap R2 for local disk/S3/MinIO.
+
+##### How it works
+
+1. User taps "Enable Sync" in the app
+2. App generates a random UUID sync key (the key IS the identity — no signup)
+3. App sends sync requests with that key → Worker auto-creates a bucket
+4. Worker enforces 100MB per key, rejects writes past that
+5. User pastes same key on other device → synced
+
+##### Sync triggers
+
+- **Pull on app open** — fetch changes from server since last sync
+- **Push on mutate** — after every write (category change, import, debt update)
+- No polling, no WebSockets. Open app → pull. Change something → push.
+- Latency: ~1-2 seconds per sync (Worker round-trip)
+- Realtime (optional, later): add SSE endpoint for live tailing. No vendor lock-in.
+
+##### Storage
 
 ```
-POST /sync  — device sends changed rows since last sync timestamp
-GET  /sync?since=<ts>  — returns rows newer than timestamp
+r2://wimg-sync/{sync-key}/changes.json
 ```
+
+Each sync key = one JSON blob in R2. Worker appends rows, returns rows
+newer than `since`. 10GB free tier = ~100 users at 100MB each.
+R2 is S3-compatible — self-host with MinIO or any S3-compatible storage.
+
+##### API
+
+```
+POST /sync/:key          — push changed rows since last sync timestamp
+GET  /sync/:key?since=ts — pull rows newer than timestamp
+```
+
+The sync key is the auth. No Bearer token, no OAuth. The key IS the credential.
+Client code (libwimg) doesn't care what's behind the API — just POSTs/GETs JSON.
+That's the portability layer for self-hosting.
+
+##### E2E Encryption
+
+All data encrypted client-side before syncing. Server stores ciphertext only.
+
+1. User sets a passphrase on both devices (once)
+2. Derive encryption key with PBKDF2/Argon2
+3. `description`, `amount`, `raw` fields encrypted before POST
+4. Server can't read data even if compromised
+5. Other device pulls, decrypts locally
+
+##### Self-hosting
+
+Same API, different backend. Replace Worker + R2 with:
+
+```
+Go/Zig binary (~200 lines)
+├── POST /sync/:key        — store changes in SQLite file per key
+├── GET  /sync/:key?since= — return changes since timestamp
+└── GET  /events/:key      — SSE stream for realtime (optional)
+```
+
+Runs on any $4 VPS. Same client code, zero changes.
+
+##### Cloudflare Pricing (wimg's current stack)
+
+| Service                 | Free Tier                                                     | Paid Tier ($5/mo min)                       |
+| ----------------------- | ------------------------------------------------------------- | ------------------------------------------- |
+| **Pages** (web hosting) | Unlimited sites, bandwidth, requests                          | Same + preview deployments, analytics       |
+| **Workers** (sync API)  | 100K requests/day, 10ms CPU/request                           | 10M requests/mo, 30M CPU ms/mo, +$0.30/M    |
+| **R2** (sync storage)   | 10 GB storage, 1M writes/mo, 10M reads/mo, **no egress fees** | $0.015/GB-mo, $4.50/M writes, $0.36/M reads |
+| **CDN**                 | Unlimited bandwidth, free                                     | Same                                        |
+
+**wimg cost estimate:**
+
+- Current (web only, no sync): **$0/mo** — Pages free tier
+- With sync (personal use, 2 devices): **$0/mo** — well within free tier
+- With sync (100 users × 100MB): **$0/mo** — 10GB free R2 + <100K requests/day
+- With sync (1000 users × 100MB): **~$1.50/mo** — 100GB R2 storage only, no egress
+
+Key: R2 has **zero egress fees**. You never pay for downloads. Only storage + write operations.
+
+##### Tasks
 
 - [ ] `wimg_get_changes(since_ts)` — C ABI: return rows with updated_at > ts as JSON
 - [ ] `wimg_apply_changes(json)` — C ABI: merge incoming rows (LWW per updated_at)
-- [ ] `wimg-sync-server/` — self-hosted Docker container (Python/Go, tiny)
-- [ ] Sync UI in iOS app: server URL + API key config, manual "Sync" button
+- [ ] `wimg_encrypt_field(plaintext, key)` — C ABI: AES-256 encrypt before sync
+- [ ] `wimg_decrypt_field(ciphertext, key)` — C ABI: decrypt after pull
+- [ ] `wimg-sync/` — Cloudflare Worker + R2 (~50 lines TypeScript)
+- [ ] Sync UI in iOS app: sync key display/paste, manual "Sync" button
 - [ ] Sync UI in web app: same config, manual sync
 - [ ] Auto-sync on app open + after mutations (optional)
-- [ ] End-to-end encryption (for when users self-host on shared infra)
+- [ ] SSE endpoint for realtime (later, if needed)
 
 #### Success criteria
+
 - [ ] Native app connects to Comdirect via FinTS, fetches real transactions
 - [ ] TAN flow works (photoTAN challenge → user enters code → transactions load)
 - [ ] Works with multiple German banks (ING, DKB, Commerzbank, etc.)
 - [ ] Change category on iPhone → appears on web after sync
 - [ ] No data loss on concurrent edits (last-write-wins per row)
+- [ ] Sync key generated → paste on second device → data appears
+- [ ] E2E encryption: server stores only ciphertext, passphrase never leaves device
 
 ---
 
 ### Phase 5 — Intelligence + Polish
+
 **Goal:** Make wimg proactively useful.
 **Time box:** TBD
 
@@ -438,21 +543,76 @@ GET  /sync?since=<ts>  — returns rows newer than timestamp
 - [ ] Data export — JSON dump of full database
 - [ ] Month snapshot — freeze monthly state for historical comparison
 - [ ] ETF / investment tracking (Trade Republic depot data)
+- [ ] i18n — multi-language support (see Phase 5.1 below)
+
+---
+
+### Phase 5.1 — i18n (Internationalization)
+
+**Goal:** Multi-language support with one source of truth for all platforms.
+**Time box:** TBD
+
+Using [Wuchale](https://wuchale.dev/) — compile-time i18n toolkit for JavaScript.
+
+##### How it works
+
+1. **German stays as-is** — all existing Svelte/Swift code keeps hardcoded German text
+2. **Wuchale extracts** translatable strings from Svelte components into PO files (Gettext)
+3. **Translators edit PO files** — standard format, supported by Crowdin/Weblate/POEdit
+4. **Compile-time transform** — translations become indexed arrays (smallest bundles, zero runtime overhead)
+5. **iOS gets `.strings`** — a script converts the same PO files → Apple `Localizable.strings`
+
+##### Architecture — one source of truth
+
+```
+wimg/
+├── locales/
+│   ├── de.po          ← source language (German, auto-extracted)
+│   ├── en.po          ← English translations
+│   └── tr.po          ← additional languages
+├── scripts/
+│   └── po-to-strings.sh  ← PO → iOS .strings converter
+├── wimg-web/           ← Wuchale Svelte plugin reads PO at build time
+└── wimg-ios/
+    └── wimg/*.lproj/Localizable.strings  ← generated from PO
+```
+
+- **Web**: Wuchale Svelte plugin compiles PO → indexed arrays at build time
+- **iOS**: SwiftUI `Text("German string")` auto-looks up in `.strings` files per locale
+- **Zig (libwimg)**: No changes needed — returns raw data, no UI strings
+
+##### Why Wuchale
+
+- No code changes required — extracts from existing German text
+- Compile-time = zero runtime cost, smallest bundles
+- PO is the most widely supported translation format
+- Works with Svelte 5
+
+##### Tasks
+
+- [ ] Install Wuchale Svelte plugin, configure in `vite.config.ts`
+- [ ] Run initial extraction → `locales/de.po` (German source)
+- [ ] Create `locales/en.po` with English translations
+- [ ] Write `scripts/po-to-strings.sh` (PO → Apple `.strings`)
+- [ ] Add `*.lproj/` directories to wimg-ios
+- [ ] Verify SwiftUI picks up translations by device locale
+- [ ] Add locale switcher in Settings (web + iOS)
+- [ ] CI: validate PO files have no missing translations
 
 ---
 
 ## Tech Stack
 
-| Layer | Choice | Why |
-|-------|--------|-----|
-| Shared core | Zig 0.15.2 | Single source of truth for all logic |
-| Storage | SQLite (amalgamation, compiled in) | Local, queryable, no deps |
-| Web UI | Svelte 5 + TailwindCSS + LayerChart | Reactive, lightweight, Svelte-native charts |
-| Web persistence | OPFS | SQLite-on-browser, offline, no server |
-| iOS UI | SwiftUI | Native, links libwimg.a via C ABI |
-| Sync | Last-write-wins on `updated_at` | Simple, correct for single user |
-| AI | Claude API (optional, online) | Categorization + chat |
-| FinTS | Pure Zig (fints.zig + mt940.zig) | No external deps, native-only, direct bank connection |
+| Layer           | Choice                              | Why                                                   |
+| --------------- | ----------------------------------- | ----------------------------------------------------- |
+| Shared core     | Zig 0.15.2                          | Single source of truth for all logic                  |
+| Storage         | SQLite (amalgamation, compiled in)  | Local, queryable, no deps                             |
+| Web UI          | Svelte 5 + TailwindCSS + LayerChart | Reactive, lightweight, Svelte-native charts           |
+| Web persistence | OPFS                                | SQLite-on-browser, offline, no server                 |
+| iOS UI          | SwiftUI                             | Native, links libwimg.a via C ABI                     |
+| Sync            | Last-write-wins on `updated_at`     | Simple, correct for single user                       |
+| AI              | Claude API (optional, online)       | Categorization + chat                                 |
+| FinTS           | Pure Zig (fints.zig + mt940.zig)    | No external deps, native-only, direct bank connection |
 
 ---
 
@@ -548,44 +708,98 @@ wimg/
 │           ├── CategoryBadge.swift
 │           └── UndoToast.swift
 │
-└── wimg-sync/                  Phase 4
-    └── (TBD)
+└── wimg-sync/                  Phase 4B — Cloudflare Worker + R2
+    ├── wrangler.toml             Worker config, R2 bucket binding
+    └── src/index.ts              sync API (~50 lines)
 ```
 
 ---
 
 ## Decision Log
 
-| Date | Decision | Reason |
-|------|----------|--------|
-| Mar 2026 | Zig as shared core, not Rust | Already learning Zig, libghostty proves the model |
-| Mar 2026 | No Automerge | Rust-only, logic still duplicated per platform |
-| Mar 2026 | SQLite compiled into libwimg | One storage engine, same on web + iOS |
-| Mar 2026 | Last-write-wins sync | Single user, two devices — CRDT overkill |
-| Mar 2026 | OPFS for web persistence | True offline SQLite in browser, no server |
-| Mar 2026 | FinTS via separate wimg-sync binary | Can't compile AqBanking to WASM |
-| Mar 2026 | Friendly fintech design | Light, cards, warm tones, calm |
-| Mar 2026 | LayerChart instead of D3 | Svelte-native, PieChart component, less boilerplate |
-| Mar 2026 | Claude API on JS side, not Zig WASM | WASM can't make HTTP requests; JS calls Anthropic API directly |
-| Mar 2026 | COEP `credentialless` not `require-corp` | `require-corp` breaks Vite HMR WebSocket in dev |
-| Mar 2026 | Controlled SW updates (no skipWaiting) | Users choose when to update; banner shows changelog; OPFS clear for breaking schema changes |
-| Mar 2026 | XcodeGen for iOS project | Auto-discovers Swift files, no manual pbxproj editing |
-| Mar 2026 | Multi-account as Phase 3.5 | Transactions already have `account` column; minimal schema change, big UX win |
-| Mar 2026 | `scripts/release.sh` for versioning | Single command: bump versions, generate changelog, commit, tag |
-| Mar 2026 | CI downloads SQLite amalgamation | sqlite3.c gitignored (9MB); CI fetches from sqlite.org |
-| Mar 2026 | `lefthook` pre-commit hooks | Catch fmt/lint issues before commit (zig fmt, oxfmt, oxlint) |
-| Mar 2026 | CI tests with `-Doptimize=ReleaseFast` | sqlite3.c compilation 72s → ~15s in CI |
-| Mar 2026 | Cloudflare R2 for sync storage (Phase 4B) | JSON blob sync, 10GB free, no vendor lock-in risk |
+| Date     | Decision                                  | Reason                                                                                      |
+| -------- | ----------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Mar 2026 | Zig as shared core, not Rust              | Already learning Zig, libghostty proves the model                                           |
+| Mar 2026 | No Automerge                              | Rust-only, logic still duplicated per platform                                              |
+| Mar 2026 | SQLite compiled into libwimg              | One storage engine, same on web + iOS                                                       |
+| Mar 2026 | Last-write-wins sync                      | Single user, two devices — CRDT overkill                                                    |
+| Mar 2026 | OPFS for web persistence                  | True offline SQLite in browser, no server                                                   |
+| Mar 2026 | FinTS via separate wimg-sync binary       | Can't compile AqBanking to WASM                                                             |
+| Mar 2026 | Friendly fintech design                   | Light, cards, warm tones, calm                                                              |
+| Mar 2026 | LayerChart instead of D3                  | Svelte-native, PieChart component, less boilerplate                                         |
+| Mar 2026 | Claude API on JS side, not Zig WASM       | WASM can't make HTTP requests; JS calls Anthropic API directly                              |
+| Mar 2026 | COEP `credentialless` not `require-corp`  | `require-corp` breaks Vite HMR WebSocket in dev                                             |
+| Mar 2026 | Controlled SW updates (no skipWaiting)    | Users choose when to update; banner shows changelog; OPFS clear for breaking schema changes |
+| Mar 2026 | XcodeGen for iOS project                  | Auto-discovers Swift files, no manual pbxproj editing                                       |
+| Mar 2026 | Multi-account as Phase 3.5                | Transactions already have `account` column; minimal schema change, big UX win               |
+| Mar 2026 | `scripts/release.sh` for versioning       | Single command: bump versions, generate changelog, commit, tag                              |
+| Mar 2026 | CI downloads SQLite amalgamation          | sqlite3.c gitignored (9MB); CI fetches from sqlite.org                                      |
+| Mar 2026 | `lefthook` pre-commit hooks               | Catch fmt/lint issues before commit (zig fmt, oxfmt, oxlint)                                |
+| Mar 2026 | CI tests with `-Doptimize=ReleaseFast`    | sqlite3.c compilation 72s → ~15s in CI                                                      |
+| Mar 2026 | Cloudflare R2 for sync storage (Phase 4B) | JSON blob sync, 10GB free, no vendor lock-in risk                                           |
+| Mar 2026 | Wuchale for i18n (Phase 5.1)              | Compile-time, PO files as single source for web + iOS, zero runtime cost                    |
+
+---
+
+## Feature Parity — iOS vs Web
+
+Both platforms are thin shells over the same libwimg C ABI.
+FinTS is intentionally iOS-only (browsers can't do FinTS due to CORS).
+
+### At Parity
+
+| Feature                                                     | Web | iOS                    |
+| ----------------------------------------------------------- | --- | ---------------------- |
+| Dashboard (hero, donut, income/expenses, deltas)            | ✅  | ✅                     |
+| Month/year picker                                           | ✅  | ✅                     |
+| Transactions (segmented filter, search, grouped by date)    | ✅  | ✅                     |
+| Category editor (bottom sheet / modal)                      | ✅  | ✅                     |
+| Exclude/include transactions                                | ✅  | ✅                     |
+| Undo toast                                                  | ✅  | ✅                     |
+| Analysis (donut, category breakdown, deltas)                | ✅  | ✅                     |
+| Debts (progress bars, add/pay/delete)                       | ✅  | ✅                     |
+| Monthly review (savings, anomalies, checklist)              | ✅  | ✅                     |
+| CSV import (Comdirect, TR, Scalable, preview, format badge) | ✅  | ✅                     |
+| Rules-based auto-categorization on import                   | ✅  | ✅                     |
+| Claude AI categorization (Import post-import)               | ✅  | ✅                     |
+| Account switcher + filter all screens                       | ✅  | ✅                     |
+| Account management (add/edit/delete, color picker)          | ✅  | ✅ (via AccountPicker) |
+| Auto-create account on import                               | ✅  | ✅                     |
+| Sync enable / link device / manual sync / copy key          | ✅  | ✅                     |
+| Settings: encryption passphrase (placeholder)               | ✅  | ✅                     |
+| Settings: version + GitHub link                             | ✅  | ✅                     |
+| More page (hub to Debts, Import, Review, Settings)          | ✅  | ✅                     |
+
+### iOS Missing (needs implementation)
+
+| Feature                                              | Web | iOS | Priority |
+| ---------------------------------------------------- | --- | --- | -------- |
+| Settings: Claude AI key card (moved from Import)     | ✅  | ✅  | Done     |
+| Import: simplified Claude section (link to Settings) | ✅  | ✅  | Done     |
+| Settings: data reset ("Alle Daten löschen")          | ✅  | ✅  | Done     |
+| Settings: sync key mask/reveal toggle                | ✅  | ❌  | Low      |
+| Settings: sync QR code display                       | ✅  | ❌  | Low      |
+
+### Web Missing
+
+None. Web is the reference implementation.
+
+### Platform-Specific (intentional)
+
+| Feature                              | Platform | Reason                         |
+| ------------------------------------ | -------- | ------------------------------ |
+| FinTS bank connection                | iOS only | Browsers can't do FinTS (CORS) |
+| PWA install + service worker updates | Web only | Native concept                 |
+| OPFS persistence                     | Web only | iOS uses file on disk          |
 
 ---
 
 ## Open Questions
 
-| Question | Answer when |
-|----------|-------------|
-| WASM + OPFS: SharedArrayBuffer complexity? | Resolved Phase 1 — works with credentialless COEP |
-| libwimg output buffer size — static or dynamic? | Resolved Phase 1 — static 64KB buffer |
-| Claude API calls from Zig WASM — possible? | Resolved Phase 2 — No, done on JS side instead |
-| iCloud Drive sync reliability? | Phase 4 |
-| App Store distribution of wimg-ios? | Phase 3 end |
-
+| Question                                        | Answer when                                       |
+| ----------------------------------------------- | ------------------------------------------------- |
+| WASM + OPFS: SharedArrayBuffer complexity?      | Resolved Phase 1 — works with credentialless COEP |
+| libwimg output buffer size — static or dynamic? | Resolved Phase 1 — static 64KB buffer             |
+| Claude API calls from Zig WASM — possible?      | Resolved Phase 2 — No, done on JS side instead    |
+| iCloud Drive sync reliability?                  | Phase 4                                           |
+| App Store distribution of wimg-ios?             | Phase 3 end                                       |

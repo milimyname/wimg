@@ -25,8 +25,6 @@ struct ImportView: View {
     @State private var rulesCategorizedCount: Int?
     @State private var claudeLoading = false
     @State private var claudeResult: ClaudeResult?
-    @State private var showApiKeyInput = false
-    @State private var apiKeyDraft = ""
 
     private var previewTotals: (income: Double, expenses: Double) {
         guard let txns = parseResult?.transactions else { return (0, 0) }
@@ -412,40 +410,6 @@ struct ImportView: View {
                     Spacer()
                 }
 
-                // API Key Input
-                if !ClaudeAPI.hasKey || showApiKeyInput {
-                    HStack(spacing: 8) {
-                        SecureField("sk-ant-...", text: $apiKeyDraft)
-                            .font(.system(.caption, design: .rounded))
-                            .padding(10)
-                            .background(Color(.systemGray6))
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                        Button("Speichern") {
-                            let trimmed = apiKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                            if !trimmed.isEmpty {
-                                ClaudeAPI.setKey(trimmed)
-                                showApiKeyInput = false
-                                apiKeyDraft = ""
-                            }
-                        }
-                        .font(.system(.caption, design: .rounded, weight: .bold))
-                        .foregroundStyle(WimgTheme.text)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(WimgTheme.accent)
-                        .clipShape(Capsule())
-                        .disabled(apiKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
-                    .padding(.leading, 58)
-
-                    Text("Nur lokal gespeichert. Wird nur an die Anthropic API gesendet.")
-                        .font(.system(.caption2, design: .rounded))
-                        .foregroundStyle(.tertiary)
-                        .padding(.leading, 58)
-                }
-
-                // Actions when key exists
                 if ClaudeAPI.hasKey {
                     HStack(spacing: 8) {
                         Button {
@@ -465,21 +429,13 @@ struct ImportView: View {
                         .background(Color.purple)
                         .clipShape(Capsule())
                         .disabled(claudeLoading)
-
-                        Button(showApiKeyInput ? "Abbrechen" : "Key ändern") {
-                            showApiKeyInput.toggle()
-                        }
-                        .font(.system(.caption, design: .rounded))
-                        .foregroundStyle(WimgTheme.textSecondary)
-
-                        if !showApiKeyInput {
-                            Button("Entfernen") {
-                                ClaudeAPI.removeKey()
-                                showApiKeyInput = false
-                            }
+                    }
+                    .padding(.leading, 58)
+                } else {
+                    NavigationLink(destination: SettingsView()) {
+                        Text("API-Schlüssel in Einstellungen konfigurieren")
                             .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(.red)
-                        }
+                            .foregroundStyle(.purple)
                     }
                     .padding(.leading, 58)
                 }
@@ -651,7 +607,6 @@ struct ImportView: View {
         rulesCategorizedCount = nil
         claudeResult = nil
         claudeLoading = false
-        showApiKeyInput = false
     }
 
     private func formatLabel(_ format: String) -> String {

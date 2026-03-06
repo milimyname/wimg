@@ -665,6 +665,55 @@ export fn wimg_redo() ?[*]const u8 {
     return buf.ptr;
 }
 
+// --- Sync ---
+
+/// Get all rows changed since `since_ts` (unix ms). Returns length-prefixed JSON.
+export fn wimg_get_changes(since_ts: i64) ?[*]const u8 {
+    var database = global_db orelse {
+        setError("wimg_get_changes: database not initialized", .{});
+        return null;
+    };
+
+    const buf_size: usize = 2 * 1024 * 1024; // 2 MB
+    const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
+        setError("wimg_get_changes: failed to allocate buffer", .{});
+        return null;
+    };
+
+    const json_len = database.getChangesJson(since_ts, buf.ptr + 4, buf_size) catch |err| {
+        setError("wimg_get_changes: query failed: {s}", .{@errorName(err)});
+        fba.allocator().free(buf);
+        return null;
+    } orelse {
+        setError("wimg_get_changes: buffer too small", .{});
+        fba.allocator().free(buf);
+        return null;
+    };
+
+    const len_bytes: [4]u8 = @bitCast(@as(u32, @intCast(json_len)));
+    buf[0] = len_bytes[0];
+    buf[1] = len_bytes[1];
+    buf[2] = len_bytes[2];
+    buf[3] = len_bytes[3];
+
+    return buf.ptr;
+}
+
+/// Apply incoming sync changes (JSON). Returns count of applied rows, or -1 on error.
+export fn wimg_apply_changes(data: [*]const u8, len: u32) i32 {
+    var database = global_db orelse {
+        setError("wimg_apply_changes: database not initialized", .{});
+        return -1;
+    };
+
+    const result = database.applyChanges(data[0..len]) catch |err| {
+        setError("wimg_apply_changes: failed: {s}", .{@errorName(err)});
+        return -1;
+    };
+
+    return result;
+}
+
 // --- Accounts ---
 
 /// Get all accounts as JSON array.

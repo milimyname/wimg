@@ -43,7 +43,7 @@ struct ContentView: View {
         TabView {
             DashboardView(selectedAccount: $selectedAccount, accounts: $accounts)
                 .tabItem {
-                    Label("Übersicht", systemImage: "chart.pie")
+                    Label("Home", systemImage: "house")
                 }
 
             TransactionsView(selectedAccount: $selectedAccount)
@@ -56,19 +56,9 @@ struct ContentView: View {
                     Label("Analyse", systemImage: "chart.bar")
                 }
 
-            ReviewView(selectedAccount: $selectedAccount)
+            MoreView(selectedAccount: $selectedAccount)
                 .tabItem {
-                    Label("Rückblick", systemImage: "calendar")
-                }
-
-            DebtsView()
-                .tabItem {
-                    Label("Schulden", systemImage: "creditcard")
-                }
-
-            ImportView()
-                .tabItem {
-                    Label("Import", systemImage: "square.and.arrow.down")
+                    Label("Mehr", systemImage: "square.grid.2x2")
                 }
         }
         .tint(WimgTheme.text)

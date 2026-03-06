@@ -1,190 +1,231 @@
-<!DOCTYPE html>
+<!doctype html>
 
-<html class="light" lang="de"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script id="tailwind-config">
+<html class="light" lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
       tailwind.config = {
         darkMode: "class",
         theme: {
           extend: {
             colors: {
-              "primary": "#13ecda",
+              primary: "#13ecda",
               "background-light": "#f6f8f8",
               "background-dark": "#102220",
             },
             fontFamily: {
-              "display": ["Inter"]
+              display: ["Inter"],
             },
-            borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+            borderRadius: { DEFAULT: "0.5rem", lg: "1rem", xl: "1.5rem", full: "9999px" },
           },
         },
-      }
+      };
     </script>
-<style>
+    <style>
       body { font-family: 'Inter', sans-serif; }
       .soft-shadow { shadow-[0_4px_12px_rgba(0,0,0,0.05)] }
     </style>
-<style>
-    body {
-      min-height: max(884px, 100dvh);
-    }
-  </style>
+    <style>
+      body {
+        min-height: max(884px, 100dvh);
+      }
+    </style>
   </head>
-<body class="bg-background-light text-slate-900 font-display">
-<div class="relative flex h-screen w-full flex-col overflow-hidden max-w-md mx-auto bg-background-light">
-<!-- Header -->
-<header class="flex items-center justify-between px-6 pt-12 pb-4 bg-background-light">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-slate-900">search</span>
-</div>
-<h1 class="text-lg font-bold text-slate-900">Transaktionen</h1>
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-slate-900">calendar_month</span>
-</div>
-</header>
-<!-- Segmented Control -->
-<div class="px-6 mb-4">
-<div class="flex bg-slate-200/50 p-1 rounded-lg">
-<button class="flex-1 bg-white shadow-sm py-1.5 rounded-md text-sm font-semibold text-slate-900">Alle</button>
-<button class="flex-1 py-1.5 rounded-md text-sm font-medium text-slate-500">Ausgaben</button>
-<button class="flex-1 py-1.5 rounded-md text-sm font-medium text-slate-500">Einnahmen</button>
-</div>
-</div>
-<!-- Transaction List -->
-<div class="flex-1 overflow-y-auto px-6 pb-24">
-<!-- Date Header -->
-<h3 class="text-sm font-bold text-slate-400 mt-6 mb-3 uppercase tracking-wider">Heute · 14. Februar</h3>
-<!-- Transaction Card -->
-<div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between mb-3">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
-<span class="material-symbols-outlined text-slate-600">shopping_cart</span>
-</div>
-<div>
-<p class="font-bold text-slate-900 leading-tight">REWE</p>
-<div class="flex items-center gap-1.5 mt-0.5">
-<span class="w-2 h-2 rounded-full bg-orange-400"></span>
-<p class="text-xs text-slate-500 font-medium">Lebensmittel</p>
-</div>
-</div>
-</div>
-<div class="text-right">
-<p class="font-bold text-slate-900">-14,50 €</p>
-</div>
-</div>
-<!-- Transaction Card -->
-<div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between mb-3">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
-<span class="material-symbols-outlined text-slate-600">train</span>
-</div>
-<div>
-<p class="font-bold text-slate-900 leading-tight">Deutsche Bahn</p>
-<div class="flex items-center gap-1.5 mt-0.5">
-<span class="w-2 h-2 rounded-full bg-blue-400"></span>
-<p class="text-xs text-slate-500 font-medium">Transport</p>
-</div>
-</div>
-</div>
-<div class="text-right">
-<p class="font-bold text-slate-900">-49,00 €</p>
-</div>
-</div>
-<!-- Date Header -->
-<h3 class="text-sm font-bold text-slate-400 mt-8 mb-3 uppercase tracking-wider">Gestern · 13. Februar</h3>
-<!-- Transaction Card -->
-<div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between mb-3">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
-<span class="material-symbols-outlined text-primary">payments</span>
-</div>
-<div>
-<p class="font-bold text-slate-900 leading-tight">Gehalt</p>
-<div class="flex items-center gap-1.5 mt-0.5">
-<span class="w-2 h-2 rounded-full bg-primary"></span>
-<p class="text-xs text-slate-500 font-medium">Einkommen</p>
-</div>
-</div>
-</div>
-<div class="text-right">
-<p class="font-bold text-emerald-500">+2.450,00 €</p>
-</div>
-</div>
-<!-- Transaction Card -->
-<div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between mb-3 opacity-60">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
-<span class="material-symbols-outlined text-slate-600">bolt</span>
-</div>
-<div>
-<p class="font-bold text-slate-900 leading-tight">Vattenfall</p>
-<div class="flex items-center gap-1.5 mt-0.5">
-<span class="w-2 h-2 rounded-full bg-yellow-500"></span>
-<p class="text-xs text-slate-500 font-medium">Versorgungsbetriebe</p>
-</div>
-</div>
-</div>
-<div class="text-right">
-<p class="font-bold text-slate-900">-85,20 €</p>
-</div>
-</div>
-</div>
-<!-- Detail View Overlay (Bottom Sheet Mockup) -->
-<div class="absolute inset-0 bg-slate-900/40 z-20 flex flex-col justify-end">
-<div class="bg-white rounded-t-xl w-full p-6 pb-12 shadow-2xl animate-slide-up">
-<div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-8"></div>
-<div class="flex flex-col items-center mb-8">
-<div class="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center mb-4 border border-slate-100">
-<span class="material-symbols-outlined text-4xl text-slate-900">shopping_cart</span>
-</div>
-<h2 class="text-2xl font-bold text-slate-900">REWE</h2>
-<p class="text-slate-500 text-sm mt-1">Gestern, 14:32</p>
-</div>
-<div class="space-y-6">
-<div class="flex justify-between items-center py-4 border-b border-slate-50">
-<span class="text-slate-500 font-medium">Betrag</span>
-<span class="text-xl font-bold text-slate-900">-14,50 €</span>
-</div>
-<div class="space-y-3">
-<span class="text-slate-500 font-medium text-sm">Kategorie</span>
-<div class="flex flex-wrap gap-2">
-<div class="flex items-center gap-2 bg-primary/10 text-slate-900 px-4 py-2 rounded-full border border-primary/20">
-<span class="w-2.5 h-2.5 rounded-full bg-orange-400"></span>
-<span class="font-bold text-sm">Lebensmittel</span>
-<span class="material-symbols-outlined text-sm">expand_more</span>
-</div>
-<div class="flex items-center justify-center w-10 h-10 bg-slate-100 rounded-full">
-<span class="material-symbols-outlined text-slate-500">edit</span>
-</div>
-</div>
-</div>
-<button class="w-full bg-primary text-slate-900 font-bold py-4 rounded-xl mt-4">Fertig</button>
-</div>
-</div>
-</div>
-<!-- Bottom Navigation -->
-<nav class="absolute bottom-0 w-full bg-white/80 backdrop-blur-md border-t border-slate-100 px-6 pb-6 pt-2 flex justify-between items-center z-10">
-<div class="flex flex-col items-center gap-1 text-primary">
-<span class="material-symbols-outlined fill-1">account_balance_wallet</span>
-<span class="text-[10px] font-bold">Finanzen</span>
-</div>
-<div class="flex flex-col items-center gap-1 text-slate-400">
-<span class="material-symbols-outlined">analytics</span>
-<span class="text-[10px] font-medium">Analyse</span>
-</div>
-<div class="flex flex-col items-center gap-1 text-slate-400">
-<span class="material-symbols-outlined">receipt_long</span>
-<span class="text-[10px] font-medium">Verträge</span>
-</div>
-<div class="flex flex-col items-center gap-1 text-slate-400">
-<span class="material-symbols-outlined">person</span>
-<span class="text-[10px] font-medium">Profil</span>
-</div>
-</nav>
-</div>
-</body></html>
+  <body class="bg-background-light text-slate-900 font-display">
+    <div
+      class="relative flex h-screen w-full flex-col overflow-hidden max-w-md mx-auto bg-background-light"
+    >
+      <!-- Header -->
+      <header class="flex items-center justify-between px-6 pt-12 pb-4 bg-background-light">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-slate-900">search</span>
+        </div>
+        <h1 class="text-lg font-bold text-slate-900">Transaktionen</h1>
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-slate-900">calendar_month</span>
+        </div>
+      </header>
+      <!-- Segmented Control -->
+      <div class="px-6 mb-4">
+        <div class="flex bg-slate-200/50 p-1 rounded-lg">
+          <button
+            class="flex-1 bg-white shadow-sm py-1.5 rounded-md text-sm font-semibold text-slate-900"
+          >
+            Alle
+          </button>
+          <button class="flex-1 py-1.5 rounded-md text-sm font-medium text-slate-500">
+            Ausgaben
+          </button>
+          <button class="flex-1 py-1.5 rounded-md text-sm font-medium text-slate-500">
+            Einnahmen
+          </button>
+        </div>
+      </div>
+      <!-- Transaction List -->
+      <div class="flex-1 overflow-y-auto px-6 pb-24">
+        <!-- Date Header -->
+        <h3 class="text-sm font-bold text-slate-400 mt-6 mb-3 uppercase tracking-wider">
+          Heute · 14. Februar
+        </h3>
+        <!-- Transaction Card -->
+        <div
+          class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between mb-3"
+        >
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
+              <span class="material-symbols-outlined text-slate-600">shopping_cart</span>
+            </div>
+            <div>
+              <p class="font-bold text-slate-900 leading-tight">REWE</p>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="w-2 h-2 rounded-full bg-orange-400"></span>
+                <p class="text-xs text-slate-500 font-medium">Lebensmittel</p>
+              </div>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="font-bold text-slate-900">-14,50 €</p>
+          </div>
+        </div>
+        <!-- Transaction Card -->
+        <div
+          class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between mb-3"
+        >
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
+              <span class="material-symbols-outlined text-slate-600">train</span>
+            </div>
+            <div>
+              <p class="font-bold text-slate-900 leading-tight">Deutsche Bahn</p>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                <p class="text-xs text-slate-500 font-medium">Transport</p>
+              </div>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="font-bold text-slate-900">-49,00 €</p>
+          </div>
+        </div>
+        <!-- Date Header -->
+        <h3 class="text-sm font-bold text-slate-400 mt-8 mb-3 uppercase tracking-wider">
+          Gestern · 13. Februar
+        </h3>
+        <!-- Transaction Card -->
+        <div
+          class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between mb-3"
+        >
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
+              <span class="material-symbols-outlined text-primary">payments</span>
+            </div>
+            <div>
+              <p class="font-bold text-slate-900 leading-tight">Gehalt</p>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="w-2 h-2 rounded-full bg-primary"></span>
+                <p class="text-xs text-slate-500 font-medium">Einkommen</p>
+              </div>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="font-bold text-emerald-500">+2.450,00 €</p>
+          </div>
+        </div>
+        <!-- Transaction Card -->
+        <div
+          class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center justify-between mb-3 opacity-60"
+        >
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
+              <span class="material-symbols-outlined text-slate-600">bolt</span>
+            </div>
+            <div>
+              <p class="font-bold text-slate-900 leading-tight">Vattenfall</p>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                <p class="text-xs text-slate-500 font-medium">Versorgungsbetriebe</p>
+              </div>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="font-bold text-slate-900">-85,20 €</p>
+          </div>
+        </div>
+      </div>
+      <!-- Detail View Overlay (Bottom Sheet Mockup) -->
+      <div class="absolute inset-0 bg-slate-900/40 z-20 flex flex-col justify-end">
+        <div class="bg-white rounded-t-xl w-full p-6 pb-12 shadow-2xl animate-slide-up">
+          <div class="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-8"></div>
+          <div class="flex flex-col items-center mb-8">
+            <div
+              class="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center mb-4 border border-slate-100"
+            >
+              <span class="material-symbols-outlined text-4xl text-slate-900">shopping_cart</span>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-900">REWE</h2>
+            <p class="text-slate-500 text-sm mt-1">Gestern, 14:32</p>
+          </div>
+          <div class="space-y-6">
+            <div class="flex justify-between items-center py-4 border-b border-slate-50">
+              <span class="text-slate-500 font-medium">Betrag</span>
+              <span class="text-xl font-bold text-slate-900">-14,50 €</span>
+            </div>
+            <div class="space-y-3">
+              <span class="text-slate-500 font-medium text-sm">Kategorie</span>
+              <div class="flex flex-wrap gap-2">
+                <div
+                  class="flex items-center gap-2 bg-primary/10 text-slate-900 px-4 py-2 rounded-full border border-primary/20"
+                >
+                  <span class="w-2.5 h-2.5 rounded-full bg-orange-400"></span>
+                  <span class="font-bold text-sm">Lebensmittel</span>
+                  <span class="material-symbols-outlined text-sm">expand_more</span>
+                </div>
+                <div class="flex items-center justify-center w-10 h-10 bg-slate-100 rounded-full">
+                  <span class="material-symbols-outlined text-slate-500">edit</span>
+                </div>
+              </div>
+            </div>
+            <button class="w-full bg-primary text-slate-900 font-bold py-4 rounded-xl mt-4">
+              Fertig
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- Bottom Navigation -->
+      <nav
+        class="absolute bottom-0 w-full bg-white/80 backdrop-blur-md border-t border-slate-100 px-6 pb-6 pt-2 flex justify-between items-center z-10"
+      >
+        <div class="flex flex-col items-center gap-1 text-primary">
+          <span class="material-symbols-outlined fill-1">account_balance_wallet</span>
+          <span class="text-[10px] font-bold">Finanzen</span>
+        </div>
+        <div class="flex flex-col items-center gap-1 text-slate-400">
+          <span class="material-symbols-outlined">analytics</span>
+          <span class="text-[10px] font-medium">Analyse</span>
+        </div>
+        <div class="flex flex-col items-center gap-1 text-slate-400">
+          <span class="material-symbols-outlined">receipt_long</span>
+          <span class="text-[10px] font-medium">Verträge</span>
+        </div>
+        <div class="flex flex-col items-center gap-1 text-slate-400">
+          <span class="material-symbols-outlined">person</span>
+          <span class="text-[10px] font-medium">Profil</span>
+        </div>
+      </nav>
+    </div>
+  </body>
+</html>

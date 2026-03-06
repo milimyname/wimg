@@ -3,6 +3,7 @@ libwimg/zig-out/
 libwimg/zig-cache/
 libwimg/.zig-cache/
 libwimg/build-ios/
+libwimg/ZIG_LEARNING_PLAN.md
 
 # SQLite amalgamation (large, downloaded)
 libwimg/vendor/sqlite3.c
@@ -20,6 +21,10 @@ wimg-web/.vercel/
 wimg-web/.netlify/
 wimg-web/.wrangler/
 .svelte-kit/
+
+# Sync Worker — dependencies & build
+wimg-sync/node_modules/
+wimg-sync/.wrangler/
 
 # Vite
 vite.config.js.timestamp-*
@@ -57,8 +62,6 @@ Thumbs.db
 .env.*
 !.env.example
 
-# Skills
-skills-lock.json
 
 # Logs
 *.log

@@ -10,12 +10,7 @@
     type Transaction,
   } from "$lib/wasm";
   import { formatEur, formatDate } from "$lib/format";
-  import {
-    categorizeWithClaude,
-    getApiKey,
-    setApiKey,
-    removeApiKey,
-  } from "$lib/claude";
+  import { categorizeWithClaude, getApiKey } from "$lib/claude";
   import { accountStore } from "$lib/account.svelte";
 
   type ImportStage = "idle" | "preview" | "imported";
@@ -39,10 +34,15 @@
   let recategorizeCount = $state<number | null>(null);
 
   // Claude API state
-  let apiKey = $state(getApiKey() ?? "");
   let hasKey = $state(!!getApiKey());
-  let showKeyInput = $state(false);
   let claudeLoading = $state(false);
+
+  // Re-check key when stage changes (e.g. after navigating to settings and back)
+  $effect(() => {
+    if (stage === "imported") {
+      hasKey = !!getApiKey();
+    }
+  });
   let claudeResult = $state<{
     categorized: number;
     errors: string[];
@@ -145,22 +145,6 @@
     const count = autoCategorize();
     recategorizeCount = count;
     previewTransactions = getTransactions().slice(0, 20);
-  }
-
-  function handleSaveKey() {
-    const trimmed = apiKey.trim();
-    if (trimmed) {
-      setApiKey(trimmed);
-      hasKey = true;
-      showKeyInput = false;
-    }
-  }
-
-  function handleRemoveKey() {
-    removeApiKey();
-    apiKey = "";
-    hasKey = false;
-    showKeyInput = false;
   }
 
   async function handleClaudeCategorize() {
@@ -552,30 +536,6 @@
         </div>
       </div>
 
-      <!-- API Key Input -->
-      {#if !hasKey || showKeyInput}
-        <div class="mt-3 pl-13">
-          <div class="flex gap-2">
-            <input
-              type="password"
-              bind:value={apiKey}
-              placeholder="sk-ant-..."
-              class="flex-1 bg-gray-50 rounded-2xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-(--color-accent)"
-            />
-            <button
-              onclick={handleSaveKey}
-              disabled={!apiKey.trim()}
-              class="px-3 py-2 rounded-full text-xs font-bold bg-(--color-text) text-white cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              Speichern
-            </button>
-          </div>
-          <p class="text-[10px] text-(--color-text-secondary) mt-1.5">
-            Nur lokal gespeichert. Wird nur an die Anthropic API gesendet.
-          </p>
-        </div>
-      {/if}
-
       <!-- Actions -->
       {#if hasKey}
         <div class="flex items-center gap-2 mt-3 pl-13">
@@ -586,20 +546,12 @@
           >
             {claudeLoading ? "Kategorisiere..." : "Mit Claude kategorisieren"}
           </button>
-          <button
-            onclick={() => (showKeyInput = !showKeyInput)}
-            class="text-xs text-(--color-text-secondary) px-2 py-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
-          >
-            {showKeyInput ? "Abbrechen" : "Key ändern"}
-          </button>
-          {#if !showKeyInput}
-            <button
-              onclick={handleRemoveKey}
-              class="text-xs text-red-400 px-2 py-2 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
-            >
-              Entfernen
-            </button>
-          {/if}
+        </div>
+      {:else}
+        <div class="mt-3 pl-13">
+          <p class="text-xs text-(--color-text-secondary)">
+            API-Schlüssel in <a href="/settings" class="text-purple-600 font-bold hover:underline">Einstellungen</a> konfigurieren
+          </p>
         </div>
       {/if}
 

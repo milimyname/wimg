@@ -178,10 +178,25 @@
 
 <!-- Show excluded toggle -->
 <div class="flex items-center justify-end mb-4 -mt-2">
-  <label class="flex items-center gap-2 text-xs text-(--color-text-secondary) cursor-pointer font-medium">
-    <input type="checkbox" bind:checked={showExcluded} class="rounded" />
+  <button
+    onclick={() => (showExcluded = !showExcluded)}
+    class="flex items-center gap-2 text-xs font-medium cursor-pointer transition-colors"
+    class:text-(--color-text)={showExcluded}
+    class:text-(--color-text-secondary)={!showExcluded}
+  >
+    <div
+      class="w-8 h-[18px] rounded-full transition-colors relative"
+      class:bg-(--color-text)={showExcluded}
+      class:bg-gray-300={!showExcluded}
+    >
+      <div
+        class="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform"
+        class:translate-x-[14px]={showExcluded}
+        class:translate-x-[2px]={!showExcluded}
+      ></div>
+    </div>
     Ausgeblendete anzeigen
-  </label>
+  </button>
 </div>
 
 <!-- Transaction List -->
@@ -211,15 +226,15 @@
         class:opacity-40={!!txn.excluded}
         onclick={() => openDetail(txn)}
       >
-        <div class="flex items-center gap-3.5">
+        <div class="flex items-center gap-3.5 min-w-0">
           <div
             class="w-14 h-14 rounded-full flex items-center justify-center text-xl shrink-0"
             style="background-color: {CATEGORIES[txn.category]?.color ?? '#dfe6e9'}15"
           >
             {CATEGORIES[txn.category]?.icon ?? "📦"}
           </div>
-          <div>
-            <p class="font-bold text-base leading-tight mb-0.5">{txn.description}</p>
+          <div class="min-w-0">
+            <p class="font-bold text-base leading-tight mb-0.5 truncate">{txn.description}</p>
             <p class="text-xs text-(--color-text-secondary) font-medium">
               {CATEGORIES[txn.category]?.name ?? "Uncategorized"}
             </p>

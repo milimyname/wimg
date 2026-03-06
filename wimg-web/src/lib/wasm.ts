@@ -76,6 +76,13 @@ export interface ParseResult {
   transactions: Transaction[];
 }
 
+export interface SyncRow {
+  table: string;
+  id: string;
+  data: Record<string, unknown>;
+  updated_at: number;
+}
+
 interface WasmExports {
   memory: WebAssembly.Memory;
   wimg_init: (path: number) => number;
@@ -104,6 +111,8 @@ interface WasmExports {
   wimg_get_categories: () => number;
   wimg_undo: () => number;
   wimg_redo: () => number;
+  wimg_get_changes: (since_ts: bigint) => number;
+  wimg_apply_changes: (data: number, len: number) => number;
   wimg_close: () => void;
   wimg_free: (ptr: number, len: number) => void;
   wimg_alloc: (size: number) => number;
@@ -188,9 +197,40 @@ async function opfsSave(): Promise<void> {
   try {
     const root = await navigator.storage.getDirectory();
     const fileHandle = await root.getFileHandle(OPFS_DB_NAME, { create: true });
-    const writable = await fileHandle.createWritable();
-    await writable.write(dbBytes);
-    await writable.close();
+
+    // Safari < 17.2 doesn't support createWritable on main thread
+    if (typeof fileHandle.createWritable === "function") {
+      const writable = await fileHandle.createWritable();
+      await writable.write(dbBytes);
+      await writable.close();
+    } else {
+      // Fallback: write via Blob + Worker for older Safari
+      const workerCode = `
+        onmessage = async (e) => {
+          const root = await navigator.storage.getDirectory();
+          const fh = await root.getFileHandle(e.data.name, { create: true });
+          const ah = await fh.createSyncAccessHandle();
+          ah.truncate(0);
+          ah.write(e.data.bytes);
+          ah.flush();
+          ah.close();
+          postMessage("done");
+        };
+      `;
+      const workerBlob = new Blob([workerCode], { type: "text/javascript" });
+      const worker = new Worker(URL.createObjectURL(workerBlob));
+      await new Promise<void>((resolve, reject) => {
+        worker.onmessage = () => {
+          worker.terminate();
+          resolve();
+        };
+        worker.onerror = (err) => {
+          worker.terminate();
+          reject(err);
+        };
+        worker.postMessage({ name: OPFS_DB_NAME, bytes: dbBytes }, [dbBytes.buffer]);
+      });
+    }
     console.log(`[wimg] OPFS: saved ${size} bytes`);
   } catch (e) {
     console.error("[wimg] OPFS save failed:", e);
@@ -224,6 +264,7 @@ export async function init(): Promise<void> {
           console.log("[wimg] (log failed, ptr=%d len=%d)", ptr, len);
         }
       },
+      js_time_ms: () => BigInt(Date.now()),
     },
   };
 
@@ -573,6 +614,36 @@ export function getSummaryFiltered(
 
   return JSON.parse(json) as MonthlySummary;
 }
+
+export function getChanges(sinceTs: number): SyncRow[] {
+  ensureInit();
+
+  const ptr = wasm!.wimg_get_changes(BigInt(sinceTs));
+  if (ptr === 0) return [];
+
+  const json = readLengthPrefixedString(ptr);
+  wasm!.wimg_free(ptr, 0);
+
+  const result = JSON.parse(json) as { rows: SyncRow[] };
+  return result.rows;
+}
+
+export function applyChanges(rows: SyncRow[]): number {
+  ensureInit();
+
+  const json = JSON.stringify({ rows });
+  const encoded = new TextEncoder().encode(json);
+  const ptr = writeBytes(encoded);
+
+  const rc = wasm!.wimg_apply_changes(ptr, encoded.length);
+  if (rc < 0) {
+    throw new Error(getLastError("Failed to apply sync changes"));
+  }
+
+  return rc;
+}
+
+export { opfsSave };
 
 export function close(): void {
   if (!wasm) return;

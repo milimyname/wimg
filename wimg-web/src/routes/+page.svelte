@@ -1,7 +1,9 @@
 <nav
   class="sticky top-0 z-10 bg-(--color-bg)/90 backdrop-blur-xl px-6 py-4 flex items-center justify-between max-w-4xl mx-auto"
 >
-  <span class="text-xl font-display font-extrabold text-(--color-text)">wimg</span>
+  <span class="text-xl font-display font-extrabold text-(--color-text)"
+    >wimg</span
+  >
   <a
     href="/dashboard"
     class="text-sm font-bold text-(--color-text) bg-(--color-accent) px-5 py-2 rounded-full hover:bg-(--color-accent-hover) transition-colors"
@@ -18,10 +20,14 @@
     >
       <span class="text-4xl">&#128176;</span>
     </div>
-    <h1 class="text-5xl font-display font-black text-(--color-text) mb-5 tracking-tight leading-tight">
+    <h1
+      class="text-5xl font-display font-black text-(--color-text) mb-5 tracking-tight leading-tight"
+    >
       Your finances,<br />on your device.
     </h1>
-    <p class="text-lg text-(--color-text-secondary) max-w-xl mx-auto leading-relaxed font-medium">
+    <p
+      class="text-lg text-(--color-text-secondary) max-w-xl mx-auto leading-relaxed font-medium"
+    >
       Local-first personal finance. No cloud, no account, no tracking. Just your
       bank data on your browser.
     </p>
@@ -29,31 +35,49 @@
 
   <!-- Features -->
   <section class="grid grid-cols-1 md:grid-cols-3 gap-5 pb-20">
-    <div class="bg-white rounded-3xl p-7 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-soft)] transition-shadow">
-      <div class="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-2xl mb-4">
+    <div
+      class="bg-white rounded-3xl p-7 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-soft)] transition-shadow"
+    >
+      <div
+        class="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-2xl mb-4"
+      >
         &#128196;
       </div>
-      <h3 class="font-display font-extrabold text-(--color-text) mb-2 text-lg">CSV Import</h3>
+      <h3 class="font-display font-extrabold text-(--color-text) mb-2 text-lg">
+        CSV Import
+      </h3>
       <p class="text-sm text-(--color-text-secondary) leading-relaxed">
         Drop your bank CSV and see transactions instantly. Supports Comdirect,
         Trade Republic, and Scalable Capital.
       </p>
     </div>
-    <div class="bg-white rounded-3xl p-7 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-soft)] transition-shadow">
-      <div class="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center text-2xl mb-4">
+    <div
+      class="bg-white rounded-3xl p-7 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-soft)] transition-shadow"
+    >
+      <div
+        class="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center text-2xl mb-4"
+      >
         &#129302;
       </div>
-      <h3 class="font-display font-extrabold text-(--color-text) mb-2 text-lg">Auto-Categorize</h3>
+      <h3 class="font-display font-extrabold text-(--color-text) mb-2 text-lg">
+        Auto-Categorize
+      </h3>
       <p class="text-sm text-(--color-text-secondary) leading-relaxed">
         Built-in rules sort your spending. Optional AI fallback catches the
         rest. No manual tagging.
       </p>
     </div>
-    <div class="bg-white rounded-3xl p-7 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-soft)] transition-shadow">
-      <div class="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-2xl mb-4">
+    <div
+      class="bg-white rounded-3xl p-7 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-soft)] transition-shadow"
+    >
+      <div
+        class="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-2xl mb-4"
+      >
         &#127974;
       </div>
-      <h3 class="font-display font-extrabold text-(--color-text) mb-2 text-lg">Multi-Account</h3>
+      <h3 class="font-display font-extrabold text-(--color-text) mb-2 text-lg">
+        Multi-Account
+      </h3>
       <p class="text-sm text-(--color-text-secondary) leading-relaxed">
         Track checking, savings, and investment accounts in one place. Filter or
         view everything together.
@@ -63,7 +87,9 @@
 
   <!-- Tech -->
   <section class="text-center pb-16">
-    <p class="text-xs text-(--color-text-secondary) tracking-widest uppercase font-bold">
+    <p
+      class="text-xs text-(--color-text-secondary) tracking-widest uppercase font-bold"
+    >
       Powered by Zig + SQLite + Svelte
     </p>
   </section>
@@ -86,7 +112,7 @@
   <p>
     &copy; {new Date().getFullYear()} wimg &middot;
     <a
-      href="https://github.com/komiljonmaksudov/wimg"
+      href="https://github.com/milimyname"
       class="hover:underline font-bold"
       target="_blank"
       rel="noopener noreferrer"
