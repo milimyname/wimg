@@ -17,6 +17,8 @@ export function getSyncKey(): string | null {
 
 export function setSyncKey(key: string): void {
   localStorage.setItem(LS_SYNC_KEY, key);
+  // Clear stale timestamp so next pull fetches ALL data (since=0)
+  localStorage.removeItem(LS_SYNC_LAST_TS);
 }
 
 export function clearSyncKey(): void {
@@ -40,6 +42,7 @@ export function isSyncEnabled(): boolean {
 export async function syncPush(syncKey: string): Promise<number> {
   const lastSync = getLastSyncTimestamp();
   const changes: SyncRow[] = getChanges(lastSync);
+  console.log(`[wimg-sync] Push: ${changes.length} changes since ${lastSync}`);
   if (changes.length === 0) return 0;
 
   // Suppress echo: the DO will broadcast our push back to us via WS
@@ -57,6 +60,7 @@ export async function syncPush(syncKey: string): Promise<number> {
   }
 
   const result = (await res.json()) as { merged: number };
+  console.log(`[wimg-sync] Push result: ${result.merged} merged`);
 
   // DO's HTTP push handler already broadcasts to all WS clients
   // No need to also push via WS — that would cause duplicate broadcasts
@@ -67,6 +71,7 @@ export async function syncPush(syncKey: string): Promise<number> {
 
 export async function syncPull(syncKey: string): Promise<number> {
   const lastSync = getLastSyncTimestamp();
+  console.log(`[wimg-sync] Pull: since=${lastSync}`);
 
   const res = await fetch(`${SYNC_API_URL}/sync/${syncKey}?since=${lastSync}`);
   if (!res.ok) {
@@ -75,9 +80,11 @@ export async function syncPull(syncKey: string): Promise<number> {
   }
 
   const { rows } = (await res.json()) as { rows: SyncRow[] };
+  console.log(`[wimg-sync] Pull: received ${rows.length} rows from server`);
   if (!rows.length) return 0;
 
   const applied = applyChanges(rows);
+  console.log(`[wimg-sync] Pull: applied ${applied} of ${rows.length} rows`);
   await opfsSave();
   setLastSyncTimestamp(Date.now());
   accountStore.reload();
@@ -99,13 +106,15 @@ export function connectSync(): void {
 
   syncWS.connect(key);
 
-  // Catch-up pull on every (re)connect — picks up changes missed while offline
+  // Catch-up sync on every (re)connect — push local changes + pull remote changes
   syncWS.setOnReconnect(() => {
     const syncKey = getSyncKey();
     if (syncKey) {
-      syncPull(syncKey).catch((err) => {
-        console.error("[wimg-sync] Catch-up pull failed:", err);
-      });
+      syncPush(syncKey)
+        .then(() => syncPull(syncKey))
+        .catch((err) => {
+          console.error("[wimg-sync] Catch-up sync failed:", err);
+        });
     }
   });
 

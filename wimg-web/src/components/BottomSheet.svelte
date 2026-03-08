@@ -23,7 +23,6 @@
 
   const height = new Spring(0, { stiffness: 0.15, damping: 0.82 });
 
-  let portalEl: HTMLDivElement | undefined = $state();
   let sheetRef: HTMLElement | undefined = $state();
   let contentRef: HTMLElement | undefined = $state();
   let handleRef: HTMLElement | undefined = $state();
@@ -52,39 +51,12 @@
     return height.current > threshold;
   });
 
-  // Portal: move sheet container to document.body so it's outside the transformed page
-  $effect(() => {
-    if (portalEl && portalEl.parentNode !== document.body) {
-      document.body.appendChild(portalEl);
-    }
-    return () => {
-      portalEl?.remove();
-    };
-  });
-
-  // Vaul-style background scale: scale wrapper + black body on open/close
+  // Toggle sheet-active class on <html> (used by BottomNav to hide)
   $effect(() => {
     if (open) {
-      const wrapper = document.querySelector(".page-shell") as HTMLElement | null;
-      if (!wrapper) return;
-
-      const scale = (window.innerWidth - 26) / window.innerWidth;
-
-      // Set body background to black (visible behind the scaled card)
-      const origBg = document.body.style.backgroundColor;
-      document.body.style.backgroundColor = "black";
-
-      // Apply scale + shift via CSS custom property (transition handled in app.css)
       document.documentElement.classList.add("sheet-active");
-      wrapper.style.setProperty("--sheet-scale", String(scale));
-
       return () => {
-        wrapper.style.removeProperty("--sheet-scale");
         document.documentElement.classList.remove("sheet-active");
-        // Restore body bg after transition completes
-        setTimeout(() => {
-          document.body.style.backgroundColor = origBg || "";
-        }, 500);
       };
     }
   });
@@ -110,39 +82,11 @@
     }
   });
 
-  // Lock content scroll while dragging
-  $effect(() => {
-    if (contentRef) {
-      contentRef.style.overflowY = isDragging ? "hidden" : "auto";
-    }
-  });
-
   // Close when spring settles near 0 after being open
   $effect(() => {
     if (open && height.current < 15 && !isDragging && height.target === 0) {
       onclose();
     }
-  });
-
-  // Click outside to close (delayed by one frame to skip the opening click)
-  $effect(() => {
-    if (!open) return;
-
-    function onClickOutside(event: MouseEvent) {
-      const target = event.target as Node;
-      if (!document.contains(target)) return;
-      if (sheetRef && !sheetRef.contains(target)) {
-        height.target = 0;
-      }
-    }
-
-    const frame = requestAnimationFrame(() => {
-      document.addEventListener("click", onClickOutside);
-    });
-    return () => {
-      cancelAnimationFrame(frame);
-      document.removeEventListener("click", onClickOutside);
-    };
   });
 
   // Escape key
@@ -256,19 +200,26 @@
     const isContent = contentRef?.contains(e.target as Node);
 
     if (isHandle) {
-      // Handle always controls the sheet
       isDraggingSheet = true;
+      if (contentRef) contentRef.style.overflowY = "hidden";
     } else if (!isContent) {
-      // Touch outside both handle and content → sheet drag
       isDraggingSheet = true;
     }
-    // Content touches: let scroll happen, onTouchMove takes over only at boundaries
+    // Content touches: let native scroll happen, onTouchMove hands off at boundaries
+  }
+
+  function takeOverDrag(currentY: number) {
+    isDraggingSheet = true;
+    // Reset origin to handoff point so the sheet doesn't jump
+    startY = currentY;
+    startHeight = height.current;
+    // Lock content scroll immediately (not via async effect)
+    if (contentRef) contentRef.style.overflowY = "hidden";
   }
 
   function onTouchMove(e: TouchEvent) {
     const currentY = e.touches[0].clientY;
     const currentTime = Date.now();
-    const deltaY = startY - currentY;
 
     const timeDelta = currentTime - lastTime;
     if (timeDelta > 0) {
@@ -285,28 +236,30 @@
       const isAtBottom =
         contentRef.scrollTop >=
         contentRef.scrollHeight - contentRef.clientHeight - 1;
-      const isPullingDown = deltaY < -2;
-      const isPullingUp = deltaY > 2;
 
-      // Pull down at top → shrink/close sheet
-      if (isAtTop && isPullingDown) {
-        isDraggingSheet = true;
-      }
-      // Pull up when content can't scroll (or at bottom) → expand sheet
-      if (isPullingUp && (!isScrollable || isAtBottom)) {
-        isDraggingSheet = true;
+      // Use instantaneous direction (velocity) not overall delta
+      // velocity > 0 = finger moving up, velocity < 0 = finger moving down
+      if (isAtTop && velocity < -0.05) {
+        takeOverDrag(currentY);
+      } else if (velocity > 0.05 && (!isScrollable || isAtBottom)) {
+        takeOverDrag(currentY);
       }
     }
 
     if (isDraggingSheet) {
       if (e.cancelable) e.preventDefault();
+      const deltaY = startY - currentY;
       const s = getSnaps();
       const maxSnap = s[s.length - 1];
-      const newHeight = Math.max(
-        -20,
-        Math.min(maxSnap + 50, startHeight + deltaY),
-      );
-      height.target = newHeight;
+      let newHeight = startHeight + deltaY;
+
+      // Rubber-band past max snap (iOS-style resistance)
+      if (newHeight > maxSnap) {
+        const overflow = newHeight - maxSnap;
+        newHeight = maxSnap + overflow * 0.15;
+      }
+
+      height.target = Math.max(-20, newHeight);
     }
   }
 
@@ -315,6 +268,8 @@
     isDragging = false;
     isDraggingSheet = false;
     velocity = 0;
+    // Restore content scrollability
+    if (contentRef) contentRef.style.overflowY = "auto";
   }
 
   function performSnap() {
@@ -348,31 +303,40 @@
 
 <svelte:window on:keydown={onKeydown} />
 
-<!-- Portal container: moved to document.body -->
-<div bind:this={portalEl} class="sheet-portal">
-  {#if open || isVisible}
-    <div
-      class="sheet-root"
-      style:height="{Math.max(0, height.current)}px"
-      style:visibility={isVisible ? "visible" : "hidden"}
-      {@attach onSheet}
-      onwheel={onWheel}
-      role="dialog"
-      aria-modal="true"
-    >
-      {@render children({
-        content: onContent,
-        handle: onHandle,
-        footer: onFooter,
-        height: height.current,
-      })}
-    </div>
-  {/if}
-</div>
+{#if open || isVisible}
+  <!-- Backdrop -->
+  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+  <div
+    class="sheet-backdrop"
+    onclick={() => (height.target = 0)}
+    style:opacity={Math.min(1, height.current / 300) * 0.5}
+  ></div>
+
+  <!-- Sheet -->
+  <div
+    class="sheet-root"
+    style:height="{Math.max(0, height.current)}px"
+    style:visibility={isVisible ? "visible" : "hidden"}
+    {@attach onSheet}
+    onwheel={onWheel}
+    role="dialog"
+    aria-modal="true"
+  >
+    {@render children({
+      content: onContent,
+      handle: onHandle,
+      footer: onFooter,
+      height: height.current,
+    })}
+  </div>
+{/if}
 
 <style>
-  .sheet-portal {
-    display: contents;
+  .sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: black;
+    z-index: 39;
   }
 
   .sheet-root {

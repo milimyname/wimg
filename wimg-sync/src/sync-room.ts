@@ -36,13 +36,22 @@ export class SyncRoom implements DurableObject {
   constructor(
     private state: DurableObjectState,
     private env: Env,
-  ) {}
+  ) {
+    // Restore syncKey from storage after hibernation wake-up
+    this.state.blockConcurrencyWhile(async () => {
+      this.syncKey = (await this.state.storage.get<string>("syncKey")) ?? null;
+    });
+  }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
-    // Extract sync key from header (set by Worker router)
-    this.syncKey = request.headers.get("X-Sync-Key") ?? url.pathname.split("/").pop() ?? null;
+    // Extract sync key from header (set by Worker router) and persist for hibernation
+    const headerKey = request.headers.get("X-Sync-Key") ?? url.pathname.split("/").pop() ?? null;
+    if (headerKey && headerKey !== this.syncKey) {
+      this.syncKey = headerKey;
+      await this.state.storage.put("syncKey", headerKey);
+    }
 
     if (url.pathname.endsWith("/ws")) {
       // WebSocket upgrade

@@ -38,23 +38,10 @@ body {
   font-family: "Nunito", "Inter", sans-serif;
 }
 
-/* Front card: the actual page content */
+/* Page content wrapper */
 .page-shell {
   position: relative;
   z-index: 1;
-  /* Transition always active so close animation plays back */
-  transform-origin: top;
-  transition-property: transform, border-radius;
-  transition-duration: 0.5s;
-  transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-/* iOS-style stacked card effect (vaul approach) */
-html.sheet-active .page-shell {
-  border-radius: 8px;
-  overflow: hidden;
-  transform: scale(var(--sheet-scale, 1))
-    translate3d(0, calc(env(safe-area-inset-top, 0px) + 14px), 0);
 }
 
 .lc-root-container {

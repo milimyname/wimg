@@ -65,11 +65,12 @@ class SyncWS {
             console.log(`[wimg-sync] Ignoring echo (${msg.rows.length} rows)`);
             return;
           }
-          applyChanges(msg.rows);
-          opfsSave();
-          accountStore.reload();
-          window.dispatchEvent(new CustomEvent("wimg:sync-received"));
-          console.log(`[wimg-sync] Received ${msg.rows.length} changes`);
+          const applied = applyChanges(msg.rows);
+          console.log(`[wimg-sync] WS: applied ${applied} of ${msg.rows.length} changes`);
+          opfsSave().then(() => {
+            accountStore.reload();
+            window.dispatchEvent(new CustomEvent("wimg:sync-received"));
+          });
         }
 
         if (msg.type === "ping") {

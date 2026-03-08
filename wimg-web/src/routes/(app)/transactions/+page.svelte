@@ -267,7 +267,7 @@
 <!-- Bottom Sheet -->
 {#if selectedTxn}
   {@const txn = selectedTxn}
-  <BottomSheet open={showSheet} onclose={onSheetClosed}>
+  <BottomSheet open={showSheet} onclose={onSheetClosed} snaps={[0.88]}>
     {#snippet children({ handle, content, footer })}
       <!-- Handle -->
       <div class="pt-3 pb-2 flex justify-center shrink-0" {@attach handle}>

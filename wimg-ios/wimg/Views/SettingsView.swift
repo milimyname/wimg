@@ -524,7 +524,7 @@ struct SettingsView: View {
         if ts == 0 { return "Noch nie" }
         let date = Date(timeIntervalSince1970: TimeInterval(ts) / 1000)
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "de_DE")
+f        formatter.locale = Locale(identifier: "de_DE")
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: date)
