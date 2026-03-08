@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.23 (2026-03-08)
+
+- Implement Command Palette and enhance encryption features
+
 ## v0.4.22 (2026-03-08)
 
 - Fix minor issues in SettingsView and enhance sync functionality
