@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.0 (2026-03-08)
+
+- Implement  recurring pattern detection
+
 ## v0.4.26 (2026-03-08)
 
 - Add body overflow control in OnboardingOverlay component
