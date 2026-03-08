@@ -20,8 +20,6 @@
   let syncEnabled = $state(false);
   let syncKey = $state("");
   let linkInput = $state("");
-  let passphrase = $state("");
-  let showPassphrase = $state(false);
   let showKey = $state(false);
   let syncing = $state(false);
   let syncError = $state("");
@@ -233,8 +231,13 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
         </svg>
       </div>
-      <div>
-        <h3 class="font-bold text-(--color-text)">Synchronisierung</h3>
+      <div class="flex-1">
+        <div class="flex items-center gap-2">
+          <h3 class="font-bold text-(--color-text)">Synchronisierung</h3>
+          {#if syncEnabled}
+            <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">E2E-verschl.</span>
+          {/if}
+        </div>
         <p class="text-xs text-(--color-text-secondary)">Daten zwischen Geräten synchronisieren</p>
       </div>
     </div>
@@ -364,57 +367,6 @@
         </div>
       </div>
     {/if}
-  </div>
-
-  <!-- Encryption Section -->
-  <div class="bg-white rounded-3xl p-5 shadow-sm space-y-4">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center">
-        <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-      </div>
-      <div>
-        <h3 class="font-bold text-(--color-text)">Verschlüsselung</h3>
-        <p class="text-xs text-(--color-text-secondary)">Ende-zu-Ende-Verschlüsselung für Sync</p>
-      </div>
-    </div>
-
-    <div>
-      <label class="text-xs font-medium text-(--color-text-secondary) mb-1 block" for="passphrase-input">Passphrase</label>
-      <div class="flex gap-2">
-        <div class="flex-1 relative">
-          <input
-            id="passphrase-input"
-            type={showPassphrase ? "text" : "password"}
-            bind:value={passphrase}
-            placeholder="Passphrase eingeben"
-            class="w-full bg-(--color-bg) rounded-xl px-3 py-2.5 pr-10 text-sm text-(--color-text) placeholder:text-(--color-text-secondary)/50 outline-none"
-          />
-          <button
-            onclick={() => showPassphrase = !showPassphrase}
-            class="absolute right-3 top-1/2 -translate-y-1/2 text-(--color-text-secondary)"
-            aria-label={showPassphrase ? "Passphrase verbergen" : "Passphrase anzeigen"}
-          >
-            {#if showPassphrase}
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-              </svg>
-            {:else}
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-            {/if}
-          </button>
-        </div>
-        <button
-          class="px-4 rounded-xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98]"
-        >
-          Ändern
-        </button>
-      </div>
-    </div>
   </div>
 
   <!-- Claude AI Section -->

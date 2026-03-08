@@ -211,6 +211,16 @@ pub fn build(b: *std.Build) void {
     });
     const run_fints_http_tests = b.addRunArtifact(fints_http_tests);
     test_step.dependOn(&run_fints_http_tests.step);
+
+    const crypto_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/crypto.zig"),
+            .target = b.resolveTargetQuery(.{}),
+            .optimize = optimize,
+        }),
+    });
+    const run_crypto_tests = b.addRunArtifact(crypto_tests);
+    test_step.dependOn(&run_crypto_tests.step);
 }
 
 /// Detect Apple SDK via xcrun and configure include/framework/library paths.

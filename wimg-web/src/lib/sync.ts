@@ -6,10 +6,36 @@
  * Prod: https://wimg-sync.mili-my.name
  */
 
-import { getChanges, applyChanges, opfsSave, setOnMutate, type SyncRow } from "./wasm";
+import {
+  getChanges,
+  applyChanges,
+  opfsSave,
+  setOnMutate,
+  deriveEncryptionKey,
+  encryptField,
+  decryptRows,
+  type SyncRow,
+} from "./wasm";
 import { accountStore } from "./account.svelte";
 import { syncWS } from "./sync-ws.svelte";
 import { SYNC_API_URL, LS_SYNC_KEY, LS_SYNC_LAST_TS } from "./config";
+
+// Cached encryption key — derived once from sync key
+let encryptionKey: Uint8Array | null = null;
+
+function getEncryptionKey(syncKey: string): Uint8Array {
+  if (!encryptionKey) {
+    encryptionKey = deriveEncryptionKey(syncKey);
+  }
+  return encryptionKey;
+}
+
+function encryptRows(rows: SyncRow[], key: Uint8Array): SyncRow[] {
+  return rows.map((row) => ({
+    ...row,
+    data: encryptField(JSON.stringify(row.data), key) as unknown as Record<string, unknown>,
+  }));
+}
 
 export function getSyncKey(): string | null {
   return localStorage.getItem(LS_SYNC_KEY);
@@ -24,6 +50,7 @@ export function setSyncKey(key: string): void {
 export function clearSyncKey(): void {
   localStorage.removeItem(LS_SYNC_KEY);
   localStorage.removeItem(LS_SYNC_LAST_TS);
+  encryptionKey = null;
   disconnectSync();
 }
 
@@ -45,13 +72,17 @@ export async function syncPush(syncKey: string): Promise<number> {
   console.log(`[wimg-sync] Push: ${changes.length} changes since ${lastSync}`);
   if (changes.length === 0) return 0;
 
+  // Encrypt data fields before pushing
+  const key = getEncryptionKey(syncKey);
+  const encrypted = encryptRows(changes, key);
+
   // Suppress echo: the DO will broadcast our push back to us via WS
   syncWS.suppressEcho();
 
   const res = await fetch(`${SYNC_API_URL}/sync/${syncKey}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ rows: changes }),
+    body: JSON.stringify({ rows: encrypted }),
   });
 
   if (!res.ok) {
@@ -83,7 +114,11 @@ export async function syncPull(syncKey: string): Promise<number> {
   console.log(`[wimg-sync] Pull: received ${rows.length} rows from server`);
   if (!rows.length) return 0;
 
-  const applied = applyChanges(rows);
+  // Decrypt data fields (handles both encrypted strings and plaintext objects)
+  const key = getEncryptionKey(syncKey);
+  const decrypted = decryptRows(rows, key);
+
+  const applied = applyChanges(decrypted);
   console.log(`[wimg-sync] Pull: applied ${applied} of ${rows.length} rows`);
   await opfsSave();
   setLastSyncTimestamp(Date.now());

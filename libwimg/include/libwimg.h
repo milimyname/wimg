@@ -121,6 +121,24 @@ const uint8_t *wimg_get_changes(int64_t since_ts);
 // Input: {"rows":[{"table":"...","id":"...","data":{...},"updated_at":N},...]}
 int32_t wimg_apply_changes(const uint8_t *data, uint32_t len);
 
+// --- Crypto (E2E encryption for sync) ---
+
+// Derive a 32-byte encryption key from a sync key using HKDF-SHA256.
+// Returns length-prefixed 32-byte key, or NULL on error.
+const uint8_t *wimg_derive_key(const uint8_t *sync_key, uint32_t sync_key_len);
+
+// Encrypt plaintext using XChaCha20-Poly1305.
+// key must be 32 bytes. nonce must be 24 bytes.
+// Returns length-prefixed base64(nonce + ciphertext + tag), or NULL on error.
+const uint8_t *wimg_encrypt_field(const uint8_t *plaintext, uint32_t plaintext_len,
+                                  const uint8_t *key, const uint8_t *nonce);
+
+// Decrypt base64-encoded ciphertext using XChaCha20-Poly1305.
+// key must be 32 bytes.
+// Returns length-prefixed plaintext, or NULL on error.
+const uint8_t *wimg_decrypt_field(const uint8_t *ciphertext, uint32_t ciphertext_len,
+                                  const uint8_t *key);
+
 // --- FinTS (native only — not available in WASM builds) ---
 #if !defined(LIBWIMG_WASM)
 

@@ -7,9 +7,9 @@
  * On every (re)connect, triggers an HTTP pull to catch up on missed changes.
  */
 
-import { applyChanges, opfsSave, type SyncRow } from "./wasm";
+import { applyChanges, opfsSave, deriveEncryptionKey, decryptRows, type SyncRow } from "./wasm";
 import { accountStore } from "./account.svelte";
-import { SYNC_API_URL } from "./config";
+import { SYNC_API_URL, LS_SYNC_KEY } from "./config";
 
 interface WSMessage {
   type: string;
@@ -65,7 +65,19 @@ class SyncWS {
             console.log(`[wimg-sync] Ignoring echo (${msg.rows.length} rows)`);
             return;
           }
-          const applied = applyChanges(msg.rows);
+          // Decrypt incoming rows
+          let rows = msg.rows;
+          try {
+            const syncKey = localStorage.getItem(LS_SYNC_KEY);
+            if (syncKey) {
+              const key = deriveEncryptionKey(syncKey);
+              rows = decryptRows(rows, key);
+            }
+          } catch (e) {
+            console.error("[wimg-sync] WS decrypt failed:", e);
+            return;
+          }
+          const applied = applyChanges(rows);
           console.log(`[wimg-sync] WS: applied ${applied} of ${msg.rows.length} changes`);
           opfsSave().then(() => {
             accountStore.reload();

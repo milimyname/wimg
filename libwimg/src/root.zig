@@ -5,6 +5,7 @@ const db_mod = @import("db.zig");
 const parser = @import("parser.zig");
 const categories = @import("categories.zig");
 const summary = @import("summary.zig");
+const crypto = @import("crypto.zig");
 
 const Db = db_mod.Db;
 const Transaction = types.Transaction;
@@ -1010,6 +1011,92 @@ fn wimg_db_load(data: [*]const u8, size: u32) callconv(.c) i32 {
         return -1;
     }
     return 0;
+}
+
+// --- Crypto (E2E encryption for sync) ---
+
+/// Derive a 32-byte encryption key from a sync key using HKDF-SHA256.
+/// Returns a length-prefixed 32-byte key, or null on error.
+export fn wimg_derive_key(sync_key_ptr: [*]const u8, sync_key_len: u32) ?[*]const u8 {
+    const sync_key = sync_key_ptr[0..sync_key_len];
+    const key = crypto.deriveKey(sync_key);
+    return makeLengthPrefixed(&key);
+}
+
+/// Encrypt plaintext using XChaCha20-Poly1305.
+/// Takes plaintext + 32-byte key + 24-byte nonce.
+/// Returns length-prefixed base64(nonce + ciphertext + tag), or null on error.
+export fn wimg_encrypt_field(
+    pt_ptr: [*]const u8,
+    pt_len: u32,
+    key_ptr: [*]const u8,
+    nonce_ptr: [*]const u8,
+) ?[*]const u8 {
+    const plaintext = pt_ptr[0..pt_len];
+    const key: [32]u8 = key_ptr[0..32].*;
+    const nonce: [24]u8 = nonce_ptr[0..24].*;
+
+    // Encrypted output: nonce(24) + ciphertext(pt_len) + tag(16)
+    const enc_size = 24 + pt_len + 16;
+    const enc_buf = fba.allocator().alloc(u8, enc_size) catch {
+        setError("wimg_encrypt_field: alloc failed", .{});
+        return null;
+    };
+
+    const enc_len = crypto.encryptField(plaintext, key, nonce, enc_buf) catch {
+        setError("wimg_encrypt_field: encryption failed", .{});
+        return null;
+    };
+
+    // Base64 encode
+    const b64_len = std.base64.standard.Encoder.calcSize(enc_len);
+    const b64_buf = fba.allocator().alloc(u8, b64_len) catch {
+        setError("wimg_encrypt_field: b64 alloc failed", .{});
+        return null;
+    };
+    const encoded = std.base64.standard.Encoder.encode(b64_buf, enc_buf[0..enc_len]);
+
+    return makeLengthPrefixed(encoded);
+}
+
+/// Decrypt a base64-encoded ciphertext using XChaCha20-Poly1305.
+/// Takes base64(nonce + ciphertext + tag) + 32-byte key.
+/// Returns length-prefixed plaintext, or null on error.
+export fn wimg_decrypt_field(
+    ct_ptr: [*]const u8,
+    ct_len: u32,
+    key_ptr: [*]const u8,
+) ?[*]const u8 {
+    const b64_input = ct_ptr[0..ct_len];
+    const key: [32]u8 = key_ptr[0..32].*;
+
+    // Decode base64
+    const decoded_size = std.base64.standard.Decoder.calcSizeForSlice(b64_input) catch {
+        setError("wimg_decrypt_field: invalid base64", .{});
+        return null;
+    };
+    const decoded_buf = fba.allocator().alloc(u8, decoded_size) catch {
+        setError("wimg_decrypt_field: alloc failed", .{});
+        return null;
+    };
+    std.base64.standard.Decoder.decode(decoded_buf, b64_input) catch {
+        setError("wimg_decrypt_field: base64 decode failed", .{});
+        return null;
+    };
+
+    // Decrypt: input is nonce(24) + ciphertext + tag(16), so plaintext = decoded_size - 40
+    const pt_len_max = if (decoded_size > 40) decoded_size - 40 else 0;
+    const pt_buf = fba.allocator().alloc(u8, pt_len_max) catch {
+        setError("wimg_decrypt_field: pt alloc failed", .{});
+        return null;
+    };
+
+    const pt_len = crypto.decryptField(decoded_buf[0..decoded_size], key, pt_buf) catch {
+        setError("wimg_decrypt_field: decryption failed", .{});
+        return null;
+    };
+
+    return makeLengthPrefixed(pt_buf[0..pt_len]);
 }
 
 // --- FinTS (native-only) ---

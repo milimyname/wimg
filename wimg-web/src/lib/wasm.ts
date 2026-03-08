@@ -113,6 +113,9 @@ interface WasmExports {
   wimg_redo: () => number;
   wimg_get_changes: (since_ts: bigint) => number;
   wimg_apply_changes: (data: number, len: number) => number;
+  wimg_derive_key: (sync_key: number, sync_key_len: number) => number;
+  wimg_encrypt_field: (pt: number, pt_len: number, key: number, nonce: number) => number;
+  wimg_decrypt_field: (ct: number, ct_len: number, key: number) => number;
   wimg_close: () => void;
   wimg_free: (ptr: number, len: number) => void;
   wimg_alloc: (size: number) => number;
@@ -667,6 +670,76 @@ export function applyChanges(rows: SyncRow[]): number {
   }
 
   return rc;
+}
+
+export function deriveEncryptionKey(syncKey: string): Uint8Array {
+  ensureInit();
+
+  const encoded = new TextEncoder().encode(syncKey);
+  const ptr = writeBytes(encoded);
+  const resultPtr = wasm!.wimg_derive_key(ptr, encoded.length);
+  if (resultPtr === 0) {
+    throw new Error(getLastError("Failed to derive encryption key"));
+  }
+
+  const mem = new Uint8Array(wasm!.memory.buffer);
+  const len =
+    mem[resultPtr] |
+    (mem[resultPtr + 1] << 8) |
+    (mem[resultPtr + 2] << 16) |
+    (mem[resultPtr + 3] << 24);
+  const key = new Uint8Array(len);
+  key.set(mem.slice(resultPtr + 4, resultPtr + 4 + len));
+  wasm!.wimg_free(resultPtr, 0);
+  return key;
+}
+
+export function encryptField(plaintext: string, key: Uint8Array): string {
+  ensureInit();
+
+  const ptEncoded = new TextEncoder().encode(plaintext);
+  const ptPtr = writeBytes(ptEncoded);
+  const keyPtr = writeBytes(key);
+
+  // Generate 24-byte random nonce
+  const nonce = crypto.getRandomValues(new Uint8Array(24));
+  const noncePtr = writeBytes(nonce);
+
+  const resultPtr = wasm!.wimg_encrypt_field(ptPtr, ptEncoded.length, keyPtr, noncePtr);
+  if (resultPtr === 0) {
+    throw new Error(getLastError("Encryption failed"));
+  }
+
+  const result = readLengthPrefixedString(resultPtr);
+  wasm!.wimg_free(resultPtr, 0);
+  return result;
+}
+
+export function decryptField(ciphertext: string, key: Uint8Array): string {
+  ensureInit();
+
+  const ctEncoded = new TextEncoder().encode(ciphertext);
+  const ctPtr = writeBytes(ctEncoded);
+  const keyPtr = writeBytes(key);
+
+  const resultPtr = wasm!.wimg_decrypt_field(ctPtr, ctEncoded.length, keyPtr);
+  if (resultPtr === 0) {
+    throw new Error(getLastError("Decryption failed"));
+  }
+
+  const result = readLengthPrefixedString(resultPtr);
+  wasm!.wimg_free(resultPtr, 0);
+  return result;
+}
+
+export function decryptRows(rows: SyncRow[], key: Uint8Array): SyncRow[] {
+  return rows.map((row) => {
+    if (typeof row.data === "string") {
+      const plaintext = decryptField(row.data, key);
+      return { ...row, data: JSON.parse(plaintext) as Record<string, unknown> };
+    }
+    return row;
+  });
 }
 
 export { opfsSave };

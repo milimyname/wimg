@@ -704,6 +704,50 @@ RAG over your own transactions via sqlite-vec. Only after 5.5 is solid.
 - [ ] Natural language → relevant transactions → LLM summarizes
 - [ ] "What did I spend on food in January?" → embed query → find matches → answer
 
+#### 5.7 — Command Palette (Cmd+K)
+
+Spotlight-style command palette for power-user navigation, actions, and search.
+Low effort, high polish. Makes wimg feel like a proper tool.
+
+##### What it does
+
+```
+Cmd+K (web) opens palette overlay
+
+Navigation
+  → Go to Dashboard / Transactions / Analysis / Debts / Import / Settings
+
+Actions
+  → Import CSV          (navigates to /import)
+  → Add debt            (navigates to /debts with add sheet open)
+  → Sync now            (triggers syncFull)
+  → Export data         (triggers JSON export)
+
+Search (queries libwimg via WASM)
+  → "REWE"    → filtered transactions list inline
+  → "March"   → jumps to March summary
+  → "Netflix" → shows matching transactions
+
+AI (Phase 5.6 dependency)
+  → "Show food spending"              → creates analysis panel
+  → "How much did I spend last month?" → opens AI chat
+```
+
+##### Tasks
+
+- [ ] Web: `CommandPalette.svelte` — overlay with fuzzy search, keyboard nav
+- [ ] Cmd+K / Ctrl+K global shortcut registration
+- [ ] Navigation commands (static list, instant)
+- [ ] Action commands (trigger functions)
+- [ ] Transaction search (calls `wimg_get_transactions_filtered` or client-side filter)
+- [ ] Month/summary search (parse month names → navigate to dashboard with month set)
+- [ ] iOS: equivalent via `.searchable()` modifier + custom overlay (spotlight-style)
+
+##### iOS equivalent
+
+SwiftUI `.searchable()` modifier + custom sheet overlay. Not cmdk but same
+concept — spotlight-style search over your own data. Same commands, native feel.
+
 #### Deferred
 
 - **i18n** — no users yet, one language works. Revisit when needed.
@@ -716,8 +760,9 @@ RAG over your own transactions via sqlite-vec. Only after 5.5 is solid.
 2. Notifications (iOS + PWA)             (makes #1 proactive)
 3. Data export + month snapshot           (quick wins, foundation for Phase 6)
 4. Annual renewals calendar               (personal value, builds on #1)
-5. sqlite-vec + smart categorization     (only if keyword rules insufficient)
-6. AI chat                                (only if everything else is solid)
+5. Command palette (Cmd+K)               (low effort, high polish)
+6. sqlite-vec + smart categorization     (only if keyword rules insufficient)
+7. AI chat                                (only if everything else is solid)
 ```
 
 #### Success criteria
@@ -728,6 +773,7 @@ RAG over your own transactions via sqlite-vec. Only after 5.5 is solid.
 - [ ] Full database exportable as JSON
 - [ ] Monthly snapshots stored for historical comparison
 - [ ] Annual renewals visible with upcoming due dates
+- [ ] Cmd+K opens command palette with navigation, actions, and search
 
 ---
 

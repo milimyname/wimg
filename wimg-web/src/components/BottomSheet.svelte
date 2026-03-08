@@ -71,13 +71,29 @@
     }
   });
 
-  // Lock body scroll when visible
+  // Lock body scroll when visible (iOS PWA needs position:fixed to truly prevent scroll)
   $effect(() => {
     if (isVisible) {
-      const orig = document.body.style.overflow;
+      const scrollY = window.scrollY;
+      const origOverflow = document.body.style.overflow;
+      const origPosition = document.body.style.position;
+      const origTop = document.body.style.top;
+      const origWidth = document.body.style.width;
+      const origTouchAction = document.body.style.touchAction;
+
       document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+      document.body.style.touchAction = "none";
+
       return () => {
-        document.body.style.overflow = orig;
+        document.body.style.overflow = origOverflow;
+        document.body.style.position = origPosition;
+        document.body.style.top = origTop;
+        document.body.style.width = origWidth;
+        document.body.style.touchAction = origTouchAction;
+        window.scrollTo(0, scrollY);
       };
     }
   });
