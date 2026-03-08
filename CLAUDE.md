@@ -900,6 +900,25 @@ DELETE /mcp             — Evict MCP session (clear WASM instance)
 - [x] McpSession DO binding + v2 migration in wrangler.toml
 - [x] WASM bundled with Worker via `[[rules]]`
 - [x] All 16 tools functional, E2E encrypted, real-time sync on writes
+- [x] Streamable HTTP transport (protocol `2025-03-26`) — `Mcp-Session-Id` header, 202 for notifications
+
+##### WASM Memory Budget (Critical for CF Workers)
+
+CF Workers have a **128MB** memory limit per isolate. The WASM initial memory
+is set by static `.bss` arrays — they don't affect file size but MUST be
+allocated at `WebAssembly.instantiate()`. Current budget (~53MB total):
+
+| Source              | File              | Size   | Notes                        |
+| ------------------- | ----------------- | ------ | ---------------------------- |
+| `wasm_buf` (FBA)    | `root.zig:52`     | 16 MB  | JSON output scratch buffer   |
+| `mem_storage[4]`    | `wasm_vfs.c:31`   | 32 MB  | 4 × 8MB VFS file slots       |
+| `heap`              | `libc_shim.c:149` | 4 MB   | SQLite malloc bump allocator |
+| Stack               | `build.zig:85`    | 1 MB   | Fixed WASM stack             |
+
+**Never increase these without checking total stays under ~80MB** (leaves room
+for V8 overhead). If a buffer grows, another must shrink. The original values
+(64MB FBA + 256MB VFS + 32MB heap = 353MB) caused `WebAssembly.instantiate():
+Out of memory` on Cloudflare.
 
 #### Deferred
 
@@ -1239,6 +1258,8 @@ wimg/
 | Mar 2026 | Feature flags via localStorage/UserDefaults | Simple toggles, no plugin runtime; features compiled in, flags control UI visibility only  |
 | Mar 2026 | Snapshots table shared by 5.3 + 6.2          | Same schema: monthly income/expenses/breakdown, net worth populated later                   |
 | Mar 2026 | Export as CSV + JSON (not proprietary format) | Data ownership: users can take their data out anytime, open in Excel                        |
+| Mar 2026 | WASM static buffers ≤53MB total               | CF Workers 128MB limit; .bss arrays (VFS, heap, FBA) set WASM initial memory at instantiation — must leave room for V8 |
+| Mar 2026 | MCP Streamable HTTP (protocol `2025-03-26`)   | Claude Desktop requires Streamable HTTP; session ID via `Mcp-Session-Id` header, 202 for notifications |
 
 ---
 

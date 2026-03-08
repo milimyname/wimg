@@ -145,7 +145,9 @@ int strncasecmp(const char *s1, const char *s2, size_t n) {
 /* --- stdlib functions --- */
 
 /* Simple bump allocator for WASM — SQLite uses malloc/free extensively */
-#define HEAP_SIZE (32 * 1024 * 1024) /* 32 MB heap */
+#ifndef HEAP_SIZE
+#define HEAP_SIZE (4 * 1024 * 1024)  /* 4 MB heap */
+#endif
 static unsigned char heap[HEAP_SIZE];
 static size_t heap_offset = 0;
 

@@ -17,7 +17,9 @@
 /* ===== In-memory file implementation ===== */
 
 #define MAX_MEM_FILES 4
-#define MAX_FILE_SIZE (64 * 1024 * 1024) /* 64 MB max DB size */
+#ifndef MAX_FILE_SIZE
+#define MAX_FILE_SIZE (8 * 1024 * 1024)  /* 8 MB max DB size per file */
+#endif
 
 typedef struct MemFile {
     char name[256];

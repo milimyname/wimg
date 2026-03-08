@@ -49,7 +49,7 @@ fn log(comptime fmt: []const u8, args: anytype) void {
 }
 
 // --- WASM memory management ---
-var wasm_buf: [64 * 1024 * 1024]u8 = undefined; // 64 MB scratch — virtual, zero cost until touched
+var wasm_buf: [16 * 1024 * 1024]u8 = undefined; // 16 MB scratch — must fit in CF Worker 128 MB limit
 var fba = std.heap.FixedBufferAllocator.init(&wasm_buf);
 
 // Global database instance
@@ -1119,7 +1119,7 @@ export fn wimg_export_db() ?[*]const u8 {
         return null;
     };
 
-    const buf_size: usize = 32 * 1024 * 1024; // 32 MB
+    const buf_size: usize = 8 * 1024 * 1024; // 8 MB
     const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
         setError("wimg_export_db: failed to allocate buffer", .{});
         return null;
