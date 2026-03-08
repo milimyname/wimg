@@ -1029,6 +1029,121 @@ export fn wimg_alloc(size: u32) ?[*]u8 {
     return buf.ptr;
 }
 
+// --- Snapshots ---
+
+/// Take a monthly snapshot for the given year/month. Returns 0 on success, -1 on error.
+export fn wimg_take_snapshot(year: u32, month: u32) i32 {
+    var database = global_db orelse {
+        setError("wimg_take_snapshot: database not initialized", .{});
+        return -1;
+    };
+
+    database.takeSnapshot(year, month) catch |err| {
+        setError("wimg_take_snapshot: failed: {s}", .{@errorName(err)});
+        return -1;
+    };
+
+    return 0;
+}
+
+/// Get all snapshots as length-prefixed JSON array.
+export fn wimg_get_snapshots() ?[*]const u8 {
+    var database = global_db orelse {
+        setError("wimg_get_snapshots: database not initialized", .{});
+        return null;
+    };
+
+    const buf_size: usize = 64 * 1024; // 64 KB
+    const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
+        setError("wimg_get_snapshots: failed to allocate buffer", .{});
+        return null;
+    };
+
+    const json_len = database.getSnapshotsJson(buf.ptr + 4, buf_size) catch |err| {
+        setError("wimg_get_snapshots: query failed: {s}", .{@errorName(err)});
+        fba.allocator().free(buf);
+        return null;
+    } orelse {
+        setError("wimg_get_snapshots: buffer too small", .{});
+        fba.allocator().free(buf);
+        return null;
+    };
+
+    const len_bytes: [4]u8 = @bitCast(@as(u32, @intCast(json_len)));
+    buf[0] = len_bytes[0];
+    buf[1] = len_bytes[1];
+    buf[2] = len_bytes[2];
+    buf[3] = len_bytes[3];
+
+    return buf.ptr;
+}
+
+// --- Export ---
+
+/// Export all transactions as CSV. Returns length-prefixed CSV string.
+export fn wimg_export_csv() ?[*]const u8 {
+    var database = global_db orelse {
+        setError("wimg_export_csv: database not initialized", .{});
+        return null;
+    };
+
+    const buf_size: usize = 8 * 1024 * 1024; // 8 MB
+    const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
+        setError("wimg_export_csv: failed to allocate buffer", .{});
+        return null;
+    };
+
+    const csv_len = database.exportTransactionsCsv(buf.ptr + 4, buf_size) catch |err| {
+        setError("wimg_export_csv: query failed: {s}", .{@errorName(err)});
+        fba.allocator().free(buf);
+        return null;
+    } orelse {
+        setError("wimg_export_csv: buffer too small", .{});
+        fba.allocator().free(buf);
+        return null;
+    };
+
+    const len_bytes: [4]u8 = @bitCast(@as(u32, @intCast(csv_len)));
+    buf[0] = len_bytes[0];
+    buf[1] = len_bytes[1];
+    buf[2] = len_bytes[2];
+    buf[3] = len_bytes[3];
+
+    return buf.ptr;
+}
+
+/// Export the full database as JSON. Returns length-prefixed JSON string.
+export fn wimg_export_db() ?[*]const u8 {
+    var database = global_db orelse {
+        setError("wimg_export_db: database not initialized", .{});
+        return null;
+    };
+
+    const buf_size: usize = 32 * 1024 * 1024; // 32 MB
+    const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
+        setError("wimg_export_db: failed to allocate buffer", .{});
+        return null;
+    };
+
+    const json_len = database.exportDbJson(buf.ptr + 4, buf_size) catch |err| {
+        setError("wimg_export_db: query failed: {s}", .{@errorName(err)});
+        fba.allocator().free(buf);
+        return null;
+    } orelse {
+        setError("wimg_export_db: buffer too small", .{});
+        fba.allocator().free(buf);
+        return null;
+    };
+
+    const len_bytes: [4]u8 = @bitCast(@as(u32, @intCast(json_len)));
+    buf[0] = len_bytes[0];
+    buf[1] = len_bytes[1];
+    buf[2] = len_bytes[2];
+    buf[3] = len_bytes[3];
+
+    return buf.ptr;
+}
+
 // --- DB persistence (OPFS) — WASM only ---
 // These functions use the in-memory VFS which only exists for wasm32.
 // On native (iOS/macOS), SQLite uses the real filesystem directly.

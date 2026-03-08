@@ -130,6 +130,14 @@ export fn wimg_delete_debt(id: [*]const u8, id_len: usize) i32
 export fn wimg_undo() ?[*]const u8
 export fn wimg_redo() ?[*]const u8
 
+// Snapshots
+export fn wimg_take_snapshot(year: u32, month: u32) i32
+export fn wimg_get_snapshots() ?[*]const u8
+
+// Export
+export fn wimg_export_csv() ?[*]const u8      // all transactions as CSV
+export fn wimg_export_db() ?[*]const u8        // full database as JSON (all tables)
+
 // Persistence (OPFS)
 export fn wimg_get_db_ptr() ?[*]u8
 export fn wimg_get_db_size() usize
@@ -187,6 +195,17 @@ CREATE TABLE rules (
   category    TEXT NOT NULL,
   priority    INTEGER DEFAULT 0,
   updated_at  INTEGER NOT NULL
+);
+
+CREATE TABLE snapshots (
+  id          TEXT PRIMARY KEY,        -- "2026-03"
+  date        TEXT NOT NULL,           -- "2026-03-01"
+  net_worth   INTEGER NOT NULL DEFAULT 0,
+  income      INTEGER NOT NULL DEFAULT 0,
+  expenses    INTEGER NOT NULL DEFAULT 0,
+  tx_count    INTEGER NOT NULL DEFAULT 0,
+  breakdown   TEXT NOT NULL DEFAULT '[]',  -- by_category JSON
+  updated_at  INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE meta (
@@ -672,18 +691,24 @@ This makes wimg proactive.
 - [ ] Web: PWA notification support via service worker
 - [ ] Settings: notification preferences (on/off per type)
 
-#### 5.3 — Data Export + Month Snapshot
+#### ✅ 5.3 — Data Export + Month Snapshot (Done, March 2026)
 
-Quick wins. Data export should've been Phase 2.
+Data ownership: export your data as CSV (spreadsheet) or JSON (full backup).
+Monthly snapshots freeze financial state for historical comparison.
 
 ##### Tasks
 
-- [ ] `wimg_export_db()` — C ABI: return full database as JSON dump
-- [ ] `wimg_take_snapshot()` — C ABI: freeze monthly state (income, expenses, by_category)
-- [ ] `snapshots` table + schema migration (reused by Phase 6 net worth)
-- [ ] Web: Export button in Settings → download JSON file
-- [ ] iOS: Export via share sheet
-- [ ] Auto-snapshot on first app open each month
+- [x] `snapshots` table + schema migration v9
+- [x] `wimg_take_snapshot()` — C ABI: freeze monthly state (income, expenses, by_category)
+- [x] `wimg_get_snapshots()` — C ABI: return all snapshots as JSON
+- [x] `wimg_export_csv()` — C ABI: export transactions as CSV
+- [x] `wimg_export_db()` — C ABI: return full database as JSON dump (all tables)
+- [x] Snapshots sync support (getChangesJson, applyChanges, getRowUpdatedAt)
+- [x] Web: Export card in Settings → CSV + JSON download buttons
+- [x] Web: Auto-snapshot on first open each month (localStorage check)
+- [x] iOS: Export via share sheet (confirmation dialog → CSV or JSON)
+- [x] iOS: Auto-snapshot on app launch (UserDefaults check)
+- [x] iOS: Snapshot.swift model
 
 #### 5.4 — Annual Renewals Calendar
 
@@ -899,8 +924,8 @@ DELETE /mcp             — Evict MCP session (clear WASM instance)
 - [ ] Recurring payments auto-detected from real transaction data
 - [ ] Price increase flagged: "Netflix +€2 vs last month"
 - [ ] Push notification on iOS when subscription price changes
-- [ ] Full database exportable as JSON
-- [ ] Monthly snapshots stored for historical comparison
+- [x] Full database exportable as JSON
+- [x] Monthly snapshots stored for historical comparison
 - [ ] Annual renewals visible with upcoming due dates
 - [ ] Cmd+K opens command palette with navigation, actions, and search
 - [x] Remote MCP server serves financial data to Claude.ai via POST /mcp
@@ -947,30 +972,21 @@ One number that (hopefully) grows. Accounts + investments - debts = net worth.
 
 ##### How it works
 
-```sql
-CREATE TABLE snapshots (
-  id          TEXT PRIMARY KEY,
-  date        TEXT NOT NULL,        -- ISO: 2026-03-01 (first of month)
-  net_worth   INTEGER NOT NULL,     -- cents
-  breakdown   TEXT NOT NULL,        -- JSON: { accounts: {...}, debts: {...} }
-  updated_at  INTEGER NOT NULL
-);
-```
+`snapshots` table already exists (Phase 5.3). Reuses same table with auto-snapshot.
 
-- Auto-snapshot on first app open each month (or manual trigger)
 - Net worth = sum of account balances - sum of remaining debts
 - Account balances: latest salary deposit or manual entry
 - Line chart showing net worth progression over months/years
 
 ##### Tasks
 
-- [ ] `snapshots` table + schema migration in `db.zig`
-- [ ] `wimg_take_snapshot()` — C ABI: compute + store current net worth
-- [ ] `wimg_get_snapshots(since_year)` — C ABI: return snapshot history as JSON
+- [x] `snapshots` table + schema migration in `db.zig` (Phase 5.3)
+- [x] `wimg_take_snapshot()` — C ABI (Phase 5.3)
+- [x] `wimg_get_snapshots()` — C ABI (Phase 5.3)
+- [x] Auto-snapshot trigger on app open (Phase 5.3)
 - [ ] Account balance tracking (derived from transactions or manual entry)
 - [ ] Web: Net Worth screen — line chart (LayerChart) + breakdown cards
 - [ ] iOS: Net Worth view — same layout, SwiftUI Charts
-- [ ] Auto-snapshot trigger on app open (once per month)
 
 #### 6.3 — Anlage N Assistant (Tax Estimation)
 
@@ -1157,6 +1173,7 @@ wimg/
 │       │   ├── Summary.swift      MonthlySummary, CategoryBreakdown
 │       │   ├── Category.swift     WimgCategory enum (colors, icons)
 │       │   ├── Debt.swift
+│       │   ├── Snapshot.swift
 │       │   └── Notifications.swift
 │       ├── Services/
 │       │   ├── SyncService.swift  Sync orchestrator + WebSocket client
@@ -1220,6 +1237,8 @@ wimg/
 | Mar 2026 | Remote MCP in wimg-sync, not local wimg-mcp | CF Worker DO keeps WASM warm, no local Bun process needed, accessible from Claude.ai       |
 | Mar 2026 | Manual JSON-RPC over MCP SDK              | MCP protocol is simple JSON-RPC; avoids Node.js deps in CF Workers, keeps bundle small      |
 | Mar 2026 | Feature flags via localStorage/UserDefaults | Simple toggles, no plugin runtime; features compiled in, flags control UI visibility only  |
+| Mar 2026 | Snapshots table shared by 5.3 + 6.2          | Same schema: monthly income/expenses/breakdown, net worth populated later                   |
+| Mar 2026 | Export as CSV + JSON (not proprietary format) | Data ownership: users can take their data out anytime, open in Excel                        |
 
 ---
 
@@ -1291,6 +1310,8 @@ FinTS is intentionally iOS-only (browsers can't do FinTS due to CORS).
 | Settings: version + GitHub link                             | ✅  | ✅                     |
 | More page (hub to Debts, Import, Review, Settings)          | ✅  | ✅                     |
 | About page (hero, FAQ, privacy, GitHub, MCP info)           | ✅  | ✅                     |
+| Data export (CSV + JSON)                                    | ✅  | ✅                     |
+| Monthly snapshots (auto on first open)                      | ✅  | ✅                     |
 
 ### iOS Missing (needs implementation)
 

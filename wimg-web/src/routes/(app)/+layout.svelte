@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
-  import { init } from "$lib/wasm";
+  import { init, takeSnapshot } from "$lib/wasm";
   import { accountStore } from "$lib/account.svelte";
   import { updateStore } from "$lib/update.svelte";
   import { dropStore } from "$lib/drop.svelte";
   import { isSyncEnabled, connectSync, disconnectSync } from "$lib/sync";
-  import { LS_ONBOARDING_COMPLETED } from "$lib/config";
+  import { LS_ONBOARDING_COMPLETED, LS_LAST_SNAPSHOT_MONTH } from "$lib/config";
   import BottomNav from "../../components/BottomNav.svelte";
   import Toast from "../../components/Toast.svelte";
   import UpdateBanner from "../../components/UpdateBanner.svelte";
@@ -65,6 +65,19 @@
     // Show onboarding on first visit
     if (!localStorage.getItem(LS_ONBOARDING_COMPLETED)) {
       showOnboarding = true;
+    }
+
+    // Auto-snapshot: take monthly snapshot if we haven't this month
+    try {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const lastSnapshot = localStorage.getItem(LS_LAST_SNAPSHOT_MONTH);
+      if (lastSnapshot !== currentMonth) {
+        takeSnapshot(now.getFullYear(), now.getMonth() + 1);
+        localStorage.setItem(LS_LAST_SNAPSHOT_MONTH, currentMonth);
+      }
+    } catch {
+      // Silently ignore snapshot errors
     }
 
     updateStore.init();

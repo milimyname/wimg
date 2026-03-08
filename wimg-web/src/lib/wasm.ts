@@ -83,6 +83,16 @@ export interface RecurringPattern {
   price_change: number | null;
 }
 
+export interface Snapshot {
+  id: string;
+  date: string;
+  net_worth: number;
+  income: number;
+  expenses: number;
+  tx_count: number;
+  by_category: CategoryBreakdown[];
+}
+
 export interface ParseResult {
   format: string;
   total_rows: number;
@@ -124,6 +134,10 @@ interface WasmExports {
   wimg_get_categories: () => number;
   wimg_detect_recurring: () => number;
   wimg_get_recurring: () => number;
+  wimg_take_snapshot: (year: number, month: number) => number;
+  wimg_get_snapshots: () => number;
+  wimg_export_csv: () => number;
+  wimg_export_db: () => number;
   wimg_undo: () => number;
   wimg_redo: () => number;
   wimg_get_changes: (since_ts: bigint) => number;
@@ -576,6 +590,54 @@ export function getRecurring(): RecurringPattern[] {
   wasm!.wimg_free(ptr, 0);
 
   return JSON.parse(json) as RecurringPattern[];
+}
+
+// --- Snapshots ---
+
+export function takeSnapshot(year: number, month: number): void {
+  ensureInit();
+  const rc = wasm!.wimg_take_snapshot(year, month);
+  if (rc !== 0) {
+    throw new Error(getLastError("Failed to take snapshot"));
+  }
+}
+
+export function getSnapshots(): Snapshot[] {
+  ensureInit();
+
+  const ptr = wasm!.wimg_get_snapshots();
+  if (ptr === 0) return [];
+
+  const json = readLengthPrefixedString(ptr);
+  wasm!.wimg_free(ptr, 0);
+
+  return JSON.parse(json) as Snapshot[];
+}
+
+// --- Export ---
+
+export function exportCsv(): string {
+  ensureInit();
+
+  const ptr = wasm!.wimg_export_csv();
+  if (ptr === 0) throw new Error(getLastError("Failed to export CSV"));
+
+  const csv = readLengthPrefixedString(ptr);
+  wasm!.wimg_free(ptr, 0);
+
+  return csv;
+}
+
+export function exportDb(): string {
+  ensureInit();
+
+  const ptr = wasm!.wimg_export_db();
+  if (ptr === 0) throw new Error(getLastError("Failed to export database"));
+
+  const json = readLengthPrefixedString(ptr);
+  wasm!.wimg_free(ptr, 0);
+
+  return json;
 }
 
 export function getAccounts(): Account[] {

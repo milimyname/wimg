@@ -400,6 +400,39 @@ final class LibWimg {
         return try decodeLengthPrefixed(ptr)
     }
 
+    // MARK: - Snapshots
+
+    static func takeSnapshot(year: Int, month: Int) throws {
+        try ensureInit()
+        let rc = wimg_take_snapshot(UInt32(year), UInt32(month))
+        if rc != 0 {
+            throw WimgError.operationFailed("takeSnapshot", lastError())
+        }
+    }
+
+    static func getSnapshots() -> [Snapshot] {
+        guard isInitialized else { return [] }
+        guard let ptr = wimg_get_snapshots() else { return [] }
+        defer { wimg_free(ptr, 0) }
+        return (try? decodeLengthPrefixed(ptr)) ?? []
+    }
+
+    // MARK: - Export
+
+    static func exportCsv() -> String? {
+        guard isInitialized else { return nil }
+        guard let ptr = wimg_export_csv() else { return nil }
+        defer { wimg_free(ptr, 0) }
+        return readLengthPrefixedString(ptr)
+    }
+
+    static func exportDb() -> String? {
+        guard isInitialized else { return nil }
+        guard let ptr = wimg_export_db() else { return nil }
+        defer { wimg_free(ptr, 0) }
+        return readLengthPrefixedString(ptr)
+    }
+
     // MARK: - Private Helpers
 
     private static func dbPath() -> String {

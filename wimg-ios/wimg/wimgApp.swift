@@ -77,6 +77,15 @@ struct ContentView: View {
                     _ = try? await sync.pull()
                 }
             }
+            // Auto-snapshot: take monthly snapshot if we haven't this month
+            let now = Date()
+            let cal = Calendar.current
+            let currentMonth = String(format: "%04d-%02d", cal.component(.year, from: now), cal.component(.month, from: now))
+            let lastSnapshot = UserDefaults.standard.string(forKey: "wimg_last_snapshot_month")
+            if lastSnapshot != currentMonth {
+                try? LibWimg.takeSnapshot(year: cal.component(.year, from: now), month: cal.component(.month, from: now))
+                UserDefaults.standard.set(currentMonth, forKey: "wimg_last_snapshot_month")
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
             accounts = LibWimg.getAccounts()

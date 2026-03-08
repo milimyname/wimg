@@ -28,7 +28,7 @@ pub const DbError = error{
     StepFailed,
 };
 
-const CURRENT_SCHEMA_VERSION = 8;
+const CURRENT_SCHEMA_VERSION = 9;
 const MAX_UNDO_ENTRIES = 50;
 
 pub const Db = struct {
@@ -98,6 +98,16 @@ pub const Db = struct {
         \\  next_due TEXT,
         \\  active INTEGER NOT NULL DEFAULT 1,
         \\  prev_amount INTEGER,
+        \\  updated_at INTEGER NOT NULL DEFAULT 0
+        \\);
+        \\CREATE TABLE IF NOT EXISTS snapshots (
+        \\  id TEXT PRIMARY KEY,
+        \\  date TEXT NOT NULL,
+        \\  net_worth INTEGER NOT NULL DEFAULT 0,
+        \\  income INTEGER NOT NULL DEFAULT 0,
+        \\  expenses INTEGER NOT NULL DEFAULT 0,
+        \\  tx_count INTEGER NOT NULL DEFAULT 0,
+        \\  breakdown TEXT NOT NULL DEFAULT '[]',
         \\  updated_at INTEGER NOT NULL DEFAULT 0
         \\);
     ;
@@ -216,9 +226,25 @@ pub const Db = struct {
             ) catch {};
         }
 
+        if (version < 9) {
+            // v9: monthly snapshots for historical data
+            self.exec(
+                \\CREATE TABLE IF NOT EXISTS snapshots (
+                \\  id TEXT PRIMARY KEY,
+                \\  date TEXT NOT NULL,
+                \\  net_worth INTEGER NOT NULL DEFAULT 0,
+                \\  income INTEGER NOT NULL DEFAULT 0,
+                \\  expenses INTEGER NOT NULL DEFAULT 0,
+                \\  tx_count INTEGER NOT NULL DEFAULT 0,
+                \\  breakdown TEXT NOT NULL DEFAULT '[]',
+                \\  updated_at INTEGER NOT NULL DEFAULT 0
+                \\);
+            ) catch {};
+        }
+
         // Store current version
         if (version < CURRENT_SCHEMA_VERSION) {
-            self.setMeta("schema_version", "8") catch {};
+            self.setMeta("schema_version", "9") catch {};
         }
     }
 
@@ -1437,6 +1463,419 @@ pub const Db = struct {
         if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
     }
 
+    // --- Snapshots ---
+
+    /// Take a monthly snapshot: compute summary for year/month and INSERT OR REPLACE.
+    pub fn takeSnapshot(self: *Db, year: u32, month: u32) DbError!void {
+        // Compute summary using SQL (same as summary.zig)
+        const sql =
+            \\SELECT category,
+            \\  SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END) as income,
+            \\  SUM(CASE WHEN amount_cents < 0 THEN amount_cents ELSE 0 END) as expenses,
+            \\  COUNT(*) as cnt
+            \\FROM transactions
+            \\WHERE date_year = ?1 AND date_month = ?2 AND excluded = 0
+            \\GROUP BY category
+            \\ORDER BY expenses ASC;
+        ;
+
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+        const s = stmt.?;
+        if (c.sqlite3_bind_int(s, 1, @intCast(year)) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int(s, 2, @intCast(month)) != c.SQLITE_OK) return DbError.BindFailed;
+
+        var total_income: i64 = 0;
+        var total_expenses: i64 = 0;
+        var total_count: i32 = 0;
+
+        const max_cats = 20;
+        var cat_ids: [max_cats]u8 = undefined;
+        var cat_amounts: [max_cats]i64 = undefined;
+        var cat_count: usize = 0;
+
+        while (c.sqlite3_step(s) == c.SQLITE_ROW) {
+            const cat_id: u8 = @intCast(c.sqlite3_column_int(s, 0));
+            const income = c.sqlite3_column_int64(s, 1);
+            const expenses = c.sqlite3_column_int64(s, 2);
+            const cnt = c.sqlite3_column_int(s, 3);
+
+            total_income += income;
+            total_expenses += expenses;
+            total_count += cnt;
+
+            if (expenses < 0 and cat_count < max_cats) {
+                cat_ids[cat_count] = cat_id;
+                cat_amounts[cat_count] = -expenses;
+                cat_count += 1;
+            }
+        }
+
+        // Build breakdown JSON: [{"id":N,"amount":X.XX},...]
+        var bk_buf: [2048]u8 = undefined;
+        var bk_pos: usize = 0;
+        bk_buf[bk_pos] = '[';
+        bk_pos += 1;
+        for (0..cat_count) |i| {
+            if (i > 0) {
+                bk_buf[bk_pos] = ',';
+                bk_pos += 1;
+            }
+            const p1 = "{\"id\":";
+            @memcpy(bk_buf[bk_pos .. bk_pos + p1.len], p1);
+            bk_pos += p1.len;
+            bk_pos += formatInt(bk_buf[bk_pos..], @as(u32, cat_ids[i])) orelse return DbError.ExecFailed;
+            const p2 = ",\"amount\":";
+            @memcpy(bk_buf[bk_pos .. bk_pos + p2.len], p2);
+            bk_pos += p2.len;
+            bk_pos += formatAmount(bk_buf[bk_pos..], cat_amounts[i]) orelse return DbError.ExecFailed;
+            bk_buf[bk_pos] = '}';
+            bk_pos += 1;
+        }
+        bk_buf[bk_pos] = ']';
+        bk_pos += 1;
+
+        // Build id: "YYYY-MM"
+        var id_buf: [7]u8 = undefined;
+        id_buf[0] = '0' + @as(u8, @intCast(year / 1000));
+        id_buf[1] = '0' + @as(u8, @intCast((year / 100) % 10));
+        id_buf[2] = '0' + @as(u8, @intCast((year / 10) % 10));
+        id_buf[3] = '0' + @as(u8, @intCast(year % 10));
+        id_buf[4] = '-';
+        id_buf[5] = '0' + @as(u8, @intCast(month / 10));
+        id_buf[6] = '0' + @as(u8, @intCast(month % 10));
+
+        // Build date: "YYYY-MM-01"
+        var date_buf: [10]u8 = undefined;
+        @memcpy(date_buf[0..7], &id_buf);
+        date_buf[7] = '-';
+        date_buf[8] = '0';
+        date_buf[9] = '1';
+
+        const ins_sql = "INSERT OR REPLACE INTO snapshots (id, date, net_worth, income, expenses, tx_count, breakdown, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8);";
+        var ins_stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, ins_sql, -1, &ins_stmt, null) != c.SQLITE_OK or ins_stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(ins_stmt.?);
+        const is = ins_stmt.?;
+        if (c.sqlite3_bind_text(is, 1, &id_buf, 7, c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(is, 2, &date_buf, 10, c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(is, 3, total_income + total_expenses) != c.SQLITE_OK) return DbError.BindFailed; // net_worth = income - |expenses|
+        if (c.sqlite3_bind_int64(is, 4, total_income) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(is, 5, -total_expenses) != c.SQLITE_OK) return DbError.BindFailed; // store as positive
+        if (c.sqlite3_bind_int(is, 6, total_count) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(is, 7, &bk_buf, @intCast(bk_pos), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(is, 8, nowMs()) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(is) != c.SQLITE_DONE) return DbError.StepFailed;
+    }
+
+    /// Get all snapshots as JSON array.
+    pub fn getSnapshotsJson(self: *Db, buf: [*]u8, buf_len: usize) DbError!?usize {
+        const sql = "SELECT id, date, net_worth, income, expenses, tx_count, breakdown FROM snapshots ORDER BY date DESC;";
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+
+        const s = stmt.?;
+        var pos: usize = 0;
+
+        if (pos >= buf_len) return null;
+        buf[pos] = '[';
+        pos += 1;
+
+        var first = true;
+        while (c.sqlite3_step(s) == c.SQLITE_ROW) {
+            const id_ptr = c.sqlite3_column_text(s, 0) orelse continue;
+            const id_len: usize = @intCast(c.sqlite3_column_bytes(s, 0));
+            const date_ptr = c.sqlite3_column_text(s, 1) orelse continue;
+            const date_len: usize = @intCast(c.sqlite3_column_bytes(s, 1));
+            const net_worth = c.sqlite3_column_int64(s, 2);
+            const income = c.sqlite3_column_int64(s, 3);
+            const expenses = c.sqlite3_column_int64(s, 4);
+            const tx_count = c.sqlite3_column_int(s, 5);
+            const bk_ptr = c.sqlite3_column_text(s, 6) orelse continue;
+            const bk_len: usize = @intCast(c.sqlite3_column_bytes(s, 6));
+
+            if (!first) {
+                if (pos >= buf_len) return null;
+                buf[pos] = ',';
+                pos += 1;
+            }
+
+            const p1 = "{\"id\":\"";
+            if (pos + p1.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p1.len], p1);
+            pos += p1.len;
+            pos += jsonEscapeString(buf[pos..buf_len], id_ptr[0..id_len]) orelse return null;
+
+            const p2 = "\",\"date\":\"";
+            if (pos + p2.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p2.len], p2);
+            pos += p2.len;
+            pos += jsonEscapeString(buf[pos..buf_len], date_ptr[0..date_len]) orelse return null;
+
+            const p3 = "\",\"net_worth\":";
+            if (pos + p3.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p3.len], p3);
+            pos += p3.len;
+            pos += formatAmount(buf[pos..buf_len], net_worth) orelse return null;
+
+            const p4 = ",\"income\":";
+            if (pos + p4.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p4.len], p4);
+            pos += p4.len;
+            pos += formatAmount(buf[pos..buf_len], income) orelse return null;
+
+            const p5 = ",\"expenses\":";
+            if (pos + p5.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p5.len], p5);
+            pos += p5.len;
+            pos += formatAmount(buf[pos..buf_len], expenses) orelse return null;
+
+            const p6 = ",\"tx_count\":";
+            if (pos + p6.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p6.len], p6);
+            pos += p6.len;
+            pos += formatSignedInt(buf[pos..buf_len], @as(i64, tx_count)) orelse return null;
+
+            // breakdown is already JSON — embed raw
+            const p7 = ",\"by_category\":";
+            if (pos + p7.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p7.len], p7);
+            pos += p7.len;
+            if (pos + bk_len > buf_len) return null;
+            @memcpy(buf[pos .. pos + bk_len], bk_ptr[0..bk_len]);
+            pos += bk_len;
+
+            if (pos >= buf_len) return null;
+            buf[pos] = '}';
+            pos += 1;
+            first = false;
+        }
+
+        if (pos >= buf_len) return null;
+        buf[pos] = ']';
+        pos += 1;
+
+        return pos;
+    }
+
+    // --- Export ---
+
+    /// Export all transactions as CSV into the provided buffer.
+    /// Returns bytes written, or null if buffer too small.
+    pub fn exportTransactionsCsv(self: *Db, buf: [*]u8, buf_len: usize) DbError!?usize {
+        const sql =
+            \\SELECT id, date_year, date_month, date_day, description, amount_cents, currency, category, account
+            \\FROM transactions
+            \\ORDER BY date_year DESC, date_month DESC, date_day DESC;
+        ;
+
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+
+        const s = stmt.?;
+        var pos: usize = 0;
+
+        // CSV header
+        const header = "Date,Description,Amount,Currency,Category,Account\n";
+        if (pos + header.len > buf_len) return null;
+        @memcpy(buf[pos .. pos + header.len], header);
+        pos += header.len;
+
+        while (c.sqlite3_step(s) == c.SQLITE_ROW) {
+            const year: u16 = @intCast(c.sqlite3_column_int(s, 1));
+            const month: u8 = @intCast(c.sqlite3_column_int(s, 2));
+            const day: u8 = @intCast(c.sqlite3_column_int(s, 3));
+            const desc_ptr = c.sqlite3_column_text(s, 4) orelse continue;
+            const desc_len: usize = @intCast(c.sqlite3_column_bytes(s, 4));
+            const amount = c.sqlite3_column_int64(s, 5);
+            const curr_ptr = c.sqlite3_column_text(s, 6) orelse continue;
+            const cat: u8 = @intCast(c.sqlite3_column_int(s, 7));
+            const acct_ptr = c.sqlite3_column_text(s, 8);
+            const acct_len: usize = @intCast(c.sqlite3_column_bytes(s, 8));
+
+            // Date: YYYY-MM-DD
+            pos += formatDate(buf[pos..buf_len], year, month, day) orelse return null;
+
+            // ,Description (CSV-escape: wrap in quotes if contains comma/quote/newline)
+            if (pos >= buf_len) return null;
+            buf[pos] = ',';
+            pos += 1;
+            pos += csvEscapeField(buf[pos..buf_len], desc_ptr[0..desc_len]) orelse return null;
+
+            // ,Amount
+            if (pos >= buf_len) return null;
+            buf[pos] = ',';
+            pos += 1;
+            pos += formatAmount(buf[pos..buf_len], amount) orelse return null;
+
+            // ,Currency
+            if (pos >= buf_len) return null;
+            buf[pos] = ',';
+            pos += 1;
+            if (pos + 3 > buf_len) return null;
+            @memcpy(buf[pos .. pos + 3], curr_ptr[0..3]);
+            pos += 3;
+
+            // ,Category
+            if (pos >= buf_len) return null;
+            buf[pos] = ',';
+            pos += 1;
+            const cat_name = types.Category.fromInt(cat).germanName();
+            pos += csvEscapeField(buf[pos..buf_len], cat_name) orelse return null;
+
+            // ,Account
+            if (pos >= buf_len) return null;
+            buf[pos] = ',';
+            pos += 1;
+            if (acct_ptr) |ap| {
+                pos += csvEscapeField(buf[pos..buf_len], ap[0..acct_len]) orelse return null;
+            }
+
+            // Newline
+            if (pos >= buf_len) return null;
+            buf[pos] = '\n';
+            pos += 1;
+        }
+
+        return pos;
+    }
+
+    /// Export the full database as JSON. All tables dumped into a single object.
+    /// Returns bytes written, or null if buffer too small.
+    pub fn exportDbJson(self: *Db, buf: [*]u8, buf_len: usize) DbError!?usize {
+        var pos: usize = 0;
+
+        // {"version":9,"exported_at":...,"transactions":
+        const p1 = "{\"version\":9,\"exported_at\":";
+        if (pos + p1.len > buf_len) return null;
+        @memcpy(buf[pos .. pos + p1.len], p1);
+        pos += p1.len;
+        pos += formatSignedInt(buf[pos..buf_len], nowMs()) orelse return null;
+
+        // ,"transactions":
+        const p2 = ",\"transactions\":";
+        if (pos + p2.len > buf_len) return null;
+        @memcpy(buf[pos .. pos + p2.len], p2);
+        pos += p2.len;
+        const tx_len = try self.getTransactionsJson(buf + pos, buf_len - pos) orelse return null;
+        pos += tx_len;
+
+        // ,"accounts":
+        const p3 = ",\"accounts\":";
+        if (pos + p3.len > buf_len) return null;
+        @memcpy(buf[pos .. pos + p3.len], p3);
+        pos += p3.len;
+        const acct_len = try self.getAccountsJson(buf + pos, buf_len - pos) orelse return null;
+        pos += acct_len;
+
+        // ,"debts":
+        const p4 = ",\"debts\":";
+        if (pos + p4.len > buf_len) return null;
+        @memcpy(buf[pos .. pos + p4.len], p4);
+        pos += p4.len;
+        const debt_len = try self.getDebtsJson(buf + pos, buf_len - pos) orelse return null;
+        pos += debt_len;
+
+        // ,"recurring_patterns":
+        const p5 = ",\"recurring_patterns\":";
+        if (pos + p5.len > buf_len) return null;
+        @memcpy(buf[pos .. pos + p5.len], p5);
+        pos += p5.len;
+        const rec_len = try self.getRecurringJson(buf + pos, buf_len - pos) orelse return null;
+        pos += rec_len;
+
+        // ,"snapshots":
+        const p6 = ",\"snapshots\":";
+        if (pos + p6.len > buf_len) return null;
+        @memcpy(buf[pos .. pos + p6.len], p6);
+        pos += p6.len;
+        const snap_len = try self.getSnapshotsJson(buf + pos, buf_len - pos) orelse return null;
+        pos += snap_len;
+
+        // ,"rules":
+        const p7 = ",\"rules\":";
+        if (pos + p7.len > buf_len) return null;
+        @memcpy(buf[pos .. pos + p7.len], p7);
+        pos += p7.len;
+        const rules_len = try self.getRulesJson(buf + pos, buf_len - pos) orelse return null;
+        pos += rules_len;
+
+        // Close object
+        if (pos >= buf_len) return null;
+        buf[pos] = '}';
+        pos += 1;
+
+        return pos;
+    }
+
+    /// Get all rules as JSON array.
+    pub fn getRulesJson(self: *Db, buf: [*]u8, buf_len: usize) DbError!?usize {
+        const sql = "SELECT id, pattern, category, priority FROM rules ORDER BY priority DESC;";
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+
+        const s = stmt.?;
+        var pos: usize = 0;
+
+        if (pos >= buf_len) return null;
+        buf[pos] = '[';
+        pos += 1;
+
+        var first = true;
+        while (c.sqlite3_step(s) == c.SQLITE_ROW) {
+            const id_val = c.sqlite3_column_int(s, 0);
+            const pat_ptr = c.sqlite3_column_text(s, 1) orelse continue;
+            const pat_len: usize = @intCast(c.sqlite3_column_bytes(s, 1));
+            const category = c.sqlite3_column_int(s, 2);
+            const priority = c.sqlite3_column_int(s, 3);
+
+            if (!first) {
+                if (pos >= buf_len) return null;
+                buf[pos] = ',';
+                pos += 1;
+            }
+
+            const q1 = "{\"id\":";
+            if (pos + q1.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + q1.len], q1);
+            pos += q1.len;
+            pos += formatSignedInt(buf[pos..buf_len], @as(i64, id_val)) orelse return null;
+
+            const q2 = ",\"pattern\":\"";
+            if (pos + q2.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + q2.len], q2);
+            pos += q2.len;
+            pos += jsonEscapeString(buf[pos..buf_len], pat_ptr[0..pat_len]) orelse return null;
+
+            const q3 = "\",\"category\":";
+            if (pos + q3.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + q3.len], q3);
+            pos += q3.len;
+            pos += formatSignedInt(buf[pos..buf_len], @as(i64, category)) orelse return null;
+
+            const q4 = ",\"priority\":";
+            if (pos + q4.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + q4.len], q4);
+            pos += q4.len;
+            pos += formatSignedInt(buf[pos..buf_len], @as(i64, priority)) orelse return null;
+
+            if (pos >= buf_len) return null;
+            buf[pos] = '}';
+            pos += 1;
+            first = false;
+        }
+
+        if (pos >= buf_len) return null;
+        buf[pos] = ']';
+        pos += 1;
+
+        return pos;
+    }
+
     // --- Sync: getChangesJson / applyChanges ---
 
     /// Get all rows changed since `since_ts` as JSON matching the sync contract.
@@ -1835,6 +2274,90 @@ pub const Db = struct {
             }
         }
 
+        // --- snapshots ---
+        {
+            const sql = "SELECT id, date, net_worth, income, expenses, tx_count, breakdown, updated_at FROM snapshots WHERE updated_at >= ?1;";
+            var stmt: ?*c.sqlite3_stmt = null;
+            if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+            defer _ = c.sqlite3_finalize(stmt.?);
+            const s = stmt.?;
+            if (c.sqlite3_bind_int64(s, 1, since_ts) != c.SQLITE_OK) return DbError.BindFailed;
+
+            while (c.sqlite3_step(s) == c.SQLITE_ROW) {
+                if (!first) {
+                    if (pos >= buf_len) return null;
+                    buf[pos] = ',';
+                    pos += 1;
+                }
+
+                const id_ptr = c.sqlite3_column_text(s, 0) orelse continue;
+                const id_len: usize = @intCast(c.sqlite3_column_bytes(s, 0));
+                const date_ptr = c.sqlite3_column_text(s, 1) orelse continue;
+                const date_len: usize = @intCast(c.sqlite3_column_bytes(s, 1));
+                const net_worth = c.sqlite3_column_int64(s, 2);
+                const income = c.sqlite3_column_int64(s, 3);
+                const expenses = c.sqlite3_column_int64(s, 4);
+                const tx_count = c.sqlite3_column_int(s, 5);
+                const bk_ptr = c.sqlite3_column_text(s, 6) orelse continue;
+                const bk_len: usize = @intCast(c.sqlite3_column_bytes(s, 6));
+                const updated = c.sqlite3_column_int64(s, 7);
+
+                const p1 = "{\"table\":\"snapshots\",\"id\":\"";
+                if (pos + p1.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p1.len], p1);
+                pos += p1.len;
+                pos += jsonEscapeString(buf[pos..buf_len], id_ptr[0..id_len]) orelse return null;
+
+                const p2 = "\",\"data\":{\"date\":\"";
+                if (pos + p2.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p2.len], p2);
+                pos += p2.len;
+                pos += jsonEscapeString(buf[pos..buf_len], date_ptr[0..date_len]) orelse return null;
+
+                const p3 = "\",\"net_worth\":";
+                if (pos + p3.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p3.len], p3);
+                pos += p3.len;
+                pos += formatSignedInt(buf[pos..buf_len], net_worth) orelse return null;
+
+                const p4 = ",\"income\":";
+                if (pos + p4.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p4.len], p4);
+                pos += p4.len;
+                pos += formatSignedInt(buf[pos..buf_len], income) orelse return null;
+
+                const p5 = ",\"expenses\":";
+                if (pos + p5.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p5.len], p5);
+                pos += p5.len;
+                pos += formatSignedInt(buf[pos..buf_len], expenses) orelse return null;
+
+                const p6 = ",\"tx_count\":";
+                if (pos + p6.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p6.len], p6);
+                pos += p6.len;
+                pos += formatSignedInt(buf[pos..buf_len], @as(i64, tx_count)) orelse return null;
+
+                // breakdown is stored as JSON string — embed escaped
+                const p7 = ",\"breakdown\":\"";
+                if (pos + p7.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p7.len], p7);
+                pos += p7.len;
+                pos += jsonEscapeString(buf[pos..buf_len], bk_ptr[0..bk_len]) orelse return null;
+
+                const p_close = "\"},\"updated_at\":";
+                if (pos + p_close.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p_close.len], p_close);
+                pos += p_close.len;
+                pos += formatSignedInt(buf[pos..buf_len], updated) orelse return null;
+
+                if (pos >= buf_len) return null;
+                buf[pos] = '}';
+                pos += 1;
+                first = false;
+            }
+        }
+
         // Close: ]}
         const footer = "]}";
         if (pos + footer.len > buf_len) return null;
@@ -1933,6 +2456,12 @@ pub const Db = struct {
                 const data_str = self.extractDataObject(obj) orelse continue;
                 self.applyRecurringChange(row_id, data_str, updated_at) catch continue;
                 applied += 1;
+            } else if (std.mem.eql(u8, table, "snapshots")) {
+                const local_ts = self.getRowUpdatedAt("snapshots", row_id);
+                if (updated_at <= local_ts) continue;
+                const data_str = self.extractDataObject(obj) orelse continue;
+                self.applySnapshotChange(row_id, data_str, updated_at) catch continue;
+                applied += 1;
             }
         }
 
@@ -1950,6 +2479,8 @@ pub const Db = struct {
             "SELECT updated_at FROM accounts WHERE id = ?1;"
         else if (std.mem.eql(u8, table, "recurring_patterns"))
             "SELECT updated_at FROM recurring_patterns WHERE id = ?1;"
+        else if (std.mem.eql(u8, table, "snapshots"))
+            "SELECT updated_at FROM snapshots WHERE id = ?1;"
         else
             return 0;
 
@@ -2144,6 +2675,38 @@ pub const Db = struct {
             if (c.sqlite3_bind_null(s, 9) != c.SQLITE_OK) return DbError.BindFailed;
         }
         if (c.sqlite3_bind_int64(s, 10, updated_at) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+    }
+
+    fn applySnapshotChange(self: *Db, row_id: []const u8, data: []const u8, updated_at: i64) DbError!void {
+        const date_escaped = jsonExtractStringFromSlice(data, "\"date\"") orelse return DbError.ExecFailed;
+        const net_worth = jsonExtractI64FromSlice(data, "\"net_worth\"");
+        const income = jsonExtractI64FromSlice(data, "\"income\"");
+        const expenses = jsonExtractI64FromSlice(data, "\"expenses\"");
+        const tx_count = jsonExtractI64FromSlice(data, "\"tx_count\"");
+        const breakdown_escaped = jsonExtractStringFromSlice(data, "\"breakdown\"") orelse "[]";
+
+        var date_buf: [32]u8 = undefined;
+        const date_len = jsonUnescapeString(&date_buf, date_escaped) orelse return DbError.ExecFailed;
+        const date = date_buf[0..date_len];
+
+        var bk_buf: [4096]u8 = undefined;
+        const bk_len = jsonUnescapeString(&bk_buf, breakdown_escaped) orelse return DbError.ExecFailed;
+        const breakdown = bk_buf[0..bk_len];
+
+        const sql = "INSERT OR REPLACE INTO snapshots (id, date, net_worth, income, expenses, tx_count, breakdown, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8);";
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+        const s = stmt.?;
+        if (c.sqlite3_bind_text(s, 1, @ptrCast(row_id.ptr), @intCast(row_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 2, @ptrCast(date.ptr), @intCast(date.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 3, net_worth) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 4, income) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 5, expenses) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 6, tx_count) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 7, @ptrCast(breakdown.ptr), @intCast(breakdown.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 8, updated_at) != c.SQLITE_OK) return DbError.BindFailed;
         if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
     }
 
@@ -2405,6 +2968,43 @@ pub fn formatInt(buf: []u8, value: anytype) ?usize {
         buf[i] = tmp[len - 1 - i];
     }
     return len;
+}
+
+fn csvEscapeField(buf: []u8, src: []const u8) ?usize {
+    // Check if quoting is needed
+    var needs_quote = false;
+    for (src) |ch| {
+        if (ch == ',' or ch == '"' or ch == '\n' or ch == '\r') {
+            needs_quote = true;
+            break;
+        }
+    }
+    if (!needs_quote) {
+        if (src.len > buf.len) return null;
+        @memcpy(buf[0..src.len], src);
+        return src.len;
+    }
+
+    var pos: usize = 0;
+    if (pos >= buf.len) return null;
+    buf[pos] = '"';
+    pos += 1;
+    for (src) |ch| {
+        if (ch == '"') {
+            if (pos + 2 > buf.len) return null;
+            buf[pos] = '"';
+            buf[pos + 1] = '"';
+            pos += 2;
+        } else {
+            if (pos >= buf.len) return null;
+            buf[pos] = ch;
+            pos += 1;
+        }
+    }
+    if (pos >= buf.len) return null;
+    buf[pos] = '"';
+    pos += 1;
+    return pos;
 }
 
 pub fn jsonEscapeString(buf: []u8, src: []const u8) ?usize {

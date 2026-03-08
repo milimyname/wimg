@@ -21,6 +21,9 @@ struct SettingsView: View {
         ("review", "Rückblick", "Monatliche Zusammenfassung und Analyse"),
     ]
 
+    // Export
+    @State private var showExportSheet = false
+
     // Data reset
     @State private var confirmReset = false
     @State private var resetting = false
@@ -370,17 +373,24 @@ struct SettingsView: View {
                     Divider()
 
                     Button {
-                        // Data export — Phase 5
+                        showExportSheet = true
                     } label: {
                         HStack {
                             Text("Daten exportieren")
                                 .font(.subheadline)
                                 .foregroundStyle(WimgTheme.textSecondary)
                             Spacer()
-                            Image(systemName: "chevron.right")
+                            Image(systemName: "square.and.arrow.up")
                                 .font(.caption)
                                 .foregroundStyle(WimgTheme.textSecondary)
                         }
+                    }
+                    .confirmationDialog("Daten exportieren", isPresented: $showExportSheet) {
+                        Button("Transaktionen (CSV)") { exportData(format: "csv") }
+                        Button("Backup (JSON)") { exportData(format: "json") }
+                        Button("Abbrechen", role: .cancel) {}
+                    } message: {
+                        Text("Wähle ein Export-Format")
                     }
 
                     Divider()
@@ -581,6 +591,35 @@ struct SettingsView: View {
         resetting = false
 
         NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+    }
+
+    private func exportData(format: String) {
+        let content: String?
+        let filename: String
+        let date = {
+            let f = DateFormatter()
+            f.dateFormat = "yyyy-MM-dd"
+            return f.string(from: Date())
+        }()
+
+        if format == "csv" {
+            content = LibWimg.exportCsv()
+            filename = "wimg-transaktionen-\(date).csv"
+        } else {
+            content = LibWimg.exportDb()
+            filename = "wimg-backup-\(date).json"
+        }
+
+        guard let content, let data = content.data(using: .utf8) else { return }
+
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+        try? data.write(to: tempURL)
+
+        let activityVC = UIActivityViewController(activityItems: [tempURL], applicationActivities: nil)
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootVC = scene.windows.first?.rootViewController {
+            rootVC.present(activityVC, animated: true)
+        }
     }
 
     private func formatLastSync(_ ts: Int) -> String {

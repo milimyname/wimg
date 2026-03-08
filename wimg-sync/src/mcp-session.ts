@@ -39,6 +39,7 @@ export class McpSession implements DurableObject {
   private encryptionKey: Uint8Array | null = null;
   private lastRefreshTs = 0;
   private lastSyncTs = 0;
+  private sessionId: string | null = null;
 
   constructor(
     private state: DurableObjectState,
@@ -52,6 +53,7 @@ export class McpSession implements DurableObject {
       this.wasm = null;
       this.encryptionKey = null;
       this.syncKey = null;
+      this.sessionId = null;
       this.lastRefreshTs = 0;
       this.lastSyncTs = 0;
       return new Response("OK");
@@ -86,6 +88,12 @@ export class McpSession implements DurableObject {
       }
     }
 
+    // Validate session ID if one was sent (post-initialize requests)
+    const clientSessionId = request.headers.get("Mcp-Session-Id");
+    if (this.sessionId && clientSessionId && clientSessionId !== this.sessionId) {
+      return new Response("Session not found", { status: 404 });
+    }
+
     // Parse JSON-RPC
     let rpc: JsonRpcRequest;
     try {
@@ -96,6 +104,11 @@ export class McpSession implements DurableObject {
         id: null,
         error: { code: -32700, message: "Parse error" },
       });
+    }
+
+    // Handle notifications (no id = notification, return 202)
+    if (rpc.method === "notifications/initialized") {
+      return new Response(null, { status: 202 });
     }
 
     // Refresh data periodically on reads
@@ -112,6 +125,18 @@ export class McpSession implements DurableObject {
     }
 
     const response = this.handleRpc(rpc);
+
+    // For initialize, attach Mcp-Session-Id header
+    if (rpc.method === "initialize") {
+      this.sessionId = crypto.randomUUID();
+      return new Response(JSON.stringify(response), {
+        headers: {
+          "Content-Type": "application/json",
+          "Mcp-Session-Id": this.sessionId,
+        },
+      });
+    }
+
     return Response.json(response);
   }
 
@@ -202,15 +227,11 @@ export class McpSession implements DurableObject {
           jsonrpc: "2.0",
           id,
           result: {
-            protocolVersion: "2024-11-05",
+            protocolVersion: "2025-03-26",
             capabilities: { tools: {} },
             serverInfo: { name: "wimg", version: "0.1.0" },
           },
         };
-
-      case "notifications/initialized":
-        // Client ack — no response needed for notifications
-        return { jsonrpc: "2.0", id, result: {} };
 
       case "tools/list":
         return {

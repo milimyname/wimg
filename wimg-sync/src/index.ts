@@ -33,7 +33,8 @@ app.use(
       return "";
     },
     allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: ["Content-Type", "Authorization", "Mcp-Session-Id"],
+    exposeHeaders: ["Mcp-Session-Id"],
   }),
 );
 
@@ -108,7 +109,10 @@ function getMcpSession(env: Bindings, key: string) {
   return env.MCP_SESSION.get(id);
 }
 
-// MCP JSON-RPC endpoint — stateless, each request is self-contained
+// MCP: SSE not supported — reject GET
+app.get("/mcp", (c) => c.text("Method Not Allowed", 405));
+
+// MCP JSON-RPC endpoint (Streamable HTTP transport)
 app.post("/mcp", async (c) => {
   const syncKey = extractBearerToken(c.req.header("Authorization"));
   if (!syncKey) {
@@ -119,13 +123,20 @@ app.post("/mcp", async (c) => {
   }
 
   const stub = getMcpSession(c.env, syncKey);
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-Sync-Key": syncKey,
+  };
+  const sessionId = c.req.header("Mcp-Session-Id");
+  if (sessionId) headers["Mcp-Session-Id"] = sessionId;
+  const accept = c.req.header("Accept");
+  if (accept) headers["Accept"] = accept;
+
   return stub.fetch(
     new Request(c.req.url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Sync-Key": syncKey,
-      },
+      headers,
       body: c.req.raw.body,
     }),
   );
@@ -139,10 +150,15 @@ app.delete("/mcp", async (c) => {
   }
 
   const stub = getMcpSession(c.env, syncKey);
+
+  const headers: Record<string, string> = { "X-Sync-Key": syncKey };
+  const sessionId = c.req.header("Mcp-Session-Id");
+  if (sessionId) headers["Mcp-Session-Id"] = sessionId;
+
   return stub.fetch(
     new Request(c.req.url, {
       method: "DELETE",
-      headers: { "X-Sync-Key": syncKey },
+      headers,
     }),
   );
 });

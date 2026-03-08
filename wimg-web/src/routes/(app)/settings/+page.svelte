@@ -4,6 +4,7 @@
   import { generateQRSvg } from "$lib/qr";
   import { getApiKey, setApiKey, removeApiKey } from "$lib/claude";
   import { isDemoLoaded, clearDemoFlag } from "$lib/demo";
+  import { exportCsv, exportDb } from "$lib/wasm";
   import { LS_DEMO_LOADED, LS_ONBOARDING_COMPLETED } from "$lib/config";
   import { featureStore } from "$lib/features.svelte";
   import BottomSheet from "../../../components/BottomSheet.svelte";
@@ -34,6 +35,11 @@
   let hasLocalData = $state(false);
   let showQR = $state(false);
   let qrSvg = $state("");
+
+  // Export state
+  let exporting = $state(false);
+  let exportSuccess = $state("");
+  let showExportSheet = $state(false);
 
   // Feature toggles
   const featureToggles = [
@@ -221,6 +227,48 @@
     if (ts === 0) return "Noch nie";
     const d = new Date(ts);
     return d.toLocaleDateString("de-DE") + " " + d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function downloadFile(content: string, filename: string, mimeType: string) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleExportCsv() {
+    exporting = true;
+    exportSuccess = "";
+    try {
+      const csv = exportCsv();
+      const date = new Date().toISOString().slice(0, 10);
+      downloadFile(csv, `wimg-transaktionen-${date}.csv`, "text/csv;charset=utf-8");
+      exportSuccess = "CSV heruntergeladen";
+    } catch {
+      exportSuccess = "Export fehlgeschlagen";
+    } finally {
+      exporting = false;
+      setTimeout(() => { exportSuccess = ""; }, 3000);
+    }
+  }
+
+  function handleExportJson() {
+    exporting = true;
+    exportSuccess = "";
+    try {
+      const json = exportDb();
+      const date = new Date().toISOString().slice(0, 10);
+      downloadFile(json, `wimg-backup-${date}.json`, "application/json");
+      exportSuccess = "Backup heruntergeladen";
+    } catch {
+      exportSuccess = "Export fehlgeschlagen";
+    } finally {
+      exporting = false;
+      setTimeout(() => { exportSuccess = ""; }, 3000);
+    }
   }
 </script>
 
@@ -497,6 +545,22 @@
     </svg>
   </a>
 
+  <!-- Export Section -->
+  <button onclick={() => (showExportSheet = true)} class="bg-white rounded-3xl p-5 shadow-sm flex items-center gap-3 w-full text-left group active:scale-[0.98] transition-transform">
+    <div class="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center">
+      <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    </div>
+    <div class="flex-1">
+      <h3 class="font-bold text-(--color-text)">Daten exportieren</h3>
+      <p class="text-xs text-(--color-text-secondary)">Transaktionen als CSV oder komplettes Backup</p>
+    </div>
+    <svg class="w-4 h-4 text-(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7" />
+    </svg>
+  </button>
+
   <!-- Demo Data Section -->
   {#if demoLoaded}
     <div class="bg-white rounded-3xl p-5 shadow-sm space-y-4">
@@ -747,6 +811,84 @@
         class="w-full py-3 rounded-2xl text-sm font-medium text-(--color-text-secondary) hover:bg-(--color-bg) transition-colors"
       >
         Abbrechen
+      </button>
+    </div>
+  {/snippet}
+</BottomSheet>
+
+<!-- Export Sheet -->
+<BottomSheet open={showExportSheet} onclose={() => (showExportSheet = false)} snaps={[0.58]}>
+  {#snippet children({ handle, content, footer })}
+    <div {@attach handle} class="flex justify-center pt-3 pb-2">
+      <div class="w-10 h-1 rounded-full bg-gray-200"></div>
+    </div>
+
+    <div {@attach content} class="px-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-display font-extrabold text-lg text-(--color-text)">Daten exportieren</h3>
+          <p class="text-sm text-(--color-text-secondary)">Deine Daten gehören dir</p>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <!-- CSV Option -->
+        <button
+          onclick={handleExportCsv}
+          disabled={exporting}
+          class="w-full rounded-2xl border-2 border-gray-100 p-4 text-left transition-colors hover:border-emerald-200 hover:bg-emerald-50/30 active:scale-[0.98] disabled:opacity-50"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0 mt-0.5">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <p class="font-bold text-sm text-(--color-text)">Transaktionen (CSV)</p>
+              <p class="text-xs text-(--color-text-secondary) mt-0.5">Alle Transaktionen als Tabelle. Perfekt für Excel, Numbers oder Google Sheets.</p>
+              <p class="text-[10px] text-(--color-text-secondary)/60 mt-1">Datum, Beschreibung, Betrag, Kategorie, Konto</p>
+            </div>
+          </div>
+        </button>
+
+        <!-- JSON Option -->
+        <button
+          onclick={handleExportJson}
+          disabled={exporting}
+          class="w-full rounded-2xl border-2 border-gray-100 p-4 text-left transition-colors hover:border-emerald-200 hover:bg-emerald-50/30 active:scale-[0.98] disabled:opacity-50"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+              </svg>
+            </div>
+            <div>
+              <p class="font-bold text-sm text-(--color-text)">Komplettes Backup (JSON)</p>
+              <p class="text-xs text-(--color-text-secondary) mt-0.5">Die gesamte Datenbank als JSON-Datei. Enthält alle Konten, Transaktionen, Schulden und Regeln.</p>
+              <p class="text-[10px] text-(--color-text-secondary)/60 mt-1">Maschinenlesbar, ideal als Sicherungskopie</p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {#if exportSuccess}
+        <p class="text-xs text-emerald-600 text-center font-medium mt-4">{exportSuccess}</p>
+      {/if}
+    </div>
+
+    <div {@attach footer} class="px-6 pb-8 pt-4">
+      <button
+        onclick={() => (showExportSheet = false)}
+        class="w-full py-3 rounded-2xl text-sm font-medium text-(--color-text-secondary) hover:bg-(--color-bg) transition-colors"
+      >
+        Schliessen
       </button>
     </div>
   {/snippet}

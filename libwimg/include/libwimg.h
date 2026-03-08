@@ -114,6 +114,22 @@ const uint8_t *wimg_get_recurring(void);
 // Get all category metadata as a length-prefixed JSON array (static, no DB needed).
 const uint8_t *wimg_get_categories(void);
 
+// --- Snapshots ---
+
+// Take a monthly snapshot for the given year/month. Returns 0 on success, -1 on error.
+int32_t wimg_take_snapshot(uint32_t year, uint32_t month);
+
+// Get all snapshots as a length-prefixed JSON array.
+const uint8_t *wimg_get_snapshots(void);
+
+// --- Export ---
+
+// Export all transactions as CSV. Returns length-prefixed CSV string.
+const uint8_t *wimg_export_csv(void);
+
+// Export the full database as JSON (all tables). Returns length-prefixed JSON string.
+const uint8_t *wimg_export_db(void);
+
 // --- Undo/Redo ---
 
 // Undo the last action. Returns length-prefixed JSON with undo info, or NULL.

@@ -35,6 +35,7 @@ export const LS_LAST_VERSION = "wimg-last-version";
 export const LS_ONBOARDING_COMPLETED = "wimg_onboarding_completed";
 export const LS_DEMO_LOADED = "wimg_demo_loaded";
 export const LS_FEATURES = "wimg_features";
+export const LS_LAST_SNAPSHOT_MONTH = "wimg_last_snapshot_month";
 
 // --- Feature Flags (default: all ON for existing users) ---
 export const DEFAULT_FEATURES: Record<string, boolean> = {
