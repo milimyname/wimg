@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.24 (2026-03-08)
+
+- Enhance encryption and migration features, update transaction handling
+
 ## v0.4.23 (2026-03-08)
 
 - Implement Command Palette and enhance encryption features
