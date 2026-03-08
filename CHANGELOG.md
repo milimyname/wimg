@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.25 (2026-03-08)
+
+- Enhance user experience with onboarding and multi-file CSV import features
+
 ## v0.4.24 (2026-03-08)
 
 - Enhance encryption and migration features, update transaction handling
