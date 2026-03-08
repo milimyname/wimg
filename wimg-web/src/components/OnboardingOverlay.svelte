@@ -30,6 +30,13 @@
     },
   ];
 
+  $effect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  });
+
   let startX = 0;
   let deltaX = $state(0);
 
