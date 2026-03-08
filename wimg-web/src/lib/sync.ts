@@ -99,6 +99,16 @@ export function connectSync(): void {
 
   syncWS.connect(key);
 
+  // Catch-up pull on every (re)connect — picks up changes missed while offline
+  syncWS.setOnReconnect(() => {
+    const syncKey = getSyncKey();
+    if (syncKey) {
+      syncPull(syncKey).catch((err) => {
+        console.error("[wimg-sync] Catch-up pull failed:", err);
+      });
+    }
+  });
+
   // Auto-push on every local mutation
   setOnMutate(() => {
     const syncKey = getSyncKey();

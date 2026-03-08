@@ -3,6 +3,8 @@
  *
  * Connects to ws://.../ws/:key, receives broadcasts from other devices,
  * applies changes locally, and notifies all pages to refresh.
+ *
+ * On every (re)connect, triggers an HTTP pull to catch up on missed changes.
  */
 
 import { applyChanges, opfsSave, type SyncRow } from "./wasm";
@@ -15,18 +17,27 @@ interface WSMessage {
   merged?: number;
 }
 
+/** Callback for catch-up pull on (re)connect */
+type OnReconnectFn = () => void;
+
 class SyncWS {
   private ws: WebSocket | null = null;
   private reconnectDelay = 1000;
   private syncKey: string | null = null;
   private closed = false;
   private suppressUntil = 0; // Ignore echo of own push
+  private onReconnect: OnReconnectFn | null = null;
   connected = $state(false);
 
   connect(syncKey: string): void {
     this.syncKey = syncKey;
     this.closed = false;
     this.doConnect();
+  }
+
+  /** Register a callback that fires on every (re)connect — used for catch-up pull */
+  setOnReconnect(cb: OnReconnectFn | null): void {
+    this.onReconnect = cb;
   }
 
   private doConnect(): void {
@@ -39,6 +50,9 @@ class SyncWS {
       this.connected = true;
       this.reconnectDelay = 1000;
       console.log("[wimg-sync] WebSocket connected");
+
+      // Catch up on any changes missed while disconnected
+      this.onReconnect?.();
     };
 
     this.ws.onmessage = (e) => {
@@ -87,6 +101,7 @@ class SyncWS {
 
   disconnect(): void {
     this.closed = true;
+    this.onReconnect = null;
     this.ws?.close();
     this.ws = null;
     this.connected = false;
