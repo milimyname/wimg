@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.26 (2026-03-08)
+
+- Add body overflow control in OnboardingOverlay component
+
 ## v0.4.25 (2026-03-08)
 
 - Enhance user experience with onboarding and multi-file CSV import features
