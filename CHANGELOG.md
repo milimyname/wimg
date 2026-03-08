@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.17 (2026-03-08)
+
+- Add Phase 6: Financial Clarity features to CLAUDE.md
+
 ## v0.4.16 (2026-03-08)
 
 - Implement real-time sync with Cloudflare Durable Objects and WebSocket support
