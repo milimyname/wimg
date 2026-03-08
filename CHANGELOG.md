@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.21 (2026-03-08)
+
+- Implement catch-up mechanism for WebSocket reconnections
+
 ## v0.4.20 (2026-03-08)
 
 - Enhance database schema and implement soft-delete functionality
