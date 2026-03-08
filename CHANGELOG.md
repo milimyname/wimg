@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.1 (2026-03-08)
+
+- Enhance MCP server functionality and UI updates
+
 ## v0.5.0 (2026-03-08)
 
 - Implement  recurring pattern detection
