@@ -1,5 +1,6 @@
 import { APP_VERSION, RELEASES_URL, IS_BREAKING } from "./version";
 import { LS_LAST_VERSION } from "./config";
+import { updated } from "$app/stores";
 
 let showBanner = $state(false);
 let sheetOpen = $state(false);
@@ -65,6 +66,16 @@ export const updateStore = {
       });
     });
 
+    // SvelteKit version polling: detects new deployments every 5 minutes
+    // When detected, trigger SW update check so the waiting worker is ready
+    updated.subscribe((isUpdated) => {
+      if (isUpdated) {
+        showBanner = true;
+        // Kick SW to check for the new version
+        navigator.serviceWorker.ready.then((reg) => reg.update());
+      }
+    });
+
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       setLastVersion(APP_VERSION);
       // Smooth fade-out before reload to avoid white flash
@@ -82,7 +93,11 @@ export const updateStore = {
   },
 
   activateUpdate() {
-    if (!waitingSW) return;
+    if (!waitingSW) {
+      // SvelteKit detected update but SW hasn't installed yet — hard reload
+      window.location.reload();
+      return;
+    }
     waitingSW.postMessage({ type: "SKIP_WAITING" });
   },
 

@@ -14,6 +14,13 @@ struct SettingsView: View {
     @State private var claudeKeyDraft = ""
     @State private var claudeShowInput = false
 
+    // Feature toggles
+    private let featureToggles: [(key: String, label: String, description: String)] = [
+        ("debts", "Schulden", "Schulden verfolgen und abzahlen"),
+        ("recurring", "Wiederkehrend", "Abos und regelmäßige Zahlungen erkennen"),
+        ("review", "Rückblick", "Monatliche Zusammenfassung und Analyse"),
+    ]
+
     // Data reset
     @State private var confirmReset = false
     @State private var resetting = false
@@ -282,6 +289,46 @@ struct SettingsView: View {
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(.red)
                         }
+                    }
+                }
+                .padding(20)
+                .wimgCard()
+
+                // MARK: - Features Section
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 12) {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.indigo.opacity(0.15))
+                            .frame(width: 40, height: 40)
+                            .overlay {
+                                Image(systemName: "puzzlepiece")
+                                    .foregroundStyle(.indigo)
+                            }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Features")
+                                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.text)
+                            Text("Funktionen ein- oder ausblenden")
+                                .font(.caption2)
+                                .foregroundStyle(WimgTheme.textSecondary)
+                        }
+                    }
+
+                    ForEach(featureToggles, id: \.key) { feat in
+                        Toggle(isOn: Binding(
+                            get: { FeatureFlags.shared.isEnabled(feat.key) },
+                            set: { _ in FeatureFlags.shared.toggle(feat.key) }
+                        )) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(feat.label)
+                                    .font(.system(.subheadline, weight: .semibold))
+                                Text(feat.description)
+                                    .font(.caption)
+                                    .foregroundStyle(WimgTheme.textSecondary)
+                            }
+                        }
+                        .tint(.orange)
                     }
                 }
                 .padding(20)

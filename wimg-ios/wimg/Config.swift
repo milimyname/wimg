@@ -25,4 +25,13 @@ enum WimgConfig {
     static let udClaudeAPIKey = "wimg_claude_api_key"
     static let udSyncKey = "wimg_sync_key"
     static let udSyncLastTS = "wimg_sync_last_ts"
+    static let udFeatures = "wimg_features"
+
+    // MARK: - Feature Flags (default: all ON for existing users)
+
+    static let defaultFeatures: [String: Bool] = [
+        "debts": true,
+        "recurring": true,
+        "review": true,
+    ]
 }

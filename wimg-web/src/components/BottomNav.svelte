@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { updateStore } from "$lib/update.svelte";
+  import { featureStore } from "$lib/features.svelte";
 
   const tabs = [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -9,7 +10,17 @@
     { href: "/more", label: "Mehr", icon: "more" },
   ];
 
-  const moreSubRoutes = ["/more", "/debts", "/recurring", "/import", "/review", "/settings", "/about"];
+  const featureRoutes: Record<string, string> = {
+    "/debts": "debts",
+    "/recurring": "recurring",
+    "/review": "review",
+  };
+
+  const moreSubRoutes = $derived(
+    ["/more", "/debts", "/recurring", "/import", "/review", "/settings", "/about"].filter(
+      (r) => !featureRoutes[r] || featureStore.isEnabled(featureRoutes[r]),
+    ),
+  );
 
   function isActive(href: string): boolean {
     if (href === "/more") {

@@ -28,18 +28,6 @@ jobs:
           cp sqlite-amalgamation-3470200/sqlite3.c sqlite3.c
           cp sqlite-amalgamation-3470200/sqlite3.h sqlite3.h
 
-      - name: Cache Zig build artifacts
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/zig
-            libwimg/.zig-cache
-            libwimg/zig-out
-          key: ${{ runner.os }}-zig-0.15.2-${{ hashFiles('libwimg/build.zig', 'libwimg/src/**/*.zig', '.github/workflows/release.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-zig-0.15.2-
-            ${{ runner.os }}-zig-
-
       - name: Zig fmt check
         working-directory: libwimg
         run: zig fmt --check src/
@@ -92,18 +80,6 @@ jobs:
           cp sqlite-amalgamation-3470200/sqlite3.c sqlite3.c
           cp sqlite-amalgamation-3470200/sqlite3.h sqlite3.h
 
-      - name: Cache Zig build artifacts
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/zig
-            libwimg/.zig-cache
-            libwimg/zig-out
-          key: ${{ runner.os }}-zig-0.15.2-${{ hashFiles('libwimg/build.zig', 'libwimg/src/**/*.zig', '.github/workflows/release.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-zig-0.15.2-
-            ${{ runner.os }}-zig-
-
       - name: Build WASM
         run: ./scripts/build-wasm.sh
 
@@ -149,18 +125,6 @@ jobs:
           cp sqlite-amalgamation-3470200/sqlite3.c sqlite3.c
           cp sqlite-amalgamation-3470200/sqlite3.h sqlite3.h
 
-      - name: Cache Zig build artifacts
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/zig
-            libwimg/.zig-cache
-            libwimg/zig-out
-          key: ${{ runner.os }}-zig-0.15.2-${{ hashFiles('libwimg/build.zig', 'libwimg/src/**/*.zig', '.github/workflows/release.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-zig-0.15.2-
-            ${{ runner.os }}-zig-
-
       - name: Build iOS XCFramework
         run: ./scripts/build-ios.sh
 
@@ -178,12 +142,18 @@ jobs:
           path: libwimg/build-ios/libwimg.xcframework.zip
 
   deploy-sync:
-    needs: check
+    needs: [check, build-and-deploy-web]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: oven-sh/setup-bun@v2
+
+      - name: Download WASM artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: libwimg-wasm
+          path: wimg-web/static
 
       - name: Install dependencies
         working-directory: wimg-sync

@@ -1,12 +1,18 @@
 <script lang="ts">
-  const items = [
-    { href: "/debts", label: "Schulden", icon: "creditcard", color: "bg-rose-100 text-rose-600" },
-    { href: "/recurring", label: "Wiederkehrend", icon: "recurring", color: "bg-emerald-100 text-emerald-600" },
-    { href: "/import", label: "Import", icon: "upload", color: "bg-blue-100 text-blue-600" },
-    { href: "/review", label: "Rückblick", icon: "review", color: "bg-violet-100 text-violet-600" },
-    { href: "/settings", label: "Einstellungen", icon: "settings", color: "bg-amber-100 text-amber-600" },
-    { href: "/about", label: "Über wimg", icon: "info", color: "bg-gray-100 text-gray-600" },
+  import { featureStore } from "$lib/features.svelte";
+
+  const allItems = [
+    { href: "/debts", label: "Schulden", icon: "creditcard", color: "bg-rose-100 text-rose-600", feature: "debts" },
+    { href: "/recurring", label: "Wiederkehrend", icon: "recurring", color: "bg-emerald-100 text-emerald-600", feature: "recurring" },
+    { href: "/import", label: "Import", icon: "upload", color: "bg-blue-100 text-blue-600", feature: null },
+    { href: "/review", label: "Rückblick", icon: "review", color: "bg-violet-100 text-violet-600", feature: "review" },
+    { href: "/settings", label: "Einstellungen", icon: "settings", color: "bg-amber-100 text-amber-600", feature: null },
+    { href: "/about", label: "Über wimg", icon: "info", color: "bg-gray-100 text-gray-600", feature: null },
   ];
+
+  const items = $derived(
+    allItems.filter((item) => !item.feature || featureStore.isEnabled(item.feature)),
+  );
 </script>
 
 <section class="space-y-5">

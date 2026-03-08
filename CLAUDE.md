@@ -642,13 +642,13 @@ CREATE TABLE recurring_patterns (
 
 ##### Tasks
 
-- [ ] `recurring.zig` — detect recurring patterns from transaction history (pure SQL)
-- [ ] `wimg_detect_recurring()` — C ABI: scan transactions → populate recurring_patterns
-- [ ] `wimg_get_recurring()` — C ABI: return active recurring patterns as JSON
-- [ ] Price change detection: compare latest vs previous amount per pattern
-- [ ] Web: Recurring screen — list of detected subscriptions, price change badges
-- [ ] iOS: Recurring view — same layout
-- [ ] Run detection on import + manual refresh
+- [x] `recurring.zig` — detect recurring patterns from transaction history (pure SQL)
+- [x] `wimg_detect_recurring()` — C ABI: scan transactions → populate recurring_patterns
+- [x] `wimg_get_recurring()` — C ABI: return active recurring patterns as JSON
+- [x] Price change detection: compare latest vs previous amount per pattern
+- [x] Web: Recurring screen — list of detected subscriptions, price change badges
+- [x] iOS: Recurring view — same layout
+- [x] Run detection on import + manual refresh
 
 #### 5.2 — Notifications
 
@@ -1122,6 +1122,7 @@ wimg/
 │       │   ├── sync.ts          Sync orchestrator (push/pull/connect)
 │       │   ├── sync-ws.svelte.ts Real-time WebSocket sync store
 │       │   ├── config.ts        API URLs (prod/LAN detection)
+│       │   ├── features.svelte.ts Feature flags reactive store
 │       │   ├── version.ts       APP_VERSION + GitHub releases link
 │       │   ├── update.svelte.ts SW update detection + activation store
 │       │   └── toast.svelte.ts  Undo snackbar store
@@ -1158,7 +1159,8 @@ wimg/
 │       │   ├── Debt.swift
 │       │   └── Notifications.swift
 │       ├── Services/
-│       │   └── SyncService.swift  Sync orchestrator + WebSocket client
+│       │   ├── SyncService.swift  Sync orchestrator + WebSocket client
+│       │   └── FeatureFlags.swift Feature flags observable class
 │       ├── Views/
 │       │   ├── DashboardView.swift
 │       │   ├── TransactionsView.swift  + CategoryEditorSheet
@@ -1217,6 +1219,45 @@ wimg/
 | Mar 2026 | Wuchale for i18n (Phase 5.1)              | Compile-time, PO files as single source for web + iOS, zero runtime cost                    |
 | Mar 2026 | Remote MCP in wimg-sync, not local wimg-mcp | CF Worker DO keeps WASM warm, no local Bun process needed, accessible from Claude.ai       |
 | Mar 2026 | Manual JSON-RPC over MCP SDK              | MCP protocol is simple JSON-RPC; avoids Node.js deps in CF Workers, keeps bundle small      |
+| Mar 2026 | Feature flags via localStorage/UserDefaults | Simple toggles, no plugin runtime; features compiled in, flags control UI visibility only  |
+
+---
+
+## Feature Flags
+
+Simple localStorage (web) / UserDefaults (iOS) toggles. Features are compiled
+in — flags just control visibility in navigation, routes, and screens.
+
+### Always-on (core)
+
+- Dashboard, Transactions, Analysis, Import, Settings, About, Sync
+
+### Toggleable (opt-in, default ON for existing users)
+
+| Flag Key    | Label          | Description                              | Status      |
+| ----------- | -------------- | ---------------------------------------- | ----------- |
+| `debts`     | Schulden       | Debt tracking with progress              | Implemented |
+| `recurring` | Wiederkehrend  | Recurring payment detection              | Implemented |
+| `review`    | Rückblick      | Monthly review                           | Implemented |
+| `goals`     | Sparziele      | Savings goals (Phase 6.4)                | Future      |
+| `net_worth` | Vermögen       | Net worth tracking (Phase 6.2)           | Future      |
+| `tax`       | Steuern        | Anlage N assistant (Phase 6.3)           | Future      |
+| `ai_chat`   | KI-Chat        | AI chat (Phase 5.6)                      | Future      |
+
+### Storage
+
+- **Web:** `localStorage` key `wimg_features` → JSON object (`features.svelte.ts`)
+- **iOS:** `UserDefaults` key `wimg_features` → JSON (`FeatureFlags.swift`)
+- Defaults: `{ debts: true, recurring: true, review: true }`
+
+### How it works
+
+1. `featureStore` (web) / `FeatureFlags.shared` (iOS) — reactive singleton
+2. More page filters grid items by enabled features
+3. BottomNav filters `moreSubRoutes` so disabled features don't highlight "Mehr"
+4. Settings page has toggle section between Claude AI and About
+5. New features: add flag key to `DEFAULT_FEATURES` / `defaultFeatures`, add
+   toggle entry, gate with `featureStore.isEnabled(key)` / `FeatureFlags.shared.isEnabled(key)`
 
 ---
 
