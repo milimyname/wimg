@@ -3,6 +3,8 @@
   import { APP_VERSION, RELEASES_URL } from "$lib/version";
   import { generateQRSvg } from "$lib/qr";
   import { getApiKey, setApiKey, removeApiKey } from "$lib/claude";
+  import { isDemoLoaded, clearDemoFlag } from "$lib/demo";
+  import { LS_DEMO_LOADED, LS_ONBOARDING_COMPLETED } from "$lib/config";
   import BottomSheet from "../../../components/BottomSheet.svelte";
   import {
     getSyncKey,
@@ -32,6 +34,9 @@
   let showQR = $state(false);
   let qrSvg = $state("");
 
+  // Demo state
+  let demoLoaded = $state(false);
+
   // Claude AI state
   let claudeApiKey = $state("");
   let claudeHasKey = $state(false);
@@ -54,6 +59,7 @@
     lastSync = getLastSyncTimestamp();
     claudeHasKey = !!getApiKey();
     claudeApiKey = getApiKey() ?? "";
+    demoLoaded = isDemoLoaded();
 
     try {
       const root = await navigator.storage.getDirectory();
@@ -168,6 +174,8 @@
       }
       clearSyncKey();
       localStorage.removeItem("wimg_sync_last_ts");
+      clearDemoFlag();
+      localStorage.removeItem(LS_ONBOARDING_COMPLETED);
       window.location.reload();
     } catch (e) {
       resetting = false;
@@ -475,6 +483,33 @@
       </a>
     </div>
   </div>
+
+  <!-- Demo Data Section -->
+  {#if demoLoaded}
+    <div class="bg-white rounded-3xl p-5 shadow-sm space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center">
+          <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="font-bold text-(--color-text)">Demo-Daten</h3>
+            <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">Aktiv</span>
+          </div>
+          <p class="text-xs text-(--color-text-secondary)">Beispieldaten sind geladen</p>
+        </div>
+      </div>
+
+      <button
+        onclick={handleResetData}
+        class="w-full py-3 rounded-2xl border-2 border-amber-200 text-amber-700 font-bold text-sm transition-colors hover:bg-amber-50 active:scale-[0.98]"
+      >
+        Demo-Daten löschen
+      </button>
+    </div>
+  {/if}
 
   <!-- Danger Zone -->
   {#if hasLocalData}

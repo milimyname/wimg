@@ -6,6 +6,7 @@ struct AnalysisView: View {
     @State private var year: Int
     @State private var month: Int
     @State private var summary: MonthlySummary?
+    @State private var hasAnyData = false
 
     init(selectedAccount: Binding<String?>) {
         _selectedAccount = selectedAccount
@@ -19,6 +20,45 @@ struct AnalysisView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
+                    if !hasAnyData {
+                        // Empty DB state
+                        VStack(spacing: 24) {
+                            Spacer().frame(height: 40)
+
+                            ZStack {
+                                Circle()
+                                    .fill(WimgTheme.accent.opacity(0.2))
+                                    .frame(width: 112, height: 112)
+                                Image(systemName: "chart.pie.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(WimgTheme.text.opacity(0.6))
+                            }
+
+                            VStack(spacing: 8) {
+                                Text("Noch keine Daten")
+                                    .font(.system(.title2, design: .rounded, weight: .bold))
+                                    .foregroundStyle(WimgTheme.text)
+                                Text("Importiere eine CSV-Datei, um deine Ausgaben zu analysieren.")
+                                    .font(.system(.subheadline, design: .rounded))
+                                    .foregroundStyle(WimgTheme.textSecondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 32)
+                            }
+
+                            NavigationLink(destination: ImportView()) {
+                                Text("CSV importieren")
+                                    .font(.system(.body, design: .rounded, weight: .bold))
+                                    .foregroundStyle(WimgTheme.text)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(WimgTheme.accent)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            }
+                            .padding(.horizontal, 40)
+                        }
+                        .frame(maxWidth: .infinity)
+                    } else {
+
                     MonthPicker(year: $year, month: $month)
                         .padding(.top, 8)
 
@@ -64,6 +104,8 @@ struct AnalysisView: View {
                             description: Text("Keine Daten für diesen Monat.")
                         )
                     }
+
+                    } // end else hasAnyData
                 }
                 .padding(.bottom, 24)
             }
@@ -132,6 +174,7 @@ struct AnalysisView: View {
     }
 
     private func reload() {
+        hasAnyData = ((try? LibWimg.getTransactions()) ?? []).count > 0
         summary = LibWimg.getSummaryFiltered(year: year, month: month, account: selectedAccount)
     }
 }

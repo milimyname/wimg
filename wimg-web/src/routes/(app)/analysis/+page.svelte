@@ -3,6 +3,7 @@
   import {
     getSummaryFiltered,
     getTransactionsFiltered,
+    getTransactions,
     CATEGORIES,
     type Transaction,
   } from "$lib/wasm";
@@ -10,6 +11,7 @@
   import { accountStore } from "$lib/account.svelte";
   import MonthPicker from "../../../components/MonthPicker.svelte";
   import DonutChart from "../../../components/DonutChart.svelte";
+  import EmptyState from "../../../components/EmptyState.svelte";
 
   const now = new Date();
   let year = $state(now.getFullYear());
@@ -83,9 +85,40 @@
     if (totalExpenses === 0) return 0;
     return Math.round((Math.abs(amount) / totalExpenses) * 100);
   }
+
+  let hasAnyData = $derived.by(() => {
+    void refreshKey;
+    try {
+      return getTransactions().length > 0;
+    } catch {
+      return false;
+    }
+  });
 </script>
 
 <h2 class="text-xl font-display font-extrabold text-center mb-5">Insights</h2>
+
+{#if !hasAnyData}
+  <EmptyState
+    title="Noch keine Daten"
+    subtitle="Importiere eine CSV-Datei, um deine Ausgaben zu analysieren."
+  >
+    {#snippet icon()}
+      <svg class="w-10 h-10 text-(--color-text)/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+      </svg>
+    {/snippet}
+    {#snippet actions()}
+      <a
+        href="/import"
+        class="inline-block px-6 py-3 rounded-2xl bg-(--color-accent) text-(--color-text) font-bold text-sm transition-transform active:scale-[0.98]"
+      >
+        CSV importieren
+      </a>
+    {/snippet}
+  </EmptyState>
+{:else}
 
 <MonthPicker bind:year bind:month />
 
@@ -230,4 +263,6 @@
     <p class="font-display font-bold text-lg">Keine Daten</p>
     <p class="text-sm mt-1">Für diesen Monat liegen keine Ausgaben vor</p>
   </div>
+{/if}
+
 {/if}

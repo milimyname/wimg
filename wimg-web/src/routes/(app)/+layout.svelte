@@ -6,16 +6,19 @@
   import { updateStore } from "$lib/update.svelte";
   import { dropStore } from "$lib/drop.svelte";
   import { isSyncEnabled, connectSync, disconnectSync } from "$lib/sync";
+  import { LS_ONBOARDING_COMPLETED } from "$lib/config";
   import BottomNav from "../../components/BottomNav.svelte";
   import Toast from "../../components/Toast.svelte";
   import UpdateBanner from "../../components/UpdateBanner.svelte";
   import AccountSwitcher from "../../components/AccountSwitcher.svelte";
   import GlobalDropOverlay from "../../components/GlobalDropOverlay.svelte";
+  import OnboardingOverlay from "../../components/OnboardingOverlay.svelte";
 
   let { children } = $props();
   let loading = $state(true);
   let error = $state<string | null>(null);
   let showDrop = $state(false);
+  let showOnboarding = $state(false);
   let dragCounter = 0;
 
   function hasFiles(e: DragEvent): boolean {
@@ -42,10 +45,10 @@
     showDrop = false;
   }
 
-  function handleFileDrop(file: File) {
+  function handleFileDrop(files: File[]) {
     showDrop = false;
     dragCounter = 0;
-    dropStore.set(file);
+    dropStore.set(files);
     goto("/import");
   }
 
@@ -57,6 +60,11 @@
       error = e instanceof Error ? e.message : "Failed to initialize";
     } finally {
       loading = false;
+    }
+
+    // Show onboarding on first visit
+    if (!localStorage.getItem(LS_ONBOARDING_COMPLETED)) {
+      showOnboarding = true;
     }
 
     updateStore.init();
@@ -106,6 +114,15 @@
 </div>
 
 <Toast />
+
+{#if showOnboarding}
+  <OnboardingOverlay
+    onclose={() => {
+      localStorage.setItem(LS_ONBOARDING_COMPLETED, "true");
+      showOnboarding = false;
+    }}
+  />
+{/if}
 
 <svelte:window
   ondragenter={handleDragEnter}

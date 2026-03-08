@@ -579,6 +579,41 @@ Key: R2 has **zero egress fees**. Hibernation API means idle DOs cost nothing.
 Core principle: start with pure SQL patterns → add statistics → add embeddings
 only when simpler approaches prove insufficient.
 
+#### ✅ 5.0 — UX Polish (Done, March 2026)
+
+Quick wins that improve daily usability before intelligence features.
+
+##### Onboarding + Demo Data
+
+First-time users see an onboarding overlay explaining wimg's features.
+Demo data available so users can explore without importing real CSVs.
+
+- [x] `OnboardingOverlay.svelte` — welcome overlay on first visit (web)
+- [x] `OnboardingView.swift` — welcome overlay on first launch (iOS)
+- [x] `DemoDataService.swift` — generate demo transactions/debts (iOS)
+- [x] `demo.ts` — generate demo transactions/debts (web)
+- [x] `EmptyState.svelte` — empty state cards with "Demo-Daten laden" action
+- [x] Empty states on Dashboard, Analysis, Debts pages
+- [x] "Demo-Daten löschen" button in Settings (clears demo flag + resets DB)
+- [x] `LS_ONBOARDING_COMPLETED` localStorage key — shown once, not re-shown on data reset
+
+##### Multi-File CSV Import
+
+Import multiple CSV files in sequence. Drop 3 files → preview first → confirm →
+"Nächste Datei laden" → preview second → etc.
+
+- [x] `drop.svelte.ts` — store holds `File[]` instead of `File | null`
+- [x] `GlobalDropOverlay.svelte` — collects all dropped files
+- [x] `+layout.svelte` — passes `File[]` to drop store
+- [x] Import page: `$effect` watches drop store reactively (fixes drop-on-import-page bug)
+- [x] Import page: file queue with progress indicator ("Datei 1 von 3")
+- [x] Import page: "Nächste Datei laden" button after each import
+- [x] Import page: `<input multiple>` for file picker
+- [x] iOS: `allowsMultipleSelection: true` in `.fileImporter`
+- [x] iOS: file queue with "Nächste Datei laden" button
+
+---
+
 #### 5.1 — Recurring Detection + Price Alerts
 
 Pure SQL, no ML. Immediately useful with real data.

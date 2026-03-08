@@ -21,6 +21,10 @@ struct ImportView: View {
     // Post-import state
     @State private var importResult: ImportResult?
 
+    // Multi-file queue
+    @State private var fileQueue: [URL] = []
+    @State private var queueIndex = 0
+
     // Auto-categorize state
     @State private var rulesCategorizedCount: Int?
     @State private var claudeLoading = false
@@ -41,6 +45,12 @@ struct ImportView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
+                    if fileQueue.count > 1 {
+                        Text("Datei \(queueIndex + 1) von \(fileQueue.count)")
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                    }
+
                     if stage == .idle || stage == .preview {
                         filePickerCard
                     }
@@ -70,7 +80,7 @@ struct ImportView: View {
             .fileImporter(
                 isPresented: $isPickerPresented,
                 allowedContentTypes: [.commaSeparatedText, UTType(filenameExtension: "csv")!],
-                allowsMultipleSelection: false
+                allowsMultipleSelection: true
             ) { result in
                 handleFileImport(result)
             }
@@ -301,8 +311,26 @@ struct ImportView: View {
             .wimgCard(radius: WimgTheme.radiusLarge)
             .padding(.horizontal)
 
+            // Next file in queue
+            if fileQueue.count > 1 && queueIndex < fileQueue.count - 1 {
+                Button {
+                    loadNextFile()
+                } label: {
+                    Text("Nächste Datei laden (\(queueIndex + 2)/\(fileQueue.count))")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(16)
+                        .background(WimgTheme.text)
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                }
+                .padding(.horizontal)
+            }
+
             // Import another
             Button {
+                fileQueue = []
+                queueIndex = 0
                 resetToIdle()
             } label: {
                 Label("Weitere Datei importieren", systemImage: "plus.circle")
@@ -547,28 +575,46 @@ struct ImportView: View {
 
         switch result {
         case .success(let urls):
-            guard let url = urls.first else { return }
-            guard url.startAccessingSecurityScopedResource() else {
-                errorMessage = "Zugriff auf die Datei nicht möglich."
-                return
-            }
-            defer { url.stopAccessingSecurityScopedResource() }
-
-            isParsing = true
-            do {
-                let data = try Data(contentsOf: url)
-                csvData = data
-                parseResult = try LibWimg.parseCSV(data)
-                stage = .preview
-            } catch {
-                errorMessage = error.localizedDescription
-                stage = .idle
-            }
-            isParsing = false
+            guard !urls.isEmpty else { return }
+            fileQueue = urls
+            queueIndex = 0
+            processURL(urls[0])
 
         case .failure(let error):
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func processURL(_ url: URL) {
+        guard url.startAccessingSecurityScopedResource() else {
+            errorMessage = "Zugriff auf die Datei nicht möglich."
+            return
+        }
+        defer { url.stopAccessingSecurityScopedResource() }
+
+        isParsing = true
+        do {
+            let data = try Data(contentsOf: url)
+            csvData = data
+            parseResult = try LibWimg.parseCSV(data)
+            stage = .preview
+        } catch {
+            errorMessage = error.localizedDescription
+            stage = .idle
+        }
+        isParsing = false
+    }
+
+    private func loadNextFile() {
+        queueIndex += 1
+        stage = .idle
+        importResult = nil
+        parseResult = nil
+        csvData = nil
+        errorMessage = nil
+        rulesCategorizedCount = nil
+        claudeResult = nil
+        processURL(fileQueue[queueIndex])
     }
 
     private func confirmImport() {

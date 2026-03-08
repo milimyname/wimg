@@ -42,6 +42,7 @@ struct wimgApp: App {
 struct ContentView: View {
     @State private var selectedAccount: String?
     @State private var accounts: [Account] = []
+    @AppStorage("wimg_onboarding_completed") private var onboardingCompleted = false
 
     var body: some View {
         TabView {
@@ -79,6 +80,12 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
             accounts = LibWimg.getAccounts()
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { !onboardingCompleted },
+            set: { if !$0 { onboardingCompleted = true } }
+        )) {
+            OnboardingView()
         }
     }
 }

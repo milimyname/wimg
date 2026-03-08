@@ -10,6 +10,7 @@
   } from "$lib/wasm";
   import { formatEur } from "$lib/format";
   import { toastStore } from "$lib/toast.svelte";
+  import EmptyState from "../../../components/EmptyState.svelte";
 
   let debts = $state<Debt[]>(getDebts());
 
@@ -207,11 +208,24 @@
 
 <!-- Debt Cards -->
 {#if debts.length === 0 && !showForm}
-  <div class="text-center py-16 text-(--color-text-secondary)">
-    <p class="text-4xl mb-3">💳</p>
-    <p class="font-display font-bold text-lg">Keine Schulden</p>
-    <p class="text-sm mt-1">Füge Schulden hinzu um den Fortschritt zu tracken</p>
-  </div>
+  <EmptyState
+    title="Keine Schulden"
+    subtitle="Füge Schulden hinzu um den Fortschritt zu tracken."
+  >
+    {#snippet icon()}
+      <svg class="w-10 h-10 text-(--color-text)/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    {/snippet}
+    {#snippet actions()}
+      <button
+        onclick={() => (showForm = true)}
+        class="px-6 py-3 rounded-2xl bg-(--color-accent) text-(--color-text) font-bold text-sm transition-transform active:scale-[0.98]"
+      >
+        Schuld hinzufügen
+      </button>
+    {/snippet}
+  </EmptyState>
 {:else}
   <div class="flex flex-col gap-4 mb-5">
     {#each debts as debt}

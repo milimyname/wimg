@@ -3,18 +3,22 @@
   import {
     getSummaryFiltered,
     getTransactionsFiltered,
+    getTransactions,
     CATEGORIES,
     type Transaction,
   } from "$lib/wasm";
   import { formatEur } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
+  import { loadDemoData } from "$lib/demo";
   import MonthPicker from "../../../components/MonthPicker.svelte";
   import DonutChart from "../../../components/DonutChart.svelte";
+  import EmptyState from "../../../components/EmptyState.svelte";
 
   const now = new Date();
   let year = $state(now.getFullYear());
   let month = $state(now.getMonth() + 1);
   let refreshKey = $state(0);
+  let loadingDemo = $state(false);
 
   function onSyncReceived() {
     refreshKey++;
@@ -26,6 +30,16 @@
 
   onDestroy(() => {
     window.removeEventListener("wimg:sync-received", onSyncReceived);
+  });
+
+  // Check if DB has any transactions at all
+  let hasAnyData = $derived.by(() => {
+    void refreshKey;
+    try {
+      return getTransactions().length > 0;
+    } catch {
+      return false;
+    }
   });
 
   let summary = $derived.by(() => {
@@ -71,6 +85,17 @@
     if (h < 18) return "Guten Tag";
     return "Guten Abend";
   }
+
+  async function handleLoadDemo() {
+    loadingDemo = true;
+    try {
+      await loadDemoData();
+      accountStore.reload();
+      refreshKey++;
+    } finally {
+      loadingDemo = false;
+    }
+  }
 </script>
 
 <!-- Greeting -->
@@ -87,6 +112,36 @@
     <h2 class="text-2xl font-display font-extrabold leading-tight">{greeting()}</h2>
   </div>
 </div>
+
+{#if !hasAnyData}
+  <EmptyState
+    title="Willkommen bei wimg"
+    subtitle="Importiere eine CSV-Datei oder lade Beispieldaten, um loszulegen."
+  >
+    {#snippet icon()}
+      <svg class="w-10 h-10 text-(--color-text)/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+      </svg>
+    {/snippet}
+    {#snippet actions()}
+      <div class="flex flex-col gap-3 items-center">
+        <a
+          href="/import"
+          class="px-6 py-3 rounded-2xl bg-(--color-accent) text-(--color-text) font-bold text-sm transition-transform active:scale-[0.98]"
+        >
+          CSV importieren
+        </a>
+        <button
+          onclick={handleLoadDemo}
+          disabled={loadingDemo}
+          class="px-6 py-3 rounded-2xl bg-gray-100 text-(--color-text) font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50"
+        >
+          {loadingDemo ? "Lade..." : "Beispieldaten laden"}
+        </button>
+      </div>
+    {/snippet}
+  </EmptyState>
+{:else}
 
 <MonthPicker bind:year bind:month />
 
@@ -267,4 +322,6 @@
       <a href="/import" class="font-bold text-(--color-text) underline underline-offset-2">CSV importieren</a> um zu starten
     </p>
   </div>
+{/if}
+
 {/if}

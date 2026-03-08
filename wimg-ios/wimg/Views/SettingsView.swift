@@ -353,6 +353,55 @@ struct SettingsView: View {
                 .padding(20)
                 .wimgCard()
 
+                // MARK: - Demo Data Section
+                if DemoDataService.isDemoLoaded {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(spacing: 12) {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.orange.opacity(0.15))
+                                .frame(width: 40, height: 40)
+                                .overlay {
+                                    Image(systemName: "flask.fill")
+                                        .foregroundStyle(.orange)
+                                }
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Text("Demo-Daten")
+                                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                        .foregroundStyle(WimgTheme.text)
+                                    Text("Aktiv")
+                                        .font(.system(.caption2, design: .rounded, weight: .bold))
+                                        .foregroundStyle(.orange)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(Color.orange.opacity(0.1))
+                                        .clipShape(Capsule())
+                                }
+                                Text("Beispieldaten sind geladen")
+                                    .font(.caption2)
+                                    .foregroundStyle(WimgTheme.textSecondary)
+                            }
+                        }
+
+                        Button {
+                            handleResetData()
+                        } label: {
+                            Text("Demo-Daten löschen")
+                                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                .foregroundStyle(.orange)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.orange.opacity(0.3), lineWidth: 2)
+                                }
+                        }
+                    }
+                    .padding(20)
+                    .wimgCard()
+                }
+
                 // MARK: - Danger Zone
                 Button {
                     confirmReset = true
@@ -473,6 +522,8 @@ struct SettingsView: View {
         ClaudeAPI.removeKey()
         KeychainService.deleteAll()
         UserDefaults.standard.removeObject(forKey: "wimg_sync_last_ts")
+        DemoDataService.clearDemoFlag()
+        UserDefaults.standard.removeObject(forKey: "wimg_onboarding_completed")
 
         // Re-init with fresh DB
         try? LibWimg.initialize()

@@ -8,6 +8,8 @@ struct DashboardView: View {
     @State private var month: Int
     @State private var summary: MonthlySummary?
     @State private var recentTransactions: [Transaction] = []
+    @State private var hasAnyData = false
+    @State private var loadingDemo = false
 
     init(selectedAccount: Binding<String?>, accounts: Binding<[Account]>) {
         _selectedAccount = selectedAccount
@@ -21,6 +23,62 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
+                if !hasAnyData {
+                    // Welcome empty state
+                    VStack(spacing: 24) {
+                        Spacer().frame(height: 40)
+
+                        ZStack {
+                            Circle()
+                                .fill(WimgTheme.accent.opacity(0.2))
+                                .frame(width: 112, height: 112)
+                            Image(systemName: "creditcard.fill")
+                                .font(.system(size: 40))
+                                .foregroundStyle(WimgTheme.text.opacity(0.6))
+                        }
+
+                        VStack(spacing: 8) {
+                            Text("Willkommen bei wimg")
+                                .font(.system(.title2, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.text)
+                            Text("Importiere eine CSV-Datei oder lade Beispieldaten, um loszulegen.")
+                                .font(.system(.subheadline, design: .rounded))
+                                .foregroundStyle(WimgTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                        }
+
+                        VStack(spacing: 12) {
+                            NavigationLink(destination: ImportView()) {
+                                Text("CSV importieren")
+                                    .font(.system(.body, design: .rounded, weight: .bold))
+                                    .foregroundStyle(WimgTheme.text)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(WimgTheme.accent)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            }
+
+                            Button {
+                                loadingDemo = true
+                                DemoDataService.loadDemoData()
+                                loadingDemo = false
+                                reload()
+                            } label: {
+                                Text(loadingDemo ? "Lade..." : "Beispieldaten laden")
+                                    .font(.system(.body, design: .rounded, weight: .bold))
+                                    .foregroundStyle(WimgTheme.text)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Color(.systemGray6))
+                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            }
+                            .disabled(loadingDemo)
+                        }
+                        .padding(.horizontal, 40)
+                    }
+                    .frame(maxWidth: .infinity)
+                } else {
                 VStack(spacing: 20) {
                     MonthPicker(year: $year, month: $month)
                         .padding(.top, 8)
@@ -56,6 +114,7 @@ struct DashboardView: View {
                     }
                 }
                 .padding(.bottom, 24)
+                }
             }
             .background(WimgTheme.bg)
             .navigationTitle("Übersicht")
@@ -208,6 +267,8 @@ struct DashboardView: View {
     // MARK: - Data
 
     private func reload() {
+        let allTx = (try? LibWimg.getTransactions()) ?? []
+        hasAnyData = !allTx.isEmpty
         summary = LibWimg.getSummaryFiltered(year: year, month: month, account: selectedAccount)
         let all = (try? LibWimg.getTransactionsFiltered(account: selectedAccount)) ?? []
         let monthStr = String(format: "%04d-%02d", year, month)

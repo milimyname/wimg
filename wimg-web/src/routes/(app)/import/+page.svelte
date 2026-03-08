@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import {
     parseCsv,
     importCsv,
@@ -28,6 +27,10 @@
   let parseResult = $state<ParseResult | null>(null);
   let csvBuffer = $state<ArrayBuffer | null>(null);
   let showAllPreview = $state(false);
+
+  // Multi-file queue
+  let fileQueue = $state<File[]>([]);
+  let queueIndex = $state(0);
 
   // Post-import preview
   let previewTransactions = $state<Transaction[]>([]);
@@ -84,15 +87,20 @@
   async function handleDrop(e: DragEvent) {
     e.preventDefault();
     dragging = false;
-    const file = e.dataTransfer?.files[0];
-    if (file) await processFile(file);
+    const files = Array.from(e.dataTransfer?.files ?? []).filter((f) => f.name.endsWith(".csv"));
+    if (files.length === 0) return;
+    fileQueue = files;
+    queueIndex = 0;
+    await processFile(files[0]);
   }
 
   async function handleFileInput(e: Event) {
     const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-    await processFile(file);
+    const files = Array.from(input.files ?? []);
+    if (files.length === 0) return;
+    fileQueue = files;
+    queueIndex = 0;
+    await processFile(files[0]);
     input.value = "";
   }
 
@@ -185,16 +193,37 @@
     return map[format] ?? { name: "Unbekannt", color: "#1A1A1A" };
   }
 
-  onMount(() => {
-    const file = dropStore.file;
-    if (file) {
+  $effect(() => {
+    const files = dropStore.files;
+    if (files.length > 0) {
       dropStore.clear();
-      processFile(file);
+      fileQueue = files;
+      queueIndex = 0;
+      processFile(files[0]);
     }
   });
+
+  async function loadNextFile() {
+    queueIndex++;
+    stage = "idle";
+    importResult = null;
+    parseResult = null;
+    showAllPreview = false;
+    recategorizeCount = null;
+    claudeResult = null;
+    previewTransactions = [];
+    await processFile(fileQueue[queueIndex]);
+  }
 </script>
 
 <h2 class="text-xl font-display font-extrabold text-center mb-5">CSV Import</h2>
+
+{#if fileQueue.length > 1}
+  <div class="flex items-center justify-center gap-2 mb-4 text-sm font-bold text-(--color-text-secondary)">
+    <span>Datei {queueIndex + 1} von {fileQueue.length}</span>
+    <span class="text-xs">({fileQueue[queueIndex]?.name})</span>
+  </div>
+{/if}
 
 <!-- Drop Zone (idle + preview stages) -->
 {#if stage === "idle" || stage === "preview"}
@@ -214,6 +243,7 @@
       id="file-input"
       type="file"
       accept=".csv"
+      multiple
       class="hidden"
       onchange={handleFileInput}
     />
@@ -485,9 +515,17 @@
     </div>
   {/if}
 
-  <!-- Import another file button -->
+  <!-- Next file in queue / Import another -->
+  {#if fileQueue.length > 1 && queueIndex < fileQueue.length - 1}
+    <button
+      onclick={loadNextFile}
+      class="w-full mb-4 px-4 py-3 rounded-2xl text-sm font-bold text-white bg-(--color-text) cursor-pointer hover:opacity-90 transition-opacity"
+    >
+      Nächste Datei laden ({queueIndex + 2}/{fileQueue.length})
+    </button>
+  {/if}
   <button
-    onclick={() => { stage = "idle"; importResult = null; parseResult = null; previewTransactions = []; showAllPreview = false; }}
+    onclick={() => { stage = "idle"; importResult = null; parseResult = null; previewTransactions = []; showAllPreview = false; fileQueue = []; queueIndex = 0; }}
     class="w-full mb-4 px-4 py-3 rounded-2xl text-sm font-bold text-(--color-text-secondary) bg-white shadow-[var(--shadow-card)] cursor-pointer hover:shadow-[var(--shadow-soft)] transition-shadow"
   >
     Weitere Datei importieren

@@ -1,5 +1,5 @@
 <script lang="ts">
-  let { visible, ondrop }: { visible: boolean; ondrop: (file: File) => void } =
+  let { visible, ondrop }: { visible: boolean; ondrop: (files: File[]) => void } =
     $props();
 </script>
 
@@ -10,8 +10,8 @@
   ondragover={(e) => e.preventDefault()}
   ondrop={(e) => {
     e.preventDefault();
-    const file = e.dataTransfer?.files[0];
-    if (file) ondrop(file);
+    const files = Array.from(e.dataTransfer?.files ?? []);
+    if (files.length > 0) ondrop(files);
   }}
 >
   <div class="drop-target flex flex-col items-center gap-5">

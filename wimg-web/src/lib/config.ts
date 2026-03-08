@@ -32,3 +32,5 @@ export const LS_CLAUDE_API_KEY = "wimg_claude_api_key";
 export const LS_SYNC_KEY = "wimg_sync_key";
 export const LS_SYNC_LAST_TS = "wimg_sync_last_ts";
 export const LS_LAST_VERSION = "wimg-last-version";
+export const LS_ONBOARDING_COMPLETED = "wimg_onboarding_completed";
+export const LS_DEMO_LOADED = "wimg_demo_loaded";

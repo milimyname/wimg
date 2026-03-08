@@ -1,13 +1,13 @@
-let pendingFile = $state<File | null>(null);
+let pendingFiles = $state<File[]>([]);
 
 export const dropStore = {
-  get file() {
-    return pendingFile;
+  get files() {
+    return pendingFiles;
   },
-  set(file: File) {
-    pendingFile = file;
+  set(files: File[]) {
+    pendingFiles = files;
   },
   clear() {
-    pendingFile = null;
+    pendingFiles = [];
   },
 };
