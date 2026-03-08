@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.4 (2026-03-09)
+
+- Optimize WASM memory management for Cloudflare Workers
+- Implement monthly snapshots and data export features
+
 ## v0.5.3 (2026-03-08)
 
 - Fix migration configuration in wrangler.toml to use new_sqlite_classes for McpSession
