@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.2 (2026-03-08)
+
+- Implement feature flags for enhanced user control
+
 ## v0.5.1 (2026-03-08)
 
 - Enhance MCP server functionality and UI updates
