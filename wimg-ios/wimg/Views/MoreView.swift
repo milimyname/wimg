@@ -5,6 +5,7 @@ struct MoreView: View {
 
     private let items: [(title: String, icon: String, color: Color, destination: Destination)] = [
         ("Schulden", "creditcard", .pink, .debts),
+        ("Wiederkehrend", "arrow.triangle.2.circlepath", .green, .recurring),
         ("Import", "square.and.arrow.down", .blue, .import_),
         ("Bankkonto", "building.columns", .teal, .fints),
         ("Rückblick", "calendar", .purple, .review),
@@ -12,7 +13,7 @@ struct MoreView: View {
     ]
 
     enum Destination {
-        case debts, import_, fints, review, settings
+        case debts, recurring, import_, fints, review, settings
     }
 
     var body: some View {
@@ -66,6 +67,8 @@ struct MoreView: View {
         switch destination {
         case .debts:
             DebtsView()
+        case .recurring:
+            RecurringView()
         case .import_:
             ImportView()
         case .fints:

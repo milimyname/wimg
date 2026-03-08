@@ -787,6 +787,71 @@ AI (Phase 5.6 dependency)
 SwiftUI `.searchable()` modifier + custom sheet overlay. Not cmdk but same
 concept — spotlight-style search over your own data. Same commands, native feel.
 
+#### 5.8 — MCP Server
+
+Expose wimg data to AI agents via Model Context Protocol. Claude Desktop (or any
+MCP client) can query transactions, summaries, debts, recurring patterns without
+the user opening the app. wimg's most differentiated feature: local-first + MCP.
+
+##### Architecture
+
+```
+Claude Desktop / Any MCP Client
+        │ (stdio JSON-RPC)
+        ▼
+   wimg-mcp (Bun)
+        │
+        ├── loads libwimg.wasm (same binary as web)
+        ├── pulls data via sync API (E2E encrypted)
+        ├── decrypts + applies to WASM SQLite
+        └── serves MCP tools over stdio
+```
+
+The MCP server is a **sync client** — like web and iOS. On startup:
+
+1. Loads `libwimg.wasm` from `../wimg-web/static/libwimg.wasm`
+2. Inits empty WASM database
+3. Pulls ALL data from sync server (`GET /sync/:key?since=0`)
+4. Decrypts rows (XChaCha20-Poly1305, key derived from sync key)
+5. Applies via `wimg_apply_changes`
+6. Serves MCP tools over stdio
+
+##### MCP Tools
+
+| Tool                       | Input                   | Description                            |
+| -------------------------- | ----------------------- | -------------------------------------- |
+| `get_monthly_summary`      | `year, month, account?` | Income, expenses, spending by category |
+| `get_transactions`         | `account?, limit?`      | Recent transactions                    |
+| `search_transactions`      | `query, account?`       | Search by description                  |
+| `get_recurring_payments`   | —                       | Detected subscriptions + price alerts  |
+| `get_debt_status`          | —                       | Debts with progress                    |
+| `get_accounts`             | —                       | All bank accounts                      |
+| `import_csv`               | `path`                  | Import CSV file                        |
+| `detect_recurring`         | —                       | Re-scan for recurring patterns         |
+| `get_spending_by_category` | `category, months?`     | Category spending over time            |
+
+##### Claude Desktop Config
+
+```json
+{
+  "mcpServers": {
+    "wimg": {
+      "command": "bun",
+      "args": ["run", "/path/to/wimg/wimg-mcp/src/index.ts"],
+      "env": { "WIMG_SYNC_KEY": "your-sync-key" }
+    }
+  }
+}
+```
+
+##### Tasks
+
+- [x] `wimg-mcp/src/wasm.ts` — WASM loader for Bun (adapted from web, no OPFS)
+- [x] `wimg-mcp/src/tools.ts` — MCP tool definitions with Zod schemas
+- [x] `wimg-mcp/src/index.ts` — McpServer + StdioServerTransport + sync on startup
+- [x] Sync pull + E2E decrypt + apply on startup
+- [x] All 9 tools functional over stdio
+
 #### Deferred
 
 - **i18n** — no users yet, one language works. Revisit when needed.
@@ -800,8 +865,9 @@ concept — spotlight-style search over your own data. Same commands, native fee
 3. Data export + month snapshot           (quick wins, foundation for Phase 6)
 4. Annual renewals calendar               (personal value, builds on #1)
 5. Command palette (Cmd+K)               (low effort, high polish)
-6. sqlite-vec + smart categorization     (only if keyword rules insufficient)
-7. AI chat                                (only if everything else is solid)
+6. MCP server                            (AI agent access to financial data)
+7. sqlite-vec + smart categorization     (only if keyword rules insufficient)
+8. AI chat                                (only if everything else is solid)
 ```
 
 #### Success criteria
@@ -813,6 +879,7 @@ concept — spotlight-style search over your own data. Same commands, native fee
 - [ ] Monthly snapshots stored for historical comparison
 - [ ] Annual renewals visible with upcoming due dates
 - [ ] Cmd+K opens command palette with navigation, actions, and search
+- [x] MCP server serves financial data to Claude Desktop over stdio
 
 ---
 
@@ -976,6 +1043,7 @@ CREATE TABLE goals (
 | Sync            | CF Durable Objects + WebSocket + LWW | Real-time, hibernation = cost-efficient               |
 | AI              | Claude API (optional, online)        | Categorization + chat                                 |
 | FinTS           | Pure Zig (fints.zig + mt940.zig)     | No external deps, native-only, direct bank connection |
+| MCP server      | Bun + @modelcontextprotocol/sdk      | AI agent access to financial data via stdio           |
 
 ---
 
@@ -1080,6 +1148,14 @@ wimg/
 │           ├── CategoryBadge.swift
 │           └── UndoToast.swift
 │
+├── wimg-mcp/                   Phase 5.8 — MCP server for AI agents
+│   ├── package.json              @modelcontextprotocol/sdk + zod
+│   ├── tsconfig.json
+│   └── src/
+│       ├── index.ts              McpServer + StdioServerTransport + sync
+│       ├── wasm.ts               WASM loader (adapted from web, no OPFS)
+│       └── tools.ts              9 MCP tool definitions with Zod schemas
+│
 └── wimg-sync/                  Phase 4B — Cloudflare Worker + DO
     ├── wrangler.toml             Worker config, R2 + DO bindings
     └── src/
@@ -1161,11 +1237,12 @@ None. Web is the reference implementation.
 
 ### Platform-Specific (intentional)
 
-| Feature                              | Platform | Reason                         |
-| ------------------------------------ | -------- | ------------------------------ |
-| FinTS bank connection                | iOS only | Browsers can't do FinTS (CORS) |
-| PWA install + service worker updates | Web only | Native concept                 |
-| OPFS persistence                     | Web only | iOS uses file on disk          |
+| Feature                              | Platform    | Reason                         |
+| ------------------------------------ | ----------- | ------------------------------ |
+| FinTS bank connection                | iOS only    | Browsers can't do FinTS (CORS) |
+| PWA install + service worker updates | Web only    | Native concept                 |
+| OPFS persistence                     | Web only    | iOS uses file on disk          |
+| MCP server (AI agent access)         | Desktop/CLI | Runs as stdio process via Bun  |
 
 ---
 

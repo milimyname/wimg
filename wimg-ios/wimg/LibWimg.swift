@@ -125,6 +125,22 @@ final class LibWimg {
         return (try? decodeLengthPrefixed(ptr)) ?? empty
     }
 
+    // MARK: - Recurring
+
+    static func getRecurring() -> [RecurringPattern] {
+        guard isInitialized else { return [] }
+        guard let ptr = wimg_get_recurring() else { return [] }
+        defer { wimg_free(ptr, 0) }
+        return (try? decodeLengthPrefixed(ptr)) ?? []
+    }
+
+    @discardableResult
+    static func detectRecurring() -> Int {
+        guard isInitialized else { return 0 }
+        let result = wimg_detect_recurring()
+        return Int(max(result, 0))
+    }
+
     // MARK: - Debts
 
     static func getDebts() -> [Debt] {

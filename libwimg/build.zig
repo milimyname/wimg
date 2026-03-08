@@ -171,6 +171,21 @@ pub fn build(b: *std.Build) void {
     const run_db_tests = b.addRunArtifact(db_tests);
     test_step.dependOn(&run_db_tests.step);
 
+    const recurring_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/recurring.zig"),
+            .target = b.resolveTargetQuery(.{}),
+            .optimize = optimize,
+        }),
+    });
+    recurring_tests.root_module.addCSourceFile(.{
+        .file = b.path("vendor/sqlite3.c"),
+        .flags = native_sqlite_flags,
+    });
+    recurring_tests.linkLibC();
+    const run_recurring_tests = b.addRunArtifact(recurring_tests);
+    test_step.dependOn(&run_recurring_tests.step);
+
     // FinTS modules (native-only)
     const banks_tests = b.addTest(.{
         .root_module = b.createModule(.{

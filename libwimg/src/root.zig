@@ -6,6 +6,7 @@ const parser = @import("parser.zig");
 const categories = @import("categories.zig");
 const summary = @import("summary.zig");
 const crypto = @import("crypto.zig");
+const recurring = @import("recurring.zig");
 
 const Db = db_mod.Db;
 const Transaction = types.Transaction;
@@ -882,6 +883,56 @@ export fn wimg_get_summary_filtered(year: u32, month: u32, acct: [*]const u8, ac
         acct_len,
     ) orelse {
         setError("wimg_get_summary_filtered: failed to generate summary", .{});
+        fba.allocator().free(buf);
+        return null;
+    };
+
+    const len_bytes: [4]u8 = @bitCast(@as(u32, @intCast(json_len)));
+    buf[0] = len_bytes[0];
+    buf[1] = len_bytes[1];
+    buf[2] = len_bytes[2];
+    buf[3] = len_bytes[3];
+
+    return buf.ptr;
+}
+
+// --- Recurring ---
+
+/// Detect recurring payment patterns from transaction history.
+/// Returns count of patterns detected, or -1 on error.
+export fn wimg_detect_recurring() i32 {
+    var database = global_db orelse {
+        setError("wimg_detect_recurring: database not initialized", .{});
+        return -1;
+    };
+
+    const count = recurring.detectRecurring(&database) catch |err| {
+        setError("wimg_detect_recurring: failed: {s}", .{@errorName(err)});
+        return -1;
+    };
+
+    return count;
+}
+
+/// Get all active recurring patterns as JSON array.
+export fn wimg_get_recurring() ?[*]const u8 {
+    var database = global_db orelse {
+        setError("wimg_get_recurring: database not initialized", .{});
+        return null;
+    };
+
+    const buf_size: usize = 32 * 1024; // 32 KB
+    const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
+        setError("wimg_get_recurring: failed to allocate buffer", .{});
+        return null;
+    };
+
+    const json_len = database.getRecurringJson(buf.ptr + 4, buf_size) catch |err| {
+        setError("wimg_get_recurring: query failed: {s}", .{@errorName(err)});
+        fba.allocator().free(buf);
+        return null;
+    } orelse {
+        setError("wimg_get_recurring: buffer too small", .{});
         fba.allocator().free(buf);
         return null;
     };

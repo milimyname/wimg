@@ -3,6 +3,7 @@
     parseCsv,
     importCsv,
     autoCategorize,
+    detectRecurring,
     getTransactions,
     CATEGORIES,
     type ImportResult,
@@ -138,6 +139,7 @@
       showAllPreview = false;
       stage = "imported";
       accountStore.reload();
+      detectRecurring();
     } catch (e) {
       importError = e instanceof Error ? e.message : "Import fehlgeschlagen";
     } finally {

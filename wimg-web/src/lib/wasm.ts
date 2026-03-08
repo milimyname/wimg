@@ -70,6 +70,19 @@ export interface CategoryInfo {
 
 export let CATEGORIES: Record<number, CategoryInfo> = {};
 
+export interface RecurringPattern {
+  id: string;
+  merchant: string;
+  amount: number;
+  interval: string;
+  category: number;
+  last_seen: string;
+  next_due: string | null;
+  active: number;
+  prev_amount: number | null;
+  price_change: number | null;
+}
+
 export interface ParseResult {
   format: string;
   total_rows: number;
@@ -109,6 +122,8 @@ interface WasmExports {
     acct_len: number,
   ) => number;
   wimg_get_categories: () => number;
+  wimg_detect_recurring: () => number;
+  wimg_get_recurring: () => number;
   wimg_undo: () => number;
   wimg_redo: () => number;
   wimg_get_changes: (since_ts: bigint) => number;
@@ -544,6 +559,23 @@ export async function redo(): Promise<UndoResult | null> {
 export function autoCategorize(): number {
   ensureInit();
   return wasm!.wimg_auto_categorize();
+}
+
+export function detectRecurring(): number {
+  ensureInit();
+  return wasm!.wimg_detect_recurring();
+}
+
+export function getRecurring(): RecurringPattern[] {
+  ensureInit();
+
+  const ptr = wasm!.wimg_get_recurring();
+  if (ptr === 0) return [];
+
+  const json = readLengthPrefixedString(ptr);
+  wasm!.wimg_free(ptr, 0);
+
+  return JSON.parse(json) as RecurringPattern[];
 }
 
 export function getAccounts(): Account[] {

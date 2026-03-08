@@ -9,7 +9,7 @@
     { href: "/more", label: "Mehr", icon: "more" },
   ];
 
-  const moreSubRoutes = ["/more", "/debts", "/import", "/review", "/settings"];
+  const moreSubRoutes = ["/more", "/debts", "/recurring", "/import", "/review", "/settings"];
 
   function isActive(href: string): boolean {
     if (href === "/more") {

@@ -1,6 +1,7 @@
 <script lang="ts">
   const items = [
     { href: "/debts", label: "Schulden", icon: "creditcard", color: "bg-rose-100 text-rose-600" },
+    { href: "/recurring", label: "Wiederkehrend", icon: "recurring", color: "bg-emerald-100 text-emerald-600" },
     { href: "/import", label: "Import", icon: "upload", color: "bg-blue-100 text-blue-600" },
     { href: "/review", label: "Rückblick", icon: "review", color: "bg-violet-100 text-violet-600" },
     { href: "/settings", label: "Einstellungen", icon: "settings", color: "bg-amber-100 text-amber-600" },
@@ -20,6 +21,10 @@
           {#if item.icon === "creditcard"}
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+          {:else if item.icon === "recurring"}
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           {:else if item.icon === "upload"}
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

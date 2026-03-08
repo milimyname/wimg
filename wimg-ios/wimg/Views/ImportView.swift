@@ -630,6 +630,7 @@ struct ImportView: View {
             stage = .imported
 
             if result.imported > 0 {
+                LibWimg.detectRecurring()
                 NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
             }
         } catch {

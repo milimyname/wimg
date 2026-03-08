@@ -28,7 +28,7 @@ pub const DbError = error{
     StepFailed,
 };
 
-const CURRENT_SCHEMA_VERSION = 7;
+const CURRENT_SCHEMA_VERSION = 8;
 const MAX_UNDO_ENTRIES = 50;
 
 pub const Db = struct {
@@ -87,6 +87,18 @@ pub const Db = struct {
         \\  old_val TEXT,
         \\  new_val TEXT,
         \\  undone INTEGER NOT NULL DEFAULT 0
+        \\);
+        \\CREATE TABLE IF NOT EXISTS recurring_patterns (
+        \\  id TEXT PRIMARY KEY,
+        \\  merchant TEXT NOT NULL,
+        \\  amount INTEGER NOT NULL,
+        \\  interval TEXT NOT NULL,
+        \\  category INTEGER NOT NULL DEFAULT 0,
+        \\  last_seen TEXT NOT NULL,
+        \\  next_due TEXT,
+        \\  active INTEGER NOT NULL DEFAULT 1,
+        \\  prev_amount INTEGER,
+        \\  updated_at INTEGER NOT NULL DEFAULT 0
         \\);
     ;
 
@@ -186,9 +198,27 @@ pub const Db = struct {
             self.exec("ALTER TABLE accounts ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;") catch {};
         }
 
+        if (version < 8) {
+            // v8: recurring payment detection
+            self.exec(
+                \\CREATE TABLE IF NOT EXISTS recurring_patterns (
+                \\  id TEXT PRIMARY KEY,
+                \\  merchant TEXT NOT NULL,
+                \\  amount INTEGER NOT NULL,
+                \\  interval TEXT NOT NULL,
+                \\  category INTEGER NOT NULL DEFAULT 0,
+                \\  last_seen TEXT NOT NULL,
+                \\  next_due TEXT,
+                \\  active INTEGER NOT NULL DEFAULT 1,
+                \\  prev_amount INTEGER,
+                \\  updated_at INTEGER NOT NULL DEFAULT 0
+                \\);
+            ) catch {};
+        }
+
         // Store current version
         if (version < CURRENT_SCHEMA_VERSION) {
-            self.setMeta("schema_version", "7") catch {};
+            self.setMeta("schema_version", "8") catch {};
         }
     }
 
@@ -514,6 +544,214 @@ pub const Db = struct {
         if (old_len) |ol| {
             self.recordHistory(3, "debts", id[0..id_len], null, old_buf[0..ol], null) catch {};
         }
+    }
+
+    // --- Recurring Patterns ---
+
+    pub fn insertOrUpdateRecurring(
+        self: *Db,
+        id: [*]const u8,
+        id_len: u32,
+        merchant: [*]const u8,
+        merchant_len: u32,
+        amount: i64,
+        interval_str: [*]const u8,
+        interval_len: u32,
+        category: i32,
+        last_seen: [*]const u8,
+        last_seen_len: u32,
+        next_due: ?[*]const u8,
+        next_due_len: u32,
+        prev_amount: ?i64,
+    ) DbError!void {
+        const sql = "INSERT OR REPLACE INTO recurring_patterns (id, merchant, amount, interval, category, last_seen, next_due, active, prev_amount, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1, ?8, ?9);";
+
+        var stmt: ?*c.sqlite3_stmt = null;
+        const rc0 = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
+        if (rc0 != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+
+        const s = stmt.?;
+        if (c.sqlite3_bind_text(s, 1, id, @intCast(id_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 2, merchant, @intCast(merchant_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 3, amount) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 4, interval_str, @intCast(interval_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int(s, 5, category) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 6, last_seen, @intCast(last_seen_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (next_due) |nd| {
+            if (c.sqlite3_bind_text(s, 7, nd, @intCast(next_due_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        } else {
+            if (c.sqlite3_bind_null(s, 7) != c.SQLITE_OK) return DbError.BindFailed;
+        }
+        if (prev_amount) |pa| {
+            if (c.sqlite3_bind_int64(s, 8, pa) != c.SQLITE_OK) return DbError.BindFailed;
+        } else {
+            if (c.sqlite3_bind_null(s, 8) != c.SQLITE_OK) return DbError.BindFailed;
+        }
+        if (c.sqlite3_bind_int64(s, 9, nowMs()) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+    }
+
+    pub fn getRecurringJson(self: *Db, buf: [*]u8, buf_len: usize) DbError!?usize {
+        const sql = "SELECT id, merchant, amount, interval, category, last_seen, next_due, active, prev_amount FROM recurring_patterns WHERE active = 1 ORDER BY merchant;";
+
+        var stmt: ?*c.sqlite3_stmt = null;
+        const rc = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
+        if (rc != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+
+        const s = stmt.?;
+        var pos: usize = 0;
+
+        if (pos >= buf_len) return null;
+        buf[pos] = '[';
+        pos += 1;
+
+        var first = true;
+        while (c.sqlite3_step(s) == c.SQLITE_ROW) {
+            const id_ptr = c.sqlite3_column_text(s, 0) orelse continue;
+            const id_len: usize = @intCast(c.sqlite3_column_bytes(s, 0));
+            const merch_ptr = c.sqlite3_column_text(s, 1) orelse continue;
+            const merch_len: usize = @intCast(c.sqlite3_column_bytes(s, 1));
+            const amount = c.sqlite3_column_int64(s, 2);
+            const intv_ptr = c.sqlite3_column_text(s, 3) orelse continue;
+            const intv_len: usize = @intCast(c.sqlite3_column_bytes(s, 3));
+            const category = c.sqlite3_column_int(s, 4);
+            const ls_ptr = c.sqlite3_column_text(s, 5) orelse continue;
+            const ls_len: usize = @intCast(c.sqlite3_column_bytes(s, 5));
+            const nd_ptr = c.sqlite3_column_text(s, 6);
+            const nd_len: usize = @intCast(c.sqlite3_column_bytes(s, 6));
+            const active = c.sqlite3_column_int(s, 7);
+            const prev_amt_type = c.sqlite3_column_type(s, 8);
+            const prev_amt: ?i64 = if (prev_amt_type == c.SQLITE_NULL) null else c.sqlite3_column_int64(s, 8);
+
+            if (!first) {
+                if (pos >= buf_len) return null;
+                buf[pos] = ',';
+                pos += 1;
+            }
+
+            // {"id":"
+            const p1 = "{\"id\":\"";
+            if (pos + p1.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p1.len], p1);
+            pos += p1.len;
+            pos += jsonEscapeString(buf[pos..buf_len], id_ptr[0..id_len]) orelse return null;
+
+            // ","merchant":"
+            const p2 = "\",\"merchant\":\"";
+            if (pos + p2.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p2.len], p2);
+            pos += p2.len;
+            pos += jsonEscapeString(buf[pos..buf_len], merch_ptr[0..merch_len]) orelse return null;
+
+            // ","amount":
+            const p3 = "\",\"amount\":";
+            if (pos + p3.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p3.len], p3);
+            pos += p3.len;
+            pos += formatAmount(buf[pos..buf_len], amount) orelse return null;
+
+            // ,"interval":"
+            const p4 = ",\"interval\":\"";
+            if (pos + p4.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p4.len], p4);
+            pos += p4.len;
+            pos += jsonEscapeString(buf[pos..buf_len], intv_ptr[0..intv_len]) orelse return null;
+
+            // ","category":
+            const p5 = "\",\"category\":";
+            if (pos + p5.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p5.len], p5);
+            pos += p5.len;
+            pos += formatSignedInt(buf[pos..buf_len], @as(i64, category)) orelse return null;
+
+            // ,"last_seen":"
+            const p6 = ",\"last_seen\":\"";
+            if (pos + p6.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p6.len], p6);
+            pos += p6.len;
+            pos += jsonEscapeString(buf[pos..buf_len], ls_ptr[0..ls_len]) orelse return null;
+
+            // ","next_due":
+            const p7 = "\",\"next_due\":";
+            if (pos + p7.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p7.len], p7);
+            pos += p7.len;
+            if (nd_ptr) |nd| {
+                if (pos >= buf_len) return null;
+                buf[pos] = '"';
+                pos += 1;
+                pos += jsonEscapeString(buf[pos..buf_len], nd[0..nd_len]) orelse return null;
+                if (pos >= buf_len) return null;
+                buf[pos] = '"';
+                pos += 1;
+            } else {
+                const null_s = "null";
+                if (pos + null_s.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + null_s.len], null_s);
+                pos += null_s.len;
+            }
+
+            // ,"active":
+            const p8 = ",\"active\":";
+            if (pos + p8.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p8.len], p8);
+            pos += p8.len;
+            pos += formatSignedInt(buf[pos..buf_len], @as(i64, active)) orelse return null;
+
+            // ,"prev_amount":
+            const p9 = ",\"prev_amount\":";
+            if (pos + p9.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p9.len], p9);
+            pos += p9.len;
+            if (prev_amt) |pa| {
+                pos += formatAmount(buf[pos..buf_len], pa) orelse return null;
+            } else {
+                const null_s = "null";
+                if (pos + null_s.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + null_s.len], null_s);
+                pos += null_s.len;
+            }
+
+            // ,"price_change":
+            const p10 = ",\"price_change\":";
+            if (pos + p10.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p10.len], p10);
+            pos += p10.len;
+            if (prev_amt) |pa| {
+                const diff = amount - pa;
+                if (diff > 50 or diff < -50) {
+                    pos += formatAmount(buf[pos..buf_len], diff) orelse return null;
+                } else {
+                    const null_s = "null";
+                    if (pos + null_s.len > buf_len) return null;
+                    @memcpy(buf[pos .. pos + null_s.len], null_s);
+                    pos += null_s.len;
+                }
+            } else {
+                const null_s = "null";
+                if (pos + null_s.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + null_s.len], null_s);
+                pos += null_s.len;
+            }
+
+            if (pos >= buf_len) return null;
+            buf[pos] = '}';
+            pos += 1;
+
+            first = false;
+        }
+
+        if (pos >= buf_len) return null;
+        buf[pos] = ']';
+        pos += 1;
+
+        return pos;
+    }
+
+    pub fn clearRecurring(self: *Db) DbError!void {
+        self.exec("DELETE FROM recurring_patterns;") catch return DbError.ExecFailed;
     }
 
     // --- Undo/Redo helpers ---
@@ -1475,6 +1713,128 @@ pub const Db = struct {
             }
         }
 
+        // --- recurring_patterns ---
+        {
+            const sql = "SELECT id, merchant, amount, interval, category, last_seen, next_due, active, prev_amount, updated_at FROM recurring_patterns WHERE updated_at >= ?1;";
+            var stmt: ?*c.sqlite3_stmt = null;
+            if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+            defer _ = c.sqlite3_finalize(stmt.?);
+            const s = stmt.?;
+            if (c.sqlite3_bind_int64(s, 1, since_ts) != c.SQLITE_OK) return DbError.BindFailed;
+
+            while (c.sqlite3_step(s) == c.SQLITE_ROW) {
+                if (!first) {
+                    if (pos >= buf_len) return null;
+                    buf[pos] = ',';
+                    pos += 1;
+                }
+
+                const id_ptr = c.sqlite3_column_text(s, 0) orelse continue;
+                const id_len: usize = @intCast(c.sqlite3_column_bytes(s, 0));
+                const merch_ptr = c.sqlite3_column_text(s, 1) orelse continue;
+                const merch_len: usize = @intCast(c.sqlite3_column_bytes(s, 1));
+                const amount = c.sqlite3_column_int64(s, 2);
+                const intv_ptr = c.sqlite3_column_text(s, 3) orelse continue;
+                const intv_len: usize = @intCast(c.sqlite3_column_bytes(s, 3));
+                const category = c.sqlite3_column_int(s, 4);
+                const ls_ptr = c.sqlite3_column_text(s, 5) orelse continue;
+                const ls_len: usize = @intCast(c.sqlite3_column_bytes(s, 5));
+                const nd_ptr = c.sqlite3_column_text(s, 6);
+                const nd_len: usize = @intCast(c.sqlite3_column_bytes(s, 6));
+                const active = c.sqlite3_column_int(s, 7);
+                const prev_amt_type = c.sqlite3_column_type(s, 8);
+                const prev_amt: ?i64 = if (prev_amt_type == c.SQLITE_NULL) null else c.sqlite3_column_int64(s, 8);
+                const updated = c.sqlite3_column_int64(s, 9);
+
+                const p1 = "{\"table\":\"recurring_patterns\",\"id\":\"";
+                if (pos + p1.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p1.len], p1);
+                pos += p1.len;
+                pos += jsonEscapeString(buf[pos..buf_len], id_ptr[0..id_len]) orelse return null;
+
+                const p2 = "\",\"data\":{\"merchant\":\"";
+                if (pos + p2.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p2.len], p2);
+                pos += p2.len;
+                pos += jsonEscapeString(buf[pos..buf_len], merch_ptr[0..merch_len]) orelse return null;
+
+                const p3 = "\",\"amount\":";
+                if (pos + p3.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p3.len], p3);
+                pos += p3.len;
+                pos += formatSignedInt(buf[pos..buf_len], amount) orelse return null;
+
+                const p4 = ",\"interval\":\"";
+                if (pos + p4.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p4.len], p4);
+                pos += p4.len;
+                pos += jsonEscapeString(buf[pos..buf_len], intv_ptr[0..intv_len]) orelse return null;
+
+                const p5 = "\",\"category\":";
+                if (pos + p5.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p5.len], p5);
+                pos += p5.len;
+                pos += formatSignedInt(buf[pos..buf_len], @as(i64, category)) orelse return null;
+
+                const p6 = ",\"last_seen\":\"";
+                if (pos + p6.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p6.len], p6);
+                pos += p6.len;
+                pos += jsonEscapeString(buf[pos..buf_len], ls_ptr[0..ls_len]) orelse return null;
+
+                // next_due
+                const p7 = "\",\"next_due\":";
+                if (pos + p7.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p7.len], p7);
+                pos += p7.len;
+                if (nd_ptr) |nd| {
+                    if (pos >= buf_len) return null;
+                    buf[pos] = '"';
+                    pos += 1;
+                    pos += jsonEscapeString(buf[pos..buf_len], nd[0..nd_len]) orelse return null;
+                    if (pos >= buf_len) return null;
+                    buf[pos] = '"';
+                    pos += 1;
+                } else {
+                    const null_s = "null";
+                    if (pos + null_s.len > buf_len) return null;
+                    @memcpy(buf[pos .. pos + null_s.len], null_s);
+                    pos += null_s.len;
+                }
+
+                const p8 = ",\"active\":";
+                if (pos + p8.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p8.len], p8);
+                pos += p8.len;
+                pos += formatSignedInt(buf[pos..buf_len], @as(i64, active)) orelse return null;
+
+                // prev_amount
+                const p9 = ",\"prev_amount\":";
+                if (pos + p9.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p9.len], p9);
+                pos += p9.len;
+                if (prev_amt) |pa| {
+                    pos += formatSignedInt(buf[pos..buf_len], pa) orelse return null;
+                } else {
+                    const null_s = "null";
+                    if (pos + null_s.len > buf_len) return null;
+                    @memcpy(buf[pos .. pos + null_s.len], null_s);
+                    pos += null_s.len;
+                }
+
+                const p_close = "},\"updated_at\":";
+                if (pos + p_close.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p_close.len], p_close);
+                pos += p_close.len;
+                pos += formatSignedInt(buf[pos..buf_len], updated) orelse return null;
+
+                if (pos >= buf_len) return null;
+                buf[pos] = '}';
+                pos += 1;
+                first = false;
+            }
+        }
+
         // Close: ]}
         const footer = "]}";
         if (pos + footer.len > buf_len) return null;
@@ -1567,6 +1927,12 @@ pub const Db = struct {
                     self.applyAccountChange(row_id, data_str, updated_at) catch continue;
                 }
                 applied += 1;
+            } else if (std.mem.eql(u8, table, "recurring_patterns")) {
+                const local_ts = self.getRowUpdatedAt("recurring_patterns", row_id);
+                if (updated_at <= local_ts) continue;
+                const data_str = self.extractDataObject(obj) orelse continue;
+                self.applyRecurringChange(row_id, data_str, updated_at) catch continue;
+                applied += 1;
             }
         }
 
@@ -1582,6 +1948,8 @@ pub const Db = struct {
             "SELECT updated_at FROM debts WHERE id = ?1;"
         else if (std.mem.eql(u8, table, "accounts"))
             "SELECT updated_at FROM accounts WHERE id = ?1;"
+        else if (std.mem.eql(u8, table, "recurring_patterns"))
+            "SELECT updated_at FROM recurring_patterns WHERE id = ?1;"
         else
             return 0;
 
@@ -1721,6 +2089,61 @@ pub const Db = struct {
         if (c.sqlite3_bind_text(s, 3, @ptrCast(bank.ptr), @intCast(bank.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
         if (c.sqlite3_bind_text(s, 4, @ptrCast(color.ptr), @intCast(color.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
         if (c.sqlite3_bind_int64(s, 5, updated_at) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+    }
+
+    fn applyRecurringChange(self: *Db, row_id: []const u8, data: []const u8, updated_at: i64) DbError!void {
+        const merchant_escaped = jsonExtractStringFromSlice(data, "\"merchant\"") orelse return DbError.ExecFailed;
+        const amount = jsonExtractI64FromSlice(data, "\"amount\"");
+        const interval_escaped = jsonExtractStringFromSlice(data, "\"interval\"") orelse return DbError.ExecFailed;
+        const category = jsonExtractI64FromSlice(data, "\"category\"");
+        const last_seen_escaped = jsonExtractStringFromSlice(data, "\"last_seen\"") orelse return DbError.ExecFailed;
+        const next_due_escaped = jsonExtractStringFromSlice(data, "\"next_due\"");
+        const active = jsonExtractI64FromSlice(data, "\"active\"");
+        const prev_amount = jsonExtractI64FromSlice(data, "\"prev_amount\"");
+
+        var merch_buf: [512]u8 = undefined;
+        const merch_len = jsonUnescapeString(&merch_buf, merchant_escaped) orelse return DbError.ExecFailed;
+        const merchant = merch_buf[0..merch_len];
+
+        var intv_buf: [32]u8 = undefined;
+        const intv_len = jsonUnescapeString(&intv_buf, interval_escaped) orelse return DbError.ExecFailed;
+        const interval_str = intv_buf[0..intv_len];
+
+        var ls_buf: [32]u8 = undefined;
+        const ls_len = jsonUnescapeString(&ls_buf, last_seen_escaped) orelse return DbError.ExecFailed;
+        const last_seen = ls_buf[0..ls_len];
+
+        var nd_buf: [32]u8 = undefined;
+        var nd_slice: ?[]const u8 = null;
+        if (next_due_escaped) |nde| {
+            const nd_len = jsonUnescapeString(&nd_buf, nde) orelse return DbError.ExecFailed;
+            nd_slice = nd_buf[0..nd_len];
+        }
+
+        const sql = "INSERT OR REPLACE INTO recurring_patterns (id, merchant, amount, interval, category, last_seen, next_due, active, prev_amount, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10);";
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+        const s = stmt.?;
+        if (c.sqlite3_bind_text(s, 1, @ptrCast(row_id.ptr), @intCast(row_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 2, @ptrCast(merchant.ptr), @intCast(merchant.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 3, amount) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 4, @ptrCast(interval_str.ptr), @intCast(interval_str.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 5, category) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 6, @ptrCast(last_seen.ptr), @intCast(last_seen.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (nd_slice) |nd| {
+            if (c.sqlite3_bind_text(s, 7, @ptrCast(nd.ptr), @intCast(nd.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        } else {
+            if (c.sqlite3_bind_null(s, 7) != c.SQLITE_OK) return DbError.BindFailed;
+        }
+        if (c.sqlite3_bind_int64(s, 8, active) != c.SQLITE_OK) return DbError.BindFailed;
+        if (prev_amount != 0) {
+            if (c.sqlite3_bind_int64(s, 9, prev_amount) != c.SQLITE_OK) return DbError.BindFailed;
+        } else {
+            if (c.sqlite3_bind_null(s, 9) != c.SQLITE_OK) return DbError.BindFailed;
+        }
+        if (c.sqlite3_bind_int64(s, 10, updated_at) != c.SQLITE_OK) return DbError.BindFailed;
         if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
     }
 

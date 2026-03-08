@@ -98,6 +98,17 @@ const uint8_t *wimg_get_transactions_filtered(const uint8_t *acct, uint32_t acct
 // Get summary filtered by account.
 const uint8_t *wimg_get_summary_filtered(uint32_t year, uint32_t month, const uint8_t *acct, uint32_t acct_len);
 
+// --- Recurring ---
+
+// Detect recurring payment patterns from transaction history.
+// Clears existing patterns and re-detects. Returns count of patterns found, or -1 on error.
+int32_t wimg_detect_recurring(void);
+
+// Get all active recurring patterns as a length-prefixed JSON array.
+// Each entry: {"id":"...","merchant":"...","amount":X.XX,"interval":"monthly","category":N,
+//   "last_seen":"YYYY-MM-DD","next_due":"YYYY-MM-DD","active":1,"prev_amount":X.XX,"price_change":X.XX}
+const uint8_t *wimg_get_recurring(void);
+
 // --- Categories ---
 
 // Get all category metadata as a length-prefixed JSON array (static, no DB needed).
