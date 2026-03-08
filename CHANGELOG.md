@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.18 (2026-03-08)
+
+- Refactor release workflow to remove conditional steps for wimg-sync changes
+
 ## v0.4.17 (2026-03-08)
 
 - Add Phase 6: Financial Clarity features to CLAUDE.md
