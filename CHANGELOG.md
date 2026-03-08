@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.16 (2026-03-08)
+
+- Implement real-time sync with Cloudflare Durable Objects and WebSocket support
+
 ## v0.4.15 (2026-03-07)
 
 - Refactor release workflow to enhance SQLite handling and streamline deployment
