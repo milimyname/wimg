@@ -18,7 +18,7 @@ new_sqlite_classes = ["SyncRoom"]
 
 [[migrations]]
 tag = "v2"
-new_classes = ["McpSession"]
+new_sqlite_classes = ["McpSession"]
 
 # Bundle WASM binary with the Worker
 [[rules]]
