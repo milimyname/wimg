@@ -30,8 +30,18 @@ interface WSMessage {
 const MAX_SIZE_BYTES = 100 * 1024 * 1024; // 100MB per key
 const PING_INTERVAL_MS = 30_000;
 
+/** SHA-256 hash of sync key for R2 paths — Cloudflare never sees the raw key in storage */
+async function hashForStorage(key: string): Promise<string> {
+  const data = new TextEncoder().encode(key);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export class SyncRoom implements DurableObject {
   private syncKey: string | null = null;
+  private storageHash: string | null = null;
 
   constructor(
     private state: DurableObjectState,
@@ -40,6 +50,9 @@ export class SyncRoom implements DurableObject {
     // Restore syncKey from storage after hibernation wake-up
     this.state.blockConcurrencyWhile(async () => {
       this.syncKey = (await this.state.storage.get<string>("syncKey")) ?? null;
+      if (this.syncKey) {
+        this.storageHash = await hashForStorage(this.syncKey);
+      }
     });
   }
 
@@ -50,6 +63,7 @@ export class SyncRoom implements DurableObject {
     const headerKey = request.headers.get("X-Sync-Key") ?? url.pathname.split("/").pop() ?? null;
     if (headerKey && headerKey !== this.syncKey) {
       this.syncKey = headerKey;
+      this.storageHash = await hashForStorage(headerKey);
       await this.state.storage.put("syncKey", headerKey);
     }
 
@@ -163,17 +177,38 @@ export class SyncRoom implements DurableObject {
     return Response.json({ rows });
   }
 
-  private async mergeToR2(incomingRows: Row[]): Promise<number> {
-    const key = this.syncKey;
-    if (!key) throw new Error("No sync key");
+  /** Get R2 object, migrating from raw-key path to hashed path if needed */
+  private async getR2Object(): Promise<SyncData> {
+    const hash = this.storageHash;
+    if (!hash) return { rows: [] };
 
-    const objectKey = `${key}/changes.json`;
-    const existing = await this.env.BUCKET.get(objectKey);
-
-    let stored: SyncData = { rows: [] };
+    const hashedKey = `${hash}/changes.json`;
+    const existing = await this.env.BUCKET.get(hashedKey);
     if (existing) {
-      stored = (await existing.json()) as SyncData;
+      return (await existing.json()) as SyncData;
     }
+
+    // Migration: check old raw-key path
+    const rawKey = this.syncKey;
+    if (!rawKey) return { rows: [] };
+
+    const oldKey = `${rawKey}/changes.json`;
+    const old = await this.env.BUCKET.get(oldKey);
+    if (!old) return { rows: [] };
+
+    // Migrate: copy to hashed path, delete old
+    const data = (await old.json()) as SyncData;
+    await this.env.BUCKET.put(hashedKey, JSON.stringify(data), {
+      httpMetadata: { contentType: "application/json" },
+    });
+    await this.env.BUCKET.delete(oldKey);
+    return data;
+  }
+
+  private async mergeToR2(incomingRows: Row[]): Promise<number> {
+    if (!this.storageHash) throw new Error("No sync key");
+
+    const stored = await this.getR2Object();
 
     // Merge: last-write-wins per table+id
     const index = new Map<string, number>();
@@ -202,7 +237,7 @@ export class SyncRoom implements DurableObject {
       throw new Error("Storage limit exceeded (100MB)");
     }
 
-    await this.env.BUCKET.put(objectKey, body, {
+    await this.env.BUCKET.put(`${this.storageHash}/changes.json`, body, {
       httpMetadata: { contentType: "application/json" },
     });
 
@@ -210,13 +245,9 @@ export class SyncRoom implements DurableObject {
   }
 
   private async getRowsSince(since: number): Promise<Row[]> {
-    const key = this.syncKey;
-    if (!key) return [];
+    if (!this.storageHash) return [];
 
-    const existing = await this.env.BUCKET.get(`${key}/changes.json`);
-    if (!existing) return [];
-
-    const stored = (await existing.json()) as SyncData;
+    const stored = await this.getR2Object();
     return stored.rows.filter((r) => r.updated_at > since);
   }
 

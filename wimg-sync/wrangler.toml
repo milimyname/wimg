@@ -7,8 +7,21 @@ binding = "BUCKET"
 bucket_name = "wimg-sync"
 
 [durable_objects]
-bindings = [{ name = "SYNC_ROOM", class_name = "SyncRoom" }]
+bindings = [
+  { name = "SYNC_ROOM", class_name = "SyncRoom" },
+  { name = "MCP_SESSION", class_name = "McpSession" },
+]
 
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["SyncRoom"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["McpSession"]
+
+# Bundle WASM binary with the Worker
+[[rules]]
+type = "CompiledWasm"
+globs = ["**/*.wasm"]
+fallthrough = false

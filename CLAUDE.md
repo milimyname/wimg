@@ -787,36 +787,46 @@ AI (Phase 5.6 dependency)
 SwiftUI `.searchable()` modifier + custom sheet overlay. Not cmdk but same
 concept — spotlight-style search over your own data. Same commands, native feel.
 
-#### 5.8 — MCP Server
+#### ✅ 5.8 — Remote MCP Server (Done, March 2026)
 
-Expose wimg data to AI agents via Model Context Protocol. Claude Desktop (or any
+Expose wimg data to AI agents via Model Context Protocol. Claude.ai (or any
 MCP client) can query transactions, summaries, debts, recurring patterns without
 the user opening the app. wimg's most differentiated feature: local-first + MCP.
 
 ##### Architecture
 
 ```
-Claude Desktop / Any MCP Client
-        │ (stdio JSON-RPC)
-        ▼
-   wimg-mcp (Bun)
-        │
-        ├── loads libwimg.wasm (same binary as web)
-        ├── pulls data via sync API (E2E encrypted)
-        ├── decrypts + applies to WASM SQLite
-        └── serves MCP tools over stdio
+Claude.ai / Any MCP Client
+     │  POST /mcp  (Bearer: sync-key)
+     ▼
+  wimg-sync Worker (Hono)
+     │  routes to DO by hash(sync-key)
+     ▼
+  McpSession DO
+     ├── loads libwimg.wasm (bundled with Worker)
+     ├── pulls data from R2 (via SyncRoom DO)
+     ├── decrypts rows (XChaCha20-Poly1305)
+     ├── serves MCP tools (read + write)
+     └── write-back: push changes → SyncRoom DO → R2 + WS broadcast
 ```
 
-The MCP server is a **sync client** — like web and iOS. On startup:
+The MCP server is a **Durable Object** inside wimg-sync — another sync client,
+like web and iOS. On first request (cold start ~1-3s):
 
-1. Loads `libwimg.wasm` from `../wimg-web/static/libwimg.wasm`
-2. Inits empty WASM database
-3. Pulls ALL data from sync server (`GET /sync/:key?since=0`)
-4. Decrypts rows (XChaCha20-Poly1305, key derived from sync key)
-5. Applies via `wimg_apply_changes`
-6. Serves MCP tools over stdio
+1. Instantiates libwimg.wasm (bundled with Worker)
+2. Inits empty SQLite in WASM memory
+3. Derives encryption key from sync key (Bearer token)
+4. Pulls ALL data from R2 via SyncRoom DO
+5. Decrypts rows (XChaCha20-Poly1305)
+6. Applies via `wimg_apply_changes`
+7. Handles MCP JSON-RPC requests (subsequent requests ~10-50ms, WASM stays warm)
 
-##### MCP Tools
+For write tools: mutate WASM → get changed rows → encrypt → push to SyncRoom →
+R2 merge + WebSocket broadcast to all connected devices.
+
+##### MCP Tools (8 read + 8 write = 16 total)
+
+**Read tools:**
 
 | Tool                       | Input                   | Description                            |
 | -------------------------- | ----------------------- | -------------------------------------- |
@@ -826,31 +836,45 @@ The MCP server is a **sync client** — like web and iOS. On startup:
 | `get_recurring_payments`   | —                       | Detected subscriptions + price alerts  |
 | `get_debt_status`          | —                       | Debts with progress                    |
 | `get_accounts`             | —                       | All bank accounts                      |
-| `import_csv`               | `path`                  | Import CSV file                        |
 | `detect_recurring`         | —                       | Re-scan for recurring patterns         |
 | `get_spending_by_category` | `category, months?`     | Category spending over time            |
 
-##### Claude Desktop Config
+**Write tools:**
 
-```json
-{
-  "mcpServers": {
-    "wimg": {
-      "command": "bun",
-      "args": ["run", "/path/to/wimg/wimg-mcp/src/index.ts"],
-      "env": { "WIMG_SYNC_KEY": "your-sync-key" }
-    }
-  }
-}
+| Tool              | Input                        | Description                       |
+| ----------------- | ---------------------------- | --------------------------------- |
+| `set_category`    | `transaction_id, category`   | Categorize a transaction          |
+| `set_excluded`    | `transaction_id, excluded`   | Include/exclude from summaries    |
+| `add_debt`        | `name, total, monthly?`      | Add a debt to track               |
+| `mark_debt_paid`  | `debt_id, amount`            | Record a payment towards a debt   |
+| `add_account`     | `id, name, color?`           | Add a bank account                |
+| `update_account`  | `id, name, color?`           | Update account name/color         |
+| `undo`            | —                            | Undo last action                  |
+| `redo`            | —                            | Redo last undone action           |
+
+##### Claude.ai Custom Connector Config
+
+```
+URL:  https://wimg-sync.mili-my.name/mcp
+Auth: Bearer <sync-key>
+```
+
+##### API
+
+```
+POST /mcp              — MCP JSON-RPC endpoint (Bearer: sync-key)
+DELETE /mcp             — Evict MCP session (clear WASM instance)
 ```
 
 ##### Tasks
 
-- [x] `wimg-mcp/src/wasm.ts` — WASM loader for Bun (adapted from web, no OPFS)
-- [x] `wimg-mcp/src/tools.ts` — MCP tool definitions with Zod schemas
-- [x] `wimg-mcp/src/index.ts` — McpServer + StdioServerTransport + sync on startup
-- [x] Sync pull + E2E decrypt + apply on startup
-- [x] All 9 tools functional over stdio
+- [x] `wimg-sync/src/mcp-wasm.ts` — WASM loader for CF Workers (class-based WasmInstance)
+- [x] `wimg-sync/src/mcp-tools.ts` — 16 MCP tool definitions (8 read + 8 write) with Zod schemas
+- [x] `wimg-sync/src/mcp-session.ts` — McpSession DO with WASM lifecycle + write-back
+- [x] `POST /mcp` route with Bearer token auth in index.ts
+- [x] McpSession DO binding + v2 migration in wrangler.toml
+- [x] WASM bundled with Worker via `[[rules]]`
+- [x] All 16 tools functional, E2E encrypted, real-time sync on writes
 
 #### Deferred
 
@@ -879,7 +903,8 @@ The MCP server is a **sync client** — like web and iOS. On startup:
 - [ ] Monthly snapshots stored for historical comparison
 - [ ] Annual renewals visible with upcoming due dates
 - [ ] Cmd+K opens command palette with navigation, actions, and search
-- [x] MCP server serves financial data to Claude Desktop over stdio
+- [x] Remote MCP server serves financial data to Claude.ai via POST /mcp
+- [x] MCP write tools (set_category, add_debt, etc.) sync to all devices in real-time
 
 ---
 
@@ -1043,7 +1068,7 @@ CREATE TABLE goals (
 | Sync            | CF Durable Objects + WebSocket + LWW | Real-time, hibernation = cost-efficient               |
 | AI              | Claude API (optional, online)        | Categorization + chat                                 |
 | FinTS           | Pure Zig (fints.zig + mt940.zig)     | No external deps, native-only, direct bank connection |
-| MCP server      | Bun + @modelcontextprotocol/sdk      | AI agent access to financial data via stdio           |
+| MCP server      | CF Worker DO + libwimg.wasm + Zod    | Remote MCP via POST /mcp, Bearer auth = sync key     |
 
 ---
 
@@ -1108,7 +1133,8 @@ wimg/
 │       │   ├── debts/           progress bars, mark paid
 │       │   ├── import/          file drop, CSV preview, Claude categorization
 │       │   ├── review/          monthly review, anomalies, checklist
-│       │   └── settings/        sync config, Claude AI key, data reset
+│       │   ├── settings/        sync config, Claude AI key, data reset
+│       │   └── about/           about page, FAQ, privacy, MCP info
 │       └── components/
 │           ├── BottomSheet.svelte   iOS-style sheet (vaul-inspired scale effect)
 │           ├── DonutChart.svelte    LayerChart PieChart wrapper
@@ -1141,26 +1167,24 @@ wimg/
 │       │   ├── DebtsView.swift    + AddDebtSheet
 │       │   ├── ImportView.swift
 │       │   ├── SettingsView.swift  Sync config, Claude AI key, data reset
-│       │   └── MoreView.swift     Hub to Debts, Import, Review, Settings
+│       │   ├── MoreView.swift     Hub to Debts, Import, Review, Settings, About
+│       │   └── AboutView.swift    About page (hero, FAQ, privacy, GitHub)
 │       └── Components/
 │           ├── MonthPicker.swift
 │           ├── TransactionCard.swift  + formatAmountShort()
 │           ├── CategoryBadge.swift
 │           └── UndoToast.swift
 │
-├── wimg-mcp/                   Phase 5.8 — MCP server for AI agents
-│   ├── package.json              @modelcontextprotocol/sdk + zod
-│   ├── tsconfig.json
-│   └── src/
-│       ├── index.ts              McpServer + StdioServerTransport + sync
-│       ├── wasm.ts               WASM loader (adapted from web, no OPFS)
-│       └── tools.ts              9 MCP tool definitions with Zod schemas
-│
-└── wimg-sync/                  Phase 4B — Cloudflare Worker + DO
-    ├── wrangler.toml             Worker config, R2 + DO bindings
+└── wimg-sync/                  Phase 4B — Cloudflare Worker + DO + MCP
+    ├── wrangler.toml             Worker config, R2 + DO bindings, WASM rule
+    ├── package.json              hono + zod
     └── src/
-        ├── index.ts              Hono router, CORS, route to DO
-        └── sync-room.ts          Durable Object (WebSocket Hibernation API)
+        ├── index.ts              Hono router, CORS, sync + MCP routes
+        ├── sync-room.ts          SyncRoom DO (WebSocket Hibernation API)
+        ├── mcp-session.ts        McpSession DO (WASM lifecycle + MCP handling)
+        ├── mcp-wasm.ts           WASM loader for CF Workers (WasmInstance class)
+        ├── mcp-tools.ts          16 MCP tool definitions (read + write)
+        └── wasm.d.ts             TypeScript declaration for .wasm imports
 ```
 
 ---
@@ -1191,6 +1215,8 @@ wimg/
 | Mar 2026 | Hono for Worker routing                   | Lightweight, CORS middleware, clean route handlers                                          |
 | Mar 2026 | Echo suppression (2s window) over WS tags | Simple, avoids pusher applying own changes back; no session tracking needed                 |
 | Mar 2026 | Wuchale for i18n (Phase 5.1)              | Compile-time, PO files as single source for web + iOS, zero runtime cost                    |
+| Mar 2026 | Remote MCP in wimg-sync, not local wimg-mcp | CF Worker DO keeps WASM warm, no local Bun process needed, accessible from Claude.ai       |
+| Mar 2026 | Manual JSON-RPC over MCP SDK              | MCP protocol is simple JSON-RPC; avoids Node.js deps in CF Workers, keeps bundle small      |
 
 ---
 
@@ -1223,6 +1249,7 @@ FinTS is intentionally iOS-only (browsers can't do FinTS due to CORS).
 | E2E encryption (automatic, derived from sync key)           | ✅  | ✅                     |
 | Settings: version + GitHub link                             | ✅  | ✅                     |
 | More page (hub to Debts, Import, Review, Settings)          | ✅  | ✅                     |
+| About page (hero, FAQ, privacy, GitHub, MCP info)           | ✅  | ✅                     |
 
 ### iOS Missing (needs implementation)
 
@@ -1242,7 +1269,7 @@ None. Web is the reference implementation.
 | FinTS bank connection                | iOS only    | Browsers can't do FinTS (CORS) |
 | PWA install + service worker updates | Web only    | Native concept                 |
 | OPFS persistence                     | Web only    | iOS uses file on disk          |
-| MCP server (AI agent access)         | Desktop/CLI | Runs as stdio process via Bun  |
+| MCP server (AI agent access)         | Remote      | CF Worker DO, any MCP client   |
 
 ---
 

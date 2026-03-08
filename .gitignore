@@ -26,6 +26,9 @@ wimg-web/.wrangler/
 wimg-sync/node_modules/
 wimg-sync/.wrangler/
 
+# MCP Server — dependencies
+wimg-mcp/node_modules/
+
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*

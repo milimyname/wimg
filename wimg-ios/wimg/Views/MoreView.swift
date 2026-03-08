@@ -10,10 +10,11 @@ struct MoreView: View {
         ("Bankkonto", "building.columns", .teal, .fints),
         ("Rückblick", "calendar", .purple, .review),
         ("Einstellungen", "gearshape", .orange, .settings),
+        ("Über wimg", "info.circle", .gray, .about),
     ]
 
     enum Destination {
-        case debts, recurring, import_, fints, review, settings
+        case debts, recurring, import_, fints, review, settings, about
     }
 
     var body: some View {
@@ -77,6 +78,8 @@ struct MoreView: View {
             ReviewView(selectedAccount: $selectedAccount)
         case .settings:
             SettingsView()
+        case .about:
+            AboutView()
         }
     }
 }

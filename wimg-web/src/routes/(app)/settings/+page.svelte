@@ -442,47 +442,20 @@
   </div>
 
   <!-- About Section -->
-  <div class="bg-white rounded-3xl p-5 shadow-sm space-y-3">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-2xl bg-gray-100 flex items-center justify-center">
-        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </div>
-      <div>
-        <h3 class="font-bold text-(--color-text)">Über</h3>
-        <p class="text-xs text-(--color-text-secondary)">Version & Links</p>
-      </div>
+  <a href="/about" class="bg-white rounded-3xl p-5 shadow-sm flex items-center gap-3 group active:scale-[0.98] transition-transform">
+    <div class="w-10 h-10 rounded-2xl bg-gray-100 flex items-center justify-center">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
     </div>
-
-    <div class="space-y-1">
-      <div class="flex items-center justify-between py-2.5 border-b border-gray-50">
-        <span class="text-sm text-(--color-text-secondary)">Version</span>
-        <span class="text-sm font-mono font-medium text-(--color-text)">{APP_VERSION}</span>
-      </div>
-
-      <button
-        class="flex items-center justify-between py-2.5 w-full border-b border-gray-50 group"
-      >
-        <span class="text-sm text-(--color-text-secondary) group-hover:text-(--color-text) transition-colors">Daten exportieren</span>
-        <svg class="w-4 h-4 text-(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-
-      <a
-        href={RELEASES_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        class="flex items-center justify-between py-2.5 group"
-      >
-        <span class="text-sm text-(--color-text-secondary) group-hover:text-(--color-text) transition-colors">GitHub</span>
-        <svg class="w-4 h-4 text-(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-        </svg>
-      </a>
+    <div class="flex-1">
+      <h3 class="font-bold text-(--color-text)">Über wimg</h3>
+      <p class="text-xs text-(--color-text-secondary)">Version {APP_VERSION} &middot; FAQ &middot; GitHub</p>
     </div>
-  </div>
+    <svg class="w-4 h-4 text-(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7" />
+    </svg>
+  </a>
 
   <!-- Demo Data Section -->
   {#if demoLoaded}
@@ -590,6 +563,18 @@
           <div>
             <p class="text-sm font-medium text-(--color-text)">Schlüssel geheim halten</p>
             <p class="text-xs text-(--color-text-secondary)">Wer den Schlüssel hat, kann deine Daten sehen. Teile ihn nur mit deinen eigenen Geräten.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-(--color-text)">MCP für KI-Agenten</p>
+            <p class="text-xs text-(--color-text-secondary)">Dein Sync-Schlüssel dient auch als MCP-Zugang. Claude.ai kann deine Finanzdaten abfragen und verwalten.</p>
           </div>
         </div>
       </div>

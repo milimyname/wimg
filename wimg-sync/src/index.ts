@@ -2,10 +2,12 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 
 export { SyncRoom } from "./sync-room";
+export { McpSession } from "./mcp-session";
 
 type Bindings = {
   BUCKET: R2Bucket;
   SYNC_ROOM: DurableObjectNamespace;
+  MCP_SESSION: DurableObjectNamespace;
 };
 
 const ALLOWED_ORIGINS = [
@@ -30,8 +32,8 @@ app.use(
         return origin;
       return "";
     },
-    allowMethods: ["GET", "POST", "OPTIONS"],
-    allowHeaders: ["Content-Type"],
+    allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
   }),
 );
 
@@ -87,6 +89,60 @@ app.get("/sync/:key", async (c) => {
   return stub.fetch(
     new Request(url.toString(), {
       headers: { "X-Sync-Key": key },
+    }),
+  );
+});
+
+// --- MCP endpoint ---
+
+/** Extract Bearer token from Authorization header */
+function extractBearerToken(header: string | undefined): string | null {
+  if (!header) return null;
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match?.[1] ?? null;
+}
+
+/** Get McpSession DO stub keyed by sync key */
+function getMcpSession(env: Bindings, key: string) {
+  const id = env.MCP_SESSION.idFromName(key);
+  return env.MCP_SESSION.get(id);
+}
+
+// MCP JSON-RPC endpoint — stateless, each request is self-contained
+app.post("/mcp", async (c) => {
+  const syncKey = extractBearerToken(c.req.header("Authorization"));
+  if (!syncKey) {
+    return c.json(
+      { jsonrpc: "2.0", id: null, error: { code: -32600, message: "Missing Authorization: Bearer <sync-key>" } },
+      401,
+    );
+  }
+
+  const stub = getMcpSession(c.env, syncKey);
+  return stub.fetch(
+    new Request(c.req.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Sync-Key": syncKey,
+      },
+      body: c.req.raw.body,
+    }),
+  );
+});
+
+// Evict MCP session (clear WASM instance)
+app.delete("/mcp", async (c) => {
+  const syncKey = extractBearerToken(c.req.header("Authorization"));
+  if (!syncKey) {
+    return c.text("Missing Authorization", 401);
+  }
+
+  const stub = getMcpSession(c.env, syncKey);
+  return stub.fetch(
+    new Request(c.req.url, {
+      method: "DELETE",
+      headers: { "X-Sync-Key": syncKey },
     }),
   );
 });
