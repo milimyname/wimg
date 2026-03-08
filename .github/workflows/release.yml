@@ -182,34 +182,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check for wimg-sync changes
-        id: sync-changes
-        run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -n "$PREV_TAG" ]; then
-            DIFF_BASE="$PREV_TAG"
-          else
-            DIFF_BASE="HEAD~1"
-          fi
-          if git diff --name-only "$DIFF_BASE" HEAD | grep -q '^wimg-sync/'; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
 
       - uses: oven-sh/setup-bun@v2
-        if: steps.sync-changes.outputs.changed == 'true'
 
       - name: Install dependencies
-        if: steps.sync-changes.outputs.changed == 'true'
         working-directory: wimg-sync
         run: bun install --frozen-lockfile
 
       - name: Deploy Worker
-        if: steps.sync-changes.outputs.changed == 'true'
         working-directory: wimg-sync
         run: bunx wrangler deploy
         env:
