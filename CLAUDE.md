@@ -401,12 +401,12 @@ No AqBanking, no GPL deps, no external libraries. Reference: python-fints source
       `wimg_fints_fetch`, `wimg_fints_get_banks`
 - [x] iOS/macOS: direct FinTS from device via `std.http.Client`
 - [x] Web: stays CSV-only (browser can't do FinTS due to CORS)
-- [ ] iOS FinTSView.swift — bank picker, credentials, TAN challenge, fetch flow (not yet implemented)
+- [x] iOS FinTSView.swift — bank picker, credentials, TAN challenge, fetch flow
 - [x] Swift wrappers in LibWimg.swift + FinTS.swift models
 - [x] Integration test: MT940 → DB pipeline (476 total tests passing)
 - [ ] photoTAN challenge handling (return image data to caller)
 - [ ] FinTS product ID registration (see below)
-- [ ] Keychain storage for credentials on iOS
+- [x] Keychain storage for credentials on iOS
 
 #### FinTS Product Registration
 
@@ -493,15 +493,17 @@ Server → Client:
   { type: "ping" }                     — heartbeat (every 30s)
 ```
 
-##### E2E Encryption (planned)
+##### E2E Encryption (Done, March 2026)
 
 All data encrypted client-side before syncing. Server stores ciphertext only.
+Always-on: encryption key derived from sync key via HKDF-SHA256. No separate passphrase.
 
-1. User sets a passphrase on both devices (once)
-2. Derive encryption key with PBKDF2/Argon2
-3. `description`, `amount`, `raw` fields encrypted before POST
+1. `crypto.zig` — HKDF-SHA256 key derivation + XChaCha20-Poly1305 encrypt/decrypt
+2. Key derived from sync key automatically (122 bits of entropy from UUID v4)
+3. Entire `data` field encrypted as one blob before POST (base64-encoded)
 4. Server can't read data even if compromised
 5. Other device pulls, decrypts locally
+6. Migration: old plaintext `data` objects pass through (`typeof === 'object'`)
 
 ##### Self-hosting
 
@@ -552,8 +554,10 @@ Key: R2 has **zero egress fees**. Hibernation API means idle DOs cost nothing.
 - [x] Undo/redo sync (bumps `updated_at` in db.zig `applyUpdate`)
 - [x] LAN dev support (private network CORS, `wrangler dev --ip 0.0.0.0`)
 - [x] `crypto.randomUUID` fallback for non-secure contexts (HTTP on LAN)
-- [ ] `wimg_encrypt_field(plaintext, key)` — C ABI: AES-256 encrypt before sync
-- [ ] `wimg_decrypt_field(ciphertext, key)` — C ABI: decrypt after pull
+- [x] `crypto.zig` — HKDF-SHA256 + XChaCha20-Poly1305 (6 unit tests)
+- [x] `wimg_derive_key`, `wimg_encrypt_field`, `wimg_decrypt_field` — C ABI exports
+- [x] Web: encrypt on push, decrypt on pull + WS, automatic (no passphrase UI)
+- [x] Migration: plaintext objects pass through, encrypted strings get decrypted
 
 #### Success criteria
 
@@ -563,7 +567,7 @@ Key: R2 has **zero egress fees**. Hibernation API means idle DOs cost nothing.
 - [x] Change category on iPhone → appears on web within 1-2 seconds (real-time)
 - [x] No data loss on concurrent edits (last-write-wins per row)
 - [x] Sync key generated → paste on second device → data appears
-- [ ] E2E encryption: server stores only ciphertext, passphrase never leaves device
+- [x] E2E encryption: server stores only ciphertext, key derived from sync key
 
 ---
 
@@ -1105,7 +1109,7 @@ FinTS is intentionally iOS-only (browsers can't do FinTS due to CORS).
 | Auto-create account on import                               | ✅  | ✅                     |
 | Sync enable / link device / manual sync / copy key          | ✅  | ✅                     |
 | Real-time WebSocket sync (auto-push, live receive)          | ✅  | ✅                     |
-| Settings: encryption passphrase (placeholder)               | ✅  | ✅                     |
+| E2E encryption (automatic, derived from sync key)           | ✅  | ✅                     |
 | Settings: version + GitHub link                             | ✅  | ✅                     |
 | More page (hub to Debts, Import, Review, Settings)          | ✅  | ✅                     |
 
@@ -1122,11 +1126,11 @@ None. Web is the reference implementation.
 
 ### Platform-Specific (intentional)
 
-| Feature                              | Platform | Reason                                           |
-| ------------------------------------ | -------- | ------------------------------------------------ |
-| FinTS bank connection                | iOS only | Browsers can't do FinTS (CORS); UI not yet built |
-| PWA install + service worker updates | Web only | Native concept                                   |
-| OPFS persistence                     | Web only | iOS uses file on disk                            |
+| Feature                              | Platform | Reason                         |
+| ------------------------------------ | -------- | ------------------------------ |
+| FinTS bank connection                | iOS only | Browsers can't do FinTS (CORS) |
+| PWA install + service worker updates | Web only | Native concept                 |
+| OPFS persistence                     | Web only | iOS uses file on disk          |
 
 ---
 

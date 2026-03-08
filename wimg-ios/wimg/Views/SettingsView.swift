@@ -4,7 +4,6 @@ struct SettingsView: View {
     @State private var syncEnabled = false
     @State private var syncKey = ""
     @State private var linkInput = ""
-    @State private var passphrase = ""
     @State private var syncing = false
     @State private var syncError = ""
     @State private var syncSuccess = ""
@@ -34,9 +33,24 @@ struct SettingsView: View {
                             }
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Synchronisierung")
-                                .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundStyle(WimgTheme.text)
+                            HStack(spacing: 6) {
+                                Text("Synchronisierung")
+                                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                    .foregroundStyle(WimgTheme.text)
+                                if syncEnabled {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "lock.shield.fill")
+                                            .font(.system(size: 9))
+                                        Text("E2E-verschlüsselt")
+                                    }
+                                    .font(.system(.caption2, design: .rounded, weight: .bold))
+                                    .foregroundStyle(.green)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(.green.opacity(0.1))
+                                    .clipShape(Capsule())
+                                }
+                            }
                             Text("Daten zwischen Geräten synchronisieren")
                                 .font(.caption2)
                                 .foregroundStyle(WimgTheme.textSecondary)
@@ -165,56 +179,6 @@ struct SettingsView: View {
                                     }
                                     .disabled(syncing || linkInput.trimmingCharacters(in: .whitespaces).isEmpty)
                                 }
-                            }
-                        }
-                    }
-                }
-                .padding(20)
-                .wimgCard()
-
-                // MARK: - Encryption Section
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack(spacing: 12) {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.green.opacity(0.15))
-                            .frame(width: 40, height: 40)
-                            .overlay {
-                                Image(systemName: "lock.shield")
-                                    .foregroundStyle(.green)
-                            }
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Verschlüsselung")
-                                .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundStyle(WimgTheme.text)
-                            Text("Ende-zu-Ende-Verschlüsselung für Sync")
-                                .font(.caption2)
-                                .foregroundStyle(WimgTheme.textSecondary)
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Passphrase")
-                            .font(.caption2)
-                            .foregroundStyle(WimgTheme.textSecondary)
-
-                        HStack(spacing: 8) {
-                            SecureField("Passphrase eingeben", text: $passphrase)
-                                .font(.subheadline)
-                                .padding(10)
-                                .background(WimgTheme.bg)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                            Button {
-                                // Change passphrase — Phase 4B E2E
-                            } label: {
-                                Text("Ändern")
-                                    .font(.system(.caption, design: .rounded, weight: .bold))
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 10)
-                                    .background(WimgTheme.text)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
                         }
                     }
@@ -507,6 +471,7 @@ struct SettingsView: View {
         Task { await SyncService.shared.disconnectWebSocket() }
         SyncService.shared.clearSyncKey()
         ClaudeAPI.removeKey()
+        KeychainService.deleteAll()
         UserDefaults.standard.removeObject(forKey: "wimg_sync_last_ts")
 
         // Re-init with fresh DB
@@ -524,7 +489,7 @@ struct SettingsView: View {
         if ts == 0 { return "Noch nie" }
         let date = Date(timeIntervalSince1970: TimeInterval(ts) / 1000)
         let formatter = DateFormatter()
-f        formatter.locale = Locale(identifier: "de_DE")
+        formatter.locale = Locale(identifier: "de_DE")
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: date)

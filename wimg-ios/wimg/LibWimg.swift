@@ -1,4 +1,5 @@
 import Foundation
+import Security
 
 /// Swift wrapper over libwimg C ABI. Mirrors wimg-web/src/lib/wasm.ts.
 /// Pattern: call C function -> get pointer to length-prefixed JSON -> decode -> free pointer.
@@ -57,17 +58,23 @@ final class LibWimg {
 
     // MARK: - Transactions
 
-    static func getTransactions() -> [Transaction] {
-        getTransactionsFiltered(account: nil)
+    static func getTransactions() throws -> [Transaction] {
+        try getTransactionsFiltered(account: nil)
     }
 
-    static func getTransactionsFiltered(account: String?) -> [Transaction] {
+    static func getTransactionsFiltered(account: String?) throws -> [Transaction] {
         guard isInitialized else { return [] }
         let acctData = Array((account ?? "").utf8)
         let ptr: UnsafePointer<UInt8>? = acctData.withUnsafeBufferPointer { buf in
             wimg_get_transactions_filtered(buf.baseAddress!, UInt32(buf.count))
         }
-        guard let ptr else { return [] }
+        guard let ptr else {
+            let err = lastError()
+            if err.contains("buffer too small") {
+                throw WimgError.operationFailed("getTransactions", "Zu viele Transaktionen zum Anzeigen. Daten sind gespeichert, aber der Anzeigepuffer ist voll.")
+            }
+            return []
+        }
         defer { wimg_free(ptr, 0) }
         return (try? decodeLengthPrefixed(ptr)) ?? []
     }
@@ -269,6 +276,58 @@ final class LibWimg {
         return Int(rc)
     }
 
+    // MARK: - Crypto (E2E encryption for sync)
+
+    /// Derive a 32-byte encryption key from a sync key using HKDF-SHA256.
+    static func deriveEncryptionKey(syncKey: String) -> Data? {
+        let keyBytes = Array(syncKey.utf8)
+        let ptr = keyBytes.withUnsafeBufferPointer { buf in
+            wimg_derive_key(buf.baseAddress!, UInt32(buf.count))
+        }
+        guard let ptr else { return nil }
+        defer { wimg_free(ptr, 0) }
+        let len = UInt32(ptr[0]) | (UInt32(ptr[1]) << 8) | (UInt32(ptr[2]) << 16) | (UInt32(ptr[3]) << 24)
+        return Data(bytes: ptr.advanced(by: 4), count: Int(len))
+    }
+
+    /// Encrypt a plaintext string using XChaCha20-Poly1305. Returns base64-encoded ciphertext.
+    static func encryptField(plaintext: String, key: Data) -> String? {
+        let ptBytes = Array(plaintext.utf8)
+        var nonce = [UInt8](repeating: 0, count: 24)
+        _ = SecRandomCopyBytes(kSecRandomDefault, 24, &nonce)
+
+        let result = ptBytes.withUnsafeBufferPointer { ptBuf in
+            key.withUnsafeBytes { keyBuf in
+                nonce.withUnsafeBufferPointer { nonceBuf in
+                    wimg_encrypt_field(
+                        ptBuf.baseAddress!, UInt32(ptBuf.count),
+                        keyBuf.baseAddress!.assumingMemoryBound(to: UInt8.self),
+                        nonceBuf.baseAddress!
+                    )
+                }
+            }
+        }
+        guard let result else { return nil }
+        defer { wimg_free(result, 0) }
+        return readLengthPrefixedString(result)
+    }
+
+    /// Decrypt a base64-encoded ciphertext using XChaCha20-Poly1305. Returns plaintext string.
+    static func decryptField(ciphertext: String, key: Data) -> String? {
+        let ctBytes = Array(ciphertext.utf8)
+        let result = ctBytes.withUnsafeBufferPointer { ctBuf in
+            key.withUnsafeBytes { keyBuf in
+                wimg_decrypt_field(
+                    ctBuf.baseAddress!, UInt32(ctBuf.count),
+                    keyBuf.baseAddress!.assumingMemoryBound(to: UInt8.self)
+                )
+            }
+        }
+        guard let result else { return nil }
+        defer { wimg_free(result, 0) }
+        return readLengthPrefixedString(result)
+    }
+
     // MARK: - FinTS (native-only bank connection)
 
     static func fintsGetBanks() -> [BankInfo] {
@@ -336,6 +395,13 @@ final class LibWimg {
         if !isInitialized {
             throw WimgError.notInitialized
         }
+    }
+
+    /// Read a length-prefixed raw string (4 bytes LE length + data).
+    private static func readLengthPrefixedString(_ ptr: UnsafePointer<UInt8>) -> String? {
+        let len = UInt32(ptr[0]) | (UInt32(ptr[1]) << 8) | (UInt32(ptr[2]) << 16) | (UInt32(ptr[3]) << 24)
+        let data = Data(bytes: ptr.advanced(by: 4), count: Int(len))
+        return String(data: data, encoding: .utf8)
     }
 
     /// Read a length-prefixed string (4 bytes LE length + data) and decode as JSON.

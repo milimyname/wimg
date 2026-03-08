@@ -27,6 +27,10 @@ struct wimgApp: App {
     }
 
     init() {
+        // Migrate credentials from UserDefaults to Keychain (one-time on update)
+        SyncService.shared.migrateIfNeeded()
+        ClaudeAPI.migrateIfNeeded()
+
         do {
             try LibWimg.initialize()
         } catch {

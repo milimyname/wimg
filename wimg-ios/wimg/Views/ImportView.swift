@@ -472,7 +472,7 @@ struct ImportView: View {
         claudeResult = nil
 
         Task {
-            let transactions = LibWimg.getTransactions()
+            let transactions = (try? LibWimg.getTransactions()) ?? []
             let result = await ClaudeAPI.categorize(transactions: transactions)
             await MainActor.run {
                 claudeResult = result

@@ -7,7 +7,6 @@ struct ClaudeResult {
 
 /// Claude API integration for iOS — mirrors wimg-web/src/lib/claude.ts
 enum ClaudeAPI {
-    private static let storageKey = WimgConfig.udClaudeAPIKey
     private static let apiURL = WimgConfig.claudeAPIURL
 
     static var hasKey: Bool {
@@ -15,15 +14,23 @@ enum ClaudeAPI {
     }
 
     static func getKey() -> String? {
-        UserDefaults.standard.string(forKey: storageKey)
+        KeychainService.get(KeychainService.claudeAPIKey)
     }
 
     static func setKey(_ key: String) {
-        UserDefaults.standard.set(key, forKey: storageKey)
+        KeychainService.set(KeychainService.claudeAPIKey, value: key)
     }
 
     static func removeKey() {
-        UserDefaults.standard.removeObject(forKey: storageKey)
+        KeychainService.delete(KeychainService.claudeAPIKey)
+    }
+
+    /// Migrate API key from UserDefaults to Keychain (one-time).
+    static func migrateIfNeeded() {
+        KeychainService.migrateFromUserDefaults(
+            udKey: WimgConfig.udClaudeAPIKey,
+            account: KeychainService.claudeAPIKey
+        )
     }
 
     /// Build category list string for the prompt.

@@ -393,7 +393,16 @@ export function getTransactions(): Transaction[] {
   ensureInit();
 
   const ptr = wasm!.wimg_get_transactions();
-  if (ptr === 0) return [];
+  if (ptr === 0) {
+    const err = getLastError("getTransactions failed");
+    console.error("[wimg]", err);
+    if (err.includes("buffer too small")) {
+      throw new Error(
+        "Zu viele Transaktionen zum Anzeigen. Daten sind gespeichert, aber der Anzeigepuffer ist voll.",
+      );
+    }
+    return [];
+  }
 
   const json = readLengthPrefixedString(ptr);
   wasm!.wimg_free(ptr, 0);
@@ -604,7 +613,16 @@ export function getTransactionsFiltered(account?: string | null): Transaction[] 
   const acctEncoded = new TextEncoder().encode(account);
   const acctPtr = writeBytes(acctEncoded);
   const ptr = wasm!.wimg_get_transactions_filtered(acctPtr, acctEncoded.length);
-  if (ptr === 0) return [];
+  if (ptr === 0) {
+    const err = getLastError("getTransactionsFiltered failed");
+    console.error("[wimg]", err);
+    if (err.includes("buffer too small")) {
+      throw new Error(
+        "Zu viele Transaktionen zum Anzeigen. Daten sind gespeichert, aber der Anzeigepuffer ist voll.",
+      );
+    }
+    return [];
+  }
 
   const json = readLengthPrefixedString(ptr);
   wasm!.wimg_free(ptr, 0);

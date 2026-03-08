@@ -209,7 +209,7 @@ struct DashboardView: View {
 
     private func reload() {
         summary = LibWimg.getSummaryFiltered(year: year, month: month, account: selectedAccount)
-        let all = LibWimg.getTransactionsFiltered(account: selectedAccount)
+        let all = (try? LibWimg.getTransactionsFiltered(account: selectedAccount)) ?? []
         let monthStr = String(format: "%04d-%02d", year, month)
         recentTransactions = all
             .filter { $0.date.hasPrefix(monthStr) }

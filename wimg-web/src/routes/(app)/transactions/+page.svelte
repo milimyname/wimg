@@ -28,10 +28,16 @@
   onDestroy(() => {
     window.removeEventListener("wimg:sync-received", onSyncReceived);
   });
-  let transactions = $derived.by(() => {
+  let txResult = $derived.by(() => {
     void refreshKey;
-    return getTransactionsFiltered(accountStore.selected);
+    try {
+      return { data: getTransactionsFiltered(accountStore.selected), error: null as string | null };
+    } catch (e) {
+      return { data: [] as Transaction[], error: e instanceof Error ? e.message : "Fehler beim Laden" };
+    }
   });
+  let transactions = $derived(txResult.data);
+  let loadError = $derived(txResult.error);
   let filter = $state<Filter>("all");
   let selectedTxn = $state<Transaction | null>(null);
   let originalTxn = $state<Transaction | null>(null);
@@ -213,7 +219,11 @@
 </div>
 
 <!-- Transaction List -->
-{#if transactions.length === 0}
+{#if loadError}
+  <div class="bg-red-50 border border-red-200 rounded-2xl p-5 mb-4">
+    <p class="font-bold text-red-700 text-sm">{loadError}</p>
+  </div>
+{:else if transactions.length === 0}
   <div class="text-center py-16 text-(--color-text-secondary)">
     <p class="text-4xl mb-3">📋</p>
     <p class="font-display font-bold text-lg">Keine Transaktionen</p>

@@ -1,12 +1,11 @@
 import Foundation
 
-/// URLSession-based sync client with real-time WebSocket support.
+/// URLSession-based sync client with real-time WebSocket support + E2E encryption.
 /// Mirrors wimg-web/src/lib/sync.ts + sync-ws.svelte.ts.
 actor SyncService {
     static let shared = SyncService()
 
     private let baseURL = WimgConfig.syncBaseURL
-    private let keyDefault = WimgConfig.udSyncKey
     private let tsDefault = WimgConfig.udSyncLastTS
 
     private var wsTask: URLSessionWebSocketTask?
@@ -14,27 +13,52 @@ actor SyncService {
     private var isClosed = false
     private var pingTimer: Task<Void, Never>?
 
+    /// Cached encryption key (derived from sync key via HKDF-SHA256).
+    private var encryptionKey: Data?
+
+    /// Echo suppression: ignore WS changes for 2s after our own push.
+    private var suppressUntil: Date = .distantPast
+
+    // MARK: - Sync Key (Keychain)
+
     var syncKey: String? {
-        get { UserDefaults.standard.string(forKey: keyDefault) }
+        KeychainService.get(KeychainService.syncKey)
     }
 
     var lastSyncTimestamp: Int {
-        get { UserDefaults.standard.integer(forKey: tsDefault) }
+        UserDefaults.standard.integer(forKey: tsDefault)
     }
 
     var isEnabled: Bool { syncKey != nil }
 
     nonisolated func setSyncKey(_ key: String) {
-        UserDefaults.standard.set(key, forKey: keyDefault)
+        KeychainService.set(KeychainService.syncKey, value: key)
     }
 
     nonisolated func clearSyncKey() {
-        UserDefaults.standard.removeObject(forKey: keyDefault)
+        KeychainService.delete(KeychainService.syncKey)
         UserDefaults.standard.removeObject(forKey: tsDefault)
     }
 
     private nonisolated func setLastSync(_ ts: Int) {
         UserDefaults.standard.set(ts, forKey: tsDefault)
+    }
+
+    /// Derive and cache encryption key from the current sync key.
+    private func getEncryptionKey() -> Data? {
+        if let cached = encryptionKey { return cached }
+        guard let key = syncKey,
+              let derived = LibWimg.deriveEncryptionKey(syncKey: key) else { return nil }
+        encryptionKey = derived
+        return derived
+    }
+
+    /// Migrate sync key from UserDefaults to Keychain (one-time).
+    nonisolated func migrateIfNeeded() {
+        KeychainService.migrateFromUserDefaults(
+            udKey: WimgConfig.udSyncKey,
+            account: KeychainService.syncKey
+        )
     }
 
     // MARK: - HTTP Push/Pull
@@ -45,7 +69,9 @@ actor SyncService {
         let changes = LibWimg.getChanges(sinceMs: lastSyncTimestamp)
         if changes.isEmpty { return 0 }
 
-        let payload = LibWimg.SyncPayload(rows: changes)
+        // Encrypt rows before sending
+        let wireRows = encryptRows(changes)
+        let payload = WirePayload(rows: wireRows)
         let body = try JSONEncoder().encode(payload)
 
         var request = URLRequest(url: URL(string: "\(baseURL)/sync/\(key)")!)
@@ -61,8 +87,11 @@ actor SyncService {
         struct MergeResult: Decodable { let merged: Int }
         let result = try JSONDecoder().decode(MergeResult.self, from: data)
 
+        // Suppress echo for 2 seconds
+        suppressUntil = Date().addingTimeInterval(2)
+
         // Also broadcast via WebSocket for real-time delivery
-        pushChangesViaWS(changes)
+        pushChangesViaWS(wireRows)
 
         return result.merged
     }
@@ -78,10 +107,14 @@ actor SyncService {
             throw SyncError.pullFailed(String(data: data, encoding: .utf8) ?? "")
         }
 
-        let payload = try JSONDecoder().decode(LibWimg.SyncPayload.self, from: data)
-        if payload.rows.isEmpty { return 0 }
+        let wirePayload = try JSONDecoder().decode(WirePayload.self, from: data)
+        if wirePayload.rows.isEmpty { return 0 }
 
-        let applied = try LibWimg.applyChanges(payload.rows)
+        // Decrypt rows from server
+        let plainRows = decryptRows(wirePayload.rows)
+        if plainRows.isEmpty { return 0 }
+
+        let applied = try LibWimg.applyChanges(plainRows)
         setLastSync(Int(Date().timeIntervalSince1970 * 1000))
         return applied
     }
@@ -93,11 +126,53 @@ actor SyncService {
         return (pushed, pulled)
     }
 
+    // MARK: - E2E Encryption
+
+    /// Encrypt plaintext SyncRows for network transmission.
+    private func encryptRows(_ rows: [LibWimg.SyncRow]) -> [WireRow] {
+        guard let key = getEncryptionKey() else {
+            // No encryption key — send plaintext (shouldn't happen)
+            return rows.map { WireRow(table: $0.table, id: $0.id, data: .object($0.data), updated_at: $0.updated_at) }
+        }
+
+        return rows.map { row in
+            guard let dataJSON = try? JSONEncoder().encode(row.data),
+                  let plaintext = String(data: dataJSON, encoding: .utf8),
+                  let encrypted = LibWimg.encryptField(plaintext: plaintext, key: key)
+            else {
+                return WireRow(table: row.table, id: row.id, data: .object(row.data), updated_at: row.updated_at)
+            }
+            return WireRow(table: row.table, id: row.id, data: .encrypted(encrypted), updated_at: row.updated_at)
+        }
+    }
+
+    /// Decrypt wire-format rows to plaintext SyncRows for local DB.
+    private func decryptRows(_ rows: [WireRow]) -> [LibWimg.SyncRow] {
+        let key = getEncryptionKey()
+
+        return rows.compactMap { row in
+            switch row.data {
+            case .encrypted(let ciphertext):
+                guard let key,
+                      let plaintext = LibWimg.decryptField(ciphertext: ciphertext, key: key),
+                      let jsonData = plaintext.data(using: .utf8),
+                      let dict = try? JSONDecoder().decode([String: AnyCodable].self, from: jsonData)
+                else { return nil }
+                return LibWimg.SyncRow(table: row.table, id: row.id, data: dict, updated_at: row.updated_at)
+
+            case .object(let dict):
+                // Plaintext (migration path — old data before encryption)
+                return LibWimg.SyncRow(table: row.table, id: row.id, data: dict, updated_at: row.updated_at)
+            }
+        }
+    }
+
     // MARK: - WebSocket
 
     func connectWebSocket() {
         guard let key = syncKey else { return }
         isClosed = false
+        encryptionKey = nil // Re-derive on next use
         doConnect(key: key)
     }
 
@@ -107,6 +182,7 @@ actor SyncService {
         pingTimer = nil
         wsTask?.cancel(with: .normalClosure, reason: nil)
         wsTask = nil
+        encryptionKey = nil
     }
 
     private func doConnect(key: String) {
@@ -165,42 +241,47 @@ actor SyncService {
 
     private func handleMessage(_ text: String) {
         guard let data = text.data(using: .utf8),
-              let msg = try? JSONDecoder().decode(WSMessage.self, from: data) else {
+              let msg = try? JSONDecoder().decode(WireMessage.self, from: data) else {
             return
         }
 
         switch msg.type {
         case "changes":
-            guard let rows = msg.rows, !rows.isEmpty else { return }
-            // Apply changes to local database
-            _ = try? LibWimg.applyChanges(rows)
-            // Notify all views to refresh
+            guard let wireRows = msg.rows, !wireRows.isEmpty else { return }
+
+            // Echo suppression: ignore own changes echoed back
+            if Date() < suppressUntil { return }
+
+            // Decrypt and apply
+            let plainRows = decryptRows(wireRows)
+            guard !plainRows.isEmpty else { return }
+            _ = try? LibWimg.applyChanges(plainRows)
+
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
             }
 
         case "ping":
-            // Respond with pong
             let pong = #"{"type":"pong"}"#
             wsTask?.send(.string(pong)) { _ in }
 
         case "push_ack":
-            break // Acknowledgement of our push
+            break
 
         default:
             break
         }
     }
 
-    private func pushChangesViaWS(_ rows: [LibWimg.SyncRow]) {
+    private func pushChangesViaWS(_ wireRows: [WireRow]) {
         guard let wsTask, wsTask.state == .running else { return }
 
         struct WSPush: Encodable {
             let type = "push"
-            let rows: [LibWimg.SyncRow]
+            let rows: [WireRow]
         }
 
-        guard let data = try? JSONEncoder().encode(WSPush(rows: rows)),
+        guard let data = try? JSONEncoder().encode(WSPush(rows: wireRows)),
               let text = String(data: data, encoding: .utf8) else { return }
 
         wsTask.send(.string(text)) { error in
@@ -211,11 +292,46 @@ actor SyncService {
     }
 }
 
-// MARK: - WebSocket Message
+// MARK: - Wire Format (encrypted sync payload)
 
-private struct WSMessage: Decodable {
+/// Row data that can be either encrypted (String) or plaintext (dict).
+private enum RowData: Codable {
+    case object([String: AnyCodable])
+    case encrypted(String)
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let str = try? container.decode(String.self) {
+            self = .encrypted(str)
+        } else {
+            self = .object(try container.decode([String: AnyCodable].self))
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case .object(let dict): try container.encode(dict)
+        case .encrypted(let str): try container.encode(str)
+        }
+    }
+}
+
+/// Wire-format row: data may be encrypted string or plaintext dict.
+private struct WireRow: Codable {
+    let table: String
+    let id: String
+    let data: RowData
+    let updated_at: Int
+}
+
+private struct WirePayload: Codable {
+    let rows: [WireRow]
+}
+
+private struct WireMessage: Decodable {
     let type: String
-    let rows: [LibWimg.SyncRow]?
+    let rows: [WireRow]?
     let merged: Int?
 }
 

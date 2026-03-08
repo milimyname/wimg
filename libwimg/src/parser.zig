@@ -314,14 +314,7 @@ pub fn parseComdirectCsv(
 
 fn parseComdirectLine(line: []const u8) ?Transaction {
     var cols: [10][]const u8 = undefined;
-    var col_count: usize = 0;
-
-    var col_iter = std.mem.splitScalar(u8, line, ';');
-    while (col_iter.next()) |col| {
-        if (col_count >= 10) break;
-        cols[col_count] = col;
-        col_count += 1;
-    }
+    const col_count = splitCsvFields(line, ';', &cols);
 
     if (col_count < 5) return null;
 
@@ -486,13 +479,12 @@ fn parseScalableCapitalCsv(
 
 fn parseScalableLine(line: []const u8) ?Transaction {
     var cols: [10][]const u8 = undefined;
-    var col_count: usize = 0;
+    const col_count = splitCsvFields(line, ';', &cols);
 
-    var col_iter = std.mem.splitScalar(u8, line, ';');
-    while (col_iter.next()) |col| {
-        if (col_count >= 10) break;
-        cols[col_count] = stripQuotes(trim(col));
-        col_count += 1;
+    // stripQuotes on each field (splitCsvFields already strips outer quotes for quoted fields,
+    // but unquoted fields may still have quotes in raw Scalable exports)
+    for (cols[0..col_count]) |*col| {
+        col.* = stripQuotes(trim(col.*));
     }
 
     // Need at least: Buchungsdatum, Beschreibung/Typ, Betrag
@@ -722,6 +714,47 @@ fn stripQuotes(s: []const u8) []const u8 {
         result = result[1 .. result.len - 1];
     }
     return result;
+}
+
+/// Split a CSV line into fields, respecting quoted fields.
+/// Quoted fields may contain the separator character without splitting.
+fn splitCsvFields(line: []const u8, sep: u8, out: *[10][]const u8) usize {
+    var count: usize = 0;
+    var pos: usize = 0;
+
+    while (pos < line.len and count < 10) {
+        if (line[pos] == '"') {
+            // Quoted field — find closing quote
+            const start = pos + 1;
+            pos += 1;
+            while (pos < line.len) {
+                if (line[pos] == '"') {
+                    if (pos + 1 < line.len and line[pos + 1] == '"') {
+                        pos += 2; // escaped quote
+                    } else {
+                        break; // closing quote
+                    }
+                } else {
+                    pos += 1;
+                }
+            }
+            const end = pos;
+            out[count] = line[start..end];
+            count += 1;
+            // Skip closing quote + separator
+            if (pos < line.len) pos += 1; // skip "
+            if (pos < line.len and line[pos] == sep) pos += 1; // skip sep
+        } else {
+            // Unquoted field — find separator
+            const start = pos;
+            while (pos < line.len and line[pos] != sep) : (pos += 1) {}
+            out[count] = line[start..pos];
+            count += 1;
+            if (pos < line.len) pos += 1; // skip sep
+        }
+    }
+
+    return count;
 }
 
 fn looksLikeDateStart(line: []const u8) bool {

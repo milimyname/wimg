@@ -460,7 +460,7 @@ struct ReviewView: View {
         let py = month == 1 ? year - 1 : year
         prevSummary = LibWimg.getSummaryFiltered(year: py, month: pm, account: selectedAccount)
 
-        let all = LibWimg.getTransactionsFiltered(account: selectedAccount)
+        let all = (try? LibWimg.getTransactionsFiltered(account: selectedAccount)) ?? []
         let prefix = String(format: "%04d-%02d", year, month)
         monthTransactions = all.filter { $0.date.hasPrefix(prefix) }
     }

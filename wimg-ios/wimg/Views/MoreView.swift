@@ -6,12 +6,13 @@ struct MoreView: View {
     private let items: [(title: String, icon: String, color: Color, destination: Destination)] = [
         ("Schulden", "creditcard", .pink, .debts),
         ("Import", "square.and.arrow.down", .blue, .import_),
+        ("Bankkonto", "building.columns", .teal, .fints),
         ("Rückblick", "calendar", .purple, .review),
         ("Einstellungen", "gearshape", .orange, .settings),
     ]
 
     enum Destination {
-        case debts, import_, review, settings
+        case debts, import_, fints, review, settings
     }
 
     var body: some View {
@@ -67,6 +68,8 @@ struct MoreView: View {
             DebtsView()
         case .import_:
             ImportView()
+        case .fints:
+            FinTSView()
         case .review:
             ReviewView(selectedAccount: $selectedAccount)
         case .settings:

@@ -48,7 +48,7 @@ fn log(comptime fmt: []const u8, args: anytype) void {
 }
 
 // --- WASM memory management ---
-var wasm_buf: [8 * 1024 * 1024]u8 = undefined; // 8 MB scratch space
+var wasm_buf: [64 * 1024 * 1024]u8 = undefined; // 64 MB scratch — virtual, zero cost until touched
 var fba = std.heap.FixedBufferAllocator.init(&wasm_buf);
 
 // Global database instance
@@ -415,7 +415,7 @@ export fn wimg_get_transactions() ?[*]const u8 {
         return null;
     };
 
-    const buf_size: usize = 1024 * 1024; // 1 MB
+    const buf_size: usize = 8 * 1024 * 1024; // 8 MB
     const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
         setError("wimg_get_transactions: failed to allocate buffer", .{});
         return null;
@@ -426,7 +426,7 @@ export fn wimg_get_transactions() ?[*]const u8 {
         fba.allocator().free(buf);
         return null;
     } orelse {
-        setError("wimg_get_transactions: buffer too small", .{});
+        setError("wimg_get_transactions: buffer too small (4MB exceeded)", .{});
         fba.allocator().free(buf);
         return null;
     };
@@ -675,7 +675,7 @@ export fn wimg_get_changes(since_ts: i64) ?[*]const u8 {
         return null;
     };
 
-    const buf_size: usize = 2 * 1024 * 1024; // 2 MB
+    const buf_size: usize = 8 * 1024 * 1024; // 8 MB
     const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
         setError("wimg_get_changes: failed to allocate buffer", .{});
         return null;
@@ -834,7 +834,7 @@ export fn wimg_get_transactions_filtered(acct: [*]const u8, acct_len: u32) ?[*]c
         return null;
     };
 
-    const buf_size: usize = 1024 * 1024;
+    const buf_size: usize = 8 * 1024 * 1024; // 8 MB
     const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
         setError("wimg_get_transactions_filtered: failed to allocate buffer", .{});
         return null;
@@ -845,7 +845,7 @@ export fn wimg_get_transactions_filtered(acct: [*]const u8, acct_len: u32) ?[*]c
         fba.allocator().free(buf);
         return null;
     } orelse {
-        setError("wimg_get_transactions_filtered: buffer too small", .{});
+        setError("wimg_get_transactions_filtered: buffer too small (4MB exceeded)", .{});
         fba.allocator().free(buf);
         return null;
     };

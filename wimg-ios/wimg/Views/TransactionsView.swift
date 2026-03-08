@@ -3,6 +3,7 @@ import SwiftUI
 struct TransactionsView: View {
     @Binding var selectedAccount: String?
     @State private var transactions: [Transaction] = []
+    @State private var loadError: String?
     @State private var searchText = ""
     @State private var filter: TxFilter = .all
     @State private var selectedTransaction: Transaction?
@@ -55,7 +56,19 @@ struct TransactionsView: View {
                 .padding(.horizontal)
                 .padding(.vertical, 12)
 
-                if grouped.isEmpty {
+                if let loadError {
+                    VStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.largeTitle)
+                            .foregroundStyle(.red)
+                        Text(loadError)
+                            .font(.system(.subheadline, design: .rounded, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(32)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if grouped.isEmpty {
                     ContentUnavailableView(
                         "Keine Umsätze",
                         systemImage: "tray",
@@ -133,7 +146,13 @@ struct TransactionsView: View {
     }
 
     private func reload() {
-        transactions = LibWimg.getTransactionsFiltered(account: selectedAccount).sorted { $0.date > $1.date }
+        do {
+            loadError = nil
+            transactions = try LibWimg.getTransactionsFiltered(account: selectedAccount).sorted { $0.date > $1.date }
+        } catch {
+            loadError = error.localizedDescription
+            transactions = []
+        }
     }
 
     private func showUndo(_ message: String) {
