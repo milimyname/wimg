@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.22 (2026-03-08)
+
+- Fix minor issues in SettingsView and enhance sync functionality
+
 ## v0.4.21 (2026-03-08)
 
 - Implement catch-up mechanism for WebSocket reconnections
