@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.20 (2026-03-08)
+
+- Enhance database schema and implement soft-delete functionality
+
 ## v0.4.19 (2026-03-08)
 
 - Update wrangler.toml to rename 'new_classes' to 'new_sqlite_classes' for clarity in migration configuration
