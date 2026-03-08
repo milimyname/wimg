@@ -637,6 +637,154 @@ wimg/
 
 ---
 
+### Phase 6 — Financial Clarity
+
+**Goal:** Turn raw transaction data into actionable financial insights.
+**Time box:** TBD
+
+Everything here uses data wimg already collects — no new imports, no new data
+sources. Just smarter views on existing data.
+
+#### 6.1 — Annual Review ("Geld-Wrapped")
+
+Spotify Wrapped but for your money. End-of-year (or any-time) summary.
+
+Uses existing `summary.zig` monthly breakdowns, aggregated over 12 months.
+
+##### What it shows
+
+- Total income vs total expenses for the year
+- Savings rate (% of income saved)
+- Top 5 spending categories (with amounts + trend vs previous year)
+- Biggest single expense
+- Most frequent merchant
+- Month with highest/lowest spending
+- Category that grew the most vs previous year
+- Shareable card (optional — export as image)
+
+##### Tasks
+
+- [ ] `summary.zig` — `wimg_get_annual_summary(year)` C ABI: aggregate 12 months
+- [ ] Return JSON: `{ year, income, expenses, savings_rate, top_categories[], biggest_tx, most_frequent_merchant, best_month, worst_month, category_deltas[] }`
+- [ ] Web: Annual Review screen — card-based layout, one insight per card
+- [ ] iOS: Annual Review view — same cards, SwiftUI
+- [ ] Navigation: accessible from Review tab or Settings
+
+#### 6.2 — Net Worth Over Time
+
+One number that (hopefully) grows. Accounts + investments - debts = net worth.
+
+##### How it works
+
+```sql
+CREATE TABLE snapshots (
+  id          TEXT PRIMARY KEY,
+  date        TEXT NOT NULL,        -- ISO: 2026-03-01 (first of month)
+  net_worth   INTEGER NOT NULL,     -- cents
+  breakdown   TEXT NOT NULL,        -- JSON: { accounts: {...}, debts: {...} }
+  updated_at  INTEGER NOT NULL
+);
+```
+
+- Auto-snapshot on first app open each month (or manual trigger)
+- Net worth = sum of account balances - sum of remaining debts
+- Account balances: latest salary deposit or manual entry
+- Line chart showing net worth progression over months/years
+
+##### Tasks
+
+- [ ] `snapshots` table + schema migration in `db.zig`
+- [ ] `wimg_take_snapshot()` — C ABI: compute + store current net worth
+- [ ] `wimg_get_snapshots(since_year)` — C ABI: return snapshot history as JSON
+- [ ] Account balance tracking (derived from transactions or manual entry)
+- [ ] Web: Net Worth screen — line chart (LayerChart) + breakdown cards
+- [ ] iOS: Net Worth view — same layout, SwiftUI Charts
+- [ ] Auto-snapshot trigger on app open (once per month)
+
+#### 6.3 — Anlage N Assistant (Tax Estimation)
+
+Estimate your German tax refund from data wimg already has.
+
+"Anlage N" = the tax form for employed income (Nichtselbständige Arbeit).
+Every employed person in Germany fills this out. wimg already knows:
+
+- **Salary** — tagged income transactions (Brutto from Gehaltszettel)
+- **Werbungskosten** — transactions categorized as:
+  - Fahrtkosten (commute — distance × €0.30/km × work days)
+  - Homeoffice-Pauschale (€6/day, max €1,260/year)
+  - Arbeitsmittel (laptop, desk, monitor — already categorized)
+  - Fortbildung (courses, books, certifications)
+
+##### What it does
+
+1. Scan transactions for the tax year → sum Werbungskosten by type
+2. Compare against €1,230 Pauschbetrag (if below, no benefit)
+3. Apply simplified income tax formula → estimate refund
+4. Show: "Geschätzte Erstattung: ~€800" with breakdown
+
+##### What it does NOT do
+
+- No ELSTER submission (that's a different product)
+- No Anlage KAP, Anlage V, etc. (investments, rental income)
+- No tax advice — just estimation from your own data
+
+##### Tasks
+
+- [ ] `tax.zig` — German income tax formula (Grundtarif / Splittingtarif)
+- [ ] `wimg_estimate_tax(year)` — C ABI: scan transactions → compute Werbungskosten → estimate refund
+- [ ] Return JSON: `{ year, estimated_refund, werbungskosten_total, breakdown: { fahrtkosten, homeoffice, arbeitsmittel, fortbildung, sonstige }, pauschbetrag_used, effective_tax_rate }`
+- [ ] Web: Anlage N screen — refund hero card, Werbungskosten breakdown, tips
+- [ ] iOS: Anlage N view — same layout
+- [ ] Settings: commute distance (km) + work days/week for Fahrtkosten calculation
+- [ ] Category mapping: which wimg categories count as Werbungskosten
+
+#### 6.4 — Savings Goals
+
+Simple progress tracking toward financial goals.
+
+##### How it works
+
+```sql
+CREATE TABLE goals (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,        -- "Uzbekistan trip", "Notgroschen"
+  target      INTEGER NOT NULL,     -- cents
+  saved       INTEGER DEFAULT 0,    -- cents (manual or auto-tracked)
+  deadline    TEXT,                  -- ISO date, optional
+  icon        TEXT,                  -- emoji
+  updated_at  INTEGER NOT NULL
+);
+```
+
+- Manual: user adds money to goal ("saved €200 this month")
+- Auto (optional): track a specific account's balance as goal progress
+- Progress bar + "€X left" + "on track" / "behind" indicator
+
+##### Tasks
+
+- [ ] `goals` table + schema migration in `db.zig`
+- [ ] `wimg_get_goals`, `wimg_add_goal`, `wimg_update_goal`, `wimg_delete_goal` — C ABI
+- [ ] Web: Goals screen — progress bars, add/edit/delete, deadline countdown
+- [ ] iOS: Goals view — same layout
+- [ ] Optional: auto-link goal to account balance
+
+#### Implementation order
+
+1. **Annual Review** — lowest effort, highest "wow" factor, uses existing summary logic
+2. **Savings Goals** — simple CRUD, similar to debts (can reuse patterns)
+3. **Net Worth** — needs snapshot mechanism, but straightforward
+4. **Anlage N** — most complex (tax formulas), but highest unique value
+
+#### Success criteria
+
+- [ ] Annual review shows meaningful insights from real transaction data
+- [ ] Net worth chart shows progression over 3+ months
+- [ ] Anlage N estimation within ±€200 of actual ELSTER result
+- [ ] Savings goals with progress tracking on both platforms
+- [ ] All features work offline (computed in libwimg, no server needed)
+
+---
+
 ## Tech Stack
 
 | Layer           | Choice                               | Why                                                   |

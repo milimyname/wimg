@@ -183,12 +183,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Check for wimg-sync changes
         id: sync-changes
         run: |
-          if git diff --name-only HEAD~1 HEAD | grep -q '^wimg-sync/'; then
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            DIFF_BASE="$PREV_TAG"
+          else
+            DIFF_BASE="HEAD~1"
+          fi
+          if git diff --name-only "$DIFF_BASE" HEAD | grep -q '^wimg-sync/'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
