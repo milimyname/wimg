@@ -567,73 +567,167 @@ Key: R2 has **zero egress fees**. Hibernation API means idle DOs cost nothing.
 
 ---
 
-### Phase 5 — Intelligence + Polish
+### Phase 5 — Intelligence
 
-**Goal:** Make wimg proactively useful.
+**Goal:** Make wimg notice things before you do.
 **Time box:** TBD
 
-- [ ] Recurring payment detection (same amount + merchant ± 3 days)
-- [ ] Price increase alerts ("Netflix +3€ vs last month")
-- [ ] Annual renewals calendar (Aufenthaltstitel, insurance, etc.)
-- [ ] AI chat panel (Claude API, natural language → SQL → chart)
-- [ ] Data export — JSON dump of full database
-- [ ] Month snapshot — freeze monthly state for historical comparison
-- [ ] ETF / investment tracking (Trade Republic depot data)
-- [ ] i18n — multi-language support (see Phase 5.1 below)
+Core principle: start with pure SQL patterns → add statistics → add embeddings
+only when simpler approaches prove insufficient.
 
----
+#### 5.1 — Recurring Detection + Price Alerts
 
-### Phase 5.1 — i18n (Internationalization)
-
-**Goal:** Multi-language support with one source of truth for all platforms.
-**Time box:** TBD
-
-Using [Wuchale](https://wuchale.dev/) — compile-time i18n toolkit for JavaScript.
+Pure SQL, no ML. Immediately useful with real data.
 
 ##### How it works
 
-1. **German stays as-is** — all existing Svelte/Swift code keeps hardcoded German text
-2. **Wuchale extracts** translatable strings from Svelte components into PO files (Gettext)
-3. **Translators edit PO files** — standard format, supported by Crowdin/Weblate/POEdit
-4. **Compile-time transform** — translations become indexed arrays (smallest bundles, zero runtime overhead)
-5. **iOS gets `.strings`** — a script converts the same PO files → Apple `Localizable.strings`
-
-##### Architecture — one source of truth
-
-```
-wimg/
-├── locales/
-│   ├── de.po          ← source language (German, auto-extracted)
-│   ├── en.po          ← English translations
-│   └── tr.po          ← additional languages
-├── scripts/
-│   └── po-to-strings.sh  ← PO → iOS .strings converter
-├── wimg-web/           ← Wuchale Svelte plugin reads PO at build time
-└── wimg-ios/
-    └── wimg/*.lproj/Localizable.strings  ← generated from PO
+```sql
+CREATE TABLE recurring_patterns (
+  id          TEXT PRIMARY KEY,
+  merchant    TEXT NOT NULL,       -- normalized merchant name
+  amount      INTEGER NOT NULL,    -- cents (typical amount)
+  interval    TEXT NOT NULL,       -- 'monthly', 'weekly', 'annual', 'quarterly'
+  category    TEXT,                -- inherited from transactions
+  last_seen   TEXT NOT NULL,       -- ISO date of last occurrence
+  next_due    TEXT,                -- predicted next date
+  active      INTEGER DEFAULT 1,  -- 0 = cancelled/stopped
+  updated_at  INTEGER NOT NULL
+);
 ```
 
-- **Web**: Wuchale Svelte plugin compiles PO → indexed arrays at build time
-- **iOS**: SwiftUI `Text("German string")` auto-looks up in `.strings` files per locale
-- **Zig (libwimg)**: No changes needed — returns raw data, no UI strings
-
-##### Why Wuchale
-
-- No code changes required — extracts from existing German text
-- Compile-time = zero runtime cost, smallest bundles
-- PO is the most widely supported translation format
-- Works with Svelte 5
+- **Detection:** GROUP BY normalized merchant, find transactions with consistent
+  intervals (±3 days) and similar amounts (±10%)
+- **Price alerts:** compare current amount vs previous occurrence.
+  "Netflix: €15.99 → €17.99 (+€2.00)" flagged automatically
+- **Predictions:** calculate next expected date based on interval
 
 ##### Tasks
 
-- [ ] Install Wuchale Svelte plugin, configure in `vite.config.ts`
-- [ ] Run initial extraction → `locales/de.po` (German source)
-- [ ] Create `locales/en.po` with English translations
-- [ ] Write `scripts/po-to-strings.sh` (PO → Apple `.strings`)
-- [ ] Add `*.lproj/` directories to wimg-ios
-- [ ] Verify SwiftUI picks up translations by device locale
-- [ ] Add locale switcher in Settings (web + iOS)
-- [ ] CI: validate PO files have no missing translations
+- [ ] `recurring.zig` — detect recurring patterns from transaction history (pure SQL)
+- [ ] `wimg_detect_recurring()` — C ABI: scan transactions → populate recurring_patterns
+- [ ] `wimg_get_recurring()` — C ABI: return active recurring patterns as JSON
+- [ ] Price change detection: compare latest vs previous amount per pattern
+- [ ] Web: Recurring screen — list of detected subscriptions, price change badges
+- [ ] iOS: Recurring view — same layout
+- [ ] Run detection on import + manual refresh
+
+#### 5.2 — Notifications
+
+Without notifications, recurring detection is just a screen you forget to open.
+This makes wimg proactive.
+
+##### How it works
+
+- **iOS:** `UNUserNotificationCenter` — local push notifications
+- **Web:** PWA notifications via service worker (`self.registration.showNotification`)
+- **Triggers:**
+  - "Netflix went up €2 this month"
+  - "Aufenthaltstitel renewal due in 30 days"
+  - "Unusual spending: €500 at X (3× your average)"
+
+##### Tasks
+
+- [ ] Notification data model in libwimg (what to notify, when, dedupe)
+- [ ] `wimg_get_pending_notifications()` — C ABI: return unread notifications
+- [ ] iOS: request notification permission + schedule local notifications
+- [ ] Web: PWA notification support via service worker
+- [ ] Settings: notification preferences (on/off per type)
+
+#### 5.3 — Data Export + Month Snapshot
+
+Quick wins. Data export should've been Phase 2.
+
+##### Tasks
+
+- [ ] `wimg_export_db()` — C ABI: return full database as JSON dump
+- [ ] `wimg_take_snapshot()` — C ABI: freeze monthly state (income, expenses, by_category)
+- [ ] `snapshots` table + schema migration (reused by Phase 6 net worth)
+- [ ] Web: Export button in Settings → download JSON file
+- [ ] iOS: Export via share sheet
+- [ ] Auto-snapshot on first app open each month
+
+#### 5.4 — Annual Renewals Calendar
+
+Personal value — track yearly payments and renewal dates.
+
+```sql
+-- Extends recurring_patterns with annual items
+-- interval = 'annual', next_due = predicted renewal date
+-- Examples: Aufenthaltstitel, insurance, domain renewals, annual subscriptions
+```
+
+##### Tasks
+
+- [ ] Filter recurring_patterns where interval = 'annual'
+- [ ] Calendar view: upcoming renewals in next 30/60/90 days
+- [ ] Web: Renewals section on recurring screen (or separate screen)
+- [ ] iOS: Renewals view
+- [ ] Manual add for non-transaction renewals (Aufenthaltstitel, insurance)
+
+#### 5.5 — Smart Categorization (sqlite-vec)
+
+Only invest here if keyword rules + Claude API prove insufficient.
+sqlite-vec is a pure C extension (~300KB), compiles into libwimg.
+
+##### How it works
+
+```sql
+CREATE VIRTUAL TABLE tx_embeddings USING vec0(
+  transaction_id TEXT PRIMARY KEY,
+  embedding      FLOAT[384]       -- all-MiniLM-L6-v2 dimensions
+);
+```
+
+- Embed transaction descriptions → store in sqlite-vec
+- New transaction → find 5 nearest neighbors → inherit majority category
+- Works for merchants never seen before, as long as similar ones exist
+- Embedding model: all-MiniLM-L6-v2 (~80MB, runs on device via Core ML / WASM)
+
+##### Tasks
+
+- [ ] Compile sqlite-vec into libwimg (C extension, ~300KB)
+- [ ] `wimg_embed_transaction(id)` — generate + store embedding
+- [ ] `wimg_categorize_by_similarity(id)` — find nearest neighbors → assign category
+- [ ] Embedding model integration: Core ML on iOS, Claude API on web (or WASM model)
+- [ ] Batch embed existing transactions on first run
+- [ ] Benchmark: embedding quality vs keyword rules on real data
+
+#### 5.6 — AI Chat (later)
+
+RAG over your own transactions via sqlite-vec. Only after 5.5 is solid.
+
+##### Tasks
+
+- [ ] `wimg_search_transactions(query_embedding)` — vector search via sqlite-vec
+- [ ] Web: chat panel — Claude API with transaction context (RAG)
+- [ ] iOS: chat view — Core ML or Claude API
+- [ ] Natural language → relevant transactions → LLM summarizes
+- [ ] "What did I spend on food in January?" → embed query → find matches → answer
+
+#### Deferred
+
+- **i18n** — no users yet, one language works. Revisit when needed.
+- **ETF tracking** — only if Scalable/TR CSV has depot data worth parsing.
+
+#### Implementation order
+
+```
+1. Recurring detection + price alerts    (pure SQL, core value)
+2. Notifications (iOS + PWA)             (makes #1 proactive)
+3. Data export + month snapshot           (quick wins, foundation for Phase 6)
+4. Annual renewals calendar               (personal value, builds on #1)
+5. sqlite-vec + smart categorization     (only if keyword rules insufficient)
+6. AI chat                                (only if everything else is solid)
+```
+
+#### Success criteria
+
+- [ ] Recurring payments auto-detected from real transaction data
+- [ ] Price increase flagged: "Netflix +€2 vs last month"
+- [ ] Push notification on iOS when subscription price changes
+- [ ] Full database exportable as JSON
+- [ ] Monthly snapshots stored for historical comparison
+- [ ] Annual renewals visible with upcoming due dates
 
 ---
 

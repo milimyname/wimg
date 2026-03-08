@@ -28,7 +28,7 @@ pub const DbError = error{
     StepFailed,
 };
 
-const CURRENT_SCHEMA_VERSION = 6;
+const CURRENT_SCHEMA_VERSION = 7;
 const MAX_UNDO_ENTRIES = 50;
 
 pub const Db = struct {
@@ -67,6 +67,7 @@ pub const Db = struct {
         \\  total INTEGER NOT NULL,
         \\  paid INTEGER NOT NULL DEFAULT 0,
         \\  monthly INTEGER NOT NULL DEFAULT 0,
+        \\  deleted INTEGER NOT NULL DEFAULT 0,
         \\  updated_at INTEGER NOT NULL DEFAULT 0
         \\);
         \\CREATE TABLE IF NOT EXISTS accounts (
@@ -74,6 +75,7 @@ pub const Db = struct {
         \\  name TEXT NOT NULL,
         \\  bank TEXT NOT NULL DEFAULT '',
         \\  color TEXT NOT NULL DEFAULT '#4361ee',
+        \\  deleted INTEGER NOT NULL DEFAULT 0,
         \\  updated_at INTEGER NOT NULL DEFAULT 0
         \\);
         \\CREATE TABLE IF NOT EXISTS undo_history (
@@ -178,9 +180,15 @@ pub const Db = struct {
             }
         }
 
+        if (version < 7) {
+            // v7: soft-delete for debts and accounts (needed for sync)
+            self.exec("ALTER TABLE debts ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;") catch {};
+            self.exec("ALTER TABLE accounts ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;") catch {};
+        }
+
         // Store current version
         if (version < CURRENT_SCHEMA_VERSION) {
-            self.setMeta("schema_version", "6") catch {};
+            self.setMeta("schema_version", "7") catch {};
         }
     }
 
@@ -486,11 +494,11 @@ pub const Db = struct {
     }
 
     pub fn deleteDebt(self: *Db, id: [*]const u8, id_len: u32) DbError!void {
-        // Capture full debt row for undo history before deleting
+        // Capture full debt row for undo history before soft-deleting
         var old_buf: [512]u8 = undefined;
         const old_len = self.queryDebtJson(&old_buf, id, id_len);
 
-        const sql = "DELETE FROM debts WHERE id = ?1;";
+        const sql = "UPDATE debts SET deleted = 1, updated_at = ?2 WHERE id = ?1;";
 
         var stmt: ?*c.sqlite3_stmt = null;
         const rc0 = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
@@ -499,6 +507,7 @@ pub const Db = struct {
 
         const s = stmt.?;
         if (c.sqlite3_bind_text(s, 1, id, @intCast(id_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 2, nowMs()) != c.SQLITE_OK) return DbError.BindFailed;
         if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
 
         // Record history: DELETE on debts, old_val = full debt JSON
@@ -789,15 +798,20 @@ pub const Db = struct {
     }
 
     fn applyDelete(self: *Db, tbl: []const u8, row_id: []const u8) DbError!void {
-        if (std.mem.eql(u8, tbl, "debts")) {
-            const sql = "DELETE FROM debts WHERE id = ?1;";
-            var stmt: ?*c.sqlite3_stmt = null;
-            if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
-            defer _ = c.sqlite3_finalize(stmt.?);
-            const s = stmt.?;
-            if (c.sqlite3_bind_text(s, 1, @ptrCast(row_id.ptr), @intCast(row_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
-            if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
-        }
+        const sql: [*:0]const u8 = if (std.mem.eql(u8, tbl, "debts"))
+            "UPDATE debts SET deleted = 1, updated_at = ?2 WHERE id = ?1;"
+        else if (std.mem.eql(u8, tbl, "accounts"))
+            "UPDATE accounts SET deleted = 1, updated_at = ?2 WHERE id = ?1;"
+        else
+            return;
+
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+        const s = stmt.?;
+        if (c.sqlite3_bind_text(s, 1, @ptrCast(row_id.ptr), @intCast(row_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 2, nowMs()) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
     }
 
     fn applyInsertDebt(self: *Db, json: []const u8) DbError!void {
@@ -892,7 +906,7 @@ pub const Db = struct {
     }
 
     pub fn getDebtsJson(self: *Db, buf: [*]u8, buf_len: usize) DbError!?usize {
-        const sql = "SELECT id, name, total, paid, monthly FROM debts ORDER BY name;";
+        const sql = "SELECT id, name, total, paid, monthly FROM debts WHERE deleted = 0 ORDER BY name;";
 
         var stmt: ?*c.sqlite3_stmt = null;
         const rc = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
@@ -1079,7 +1093,7 @@ pub const Db = struct {
     }
 
     pub fn getAccountsJson(self: *Db, buf: [*]u8, buf_len: usize) DbError!?usize {
-        const sql = "SELECT id, name, bank, color FROM accounts ORDER BY name;";
+        const sql = "SELECT id, name, bank, color FROM accounts WHERE deleted = 0 ORDER BY name;";
         var stmt: ?*c.sqlite3_stmt = null;
         if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
         defer _ = c.sqlite3_finalize(stmt.?);
@@ -1175,12 +1189,13 @@ pub const Db = struct {
     }
 
     pub fn deleteAccount(self: *Db, id: [*]const u8, id_len: u32) DbError!void {
-        const sql = "DELETE FROM accounts WHERE id = ?1;";
+        const sql = "UPDATE accounts SET deleted = 1, updated_at = ?2 WHERE id = ?1;";
         var stmt: ?*c.sqlite3_stmt = null;
         if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
         defer _ = c.sqlite3_finalize(stmt.?);
         const s = stmt.?;
         if (c.sqlite3_bind_text(s, 1, id, @intCast(id_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 2, nowMs()) != c.SQLITE_OK) return DbError.BindFailed;
         if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
     }
 
@@ -1317,7 +1332,7 @@ pub const Db = struct {
 
         // --- debts ---
         {
-            const sql = "SELECT id, name, total, paid, monthly, updated_at FROM debts WHERE updated_at >= ?1;";
+            const sql = "SELECT id, name, total, paid, monthly, deleted, updated_at FROM debts WHERE updated_at >= ?1;";
             var stmt: ?*c.sqlite3_stmt = null;
             if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
             defer _ = c.sqlite3_finalize(stmt.?);
@@ -1338,7 +1353,8 @@ pub const Db = struct {
                 const total = c.sqlite3_column_int64(s, 2);
                 const paid = c.sqlite3_column_int64(s, 3);
                 const monthly = c.sqlite3_column_int64(s, 4);
-                const updated = c.sqlite3_column_int64(s, 5);
+                const deleted = c.sqlite3_column_int(s, 5);
+                const updated = c.sqlite3_column_int64(s, 6);
 
                 const p1 = "{\"table\":\"debts\",\"id\":\"";
                 if (pos + p1.len > buf_len) return null;
@@ -1370,6 +1386,12 @@ pub const Db = struct {
                 pos += p5.len;
                 pos += formatSignedInt(buf[pos..buf_len], monthly) orelse return null;
 
+                const p_del = ",\"deleted\":";
+                if (pos + p_del.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p_del.len], p_del);
+                pos += p_del.len;
+                pos += formatSignedInt(buf[pos..buf_len], @as(i64, deleted)) orelse return null;
+
                 const p_close = "},\"updated_at\":";
                 if (pos + p_close.len > buf_len) return null;
                 @memcpy(buf[pos .. pos + p_close.len], p_close);
@@ -1385,7 +1407,7 @@ pub const Db = struct {
 
         // --- accounts ---
         {
-            const sql = "SELECT id, name, bank, color, updated_at FROM accounts WHERE updated_at >= ?1;";
+            const sql = "SELECT id, name, bank, color, deleted, updated_at FROM accounts WHERE updated_at >= ?1;";
             var stmt: ?*c.sqlite3_stmt = null;
             if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
             defer _ = c.sqlite3_finalize(stmt.?);
@@ -1407,7 +1429,8 @@ pub const Db = struct {
                 const bank_len: usize = @intCast(c.sqlite3_column_bytes(s, 2));
                 const color_ptr = c.sqlite3_column_text(s, 3) orelse continue;
                 const color_len: usize = @intCast(c.sqlite3_column_bytes(s, 3));
-                const updated = c.sqlite3_column_int64(s, 4);
+                const deleted = c.sqlite3_column_int(s, 4);
+                const updated = c.sqlite3_column_int64(s, 5);
 
                 const p1 = "{\"table\":\"accounts\",\"id\":\"";
                 if (pos + p1.len > buf_len) return null;
@@ -1433,7 +1456,13 @@ pub const Db = struct {
                 pos += p4.len;
                 pos += jsonEscapeString(buf[pos..buf_len], color_ptr[0..color_len]) orelse return null;
 
-                const p_close = "\"},\"updated_at\":";
+                const p_del = "\",\"deleted\":";
+                if (pos + p_del.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p_del.len], p_del);
+                pos += p_del.len;
+                pos += formatSignedInt(buf[pos..buf_len], @as(i64, deleted)) orelse return null;
+
+                const p_close = "},\"updated_at\":";
                 if (pos + p_close.len > buf_len) return null;
                 @memcpy(buf[pos .. pos + p_close.len], p_close);
                 pos += p_close.len;
@@ -1520,13 +1549,23 @@ pub const Db = struct {
                 const local_ts = self.getRowUpdatedAt("debts", row_id);
                 if (updated_at <= local_ts) continue;
                 const data_str = self.extractDataObject(obj) orelse continue;
-                self.applyDebtChange(row_id, data_str, updated_at) catch continue;
+                const is_deleted = jsonExtractI64FromSlice(data_str, "\"deleted\"");
+                if (is_deleted != 0) {
+                    self.applySoftDelete("debts", row_id, updated_at) catch continue;
+                } else {
+                    self.applyDebtChange(row_id, data_str, updated_at) catch continue;
+                }
                 applied += 1;
             } else if (std.mem.eql(u8, table, "accounts")) {
                 const local_ts = self.getRowUpdatedAt("accounts", row_id);
                 if (updated_at <= local_ts) continue;
                 const data_str = self.extractDataObject(obj) orelse continue;
-                self.applyAccountChange(row_id, data_str, updated_at) catch continue;
+                const is_deleted = jsonExtractI64FromSlice(data_str, "\"deleted\"");
+                if (is_deleted != 0) {
+                    self.applySoftDelete("accounts", row_id, updated_at) catch continue;
+                } else {
+                    self.applyAccountChange(row_id, data_str, updated_at) catch continue;
+                }
                 applied += 1;
             }
         }
@@ -1682,6 +1721,24 @@ pub const Db = struct {
         if (c.sqlite3_bind_text(s, 3, @ptrCast(bank.ptr), @intCast(bank.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
         if (c.sqlite3_bind_text(s, 4, @ptrCast(color.ptr), @intCast(color.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
         if (c.sqlite3_bind_int64(s, 5, updated_at) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+    }
+
+    /// Apply a soft-delete from sync: mark the row as deleted locally.
+    fn applySoftDelete(self: *Db, table: []const u8, row_id: []const u8, updated_at: i64) DbError!void {
+        const sql: [*:0]const u8 = if (std.mem.eql(u8, table, "debts"))
+            "UPDATE debts SET deleted = 1, updated_at = ?2 WHERE id = ?1;"
+        else if (std.mem.eql(u8, table, "accounts"))
+            "UPDATE accounts SET deleted = 1, updated_at = ?2 WHERE id = ?1;"
+        else
+            return;
+
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+        const s = stmt.?;
+        if (c.sqlite3_bind_text(s, 1, @ptrCast(row_id.ptr), @intCast(row_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 2, updated_at) != c.SQLITE_OK) return DbError.BindFailed;
         if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
     }
 };
