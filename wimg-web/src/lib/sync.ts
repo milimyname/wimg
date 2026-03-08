@@ -1,12 +1,14 @@
 /**
  * Sync service — orchestrates push/pull with the Cloudflare Worker API.
+ * Now also manages real-time WebSocket connection for live sync.
  *
  * Dev:  http://localhost:8787 (wrangler dev)
  * Prod: https://wimg-sync.mili-my.name
  */
 
-import { getChanges, applyChanges, opfsSave, type SyncRow } from "./wasm";
+import { getChanges, applyChanges, opfsSave, setOnMutate, type SyncRow } from "./wasm";
 import { accountStore } from "./account.svelte";
+import { syncWS } from "./sync-ws.svelte";
 import { SYNC_API_URL, LS_SYNC_KEY, LS_SYNC_LAST_TS } from "./config";
 
 export function getSyncKey(): string | null {
@@ -20,6 +22,7 @@ export function setSyncKey(key: string): void {
 export function clearSyncKey(): void {
   localStorage.removeItem(LS_SYNC_KEY);
   localStorage.removeItem(LS_SYNC_LAST_TS);
+  disconnectSync();
 }
 
 export function getLastSyncTimestamp(): number {
@@ -39,6 +42,9 @@ export async function syncPush(syncKey: string): Promise<number> {
   const changes: SyncRow[] = getChanges(lastSync);
   if (changes.length === 0) return 0;
 
+  // Suppress echo: the DO will broadcast our push back to us via WS
+  syncWS.suppressEcho();
+
   const res = await fetch(`${SYNC_API_URL}/sync/${syncKey}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -51,6 +57,11 @@ export async function syncPush(syncKey: string): Promise<number> {
   }
 
   const result = (await res.json()) as { merged: number };
+
+  // DO's HTTP push handler already broadcasts to all WS clients
+  // No need to also push via WS — that would cause duplicate broadcasts
+
+  setLastSyncTimestamp(Date.now());
   return result.merged;
 }
 
@@ -70,6 +81,7 @@ export async function syncPull(syncKey: string): Promise<number> {
   await opfsSave();
   setLastSyncTimestamp(Date.now());
   accountStore.reload();
+  window.dispatchEvent(new CustomEvent("wimg:sync-received"));
   return applied;
 }
 
@@ -78,4 +90,28 @@ export async function syncFull(syncKey: string): Promise<{ pushed: number; pulle
   const pulled = await syncPull(syncKey);
   setLastSyncTimestamp(Date.now());
   return { pushed, pulled };
+}
+
+/** Connect WebSocket for real-time sync + register onMutate callback */
+export function connectSync(): void {
+  const key = getSyncKey();
+  if (!key) return;
+
+  syncWS.connect(key);
+
+  // Auto-push on every local mutation
+  setOnMutate(() => {
+    const syncKey = getSyncKey();
+    if (syncKey) {
+      syncPush(syncKey).catch((err) => {
+        console.error("[wimg-sync] Auto-push failed:", err);
+      });
+    }
+  });
+}
+
+/** Disconnect WebSocket and remove onMutate callback */
+export function disconnectSync(): void {
+  syncWS.disconnect();
+  setOnMutate(null);
 }

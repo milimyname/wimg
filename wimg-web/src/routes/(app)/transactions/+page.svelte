@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, onDestroy } from "svelte";
   import {
     getTransactionsFiltered,
     setCategory,
@@ -15,6 +16,18 @@
   type Filter = "all" | "expenses" | "income";
 
   let refreshKey = $state(0);
+
+  function onSyncReceived() {
+    refreshKey++;
+  }
+
+  onMount(() => {
+    window.addEventListener("wimg:sync-received", onSyncReceived);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener("wimg:sync-received", onSyncReceived);
+  });
   let transactions = $derived.by(() => {
     void refreshKey;
     return getTransactionsFiltered(accountStore.selected);
@@ -255,14 +268,14 @@
 {#if selectedTxn}
   {@const txn = selectedTxn}
   <BottomSheet open={showSheet} onclose={onSheetClosed}>
-    {#snippet children({ handle, content })}
+    {#snippet children({ handle, content, footer })}
       <!-- Handle -->
       <div class="pt-3 pb-2 flex justify-center shrink-0" {@attach handle}>
         <div class="w-12 h-1.5 bg-gray-200 rounded-full"></div>
       </div>
 
       <!-- Content -->
-      <div class="flex-1 min-h-0 px-6 pb-10" {@attach content}>
+      <div class="px-6" {@attach content}>
         <!-- Icon + Name -->
         <div class="flex flex-col items-center mb-8 mt-4">
           <div
@@ -314,7 +327,10 @@
             {/each}
           </div>
         </div>
+      </div>
 
+      <!-- Footer: sticky CTAs -->
+      <div {@attach footer} class="px-6 pb-8 pt-4">
         <!-- Exclude Toggle -->
         <button
           class="w-full py-3.5 rounded-2xl cursor-pointer font-bold text-sm transition-all mb-3"

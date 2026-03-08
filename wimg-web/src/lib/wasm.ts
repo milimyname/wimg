@@ -126,7 +126,22 @@ let wasm: WasmExports | null = null;
 
 const OPFS_DB_NAME = "wimg.db";
 
+// --- Mutation callback for real-time sync ---
+let onMutate: (() => void) | null = null;
+export function setOnMutate(cb: (() => void) | null): void {
+  onMutate = cb;
+}
+
 // --- Internal helpers ---
+
+function generateUUID(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 function readLengthPrefixedString(ptr: number): string {
   const mem = new Uint8Array(wasm!.memory.buffer);
@@ -365,6 +380,7 @@ export async function importCsv(csvContent: ArrayBuffer): Promise<ImportResult> 
 
   if (importResult.imported > 0) {
     await opfsSave();
+    onMutate?.();
   }
 
   return importResult;
@@ -392,6 +408,7 @@ export async function setCategory(id: string, category: number): Promise<void> {
   }
 
   await opfsSave();
+  onMutate?.();
 }
 
 export async function setExcluded(id: string, excluded: boolean): Promise<void> {
@@ -404,6 +421,7 @@ export async function setExcluded(id: string, excluded: boolean): Promise<void> 
   }
 
   await opfsSave();
+  onMutate?.();
 }
 
 export function getSummary(year: number, month: number): MonthlySummary {
@@ -443,7 +461,7 @@ export function getDebts(): Debt[] {
 export async function addDebt(name: string, total: number, monthly: number): Promise<void> {
   ensureInit();
 
-  const id = crypto.randomUUID().replace(/-/g, "").slice(0, 32);
+  const id = generateUUID().replace(/-/g, "").slice(0, 32);
   const json = JSON.stringify({ id, name, total, monthly });
   const encoded = new TextEncoder().encode(json);
   const ptr = writeBytes(encoded);
@@ -454,6 +472,7 @@ export async function addDebt(name: string, total: number, monthly: number): Pro
   }
 
   await opfsSave();
+  onMutate?.();
 }
 
 export async function markDebtPaid(id: string, amountCents: number): Promise<void> {
@@ -466,6 +485,7 @@ export async function markDebtPaid(id: string, amountCents: number): Promise<voi
   }
 
   await opfsSave();
+  onMutate?.();
 }
 
 export async function deleteDebt(id: string): Promise<void> {
@@ -478,6 +498,7 @@ export async function deleteDebt(id: string): Promise<void> {
   }
 
   await opfsSave();
+  onMutate?.();
 }
 
 export async function undo(): Promise<UndoResult | null> {
@@ -490,6 +511,7 @@ export async function undo(): Promise<UndoResult | null> {
   wasm!.wimg_free(ptr, 0);
 
   await opfsSave();
+  onMutate?.();
   return JSON.parse(json) as UndoResult;
 }
 
@@ -503,6 +525,7 @@ export async function redo(): Promise<UndoResult | null> {
   wasm!.wimg_free(ptr, 0);
 
   await opfsSave();
+  onMutate?.();
   return JSON.parse(json) as UndoResult;
 }
 
@@ -536,6 +559,7 @@ export async function addAccount(id: string, name: string, color: string): Promi
   }
 
   await opfsSave();
+  onMutate?.();
 }
 
 export async function updateAccount(id: string, name: string, color: string): Promise<void> {
@@ -551,6 +575,7 @@ export async function updateAccount(id: string, name: string, color: string): Pr
   }
 
   await opfsSave();
+  onMutate?.();
 }
 
 export async function deleteAccount(id: string): Promise<void> {
@@ -563,6 +588,7 @@ export async function deleteAccount(id: string): Promise<void> {
   }
 
   await opfsSave();
+  onMutate?.();
 }
 
 export function getTransactionsFiltered(account?: string | null): Transaction[] {

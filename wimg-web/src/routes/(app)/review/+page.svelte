@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, onDestroy } from "svelte";
   import {
     getSummaryFiltered,
     getTransactionsFiltered,
@@ -17,10 +18,27 @@
   const now = new Date();
   let year = $state(now.getFullYear());
   let month = $state(now.getMonth() + 1);
+  let refreshKey = $state(0);
 
-  let summary = $derived.by(() => getSummaryFiltered(year, month, accountStore.selected));
+  function onSyncReceived() {
+    refreshKey++;
+  }
+
+  onMount(() => {
+    window.addEventListener("wimg:sync-received", onSyncReceived);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener("wimg:sync-received", onSyncReceived);
+  });
+
+  let summary = $derived.by(() => {
+    void refreshKey;
+    return getSummaryFiltered(year, month, accountStore.selected);
+  });
 
   let prevSummary = $derived.by(() => {
+    void refreshKey;
     const pm = month === 1 ? 12 : month - 1;
     const py = month === 1 ? year - 1 : year;
     return getSummaryFiltered(py, pm, accountStore.selected);
@@ -36,6 +54,7 @@
 
   // All transactions for this month
   let monthTransactions = $derived.by(() => {
+    void refreshKey;
     return getTransactionsFiltered(accountStore.selected).filter((t: Transaction) => {
       const [ty, tm] = t.date.split("-").map(Number);
       return ty === year && tm === month;

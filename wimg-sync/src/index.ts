@@ -1,20 +1,12 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
-type Bindings = { BUCKET: R2Bucket };
+export { SyncRoom } from "./sync-room";
 
-interface Row {
-  table: string;
-  id: string;
-  data: Record<string, unknown>;
-  updated_at: number;
-}
-
-interface SyncData {
-  rows: Row[];
-}
-
-const MAX_SIZE_BYTES = 100 * 1024 * 1024; // 100MB per key
+type Bindings = {
+  BUCKET: R2Bucket;
+  SYNC_ROOM: DurableObjectNamespace;
+};
 
 const ALLOWED_ORIGINS = [
   "https://wimg.pages.dev",
@@ -30,12 +22,12 @@ app.use(
   "*",
   cors({
     origin: (origin) => {
-      // Allow requests with no Origin header (iOS native app, curl, etc.)
       if (!origin) return "*";
-      // Allow known wimg web origins
       if (ALLOWED_ORIGINS.includes(origin)) return origin;
-      // Allow any *.pages.dev subdomain for preview deployments
       if (origin.endsWith(".pages.dev")) return origin;
+      // Allow private network origins for local dev (192.168.x.x, 10.x.x, 172.16-31.x.x)
+      if (/^https?:\/\/(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.|localhost)/.test(origin))
+        return origin;
       return "";
     },
     allowMethods: ["GET", "POST", "OPTIONS"],
@@ -43,72 +35,60 @@ app.use(
   }),
 );
 
-// Push changed rows
-app.post("/sync/:key", async (c) => {
+/** Get the DO stub for a sync key */
+function getSyncRoom(env: Bindings, key: string) {
+  const id = env.SYNC_ROOM.idFromName(key);
+  return env.SYNC_ROOM.get(id);
+}
+
+// WebSocket upgrade — route to DO
+app.get("/ws/:key", async (c) => {
   const key = c.req.param("key");
-  const incoming = await c.req.json<SyncData>();
+  const upgradeHeader = c.req.header("Upgrade");
 
-  if (!incoming.rows?.length) {
-    return c.json({ error: "No rows provided" }, 400);
+  if (!upgradeHeader || upgradeHeader.toLowerCase() !== "websocket") {
+    return c.text("Expected WebSocket upgrade", 426);
   }
 
-  const objectKey = `${key}/changes.json`;
-  const existing = await c.env.BUCKET.get(objectKey);
+  const stub = getSyncRoom(c.env, key);
+  const url = new URL(c.req.url);
+  url.pathname = "/ws";
 
-  let stored: SyncData = { rows: [] };
-  if (existing) {
-    stored = await existing.json<SyncData>();
-  }
-
-  // Merge: last-write-wins per table+id
-  const index = new Map<string, number>();
-  for (let i = 0; i < stored.rows.length; i++) {
-    const row = stored.rows[i];
-    index.set(`${row.table}:${row.id}`, i);
-  }
-
-  for (const row of incoming.rows) {
-    const rowKey = `${row.table}:${row.id}`;
-    const existingIdx = index.get(rowKey);
-
-    if (existingIdx !== undefined) {
-      // Last-write-wins: only update if incoming is newer
-      if (row.updated_at > stored.rows[existingIdx].updated_at) {
-        stored.rows[existingIdx] = row;
-      }
-    } else {
-      index.set(rowKey, stored.rows.length);
-      stored.rows.push(row);
-    }
-  }
-
-  const body = JSON.stringify(stored);
-
-  if (body.length > MAX_SIZE_BYTES) {
-    return c.json({ error: "Storage limit exceeded (100MB)" }, 413);
-  }
-
-  await c.env.BUCKET.put(objectKey, body, {
-    httpMetadata: { contentType: "application/json" },
-  });
-
-  return c.json({ merged: stored.rows.length });
+  return stub.fetch(
+    new Request(url.toString(), {
+      headers: {
+        Upgrade: "websocket",
+        "X-Sync-Key": key,
+      },
+    }),
+  );
 });
 
-// Pull rows newer than `since`
+// Push changed rows — route to DO
+app.post("/sync/:key", async (c) => {
+  const key = c.req.param("key");
+  const stub = getSyncRoom(c.env, key);
+
+  return stub.fetch(
+    new Request(c.req.url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Sync-Key": key },
+      body: c.req.raw.body,
+    }),
+  );
+});
+
+// Pull rows newer than `since` — route to DO
 app.get("/sync/:key", async (c) => {
   const key = c.req.param("key");
-  const since = Number(c.req.query("since") || "0");
+  const stub = getSyncRoom(c.env, key);
 
-  const existing = await c.env.BUCKET.get(`${key}/changes.json`);
-  if (!existing) {
-    return c.json({ rows: [] });
-  }
-
-  const stored = await existing.json<SyncData>();
-  const filtered = stored.rows.filter((r) => r.updated_at > since);
-
-  return c.json({ rows: filtered });
+  const url = new URL(c.req.url);
+  return stub.fetch(
+    new Request(url.toString(), {
+      headers: { "X-Sync-Key": key },
+    }),
+  );
 });
 
 export default app;

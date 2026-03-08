@@ -3,10 +3,21 @@
  */
 
 // --- Sync API ---
-export const SYNC_API_URL =
-  typeof window !== "undefined" && window.location.hostname === "localhost"
-    ? "http://localhost:8787"
-    : "https://wimg-sync.mili-my.name";
+export const SYNC_API_URL = (() => {
+  if (typeof window === "undefined") return "https://wimg-sync.mili-my.name";
+  const host = window.location.hostname;
+  // Local dev: localhost or private network IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+  if (
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host.startsWith("192.168.") ||
+    host.startsWith("10.") ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+  ) {
+    return `http://${host}:8787`;
+  }
+  return "https://wimg-sync.mili-my.name";
+})();
 
 // --- Claude API ---
 export const CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";

@@ -736,6 +736,7 @@ pub const Db = struct {
     }
 
     fn applyUpdate(self: *Db, tbl: []const u8, row_id: []const u8, col: []const u8, val: []const u8) DbError!void {
+        const now = nowMs();
         // Validate table+column against allowlist
         if (std.mem.eql(u8, tbl, "transactions") and std.mem.eql(u8, col, "category")) {
             // Parse integer value
@@ -745,13 +746,14 @@ pub const Db = struct {
                     int_val = int_val * 10 + @as(i32, ch - '0');
                 }
             }
-            const sql = "UPDATE transactions SET category = ?1 WHERE id = ?2;";
+            const sql = "UPDATE transactions SET category = ?1, updated_at = ?3 WHERE id = ?2;";
             var stmt: ?*c.sqlite3_stmt = null;
             if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
             defer _ = c.sqlite3_finalize(stmt.?);
             const s = stmt.?;
             if (c.sqlite3_bind_int(s, 1, int_val) != c.SQLITE_OK) return DbError.BindFailed;
             if (c.sqlite3_bind_text(s, 2, @ptrCast(row_id.ptr), @intCast(row_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_int64(s, 3, now) != c.SQLITE_OK) return DbError.BindFailed;
             if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
         } else if (std.mem.eql(u8, tbl, "transactions") and std.mem.eql(u8, col, "excluded")) {
             // Parse integer value
@@ -761,24 +763,26 @@ pub const Db = struct {
                     int_val = int_val * 10 + @as(i32, ch - '0');
                 }
             }
-            const sql = "UPDATE transactions SET excluded = ?1 WHERE id = ?2;";
+            const sql = "UPDATE transactions SET excluded = ?1, updated_at = ?3 WHERE id = ?2;";
             var stmt: ?*c.sqlite3_stmt = null;
             if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
             defer _ = c.sqlite3_finalize(stmt.?);
             const s = stmt.?;
             if (c.sqlite3_bind_int(s, 1, int_val) != c.SQLITE_OK) return DbError.BindFailed;
             if (c.sqlite3_bind_text(s, 2, @ptrCast(row_id.ptr), @intCast(row_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_int64(s, 3, now) != c.SQLITE_OK) return DbError.BindFailed;
             if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
         } else if (std.mem.eql(u8, tbl, "debts") and std.mem.eql(u8, col, "paid")) {
             // Parse i64 value
             const int_val = parseI64(val);
-            const sql = "UPDATE debts SET paid = ?1 WHERE id = ?2;";
+            const sql = "UPDATE debts SET paid = ?1, updated_at = ?3 WHERE id = ?2;";
             var stmt: ?*c.sqlite3_stmt = null;
             if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
             defer _ = c.sqlite3_finalize(stmt.?);
             const s = stmt.?;
             if (c.sqlite3_bind_int64(s, 1, int_val) != c.SQLITE_OK) return DbError.BindFailed;
             if (c.sqlite3_bind_text(s, 2, @ptrCast(row_id.ptr), @intCast(row_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_int64(s, 3, now) != c.SQLITE_OK) return DbError.BindFailed;
             if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
         }
         // Unknown table/col combos are silently ignored (safe)

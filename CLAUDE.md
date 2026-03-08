@@ -68,7 +68,8 @@ One person, two devices — whoever saved last is right.
 updated_at  INTEGER NOT NULL  -- unix ms, last write wins
 ```
 
-Sync mechanism TBD (iCloud Drive file copy, or simple WebSocket relay).
+Sync via Cloudflare Durable Objects + WebSocket Hibernation API.
+Real-time: change on one device → appears on others within 1-2 seconds.
 
 ### Offline
 
@@ -400,7 +401,7 @@ No AqBanking, no GPL deps, no external libraries. Reference: python-fints source
       `wimg_fints_fetch`, `wimg_fints_get_banks`
 - [x] iOS/macOS: direct FinTS from device via `std.http.Client`
 - [x] Web: stays CSV-only (browser can't do FinTS due to CORS)
-- [x] iOS FinTSView.swift — bank picker, credentials, TAN challenge, fetch flow (7th tab)
+- [ ] iOS FinTSView.swift — bank picker, credentials, TAN challenge, fetch flow (not yet implemented)
 - [x] Swift wrappers in LibWimg.swift + FinTS.swift models
 - [x] Integration test: MT940 → DB pipeline (476 total tests passing)
 - [ ] photoTAN challenge handling (return image data to caller)
@@ -423,27 +424,46 @@ Required to connect to real German banks. Free, one-time, shared by all wimg use
 
 **Status:** Not yet submitted
 
-#### Phase 4B — Sync (Cloudflare R2 + Workers)
+#### ✅ Phase 4B — Real-time Sync (Cloudflare Durable Objects + WebSocket)
 
-Row-level sync using existing `updated_at` columns. Cloudflare Worker + R2
-as storage backend. ~50 lines of TypeScript. Last-write-wins per row. No CRDTs.
-Designed to be self-hostable: same API, swap R2 for local disk/S3/MinIO.
+**Status: Done (March 2026)**
+
+Row-level sync using existing `updated_at` columns. Cloudflare Worker + Durable
+Objects with WebSocket Hibernation API for real-time sync. Hono router for CORS
+
+- routing. Last-write-wins per row. No CRDTs.
 
 ##### How it works
 
-1. User taps "Enable Sync" in the app
-2. App generates a random UUID sync key (the key IS the identity — no signup)
-3. App sends sync requests with that key → Worker auto-creates a bucket
-4. Worker enforces 100MB per key, rejects writes past that
-5. User pastes same key on other device → synced
+1. User taps "Sync aktivieren" → info sheet explains sync → generates UUID sync key
+2. Sync key IS the identity — no signup, no auth
+3. Changes pushed via HTTP POST → Durable Object merges to R2 + broadcasts via WebSocket
+4. All connected devices receive changes in real-time (~1-2 seconds)
+5. User pastes/scans QR code on other device → full bidirectional sync
+
+##### Architecture
+
+```
+Device A (web/iOS)                    Cloudflare Edge
+  │                                     │
+  ├─ mutate locally ──────────────────► Worker receives push
+  │                                     │
+  │                                     ├─► SyncRoom DO (by sync key)
+  │                                     │     ├─ merges into R2 (LWW)
+  │                                     │     └─ broadcasts to all WS clients
+  │                                     │
+  │  ◄─── WebSocket message ──────────┘
+  │
+  └─ applyChanges() + refresh UI
+```
 
 ##### Sync triggers
 
 - **Pull on app open** — fetch changes from server since last sync
-- **Push on mutate** — after every write (category change, import, debt update)
-- No polling, no WebSockets. Open app → pull. Change something → push.
-- Latency: ~1-2 seconds per sync (Worker round-trip)
-- Realtime (optional, later): add SSE endpoint for live tailing. No vendor lock-in.
+- **Push on mutate** — auto-push after every write (category change, import, debt, undo/redo)
+- **Real-time WebSocket** — changes broadcast to all connected devices instantly
+- **Echo suppression** — 2-second window ignores own changes echoed back via WS
+- **Full sync on link** — bidirectional push + pull when linking a new device
 
 ##### Storage
 
@@ -453,20 +473,27 @@ r2://wimg-sync/{sync-key}/changes.json
 
 Each sync key = one JSON blob in R2. Worker appends rows, returns rows
 newer than `since`. 10GB free tier = ~100 users at 100MB each.
-R2 is S3-compatible — self-host with MinIO or any S3-compatible storage.
 
 ##### API
 
 ```
-POST /sync/:key          — push changed rows since last sync timestamp
+POST /sync/:key          — push changed rows (HTTP → DO merges + WS broadcast)
 GET  /sync/:key?since=ts — pull rows newer than timestamp
+GET  /ws/:key            — WebSocket upgrade → real-time sync via DO
 ```
 
-The sync key is the auth. No Bearer token, no OAuth. The key IS the credential.
-Client code (libwimg) doesn't care what's behind the API — just POSTs/GETs JSON.
-That's the portability layer for self-hosting.
+##### WebSocket Protocol
 
-##### E2E Encryption
+```
+Client → Server:
+  { type: "pong" }                     — heartbeat response
+
+Server → Client:
+  { type: "changes", rows: SyncRow[] } — incoming changes from another device
+  { type: "ping" }                     — heartbeat (every 30s)
+```
+
+##### E2E Encryption (planned)
 
 All data encrypted client-side before syncing. Server stores ciphertext only.
 
@@ -478,55 +505,64 @@ All data encrypted client-side before syncing. Server stores ciphertext only.
 
 ##### Self-hosting
 
-Same API, different backend. Replace Worker + R2 with:
+Same API, different backend. Replace Worker + DO with:
 
 ```
 Go/Zig binary (~200 lines)
 ├── POST /sync/:key        — store changes in SQLite file per key
 ├── GET  /sync/:key?since= — return changes since timestamp
-└── GET  /events/:key      — SSE stream for realtime (optional)
+└── GET  /ws/:key          — WebSocket for realtime
 ```
 
 Runs on any $4 VPS. Same client code, zero changes.
 
 ##### Cloudflare Pricing (wimg's current stack)
 
-| Service                 | Free Tier                                                     | Paid Tier ($5/mo min)                       |
-| ----------------------- | ------------------------------------------------------------- | ------------------------------------------- |
-| **Pages** (web hosting) | Unlimited sites, bandwidth, requests                          | Same + preview deployments, analytics       |
-| **Workers** (sync API)  | 100K requests/day, 10ms CPU/request                           | 10M requests/mo, 30M CPU ms/mo, +$0.30/M    |
-| **R2** (sync storage)   | 10 GB storage, 1M writes/mo, 10M reads/mo, **no egress fees** | $0.015/GB-mo, $4.50/M writes, $0.36/M reads |
-| **CDN**                 | Unlimited bandwidth, free                                     | Same                                        |
+| Service                    | Free Tier                                                     | Paid Tier ($5/mo min)                       |
+| -------------------------- | ------------------------------------------------------------- | ------------------------------------------- |
+| **Pages** (web hosting)    | Unlimited sites, bandwidth, requests                          | Same + preview deployments, analytics       |
+| **Workers** (sync API)     | 100K requests/day, 10ms CPU/request                           | 10M requests/mo, 30M CPU ms/mo, +$0.30/M    |
+| **R2** (sync storage)      | 10 GB storage, 1M writes/mo, 10M reads/mo, **no egress fees** | $0.015/GB-mo, $4.50/M writes, $0.36/M reads |
+| **Durable Objects** (sync) | 1M requests/mo, 400K GB-s included                            | +$0.15/M requests, $12.50/M GB-s            |
+| **CDN**                    | Unlimited bandwidth, free                                     | Same                                        |
 
 **wimg cost estimate:**
 
 - Current (web only, no sync): **$0/mo** — Pages free tier
-- With sync (personal use, 2 devices): **$0/mo** — well within free tier
-- With sync (100 users × 100MB): **$0/mo** — 10GB free R2 + <100K requests/day
-- With sync (1000 users × 100MB): **~$1.50/mo** — 100GB R2 storage only, no egress
+- With sync (personal use, 2 devices): **$5/mo** — Workers Paid plan required for DOs
+- With sync (100 users): **$5/mo** — well within DO free allocation (hibernation = idle DOs cost nothing)
+- With sync (1000 users): **~$6.50/mo** — minimal DO overage
 
-Key: R2 has **zero egress fees**. You never pay for downloads. Only storage + write operations.
+Key: R2 has **zero egress fees**. Hibernation API means idle DOs cost nothing.
 
 ##### Tasks
 
-- [ ] `wimg_get_changes(since_ts)` — C ABI: return rows with updated_at > ts as JSON
-- [ ] `wimg_apply_changes(json)` — C ABI: merge incoming rows (LWW per updated_at)
+- [x] `wimg_get_changes(since_ts)` — C ABI: return rows with updated_at > ts as JSON
+- [x] `wimg_apply_changes(json)` — C ABI: merge incoming rows (LWW per updated_at)
+- [x] `wimg-sync/` — Cloudflare Worker + Hono router + CORS
+- [x] `wimg-sync/src/sync-room.ts` — Durable Object with WebSocket Hibernation API
+- [x] `wimg-sync/wrangler.toml` — DO binding + migration
+- [x] Sync UI in web app: enable sync, link device, manual sync, copy key, QR code
+- [x] Sync UI in iOS app: enable sync, link device, manual sync, copy key
+- [x] Real-time WebSocket sync (web: `sync-ws.svelte.ts`, iOS: `SyncService.swift`)
+- [x] Auto-push on every local mutation (`setOnMutate` callback)
+- [x] Auto-pull on app open + WebSocket reconnect
+- [x] Sync info confirmation sheet before key generation
+- [x] Echo suppression (2-second window after push)
+- [x] Undo/redo sync (bumps `updated_at` in db.zig `applyUpdate`)
+- [x] LAN dev support (private network CORS, `wrangler dev --ip 0.0.0.0`)
+- [x] `crypto.randomUUID` fallback for non-secure contexts (HTTP on LAN)
 - [ ] `wimg_encrypt_field(plaintext, key)` — C ABI: AES-256 encrypt before sync
 - [ ] `wimg_decrypt_field(ciphertext, key)` — C ABI: decrypt after pull
-- [ ] `wimg-sync/` — Cloudflare Worker + R2 (~50 lines TypeScript)
-- [ ] Sync UI in iOS app: sync key display/paste, manual "Sync" button
-- [ ] Sync UI in web app: same config, manual sync
-- [ ] Auto-sync on app open + after mutations (optional)
-- [ ] SSE endpoint for realtime (later, if needed)
 
 #### Success criteria
 
 - [ ] Native app connects to Comdirect via FinTS, fetches real transactions
 - [ ] TAN flow works (photoTAN challenge → user enters code → transactions load)
 - [ ] Works with multiple German banks (ING, DKB, Commerzbank, etc.)
-- [ ] Change category on iPhone → appears on web after sync
-- [ ] No data loss on concurrent edits (last-write-wins per row)
-- [ ] Sync key generated → paste on second device → data appears
+- [x] Change category on iPhone → appears on web within 1-2 seconds (real-time)
+- [x] No data loss on concurrent edits (last-write-wins per row)
+- [x] Sync key generated → paste on second device → data appears
 - [ ] E2E encryption: server stores only ciphertext, passphrase never leaves device
 
 ---
@@ -603,16 +639,16 @@ wimg/
 
 ## Tech Stack
 
-| Layer           | Choice                              | Why                                                   |
-| --------------- | ----------------------------------- | ----------------------------------------------------- |
-| Shared core     | Zig 0.15.2                          | Single source of truth for all logic                  |
-| Storage         | SQLite (amalgamation, compiled in)  | Local, queryable, no deps                             |
-| Web UI          | Svelte 5 + TailwindCSS + LayerChart | Reactive, lightweight, Svelte-native charts           |
-| Web persistence | OPFS                                | SQLite-on-browser, offline, no server                 |
-| iOS UI          | SwiftUI                             | Native, links libwimg.a via C ABI                     |
-| Sync            | Last-write-wins on `updated_at`     | Simple, correct for single user                       |
-| AI              | Claude API (optional, online)       | Categorization + chat                                 |
-| FinTS           | Pure Zig (fints.zig + mt940.zig)    | No external deps, native-only, direct bank connection |
+| Layer           | Choice                               | Why                                                   |
+| --------------- | ------------------------------------ | ----------------------------------------------------- |
+| Shared core     | Zig 0.15.2                           | Single source of truth for all logic                  |
+| Storage         | SQLite (amalgamation, compiled in)   | Local, queryable, no deps                             |
+| Web UI          | Svelte 5 + TailwindCSS + LayerChart  | Reactive, lightweight, Svelte-native charts           |
+| Web persistence | OPFS                                 | SQLite-on-browser, offline, no server                 |
+| iOS UI          | SwiftUI                              | Native, links libwimg.a via C ABI                     |
+| Sync            | CF Durable Objects + WebSocket + LWW | Real-time, hibernation = cost-efficient               |
+| AI              | Claude API (optional, online)        | Categorization + chat                                 |
+| FinTS           | Pure Zig (fints.zig + mt940.zig)     | No external deps, native-only, direct bank connection |
 
 ---
 
@@ -663,6 +699,9 @@ wimg/
 │       ├── lib/
 │       │   ├── wasm.ts          TypeScript wrapper over C ABI
 │       │   ├── claude.ts        Claude API categorization (JS-side)
+│       │   ├── sync.ts          Sync orchestrator (push/pull/connect)
+│       │   ├── sync-ws.svelte.ts Real-time WebSocket sync store
+│       │   ├── config.ts        API URLs (prod/LAN detection)
 │       │   ├── version.ts       APP_VERSION + GitHub releases link
 │       │   ├── update.svelte.ts SW update detection + activation store
 │       │   └── toast.svelte.ts  Undo snackbar store
@@ -673,8 +712,10 @@ wimg/
 │       │   ├── analysis/        spending breakdown, category drill-down
 │       │   ├── debts/           progress bars, mark paid
 │       │   ├── import/          file drop, CSV preview, Claude categorization
-│       │   └── review/          monthly review, anomalies, checklist
+│       │   ├── review/          monthly review, anomalies, checklist
+│       │   └── settings/        sync config, Claude AI key, data reset
 │       └── components/
+│           ├── BottomSheet.svelte   iOS-style sheet (vaul-inspired scale effect)
 │           ├── DonutChart.svelte    LayerChart PieChart wrapper
 │           ├── MonthPicker.svelte   month/year selector
 │           ├── Toast.svelte         undo snackbar
@@ -686,7 +727,7 @@ wimg/
 │   ├── Frameworks/
 │   │   └── libwimg.xcframework  built by scripts/build-ios.sh
 │   └── wimg/
-│       ├── wimgApp.swift        entry point + TabView (7 tabs)
+│       ├── wimgApp.swift        entry point + TabView (5 tabs)
 │       ├── LibWimg.swift        Swift wrapper over C ABI (+ FinTS methods)
 │       ├── wimg-Bridging-Header.h
 │       ├── Models/
@@ -695,22 +736,28 @@ wimg/
 │       │   ├── Category.swift     WimgCategory enum (colors, icons)
 │       │   ├── Debt.swift
 │       │   └── Notifications.swift
+│       ├── Services/
+│       │   └── SyncService.swift  Sync orchestrator + WebSocket client
 │       ├── Views/
 │       │   ├── DashboardView.swift
 │       │   ├── TransactionsView.swift  + CategoryEditorSheet
 │       │   ├── AnalysisView.swift
 │       │   ├── ReviewView.swift
 │       │   ├── DebtsView.swift    + AddDebtSheet
-│       │   └── ImportView.swift
+│       │   ├── ImportView.swift
+│       │   ├── SettingsView.swift  Sync config, Claude AI key, data reset
+│       │   └── MoreView.swift     Hub to Debts, Import, Review, Settings
 │       └── Components/
 │           ├── MonthPicker.swift
 │           ├── TransactionCard.swift  + formatAmountShort()
 │           ├── CategoryBadge.swift
 │           └── UndoToast.swift
 │
-└── wimg-sync/                  Phase 4B — Cloudflare Worker + R2
-    ├── wrangler.toml             Worker config, R2 bucket binding
-    └── src/index.ts              sync API (~50 lines)
+└── wimg-sync/                  Phase 4B — Cloudflare Worker + DO
+    ├── wrangler.toml             Worker config, R2 + DO bindings
+    └── src/
+        ├── index.ts              Hono router, CORS, route to DO
+        └── sync-room.ts          Durable Object (WebSocket Hibernation API)
 ```
 
 ---
@@ -737,6 +784,9 @@ wimg/
 | Mar 2026 | `lefthook` pre-commit hooks               | Catch fmt/lint issues before commit (zig fmt, oxfmt, oxlint)                                |
 | Mar 2026 | CI tests with `-Doptimize=ReleaseFast`    | sqlite3.c compilation 72s → ~15s in CI                                                      |
 | Mar 2026 | Cloudflare R2 for sync storage (Phase 4B) | JSON blob sync, 10GB free, no vendor lock-in risk                                           |
+| Mar 2026 | Durable Objects + WebSocket Hibernation   | Real-time sync, one DO per sync key, idle DOs cost nothing                                  |
+| Mar 2026 | Hono for Worker routing                   | Lightweight, CORS middleware, clean route handlers                                          |
+| Mar 2026 | Echo suppression (2s window) over WS tags | Simple, avoids pusher applying own changes back; no session tracking needed                 |
 | Mar 2026 | Wuchale for i18n (Phase 5.1)              | Compile-time, PO files as single source for web + iOS, zero runtime cost                    |
 
 ---
@@ -766,19 +816,17 @@ FinTS is intentionally iOS-only (browsers can't do FinTS due to CORS).
 | Account management (add/edit/delete, color picker)          | ✅  | ✅ (via AccountPicker) |
 | Auto-create account on import                               | ✅  | ✅                     |
 | Sync enable / link device / manual sync / copy key          | ✅  | ✅                     |
+| Real-time WebSocket sync (auto-push, live receive)          | ✅  | ✅                     |
 | Settings: encryption passphrase (placeholder)               | ✅  | ✅                     |
 | Settings: version + GitHub link                             | ✅  | ✅                     |
 | More page (hub to Debts, Import, Review, Settings)          | ✅  | ✅                     |
 
 ### iOS Missing (needs implementation)
 
-| Feature                                              | Web | iOS | Priority |
-| ---------------------------------------------------- | --- | --- | -------- |
-| Settings: Claude AI key card (moved from Import)     | ✅  | ✅  | Done     |
-| Import: simplified Claude section (link to Settings) | ✅  | ✅  | Done     |
-| Settings: data reset ("Alle Daten löschen")          | ✅  | ✅  | Done     |
-| Settings: sync key mask/reveal toggle                | ✅  | ❌  | Low      |
-| Settings: sync QR code display                       | ✅  | ❌  | Low      |
+| Feature                               | Web | iOS | Priority |
+| ------------------------------------- | --- | --- | -------- |
+| Settings: sync key mask/reveal toggle | ✅  | ❌  | Low      |
+| Settings: sync QR code display        | ✅  | ❌  | Low      |
 
 ### Web Missing
 
@@ -786,20 +834,20 @@ None. Web is the reference implementation.
 
 ### Platform-Specific (intentional)
 
-| Feature                              | Platform | Reason                         |
-| ------------------------------------ | -------- | ------------------------------ |
-| FinTS bank connection                | iOS only | Browsers can't do FinTS (CORS) |
-| PWA install + service worker updates | Web only | Native concept                 |
-| OPFS persistence                     | Web only | iOS uses file on disk          |
+| Feature                              | Platform | Reason                                           |
+| ------------------------------------ | -------- | ------------------------------------------------ |
+| FinTS bank connection                | iOS only | Browsers can't do FinTS (CORS); UI not yet built |
+| PWA install + service worker updates | Web only | Native concept                                   |
+| OPFS persistence                     | Web only | iOS uses file on disk                            |
 
 ---
 
 ## Open Questions
 
-| Question                                        | Answer when                                       |
-| ----------------------------------------------- | ------------------------------------------------- |
-| WASM + OPFS: SharedArrayBuffer complexity?      | Resolved Phase 1 — works with credentialless COEP |
-| libwimg output buffer size — static or dynamic? | Resolved Phase 1 — static 64KB buffer             |
-| Claude API calls from Zig WASM — possible?      | Resolved Phase 2 — No, done on JS side instead    |
-| iCloud Drive sync reliability?                  | Phase 4                                           |
-| App Store distribution of wimg-ios?             | Phase 3 end                                       |
+| Question                                        | Answer when                                         |
+| ----------------------------------------------- | --------------------------------------------------- |
+| WASM + OPFS: SharedArrayBuffer complexity?      | Resolved Phase 1 — works with credentialless COEP   |
+| libwimg output buffer size — static or dynamic? | Resolved Phase 1 — static 64KB buffer               |
+| Claude API calls from Zig WASM — possible?      | Resolved Phase 2 — No, done on JS side instead      |
+| iCloud Drive sync reliability?                  | Resolved Phase 4B — used CF Durable Objects instead |
+| App Store distribution of wimg-ios?             | Phase 3 end                                         |

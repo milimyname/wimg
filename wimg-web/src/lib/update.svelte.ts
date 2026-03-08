@@ -67,7 +67,17 @@ export const updateStore = {
 
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       setLastVersion(APP_VERSION);
-      window.location.reload();
+      // Smooth fade-out before reload to avoid white flash
+      const overlay = document.createElement("div");
+      overlay.style.cssText =
+        "position:fixed;inset:0;z-index:9999;background:var(--color-bg,#faf8f4);opacity:0;transition:opacity 300ms ease";
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => {
+        overlay.style.opacity = "1";
+        overlay.addEventListener("transitionend", () => window.location.reload());
+        // Fallback if transition doesn't fire
+        setTimeout(() => window.location.reload(), 400);
+      });
     });
   },
 

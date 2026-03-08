@@ -62,7 +62,17 @@ struct ContentView: View {
                 }
         }
         .tint(WimgTheme.text)
-        .onAppear { accounts = LibWimg.getAccounts() }
+        .onAppear {
+            accounts = LibWimg.getAccounts()
+            // Connect real-time sync WebSocket + initial pull
+            Task {
+                let sync = SyncService.shared
+                if await sync.isEnabled {
+                    await sync.connectWebSocket()
+                    _ = try? await sync.pull()
+                }
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
             accounts = LibWimg.getAccounts()
         }

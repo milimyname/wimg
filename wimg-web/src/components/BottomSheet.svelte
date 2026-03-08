@@ -8,7 +8,7 @@
     onclose: () => void;
     snaps?: number[];
     children: Snippet<
-      [{ content: Attachment; handle: Attachment; height: number }]
+      [{ content: Attachment; handle: Attachment; footer: Attachment; height: number }]
     >;
   }
 
@@ -45,12 +45,11 @@
     const s = getSnaps();
     return height.current >= (s[s.length - 1] ?? 600) - 10;
   });
-
-  // Progress 0→1 as sheet rises to medium snap (drives background transform)
-  const progress = $derived.by(() => {
+  // Footer becomes visible when sheet is past 40% of the first snap
+  const footerReady = $derived.by(() => {
     const s = getSnaps();
-    const mid = s[1] ?? 300;
-    return Math.min(1, Math.max(0, height.current / mid));
+    const threshold = (s[1] ?? 300) * 0.4;
+    return height.current > threshold;
   });
 
   // Portal: move sheet container to document.body so it's outside the transformed page
@@ -63,23 +62,31 @@
     };
   });
 
-  // Drive background transform via CSS custom property
+  // Vaul-style background scale: scale wrapper + black body on open/close
   $effect(() => {
-    document.documentElement.style.setProperty(
-      "--sheet-progress",
-      String(progress),
-    );
+    if (open) {
+      const wrapper = document.querySelector(".page-shell") as HTMLElement | null;
+      if (!wrapper) return;
 
-    if (progress > 0.01) {
+      const scale = (window.innerWidth - 26) / window.innerWidth;
+
+      // Set body background to black (visible behind the scaled card)
+      const origBg = document.body.style.backgroundColor;
+      document.body.style.backgroundColor = "black";
+
+      // Apply scale + shift via CSS custom property (transition handled in app.css)
       document.documentElement.classList.add("sheet-active");
-    } else {
-      document.documentElement.classList.remove("sheet-active");
-    }
+      wrapper.style.setProperty("--sheet-scale", String(scale));
 
-    return () => {
-      document.documentElement.style.removeProperty("--sheet-progress");
-      document.documentElement.classList.remove("sheet-active");
-    };
+      return () => {
+        wrapper.style.removeProperty("--sheet-scale");
+        document.documentElement.classList.remove("sheet-active");
+        // Restore body bg after transition completes
+        setTimeout(() => {
+          document.body.style.backgroundColor = origBg || "";
+        }, 500);
+      };
+    }
   });
 
   // Open/close reactivity
@@ -163,6 +170,8 @@
   const onContent: Attachment = (node) => {
     const el = node as HTMLElement;
     contentRef = el;
+    el.style.flex = "1";
+    el.style.minHeight = "0";
     el.style.overflowY = "auto";
     el.style.overscrollBehavior = "contain";
     el.style.touchAction = "pan-y";
@@ -180,6 +189,31 @@
       handleRef = undefined;
     };
   };
+
+  let footerRef: HTMLElement | undefined = $state();
+
+  const onFooter: Attachment = (node) => {
+    const el = node as HTMLElement;
+    footerRef = el;
+    el.style.flexShrink = "0";
+    el.style.transition = "opacity 0.3s ease, transform 0.3s ease";
+    return () => {
+      footerRef = undefined;
+    };
+  };
+
+  // Animate footer in/out based on sheet height
+  $effect(() => {
+    if (footerRef) {
+      if (footerReady) {
+        footerRef.style.opacity = "1";
+        footerRef.style.transform = "translateY(0)";
+      } else {
+        footerRef.style.opacity = "0";
+        footerRef.style.transform = "translateY(12px)";
+      }
+    }
+  });
 
   // Wheel handler (desktop scroll control)
   function onWheel(e: WheelEvent) {
@@ -329,6 +363,7 @@
       {@render children({
         content: onContent,
         handle: onHandle,
+        footer: onFooter,
         height: height.current,
       })}
     </div>

@@ -13,6 +13,8 @@
     syncPush,
     isSyncEnabled,
     getLastSyncTimestamp,
+    connectSync,
+    disconnectSync,
   } from "$lib/sync";
 
   let syncEnabled = $state(false);
@@ -41,6 +43,10 @@
     syncKey ? syncKey.slice(0, 4) + "••••-••••-••••-" + syncKey.slice(-4) : "",
   );
 
+  let pendingSyncKey = $state("");
+  let showLinkConfirm = $state(false);
+  let showSyncInfo = $state(false);
+
   onMount(async () => {
     const stored = getSyncKey();
     if (stored) {
@@ -58,10 +64,20 @@
     } catch {
       hasLocalData = false;
     }
+
+    // Handle ?sync=<key> from QR code scan
+    const params = new URLSearchParams(window.location.search);
+    const syncParam = params.get("sync");
+    if (syncParam && !syncEnabled) {
+      pendingSyncKey = syncParam;
+      showLinkConfirm = true;
+      // Clean URL without reload
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   });
 
   async function handleEnableSync() {
-    const key = crypto.randomUUID();
+    const key = generateUUID();
     setSyncKey(key);
     syncKey = key;
     syncEnabled = true;
@@ -71,8 +87,9 @@
 
     syncing = true;
     try {
-      await syncPush(key);
-      syncSuccess = "Sync aktiviert & Daten hochgeladen";
+      const { pushed, pulled } = await syncFull(key);
+      connectSync();
+      syncSuccess = `Sync aktiviert (${pushed} gesendet, ${pulled} empfangen)`;
       lastSync = getLastSyncTimestamp();
     } catch (e) {
       syncError = e instanceof Error ? e.message : "Sync fehlgeschlagen";
@@ -110,8 +127,11 @@
     syncSuccess = "";
 
     try {
+      // Full sync: pull remote data first, then push local data
       const pulled = await syncPull(key);
-      syncSuccess = `Verknüpft & ${pulled} Einträge empfangen`;
+      const pushed = await syncPush(key);
+      connectSync();
+      syncSuccess = `Verknüpft (${pulled} empfangen, ${pushed} gesendet)`;
       lastSync = getLastSyncTimestamp();
     } catch (e) {
       syncError = e instanceof Error ? e.message : "Verknüpfung fehlgeschlagen";
@@ -127,8 +147,16 @@
   }
 
   function handleShowQR() {
-    qrSvg = generateQRSvg(syncKey);
+    const syncUrl = `${window.location.origin}/settings?sync=${syncKey}`;
+    qrSvg = generateQRSvg(syncUrl);
     showQR = true;
+  }
+
+  async function handleConfirmLink() {
+    showLinkConfirm = false;
+    linkInput = pendingSyncKey;
+    pendingSyncKey = "";
+    await handleLink();
   }
 
   async function handleResetData() {
@@ -163,6 +191,16 @@
     claudeApiKey = "";
     claudeHasKey = false;
     claudeShowInput = false;
+  }
+
+  function generateUUID(): string {
+    if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+    // Fallback for non-secure contexts (e.g. http://192.168.x.x)
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // v4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant
+    const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
 
   function formatLastSync(ts: number): string {
@@ -215,11 +253,10 @@
 
     {#if !syncEnabled}
       <button
-        onclick={handleEnableSync}
-        disabled={syncing}
-        class="w-full py-3 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50"
+        onclick={() => (showSyncInfo = true)}
+        class="w-full py-3 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98]"
       >
-        {syncing ? "Aktiviere..." : "Sync aktivieren"}
+        Sync aktivieren
       </button>
     {:else}
       <div class="space-y-3">
@@ -512,28 +549,114 @@
   {/if}
 </section>
 
-<!-- QR Code Sheet -->
-<BottomSheet open={showQR} onclose={() => (showQR = false)} snaps={[0.52]}>
-  {#snippet children({ handle, content })}
+<!-- Sync Info / Confirmation Sheet -->
+<BottomSheet open={showSyncInfo} onclose={() => (showSyncInfo = false)} snaps={[0.62]}>
+  {#snippet children({ handle, content, footer })}
     <div {@attach handle} class="flex justify-center pt-3 pb-2">
       <div class="w-10 h-1 rounded-full bg-gray-200"></div>
     </div>
 
-    <div {@attach content} class="px-6 pb-8 flex flex-col items-center">
+    <div {@attach content} class="px-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-display font-extrabold text-lg text-(--color-text)">Synchronisierung</h3>
+          <p class="text-sm text-(--color-text-secondary)">Daten zwischen Geräten teilen</p>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-(--color-text)">Echtzeit-Synchronisierung</p>
+            <p class="text-xs text-(--color-text-secondary)">Änderungen erscheinen sofort auf allen verbundenen Geräten.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-(--color-text)">Ein Schlüssel, kein Konto</p>
+            <p class="text-xs text-(--color-text-secondary)">Ein zufälliger Sync-Schlüssel wird erstellt. Kein Konto, kein Passwort.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-(--color-text)">Schlüssel geheim halten</p>
+            <p class="text-xs text-(--color-text-secondary)">Wer den Schlüssel hat, kann deine Daten sehen. Teile ihn nur mit deinen eigenen Geräten.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div {@attach footer} class="px-6 pb-8 pt-4">
+      <button
+        onclick={() => { showSyncInfo = false; handleEnableSync(); }}
+        disabled={syncing}
+        class="w-full py-3.5 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50 mb-2"
+      >
+        {#if syncing}
+          <span class="inline-flex items-center gap-2">
+            <span class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+            Aktiviere...
+          </span>
+        {:else}
+          Sync aktivieren
+        {/if}
+      </button>
+      <button
+        onclick={() => (showSyncInfo = false)}
+        class="w-full py-3 rounded-2xl text-sm font-medium text-(--color-text-secondary) hover:bg-(--color-bg) transition-colors"
+      >
+        Abbrechen
+      </button>
+    </div>
+  {/snippet}
+</BottomSheet>
+
+<!-- QR Code Sheet -->
+<BottomSheet open={showQR} onclose={() => (showQR = false)} snaps={[0.62]}>
+  {#snippet children({ handle, content, footer })}
+    <div {@attach handle} class="flex justify-center pt-3 pb-2">
+      <div class="w-10 h-1 rounded-full bg-gray-200"></div>
+    </div>
+
+    <div {@attach content} class="px-6 flex flex-col items-center">
       <h3 class="font-bold text-lg text-(--color-text) mb-1">Sync-Schlüssel</h3>
-      <p class="text-xs text-(--color-text-secondary) mb-5">Scanne diesen Code auf dem anderen Gerät</p>
+      <p class="text-xs text-(--color-text-secondary) mb-6">Scanne diesen Code auf dem anderen Gerät</p>
 
       {#if qrSvg}
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 w-64 h-64">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 w-64 h-64">
           {@html qrSvg}
         </div>
       {/if}
 
-      <p class="mt-4 text-xs font-mono text-(--color-text-secondary) text-center break-all px-4">{syncKey}</p>
+      <p class="mt-5 text-xs font-mono text-(--color-text-secondary) text-center break-all px-4">{syncKey}</p>
+    </div>
 
+    <div {@attach footer} class="px-6 pb-8 pt-4">
       <button
         onclick={() => (showQR = false)}
-        class="mt-5 w-full py-3 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98]"
+        class="w-full py-3.5 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98]"
       >
         Fertig
       </button>
@@ -541,14 +664,51 @@
   {/snippet}
 </BottomSheet>
 
-<!-- Delete Confirmation Sheet -->
-<BottomSheet open={confirmReset} onclose={() => (confirmReset = false)} snaps={[0.38]}>
-  {#snippet children({ handle, content })}
+<!-- QR Link Confirmation Sheet -->
+<BottomSheet open={showLinkConfirm} onclose={() => { showLinkConfirm = false; pendingSyncKey = ""; }} snaps={[0.38]}>
+  {#snippet children({ handle, content, footer })}
     <div {@attach handle} class="flex justify-center pt-3 pb-2">
       <div class="w-10 h-1 rounded-full bg-gray-200"></div>
     </div>
 
-    <div {@attach content} class="px-6 pb-8 flex flex-col items-center">
+    <div {@attach content} class="px-6 flex flex-col items-center">
+      <div class="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mb-4">
+        <svg class="w-7 h-7 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        </svg>
+      </div>
+      <h3 class="font-bold text-lg text-(--color-text) mb-1">Gerät verknüpfen?</h3>
+      <p class="text-sm text-(--color-text-secondary) text-center mb-2">Dieses Gerät mit folgendem Sync-Schlüssel verbinden:</p>
+      <p class="text-xs font-mono text-(--color-text-secondary) text-center break-all bg-gray-50 rounded-xl px-4 py-2 w-full">
+        {pendingSyncKey.slice(0, 8)}••••{pendingSyncKey.slice(-4)}
+      </p>
+    </div>
+
+    <div {@attach footer} class="px-6 pb-8 pt-4">
+      <button
+        onclick={handleConfirmLink}
+        class="w-full py-3.5 rounded-2xl bg-(--color-text) text-white font-bold text-sm mb-3 transition-transform active:scale-[0.98]"
+      >
+        Verknüpfen
+      </button>
+      <button
+        onclick={() => { showLinkConfirm = false; pendingSyncKey = ""; }}
+        class="w-full py-3 rounded-2xl text-(--color-text-secondary) font-medium text-sm transition-colors hover:text-(--color-text)"
+      >
+        Abbrechen
+      </button>
+    </div>
+  {/snippet}
+</BottomSheet>
+
+<!-- Delete Confirmation Sheet -->
+<BottomSheet open={confirmReset} onclose={() => (confirmReset = false)} snaps={[0.48]}>
+  {#snippet children({ handle, content, footer })}
+    <div {@attach handle} class="flex justify-center pt-3 pb-2">
+      <div class="w-10 h-1 rounded-full bg-gray-200"></div>
+    </div>
+
+    <div {@attach content} class="px-6 flex flex-col items-center">
       <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4 mt-2">
         <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -556,10 +716,12 @@
       </div>
 
       <h3 class="font-display font-extrabold text-xl text-(--color-text) mb-1">Alle Daten löschen?</h3>
-      <p class="text-sm text-(--color-text-secondary) text-center mb-6">
+      <p class="text-sm text-(--color-text-secondary) text-center">
         Alle lokalen Daten werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.
       </p>
+    </div>
 
+    <div {@attach footer} class="px-6 pb-8 pt-4">
       <button
         onclick={handleResetData}
         disabled={resetting}

@@ -446,6 +446,7 @@ struct SettingsView: View {
 
         do {
             _ = try await SyncService.shared.push()
+            await SyncService.shared.connectWebSocket()
             syncSuccess = "Sync aktiviert & Daten hochgeladen"
             lastSync = await SyncService.shared.lastSyncTimestamp
         } catch {
@@ -483,8 +484,12 @@ struct SettingsView: View {
 
         do {
             let pulled = try await SyncService.shared.pull()
+            await SyncService.shared.connectWebSocket()
             syncSuccess = "Verknüpft & \(pulled) Einträge empfangen"
             lastSync = await SyncService.shared.lastSyncTimestamp
+            if pulled > 0 {
+                NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+            }
         } catch {
             syncError = error.localizedDescription
         }
@@ -499,6 +504,7 @@ struct SettingsView: View {
             .appendingPathComponent("wimg.db").path
         try? FileManager.default.removeItem(atPath: dbPath)
 
+        Task { await SyncService.shared.disconnectWebSocket() }
         SyncService.shared.clearSyncKey()
         ClaudeAPI.removeKey()
         UserDefaults.standard.removeObject(forKey: "wimg_sync_last_ts")

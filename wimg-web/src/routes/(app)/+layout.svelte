@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import { init } from "$lib/wasm";
   import { accountStore } from "$lib/account.svelte";
   import { updateStore } from "$lib/update.svelte";
   import { dropStore } from "$lib/drop.svelte";
+  import { isSyncEnabled, syncPull, getSyncKey, connectSync, disconnectSync } from "$lib/sync";
   import BottomNav from "../../components/BottomNav.svelte";
   import Toast from "../../components/Toast.svelte";
   import UpdateBanner from "../../components/UpdateBanner.svelte";
@@ -59,6 +60,21 @@
     }
 
     updateStore.init();
+
+    // Real-time sync: connect WebSocket + initial pull
+    if (isSyncEnabled()) {
+      connectSync();
+      const key = getSyncKey();
+      if (key) {
+        syncPull(key).catch((err) => {
+          console.error("[wimg-sync] Initial pull failed:", err);
+        });
+      }
+    }
+  });
+
+  onDestroy(() => {
+    disconnectSync();
   });
 </script>
 

@@ -38,29 +38,23 @@ body {
   font-family: "Nunito", "Inter", sans-serif;
 }
 
-/* iOS-style stacked card effect when BottomSheet is open */
-html.sheet-active {
-  background: #000;
-}
-
-html.sheet-active body {
-  background: transparent;
-}
-
 /* Front card: the actual page content */
 .page-shell {
   position: relative;
   z-index: 1;
-  transform-origin: top center;
+  /* Transition always active so close animation plays back */
+  transform-origin: top;
+  transition-property: transform, border-radius;
+  transition-duration: 0.5s;
+  transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* Only apply transform when sheet is open — keeps position:fixed working normally */
+/* iOS-style stacked card effect (vaul approach) */
 html.sheet-active .page-shell {
-  --_p: var(--sheet-progress, 0);
-  transform: scale(calc(1 - var(--_p) * 0.06)) translateY(calc(var(--_p) * 14px));
-  border-radius: calc(var(--_p) * 24px);
-  overflow: clip;
-  will-change: transform;
+  border-radius: 8px;
+  overflow: hidden;
+  transform: scale(var(--sheet-scale, 1))
+    translate3d(0, calc(env(safe-area-inset-top, 0px) + 14px), 0);
 }
 
 .lc-root-container {

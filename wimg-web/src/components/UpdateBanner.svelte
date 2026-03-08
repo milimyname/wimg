@@ -1,15 +1,27 @@
 <script lang="ts">
   import { updateStore } from "$lib/update.svelte";
   import BottomSheet from "./BottomSheet.svelte";
+
+  let updating = $state(false);
+
+  function handleUpdate() {
+    updating = true;
+    updateStore.activateUpdate();
+  }
+
+  function handleBreakingUpdate() {
+    updating = true;
+    updateStore.clearDataAndUpdate();
+  }
 </script>
 
 <BottomSheet open={updateStore.sheetOpen} onclose={() => (updateStore.sheetOpen = false)} snaps={[0.42]}>
-  {#snippet children({ handle, content })}
+  {#snippet children({ handle, content, footer })}
     <div {@attach handle} class="flex justify-center pt-3 pb-2">
       <div class="w-10 h-1 rounded-full bg-gray-200"></div>
     </div>
 
-    <div {@attach content} class="px-6 pb-8">
+    <div {@attach content} class="px-6">
       <div class="flex items-center gap-3 mb-5">
         <div class="w-11 h-11 rounded-2xl bg-(--color-accent) flex items-center justify-center shrink-0">
           <svg class="w-6 h-6 text-(--color-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -26,7 +38,7 @@
         href={updateStore.releasesUrl}
         target="_blank"
         rel="noopener noreferrer"
-        class="inline-flex items-center gap-1.5 text-sm font-medium text-(--color-text-secondary) hover:text-(--color-text) transition-colors mb-5"
+        class="inline-flex items-center gap-1.5 text-sm font-medium text-(--color-text-secondary) hover:text-(--color-text) transition-colors"
       >
         Was ist neu?
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,36 +47,56 @@
       </a>
 
       {#if updateStore.hasBreaking}
-        <div class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700 mb-5">
+        <div class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700 mt-5">
           Diese Version enthält Datenbank-Änderungen. Lokale Daten müssen zurückgesetzt werden.
         </div>
       {/if}
+    </div>
 
+    <div {@attach footer} class="px-6 pb-8 pt-4">
       <div class="flex gap-2.5">
         {#if updateStore.hasBreaking}
           <button
-            onclick={() => updateStore.clearDataAndUpdate()}
-            class="flex-1 py-3 rounded-xl bg-amber-500 text-sm font-bold text-white transition-transform active:scale-[0.98]"
+            onclick={handleBreakingUpdate}
+            disabled={updating}
+            class="flex-1 py-3 rounded-xl bg-amber-500 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-60"
           >
-            Daten löschen & aktualisieren
+            {#if updating}
+              <span class="inline-flex items-center gap-2">
+                <span class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+                Aktualisiere...
+              </span>
+            {:else}
+              Daten löschen & aktualisieren
+            {/if}
           </button>
         {:else}
           <button
-            onclick={() => updateStore.activateUpdate()}
-            class="flex-1 py-3 rounded-xl bg-(--color-text) text-sm font-bold text-white transition-transform active:scale-[0.98]"
+            onclick={handleUpdate}
+            disabled={updating}
+            class="flex-1 py-3 rounded-xl bg-(--color-text) text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-60"
           >
-            Jetzt aktualisieren
+            {#if updating}
+              <span class="inline-flex items-center gap-2">
+                <span class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+                Aktualisiere...
+              </span>
+            {:else}
+              Jetzt aktualisieren
+            {/if}
           </button>
         {/if}
-        <button
-          onclick={() => {
-            updateStore.sheetOpen = false;
-            updateStore.dismiss();
-          }}
-          class="py-3 px-5 rounded-xl text-sm font-medium text-(--color-text-secondary) hover:bg-(--color-bg) transition-colors"
-        >
-          Später
-        </button>
+        {#if !updating}
+          <button
+            onclick={() => {
+              updateStore.sheetOpen = false;
+              updateStore.dismiss();
+            }}
+            class="py-3 px-5 rounded-xl text-sm font-medium text-(--color-text-secondary) hover:bg-(--color-bg) transition-colors"
+          >
+            Später
+          </button>
+        {/if}
       </div>
     </div>
   {/snippet}

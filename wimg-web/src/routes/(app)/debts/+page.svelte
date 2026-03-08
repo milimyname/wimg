@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, onDestroy } from "svelte";
   import {
     getDebts,
     addDebt,
@@ -11,6 +12,18 @@
   import { toastStore } from "$lib/toast.svelte";
 
   let debts = $state<Debt[]>(getDebts());
+
+  function onSyncReceived() {
+    debts = getDebts();
+  }
+
+  onMount(() => {
+    window.addEventListener("wimg:sync-received", onSyncReceived);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener("wimg:sync-received", onSyncReceived);
+  });
   let showForm = $state(false);
   let error = $state<string | null>(null);
   let deletingId = $state<string | null>(null);
