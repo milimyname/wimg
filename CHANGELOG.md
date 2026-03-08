@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.3 (2026-03-08)
+
+- Fix migration configuration in wrangler.toml to use new_sqlite_classes for McpSession
+
 ## v0.5.2 (2026-03-08)
 
 - Implement feature flags for enhanced user control
