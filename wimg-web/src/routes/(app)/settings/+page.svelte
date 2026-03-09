@@ -337,6 +337,8 @@
                 id="sync-key-input"
                 type="text"
                 readonly
+                autocomplete="off"
+                data-1p-ignore
                 value={showKey ? syncKey : maskedKey}
                 class="w-full bg-(--color-bg) rounded-xl px-3 py-2.5 pr-10 text-xs font-mono text-(--color-text) outline-none truncate"
               />
@@ -418,6 +420,8 @@
               id="link-input"
               type="text"
               bind:value={linkInput}
+              autocomplete="off"
+              data-1p-ignore
               placeholder="Sync-Schlüssel einfügen"
               class="flex-1 bg-(--color-bg) rounded-xl px-3 py-2.5 text-sm text-(--color-text) placeholder:text-(--color-text-secondary)/50 outline-none"
             />
@@ -463,6 +467,8 @@
             id="claude-key-input"
             type="password"
             bind:value={claudeApiKey}
+            autocomplete="off"
+            data-1p-ignore
             placeholder="sk-ant-..."
             class="flex-1 bg-(--color-bg) rounded-xl px-3 py-2.5 text-sm text-(--color-text) placeholder:text-(--color-text-secondary)/50 outline-none"
           />

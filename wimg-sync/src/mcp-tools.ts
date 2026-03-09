@@ -14,25 +14,6 @@ function categoryName(categories: Record<number, { name: string }>, id: number):
   return categories[id]?.name ?? `Unknown (${id})`;
 }
 
-// Valid category names for write operations
-const CATEGORY_NAMES = [
-  "Food",
-  "Transport",
-  "Housing",
-  "Entertainment",
-  "Shopping",
-  "Health",
-  "Education",
-  "Travel",
-  "Subscriptions",
-  "Insurance",
-  "Savings",
-  "Income",
-  "Transfer",
-  "Cash",
-  "Other",
-] as const;
-
 interface ToolDef {
   name: string;
   description: string;
@@ -269,8 +250,8 @@ export function getToolDefinitions(): ToolDef[] {
       schema: {
         transaction_id: z.string().describe("Transaction ID"),
         category: z
-          .enum(CATEGORY_NAMES)
-          .describe("Category name"),
+          .string()
+          .describe("Category name (e.g. 'Food', 'Lebensmittel', 'Transport', 'Shopping', 'Subscriptions')"),
       },
       handler: (args, wasm) => {
         const catName = (args.category as string).toLowerCase();
@@ -291,18 +272,37 @@ export function getToolDefinitions(): ToolDef[] {
         "Set categories for multiple transactions at once. Much faster than calling set_category individually. Use get_transactions or search_transactions first to find transaction IDs.",
       schema: {
         updates: z
-          .array(
-            z.object({
-              transaction_id: z.string().describe("Transaction ID"),
-              category: z.enum(CATEGORY_NAMES).describe("Category name"),
-            }),
-          )
-          .min(1)
-          .max(100)
-          .describe("Array of {transaction_id, category} pairs (max 100)"),
+          .union([
+            z.array(
+              z.object({
+                transaction_id: z.string().describe("Transaction ID"),
+                category: z.string().describe("Category name"),
+              }),
+            ),
+            z.string().describe("JSON-encoded array of {transaction_id, category} objects"),
+          ])
+          .describe("Array of {transaction_id, category} pairs (max 100). Can be a JSON string or array."),
       },
       handler: (args, wasm) => {
-        const updates = args.updates as Array<{ transaction_id: string; category: string }>;
+        let updates: Array<{ transaction_id: string; category: string }>;
+        const raw = args.updates;
+        if (typeof raw === "string") {
+          try {
+            updates = JSON.parse(raw);
+          } catch {
+            throw new Error("updates must be valid JSON array of {transaction_id, category} objects");
+          }
+        } else if (Array.isArray(raw)) {
+          updates = raw as Array<{ transaction_id: string; category: string }>;
+        } else {
+          throw new Error("updates must be an array of {transaction_id, category} objects");
+        }
+        if (!Array.isArray(updates) || updates.length === 0) {
+          throw new Error("updates must be a non-empty array");
+        }
+        if (updates.length > 100) {
+          throw new Error("Maximum 100 updates per batch");
+        }
         const results: Array<{ transaction_id: string; category: string; success: boolean; error?: string }> = [];
 
         for (const u of updates) {
