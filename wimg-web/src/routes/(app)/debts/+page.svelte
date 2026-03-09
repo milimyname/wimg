@@ -118,7 +118,7 @@
 
 <!-- Hero Card: Overall Progress -->
 {#if debts.length > 0}
-  <div class="bg-(--color-accent) rounded-[2rem] p-7 mb-5 shadow-[var(--shadow-soft)] relative overflow-hidden">
+  <div id="progress" class="bg-(--color-accent) rounded-[2rem] p-7 mb-5 shadow-[var(--shadow-soft)] relative overflow-hidden">
     <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/20 rounded-full blur-2xl pointer-events-none"></div>
     <div class="flex flex-col gap-1 relative z-10">
       <p class="font-bold text-sm uppercase tracking-wide text-(--color-text)">
@@ -234,7 +234,7 @@
         debt.total > 0 ? Math.round((debt.paid / debt.total) * 100) : 0}
       {@const isPaidOff = remaining <= 0}
 
-      <div class="bg-white p-5 rounded-3xl shadow-[var(--shadow-card)] flex flex-col gap-5">
+      <div id={debt.id} class="bg-white p-5 rounded-3xl shadow-[var(--shadow-card)] flex flex-col gap-5">
         <!-- Top row: name + action -->
         <div class="flex justify-between items-start">
           <div>

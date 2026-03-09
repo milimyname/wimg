@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, onDestroy, tick } from "svelte";
   import { goto } from "$app/navigation";
   import { init, takeSnapshot } from "$lib/wasm";
   import { accountStore } from "$lib/account.svelte";
@@ -60,6 +60,13 @@
       error = e instanceof Error ? e.message : "Failed to initialize";
     } finally {
       loading = false;
+    }
+
+    // Scroll to hash anchor after content is rendered (SvelteKit can't do it
+    // while the loading gate hides children)
+    if (window.location.hash) {
+      await tick();
+      document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     // Show onboarding on first visit

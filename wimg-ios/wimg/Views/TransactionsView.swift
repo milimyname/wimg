@@ -9,11 +9,33 @@ struct TransactionsView: View {
     @State private var selectedTransaction: Transaction?
     @State private var undoMessage: String?
     @State private var showExcluded = false
+    @State private var selectedCategory: Int?
+    @State private var showFilterSheet = false
+    @State private var filterCategorySet: Set<Int> = []
+    @State private var dateQuick: String?
+    @State private var amountQuick: String?
+
+    private let quickCategories: [WimgCategory] = [
+        .groceries, .dining, .transport, .shopping, .entertainment,
+    ]
+
+    private let allFilterCategories: [WimgCategory] = [
+        .groceries, .dining, .transport, .housing, .utilities,
+        .entertainment, .shopping, .health, .insurance, .subscriptions,
+        .travel, .education, .cash, .transfer, .income, .other,
+    ]
 
     enum TxFilter: String, CaseIterable {
         case all = "Alle"
         case expenses = "Ausgaben"
         case income = "Einnahmen"
+    }
+
+    private var activeFilterCount: Int {
+        (dateQuick != nil ? 1 : 0)
+            + (amountQuick != nil ? 1 : 0)
+            + (!filterCategorySet.isEmpty ? 1 : 0)
+            + (!searchText.isEmpty ? 1 : 0)
     }
 
     private var filtered: [Transaction] {
@@ -29,9 +51,52 @@ struct TransactionsView: View {
         case .income: result = result.filter { $0.isIncome }
         }
 
+        // Single quick category OR multi-select from filter sheet
+        if !filterCategorySet.isEmpty {
+            result = result.filter { filterCategorySet.contains($0.category) }
+        } else if let cat = selectedCategory {
+            result = result.filter { $0.category == cat }
+        }
+
         if !searchText.isEmpty {
             result = result.filter {
                 $0.description.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+
+        // Date range filter
+        if let dateQuick {
+            let today = Date()
+            let calendar = Calendar.current
+            let fromDate: Date?
+            switch dateQuick {
+            case "30d":
+                fromDate = calendar.date(byAdding: .day, value: -30, to: today)
+            case "month":
+                fromDate = calendar.date(from: calendar.dateComponents([.year, .month], from: today))
+            case "quarter":
+                fromDate = calendar.date(byAdding: .month, value: -3, to: today)
+            default:
+                fromDate = nil
+            }
+            if let fromDate {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd"
+                let fromStr = formatter.string(from: fromDate)
+                result = result.filter { $0.date >= fromStr }
+            }
+        }
+
+        // Amount range filter
+        if let amountQuick {
+            switch amountQuick {
+            case "lt50":
+                result = result.filter { abs($0.amount) < 50 }
+            case "50-200":
+                result = result.filter { abs($0.amount) >= 50 && abs($0.amount) <= 200 }
+            case "gt200":
+                result = result.filter { abs($0.amount) > 200 }
+            default: break
             }
         }
 
@@ -55,6 +120,40 @@ struct TransactionsView: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
                 .padding(.vertical, 12)
+
+                // Quick category filter (top 5)
+                HStack {
+                    ForEach(quickCategories) { cat in
+                        let active = selectedCategory == cat.rawValue
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedCategory = active ? nil : cat.rawValue
+                            }
+                        } label: {
+                            VStack(spacing: 6) {
+                                ZStack {
+                                    Circle()
+                                        .fill(cat.color.opacity(0.12))
+                                        .frame(width: 52, height: 52)
+                                    if active {
+                                        Circle()
+                                            .stroke(cat.color, lineWidth: 2.5)
+                                            .frame(width: 52, height: 52)
+                                    }
+                                    Image(systemName: cat.icon)
+                                        .font(.system(size: 18))
+                                        .foregroundStyle(cat.color)
+                                }
+                                Text(cat.name)
+                                    .font(.system(size: 10, design: .rounded, weight: active ? .bold : .medium))
+                                    .foregroundStyle(active ? WimgTheme.text : WimgTheme.textSecondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 12)
 
                 if let loadError {
                     VStack(spacing: 8) {
@@ -98,10 +197,10 @@ struct TransactionsView: View {
                                 }
                             } header: {
                                 Text(formatDateHeader(date))
-                                    .font(.system(.caption, design: .rounded, weight: .bold))
+                                    .font(.system(size: 11, design: .rounded, weight: .bold))
                                     .foregroundStyle(WimgTheme.textSecondary)
                                     .textCase(.uppercase)
-                                    .tracking(0.5)
+                                    .tracking(0.8)
                             }
                         }
                     }
@@ -114,10 +213,18 @@ struct TransactionsView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        showExcluded.toggle()
+                        showFilterSheet = true
                     } label: {
-                        Image(systemName: showExcluded ? "eye" : "eye.slash")
-                            .foregroundStyle(showExcluded ? WimgTheme.text : WimgTheme.textSecondary)
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: "line.3.horizontal.decrease")
+                                .foregroundStyle(activeFilterCount > 0 ? WimgTheme.text : WimgTheme.textSecondary)
+                            if activeFilterCount > 0 {
+                                Circle()
+                                    .fill(WimgTheme.accent)
+                                    .frame(width: 8, height: 8)
+                                    .offset(x: 2, y: -2)
+                            }
+                        }
                     }
                 }
             }
@@ -133,6 +240,16 @@ struct TransactionsView: View {
                     reload()
                     showUndo("Kategorie geändert")
                 }
+            }
+            .sheet(isPresented: $showFilterSheet) {
+                AdvancedFilterSheet(
+                    searchText: $searchText,
+                    dateQuick: $dateQuick,
+                    amountQuick: $amountQuick,
+                    filterCategorySet: $filterCategorySet,
+                    showExcluded: $showExcluded,
+                    allCategories: allFilterCategories
+                )
             }
             .overlay(alignment: .bottom) {
                 if let msg = undoMessage {
@@ -276,7 +393,7 @@ struct CategoryEditorSheet: View {
         } label: {
             HStack(spacing: 12) {
                 ZStack {
-                    Circle()
+                    RoundedRectangle(cornerRadius: 10)
                         .fill(cat.color.opacity(0.12))
                         .frame(width: 40, height: 40)
                     Image(systemName: cat.icon)
@@ -298,5 +415,210 @@ struct CategoryEditorSheet: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
         }
+    }
+}
+
+// MARK: - Advanced Filter Sheet
+
+struct AdvancedFilterSheet: View {
+    @Binding var searchText: String
+    @Binding var dateQuick: String?
+    @Binding var amountQuick: String?
+    @Binding var filterCategorySet: Set<Int>
+    @Binding var showExcluded: Bool
+    let allCategories: [WimgCategory]
+
+    @Environment(\.dismiss) private var dismiss
+
+    private var hasActiveFilters: Bool {
+        dateQuick != nil || amountQuick != nil || !filterCategorySet.isEmpty || !searchText.isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 28) {
+                    // Search
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(WimgTheme.textSecondary)
+                        TextField("Suchen nach...", text: $searchText)
+                            .font(.system(.body, design: .rounded))
+                    }
+                    .padding(14)
+                    .background(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                    // Date Range
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Zeitraum")
+                            .font(.system(.headline, design: .rounded, weight: .bold))
+
+                        HStack(spacing: 8) {
+                            dateChip("30d", label: "Letzte 30 Tage")
+                            dateChip("month", label: "Aktueller Monat")
+                            dateChip("quarter", label: "Letztes Quartal")
+                        }
+                    }
+
+                    // Categories
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Kategorien")
+                                .font(.system(.headline, design: .rounded, weight: .bold))
+                            Spacer()
+                            if !filterCategorySet.isEmpty {
+                                Button("Zurücksetzen") {
+                                    filterCategorySet.removeAll()
+                                }
+                                .font(.system(.caption, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.textSecondary)
+                            }
+                        }
+
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 4), spacing: 16) {
+                            ForEach(allCategories) { cat in
+                                let active = filterCategorySet.contains(cat.rawValue)
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        if active {
+                                            filterCategorySet.remove(cat.rawValue)
+                                        } else {
+                                            filterCategorySet.insert(cat.rawValue)
+                                        }
+                                    }
+                                } label: {
+                                    VStack(spacing: 6) {
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(cat.color.opacity(0.12))
+                                                .frame(width: 48, height: 48)
+                                            if active {
+                                                RoundedRectangle(cornerRadius: 12)
+                                                    .stroke(cat.color, lineWidth: 2.5)
+                                                    .frame(width: 48, height: 48)
+                                            }
+                                            Image(systemName: cat.icon)
+                                                .font(.system(size: 18))
+                                                .foregroundStyle(cat.color)
+                                        }
+                                        Text(cat.name)
+                                            .font(.system(size: 10, design: .rounded, weight: active ? .bold : .medium))
+                                            .foregroundStyle(active ? WimgTheme.text : WimgTheme.textSecondary)
+                                            .lineLimit(1)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Amount
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Betrag")
+                            .font(.system(.headline, design: .rounded, weight: .bold))
+
+                        HStack(spacing: 8) {
+                            amountChip("lt50", label: "< 50\u{20AC}")
+                            amountChip("50-200", label: "50 – 200\u{20AC}")
+                            amountChip("gt200", label: "> 200\u{20AC}")
+                        }
+                    }
+
+                    // Show excluded toggle
+                    Toggle(isOn: $showExcluded) {
+                        Text("Ausgeblendete anzeigen")
+                            .font(.system(.subheadline, design: .rounded, weight: .medium))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                    }
+                    .tint(WimgTheme.accent)
+                }
+                .padding()
+                .padding(.bottom, 80)
+            }
+            .background(WimgTheme.bg)
+            .navigationTitle("Erweiterte Suche")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { dismiss() }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                VStack(spacing: 10) {
+                    if hasActiveFilters {
+                        Button {
+                            searchText = ""
+                            dateQuick = nil
+                            amountQuick = nil
+                            filterCategorySet.removeAll()
+                        } label: {
+                            Text("Zurücksetzen")
+                                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.textSecondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                        }
+                    }
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Ergebnisse anzeigen")
+                            .font(.system(.headline, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.text)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(WimgTheme.accent)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                }
+                .padding()
+                .background(.ultraThinMaterial)
+            }
+        }
+        .presentationDetents([.large])
+    }
+
+    private func dateChip(_ id: String, label: String) -> some View {
+        let active = dateQuick == id
+        return Button {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                dateQuick = active ? nil : id
+            }
+        } label: {
+            Text(label)
+                .font(.system(.caption, design: .rounded, weight: .bold))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(active ? WimgTheme.accent : .white)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(active ? Color.clear : Color.gray.opacity(0.2), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func amountChip(_ id: String, label: String) -> some View {
+        let active = amountQuick == id
+        return Button {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                amountQuick = active ? nil : id
+            }
+        } label: {
+            Text(label)
+                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(active ? WimgTheme.accent : .white)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(active ? Color.clear : Color.gray.opacity(0.2), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
     }
 }

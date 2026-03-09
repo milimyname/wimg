@@ -44,6 +44,11 @@ body {
   z-index: 1;
 }
 
+/* Offset hash scroll targets below sticky header */
+[id] {
+  scroll-margin-top: 5rem;
+}
+
 .lc-root-container {
   /* Default marks color when not using explicit color or color scale */
   --color-primary: var(--color-blue-500);

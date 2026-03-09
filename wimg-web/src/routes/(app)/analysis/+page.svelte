@@ -173,8 +173,8 @@
   </div>
 
   <!-- Categories Header -->
-  <div class="flex items-center justify-between px-1 mb-4">
-    <h3 class="text-2xl font-display font-extrabold">Kategorien</h3>
+  <div id="categories" class="flex items-center justify-between px-1 mb-4">
+    <a href="#categories" class="text-2xl font-display font-extrabold">Kategorien</a>
     <div class="flex items-center gap-1 text-sm text-(--color-text-secondary) font-medium bg-white px-3 py-1.5 rounded-full shadow-[var(--shadow-card)]">
       <span>vs. Vormonat</span>
     </div>

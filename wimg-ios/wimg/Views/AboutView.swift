@@ -127,6 +127,77 @@ struct AboutView: View {
                     }
                 }
 
+                // MARK: - MCP Connection Guide
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "link")
+                            .font(.title3)
+                            .foregroundStyle(.purple)
+                        Text("MCP-Verbindung")
+                            .font(.system(.title3, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.text)
+                    }
+
+                    Text("Mit aktivierter Sync kannst du KI-Assistenten (Claude, etc.) per MCP-Protokoll Zugriff auf deine Finanzdaten geben.")
+                        .font(.subheadline)
+                        .foregroundStyle(WimgTheme.textSecondary)
+
+                    // Steps
+                    VStack(spacing: 8) {
+                        mcpStep(number: 1, title: "Sync aktivieren", detail: "Unter Einstellungen einen Sync-Schlüssel erstellen.")
+                        mcpStep(number: 2, title: "MCP-Client konfigurieren", detail: "In Claude Desktop oder Claude Code die folgende Konfiguration hinzufügen:")
+                    }
+
+                    // Config code block
+                    Text("""
+                    {
+                      "mcpServers": {
+                        "wimg": {
+                          "command": "npx",
+                          "args": [
+                            "mcp-remote",
+                            "https://wimg-sync.mili-my.name/mcp",
+                            "--header",
+                            "Authorization: Bearer DEIN-SYNC-SCHLÜSSEL"
+                          ]
+                        }
+                      }
+                    }
+                    """)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(WimgTheme.text)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.gray.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                    mcpStep(number: 3, title: "Nutzen", detail: "Frage Claude z.B. \"Zeig mir meine Ausgaben diesen Monat\" oder \"Kategorisiere meine letzten Transaktionen\".")
+
+                    // Privacy warning
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                            .font(.subheadline)
+                            .padding(.top, 2)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Datenschutz-Hinweis")
+                                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                .foregroundStyle(Color.orange.opacity(0.9))
+                            Text("Wenn du wimg mit einem MCP-Client verbindest, werden deine Finanzdaten an diesen Client weitergegeben. Die Daten sind Ende-zu-Ende verschlüsselt zwischen deinen Geräten und dem Server, aber der MCP-Client selbst kann die entschlüsselten Daten lesen. Verwende nur vertrauenswürdige MCP-Clients und teile deinen Sync-Schlüssel niemals mit Dritten.")
+                                .font(.caption)
+                                .foregroundStyle(Color.orange.opacity(0.8))
+                        }
+                    }
+                    .padding(14)
+                    .background(Color.orange.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.orange.opacity(0.2), lineWidth: 1)
+                    }
+                }
+
                 // MARK: - FAQ
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 8) {
@@ -193,5 +264,27 @@ struct AboutView: View {
         .background(WimgTheme.bg)
         .navigationTitle("Über wimg")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func mcpStep(number: Int, title: String, detail: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("\(number)")
+                .font(.system(.caption, design: .rounded, weight: .bold))
+                .frame(width: 28, height: 28)
+                .background(WimgTheme.accent)
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                    .foregroundStyle(WimgTheme.text)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(WimgTheme.textSecondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .wimgCard()
     }
 }

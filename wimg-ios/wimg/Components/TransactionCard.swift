@@ -12,14 +12,14 @@ struct TransactionCard: View {
         Button {
             onTap?()
         } label: {
-            HStack(spacing: 14) {
+            HStack(spacing: 12) {
                 // Category icon
                 ZStack {
-                    Circle()
+                    RoundedRectangle(cornerRadius: 12)
                         .fill(category.color.opacity(0.12))
-                        .frame(width: 48, height: 48)
+                        .frame(width: 44, height: 44)
                     Image(systemName: category.icon)
-                        .font(.system(size: 18))
+                        .font(.system(size: 16))
                         .foregroundStyle(category.color)
                 }
 

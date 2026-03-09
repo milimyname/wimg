@@ -92,6 +92,7 @@
       // Clean URL without reload
       window.history.replaceState({}, "", window.location.pathname);
     }
+
   });
 
   async function handleEnableSync() {
@@ -288,7 +289,7 @@
   </div>
 
   <!-- Sync Section -->
-  <div class="bg-white rounded-3xl p-5 shadow-sm space-y-4">
+  <div id="sync" class="bg-white rounded-3xl p-5 shadow-sm space-y-4">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center">
         <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -434,7 +435,7 @@
   </div>
 
   <!-- Claude AI Section -->
-  <div class="bg-white rounded-3xl p-5 shadow-sm space-y-4">
+  <div id="claude" class="bg-white rounded-3xl p-5 shadow-sm space-y-4">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center">
         <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -546,7 +547,7 @@
   </a>
 
   <!-- Export Section -->
-  <button onclick={() => (showExportSheet = true)} class="bg-white rounded-3xl p-5 shadow-sm flex items-center gap-3 w-full text-left group active:scale-[0.98] transition-transform">
+  <button id="export" onclick={() => (showExportSheet = true)} class="bg-white rounded-3xl p-5 shadow-sm flex items-center gap-3 w-full text-left group active:scale-[0.98] transition-transform">
     <div class="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center">
       <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

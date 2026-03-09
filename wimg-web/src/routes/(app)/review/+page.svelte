@@ -191,8 +191,8 @@
 
   <!-- Top Categories -->
   {#if topCategories.length > 0}
-    <div class="mb-6">
-      <h3 class="text-xl font-display font-extrabold mb-4 px-1">Top Kategorien</h3>
+    <div id="top-categories" class="mb-6">
+      <a href="#top-categories" class="text-xl font-display font-extrabold mb-4 px-1 block">Top Kategorien</a>
       <div class="space-y-3">
         {#each topCategories as cat}
           {@const pct =
@@ -233,8 +233,8 @@
 
   <!-- Payment Checklist -->
   {#if checklist.length > 0}
-    <div class="mb-6">
-      <h3 class="text-xl font-display font-extrabold mb-4 px-1">Zahlungs-Checkliste</h3>
+    <div id="checklist" class="mb-6">
+      <a href="#checklist" class="text-xl font-display font-extrabold mb-4 px-1 block">Zahlungs-Checkliste</a>
       <div class="space-y-3">
         {#each checklist as item}
           <div class="flex items-center justify-between p-4 bg-white rounded-[1.5rem] shadow-[var(--shadow-card)]">
@@ -264,8 +264,8 @@
 
   <!-- Anomalies -->
   {#if anomalies.length > 0}
-    <div class="mb-6">
-      <h3 class="text-xl font-display font-extrabold mb-4 px-1">Markierte Anomalien</h3>
+    <div id="anomalies" class="mb-6">
+      <a href="#anomalies" class="text-xl font-display font-extrabold mb-4 px-1 block">Markierte Anomalien</a>
       <div class="space-y-3">
         {#each anomalies as anomaly}
           {@const pct = Math.round(
@@ -316,8 +316,8 @@
   {/if}
 
   <!-- Monthly Stats -->
-  <div class="mb-6">
-    <h3 class="text-xl font-display font-extrabold mb-4 px-1">Statistiken</h3>
+  <div id="stats" class="mb-6">
+    <a href="#stats" class="text-xl font-display font-extrabold mb-4 px-1 block">Statistiken</a>
     <div class="grid grid-cols-2 gap-4">
       <div class="bg-white rounded-[1.75rem] p-5 shadow-[var(--shadow-card)]">
         <p class="text-xs text-(--color-text-secondary) font-bold uppercase tracking-wide">Transaktionen</p>

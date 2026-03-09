@@ -106,8 +106,8 @@
 
 <!-- Price Alerts -->
 {#if priceAlerts.length > 0}
-  <div class="mb-5">
-    <h3 class="text-lg font-display font-extrabold mb-3 px-1">Preisänderungen</h3>
+  <div id="price-alerts" class="mb-5">
+    <a href="#price-alerts" class="text-lg font-display font-extrabold mb-3 px-1 block">Preisänderungen</a>
     <div class="flex flex-col gap-3">
       {#each priceAlerts as alert}
         {@const isUp = (alert.price_change ?? 0) > 0}
@@ -137,8 +137,8 @@
 {/if}
 
 <!-- Section Title + Detect Button -->
-<div class="flex items-center justify-between mb-4 px-1">
-  <h3 class="text-2xl font-display font-extrabold">Abonnements</h3>
+<div id="subscriptions" class="flex items-center justify-between mb-4 px-1">
+  <a href="#subscriptions" class="text-2xl font-display font-extrabold">Abonnements</a>
   <button
     onclick={handleDetect}
     disabled={detecting}

@@ -1,6 +1,6 @@
 /**
  * MCP tool definitions for remote wimg server.
- * 8 read tools + 8 write tools = 16 total.
+ * 8 read tools + 9 write tools = 17 total.
  */
 
 import { z } from "zod/v4";
@@ -286,6 +286,48 @@ export function getToolDefinitions(): ToolDef[] {
     },
 
     {
+      name: "batch_set_category",
+      description:
+        "Set categories for multiple transactions at once. Much faster than calling set_category individually. Use get_transactions or search_transactions first to find transaction IDs.",
+      schema: {
+        updates: z
+          .array(
+            z.object({
+              transaction_id: z.string().describe("Transaction ID"),
+              category: z.enum(CATEGORY_NAMES).describe("Category name"),
+            }),
+          )
+          .min(1)
+          .max(100)
+          .describe("Array of {transaction_id, category} pairs (max 100)"),
+      },
+      handler: (args, wasm) => {
+        const updates = args.updates as Array<{ transaction_id: string; category: string }>;
+        const results: Array<{ transaction_id: string; category: string; success: boolean; error?: string }> = [];
+
+        for (const u of updates) {
+          const catName = u.category.toLowerCase();
+          const catId = Object.values(wasm.categories).find((c) => c.name.toLowerCase() === catName)?.id;
+          if (catId === undefined) {
+            results.push({ transaction_id: u.transaction_id, category: u.category, success: false, error: `Unknown category: ${u.category}` });
+            continue;
+          }
+          try {
+            wasm.setCategory(u.transaction_id, catId);
+            results.push({ transaction_id: u.transaction_id, category: u.category, success: true });
+          } catch (e) {
+            results.push({ transaction_id: u.transaction_id, category: u.category, success: false, error: String(e) });
+          }
+        }
+
+        const succeeded = results.filter((r) => r.success).length;
+        return {
+          text: JSON.stringify({ total: updates.length, succeeded, failed: updates.length - succeeded, results }, null, 2),
+        };
+      },
+    },
+
+    {
       name: "set_excluded",
       description: "Include or exclude a transaction from summaries and analysis",
       schema: {
@@ -401,6 +443,7 @@ export function getToolDefinitions(): ToolDef[] {
 /** Tools that mutate data and need sync write-back */
 export const WRITE_TOOL_NAMES = new Set([
   "set_category",
+  "batch_set_category",
   "set_excluded",
   "add_debt",
   "mark_debt_paid",
