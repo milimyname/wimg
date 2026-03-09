@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.10 (2026-03-09)
+
+- Implement PII stripping in transaction descriptions and enhance transaction filtering
+
 ## v0.5.9 (2026-03-09)
 
 - Refactor notifications and enhance category handling in MCP tools
@@ -39,7 +43,7 @@
 
 ## v0.5.0 (2026-03-08)
 
-- Implement  recurring pattern detection
+- Implement recurring pattern detection
 
 ## v0.4.26 (2026-03-08)
 
