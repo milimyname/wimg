@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.9 (2026-03-09)
+
+- Refactor notifications and enhance category handling in MCP tools
+
 ## v0.5.8 (2026-03-09)
 
 - Update release workflow to use the correct path for WASM artifact in GitHub Actions
