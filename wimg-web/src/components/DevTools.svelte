@@ -2,7 +2,7 @@
   import { devtoolsStore, type SyncEvent, type SyncDiff } from "$lib/devtools.svelte";
   import { syncWS } from "$lib/sync-ws.svelte";
   import { getWasmMemoryBytes, getWasmDbSize, getTransactions, getAccounts, getDebts, getRecurring, getSnapshots, close, queryRaw, type QueryResult } from "$lib/wasm";
-  import { clearSyncKey } from "$lib/sync";
+  import { clearSyncKey, getSyncKey } from "$lib/sync";
   import { featureStore } from "$lib/features.svelte";
 
   const TABS = ["wasm", "memory", "sync", "data", "sql"] as const;
@@ -607,10 +607,16 @@
           <div class="p-3 space-y-3">
             <!-- WS Status -->
             <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full {syncWS.connected ? 'bg-green-500' : 'bg-red-400'}"></span>
-              <span class="text-[11px] font-semibold {syncWS.connected ? 'text-green-700' : 'text-red-600'}">
-                {syncWS.connected ? "Connected" : "Disconnected"}
-              </span>
+              {#if !getSyncKey()}
+                <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+                <span class="text-[11px] font-semibold text-gray-500">No sync key</span>
+              {:else if syncWS.connected}
+                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                <span class="text-[11px] font-semibold text-green-700">Connected</span>
+              {:else}
+                <span class="w-2 h-2 rounded-full bg-red-400"></span>
+                <span class="text-[11px] font-semibold text-red-600">Disconnected</span>
+              {/if}
             </div>
 
             <!-- Sync event log -->

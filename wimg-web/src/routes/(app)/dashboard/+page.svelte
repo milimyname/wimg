@@ -10,6 +10,7 @@
   import { formatEur } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
   import { loadDemoData } from "$lib/demo";
+  import { featureStore } from "$lib/features.svelte";
   import MonthPicker from "../../../components/MonthPicker.svelte";
   import DonutChart from "../../../components/DonutChart.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
@@ -249,7 +250,9 @@
   </div>
 
   <!-- Quick Links -->
+  {#if featureStore.isEnabled("debts") || featureStore.isEnabled("review")}
   <div class="grid grid-cols-2 gap-4 mb-5">
+    {#if featureStore.isEnabled("debts")}
     <a
       href="/debts"
       class="bg-white rounded-[1.75rem] p-5 shadow-[var(--shadow-card)] flex items-center gap-3 hover:shadow-[var(--shadow-soft)] transition-shadow"
@@ -261,6 +264,8 @@
       </div>
       <span class="text-sm font-bold">Schulden</span>
     </a>
+    {/if}
+    {#if featureStore.isEnabled("review")}
     <a
       href="/review"
       class="bg-white rounded-[1.75rem] p-5 shadow-[var(--shadow-card)] flex items-center gap-3 hover:shadow-[var(--shadow-soft)] transition-shadow"
@@ -272,7 +277,9 @@
       </div>
       <span class="text-sm font-bold">Rückblick</span>
     </a>
+    {/if}
   </div>
+  {/if}
 
   <!-- Letzte Transaktionen -->
   {#if recentTransactions.length > 0}

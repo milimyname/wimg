@@ -108,7 +108,18 @@
   }
 </script>
 
-<h2 class="text-xl font-display font-extrabold text-center mb-5">Schulden</h2>
+<div class="flex items-center gap-3 mb-5">
+    <a
+      href="/more"
+      class="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm"
+      aria-label="Zurück"
+    >
+      <svg class="w-5 h-5 text-(--color-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+    </a>
+    <h2 class="text-2xl font-display font-extrabold text-(--color-text)">Schulden</h2>
+  </div>
 
 {#if error}
   <div class="bg-rose-50 rounded-3xl p-5 mb-4 text-rose-700 text-sm font-medium">

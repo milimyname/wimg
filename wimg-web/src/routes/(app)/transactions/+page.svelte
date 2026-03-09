@@ -66,6 +66,8 @@
   let filterCategories = $state<number[]>([]);
   let showAdvancedSearch = $derived(page.state.sheet === "txn-filter");
   let dateQuick = $state<string | null>(null);
+  let dateFrom = $state("");
+  let dateTo = $state("");
   let amountQuick = $state<string | null>(null);
 
   const QUICK_CATEGORIES = [1, 2, 3, 7, 6]; // groceries, dining, transport, shopping, entertainment
@@ -86,7 +88,7 @@
   }
 
   let activeFilterCount = $derived(
-    (dateQuick ? 1 : 0) +
+    (dateQuick || dateFrom || dateTo ? 1 : 0) +
       (amountQuick ? 1 : 0) +
       (filterCategories.length > 0 ? 1 : 0) +
       (searchQuery.trim() ? 1 : 0),
@@ -106,6 +108,9 @@
     if (dateQuick) {
       const from = getDateFrom(dateQuick);
       list = list.filter((t) => t.date >= from);
+    } else {
+      if (dateFrom) list = list.filter((t) => t.date >= dateFrom);
+      if (dateTo) list = list.filter((t) => t.date <= dateTo);
     }
     if (amountQuick) {
       if (amountQuick === "lt50")
@@ -196,6 +201,8 @@
   function clearAllFilters() {
     searchQuery = "";
     dateQuick = null;
+    dateFrom = "";
+    dateTo = "";
     amountQuick = null;
     filterCategories = [];
   }
@@ -433,7 +440,7 @@
       <!-- Date Range -->
       <section class="mb-6">
         <h2 class="text-base font-display font-extrabold mb-3">Zeitraum</h2>
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-2 mb-4">
           {#each [{ id: "30d", label: "Letzte 30 Tage" }, { id: "month", label: "Aktueller Monat" }, { id: "quarter", label: "Letztes Quartal" }] as chip}
             <button
               class="px-4 py-2.5 rounded-full text-sm font-bold cursor-pointer transition-all"
@@ -441,12 +448,34 @@
               class:bg-gray-50={dateQuick !== chip.id}
               class:border={dateQuick !== chip.id}
               class:border-gray-200={dateQuick !== chip.id}
-              onclick={() =>
-                (dateQuick = dateQuick === chip.id ? null : chip.id)}
+              onclick={() => {
+                dateQuick = dateQuick === chip.id ? null : chip.id;
+                if (dateQuick) { dateFrom = ""; dateTo = ""; }
+              }}
             >
               {chip.label}
             </button>
           {/each}
+        </div>
+        <div class="flex gap-3">
+          <label class="flex-1">
+            <span class="text-xs font-bold text-(--color-text-secondary) uppercase tracking-wider mb-1.5 block">Von</span>
+            <input
+              type="date"
+              bind:value={dateFrom}
+              onchange={() => { if (dateFrom) dateQuick = null; }}
+              class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-(--color-accent) focus:border-transparent"
+            />
+          </label>
+          <label class="flex-1">
+            <span class="text-xs font-bold text-(--color-text-secondary) uppercase tracking-wider mb-1.5 block">Bis</span>
+            <input
+              type="date"
+              bind:value={dateTo}
+              onchange={() => { if (dateTo) dateQuick = null; }}
+              class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-(--color-accent) focus:border-transparent"
+            />
+          </label>
         </div>
       </section>
 

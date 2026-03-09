@@ -1,18 +1,95 @@
 /**
  * MCP tool definitions for remote wimg server.
- * 8 read tools + 9 write tools = 17 total.
+ * 9 read tools + 9 write tools = 18 total.
  */
 
 import { z } from "zod/v4";
-import type { WasmInstance } from "./mcp-wasm";
+import type { WasmInstance, CategoryInfo } from "./mcp-wasm";
 
 function formatAmount(euros: number): string {
   // WASM already returns amounts in euros (Zig formatAmount converts cents → euros)
   return euros.toFixed(2);
 }
 
-function categoryName(categories: Record<number, { name: string }>, id: number): string {
+function categoryName(categories: Record<number, CategoryInfo>, id: number): string {
   return categories[id]?.name ?? `Unknown (${id})`;
+}
+
+/** Map of aliases → canonical German category name (lowercase keys) */
+const CATEGORY_ALIASES: Record<string, string> = {
+  // English → German
+  uncategorized: "unkategorisiert",
+  groceries: "lebensmittel",
+  food: "lebensmittel",
+  dining: "essen gehen",
+  restaurant: "essen gehen",
+  restaurants: "essen gehen",
+  "eating out": "essen gehen",
+  transport: "transport",
+  transportation: "transport",
+  housing: "wohnen",
+  rent: "wohnen",
+  utilities: "nebenkosten",
+  bills: "nebenkosten",
+  entertainment: "unterhaltung",
+  shopping: "shopping",
+  health: "gesundheit",
+  healthcare: "gesundheit",
+  pharmacy: "gesundheit",
+  insurance: "versicherung",
+  income: "einkommen",
+  salary: "einkommen",
+  gehalt: "einkommen",
+  transfer: "umbuchung",
+  transfers: "umbuchung",
+  cash: "bargeld",
+  subscriptions: "abonnements",
+  abos: "abonnements",
+  subs: "abonnements",
+  travel: "reisen",
+  education: "bildung",
+  other: "sonstiges",
+  misc: "sonstiges",
+  // Common German short forms
+  telefon: "nebenkosten",
+  drogerie: "shopping",
+  baumarkt: "shopping",
+  freizeit: "unterhaltung",
+  fitness: "gesundheit",
+};
+
+/**
+ * Resolve a category name (English, German, or alias) to a category ID.
+ * Returns undefined if no match found.
+ */
+function resolveCategoryId(
+  categories: Record<number, CategoryInfo>,
+  input: string,
+): number | undefined {
+  const lower = input.toLowerCase().trim();
+
+  // 1. Exact match on German name (canonical)
+  const exact = Object.values(categories).find((c) => c.name.toLowerCase() === lower);
+  if (exact) return exact.id;
+
+  // 2. Alias lookup
+  const aliasTarget = CATEGORY_ALIASES[lower];
+  if (aliasTarget) {
+    const aliased = Object.values(categories).find((c) => c.name.toLowerCase() === aliasTarget);
+    if (aliased) return aliased.id;
+  }
+
+  // 3. Substring match (e.g. "leben" matches "Lebensmittel")
+  const partial = Object.values(categories).find((c) => c.name.toLowerCase().includes(lower) || lower.includes(c.name.toLowerCase()));
+  if (partial) return partial.id;
+
+  return undefined;
+}
+
+function validCategoryNames(categories: Record<number, CategoryInfo>): string {
+  return Object.values(categories)
+    .map((c) => c.name)
+    .join(", ");
 }
 
 interface ToolDef {
@@ -64,15 +141,51 @@ export function getToolDefinitions(): ToolDef[] {
     },
 
     {
+      name: "list_categories",
+      description:
+        "List all valid categories with their IDs, German names, colors, and icons. Call this before set_category to see valid category names.",
+      schema: {},
+      handler: (_args, wasm) => {
+        const cats = Object.values(wasm.categories).map((c) => ({
+          id: c.id,
+          name: c.name,
+          color: c.color,
+          icon: c.icon,
+        }));
+        return {
+          text: JSON.stringify(
+            {
+              count: cats.length,
+              categories: cats,
+              note: "Use the 'name' field when calling set_category or batch_set_category. English names and common aliases are also accepted.",
+            },
+            null,
+            2,
+          ),
+        };
+      },
+    },
+
+    {
       name: "get_transactions",
-      description: "Get recent transactions, optionally filtered by account",
+      description: "Get transactions, optionally filtered by account and/or date",
       schema: {
         account: z.string().optional().describe("Account ID to filter by (omit for all)"),
+        year: z.number().int().optional().describe("Filter by year (e.g. 2025)"),
+        month: z.number().int().min(1).max(12).optional().describe("Filter by month (1-12, requires year)"),
         limit: z.number().int().positive().default(50).describe("Max transactions to return (default 50)"),
         offset: z.number().int().min(0).default(0).describe("Skip first N transactions for pagination (default 0)"),
       },
       handler: (args, wasm) => {
-        const txs = wasm.getTransactionsFiltered(args.account as string | undefined);
+        let txs = wasm.getTransactionsFiltered(args.account as string | undefined);
+        const year = args.year as number | undefined;
+        const month = args.month as number | undefined;
+        if (year) {
+          txs = txs.filter((tx) => {
+            const [ty, tm] = tx.date.split("-").map(Number);
+            return ty === year && (month ? tm === month : true);
+          });
+        }
         const offset = (args.offset as number) || 0;
         const limit = (args.limit as number) || 50;
         const page = txs.slice(offset, offset + limit);
@@ -95,6 +208,7 @@ export function getToolDefinitions(): ToolDef[] {
               showing: page.length,
               has_more: hasMore,
               ...(hasMore ? { next_offset: offset + limit } : {}),
+              ...(year ? { filter: { year, ...(month ? { month } : {}) } } : {}),
               transactions: formatted,
             },
             null,
@@ -230,25 +344,29 @@ export function getToolDefinitions(): ToolDef[] {
 
     {
       name: "get_spending_by_category",
-      description: "Get spending for a specific category over multiple months",
+      description:
+        "Get spending for a specific category over multiple months. Accepts English names, German names, or aliases.",
       schema: {
-        category: z.string().describe("Category name (e.g. 'Food', 'Transport', 'Entertainment')"),
+        category: z
+          .string()
+          .describe("Category name (e.g. 'Lebensmittel', 'Groceries', 'Food', 'Transport', 'Shopping')"),
         months: z.number().int().positive().default(6).describe("Number of months to look back"),
       },
       handler: (args, wasm) => {
+        const catId = resolveCategoryId(wasm.categories, args.category as string);
+        if (catId === undefined) {
+          throw new Error(
+            `Unknown category: '${args.category}'. Valid categories: ${validCategoryNames(wasm.categories)}`,
+          );
+        }
+
         const now = new Date();
         const results: Array<{ year: number; month: number; amount: string; count: number }> = [];
-        const catLower = (args.category as string).toLowerCase();
-        const catId = Object.values(wasm.categories).find(
-          (c) => c.name.toLowerCase() === catLower,
-        )?.id;
 
         for (let i = 0; i < (args.months as number); i++) {
           const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
           const summary = wasm.getSummaryFiltered(d.getFullYear(), d.getMonth() + 1);
-          const match = summary.by_category.find((c) =>
-            catId !== undefined ? c.id === catId : c.name.toLowerCase() === catLower,
-          );
+          const match = summary.by_category.find((c) => c.id === catId);
           if (match) {
             results.push({
               year: d.getFullYear(),
@@ -260,7 +378,11 @@ export function getToolDefinitions(): ToolDef[] {
         }
 
         return {
-          text: JSON.stringify({ category: args.category, months: results }, null, 2),
+          text: JSON.stringify(
+            { category: categoryName(wasm.categories, catId), months: results },
+            null,
+            2,
+          ),
         };
       },
     },
@@ -270,37 +392,41 @@ export function getToolDefinitions(): ToolDef[] {
     {
       name: "set_category",
       description:
-        "Set the category of a transaction. Use get_transactions or search_transactions first to find the transaction ID.",
+        "Set the category of a transaction. Accepts German names, English names, or aliases. Call list_categories first to see valid names.",
       schema: {
         transaction_id: z.string().describe("Transaction ID"),
         category: z
           .string()
-          .describe("Category name (e.g. 'Food', 'Lebensmittel', 'Transport', 'Shopping', 'Subscriptions')"),
+          .describe(
+            "Category name — German (e.g. 'Lebensmittel', 'Essen gehen', 'Abonnements'), English (e.g. 'Groceries', 'Dining', 'Subscriptions'), or alias (e.g. 'Food', 'Restaurant', 'Abos')",
+          ),
       },
       handler: (args, wasm) => {
-        const catName = (args.category as string).toLowerCase();
-        const catId = Object.values(wasm.categories).find(
-          (c) => c.name.toLowerCase() === catName,
-        )?.id;
+        const catId = resolveCategoryId(wasm.categories, args.category as string);
         if (catId === undefined) {
-          throw new Error(`Unknown category: ${args.category}`);
+          throw new Error(
+            `Unknown category: '${args.category}'. Valid categories: ${validCategoryNames(wasm.categories)}`,
+          );
         }
         wasm.setCategory(args.transaction_id as string, catId);
-        return { text: JSON.stringify({ success: true, transaction_id: args.transaction_id, category: args.category }) };
+        const resolved = categoryName(wasm.categories, catId);
+        return {
+          text: JSON.stringify({ success: true, transaction_id: args.transaction_id, category: resolved }),
+        };
       },
     },
 
     {
       name: "batch_set_category",
       description:
-        "Set categories for multiple transactions at once. Much faster than calling set_category individually. Use get_transactions or search_transactions first to find transaction IDs.",
+        "Set categories for multiple transactions at once. Accepts German names, English names, or aliases. Call list_categories first to see valid names.",
       schema: {
         updates: z
           .union([
             z.array(
               z.object({
                 transaction_id: z.string().describe("Transaction ID"),
-                category: z.string().describe("Category name"),
+                category: z.string().describe("Category name (German, English, or alias)"),
               }),
             ),
             z.string().describe("JSON-encoded array of {transaction_id, category} objects"),
@@ -327,18 +453,33 @@ export function getToolDefinitions(): ToolDef[] {
         if (updates.length > 100) {
           throw new Error("Maximum 100 updates per batch");
         }
-        const results: Array<{ transaction_id: string; category: string; success: boolean; error?: string }> = [];
+        const results: Array<{
+          transaction_id: string;
+          category: string;
+          resolved?: string;
+          success: boolean;
+          error?: string;
+        }> = [];
 
         for (const u of updates) {
-          const catName = u.category.toLowerCase();
-          const catId = Object.values(wasm.categories).find((c) => c.name.toLowerCase() === catName)?.id;
+          const catId = resolveCategoryId(wasm.categories, u.category);
           if (catId === undefined) {
-            results.push({ transaction_id: u.transaction_id, category: u.category, success: false, error: `Unknown category: ${u.category}` });
+            results.push({
+              transaction_id: u.transaction_id,
+              category: u.category,
+              success: false,
+              error: `Unknown category: '${u.category}'. Valid: ${validCategoryNames(wasm.categories)}`,
+            });
             continue;
           }
           try {
             wasm.setCategory(u.transaction_id, catId);
-            results.push({ transaction_id: u.transaction_id, category: u.category, success: true });
+            results.push({
+              transaction_id: u.transaction_id,
+              category: u.category,
+              resolved: categoryName(wasm.categories, catId),
+              success: true,
+            });
           } catch (e) {
             results.push({ transaction_id: u.transaction_id, category: u.category, success: false, error: String(e) });
           }
@@ -346,7 +487,11 @@ export function getToolDefinitions(): ToolDef[] {
 
         const succeeded = results.filter((r) => r.success).length;
         return {
-          text: JSON.stringify({ total: updates.length, succeeded, failed: updates.length - succeeded, results }, null, 2),
+          text: JSON.stringify(
+            { total: updates.length, succeeded, failed: updates.length - succeeded, results },
+            null,
+            2,
+          ),
         };
       },
     },

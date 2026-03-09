@@ -16,7 +16,7 @@
 
 ## In Progress / Future
 
-- **Phase 5.2** — Notifications (iOS + PWA)
+- **Phase 5.2** — Notifications (deferred, TBD)
 - **Phase 5.4** — Annual Renewals Calendar
 - **Phase 5.5** — Smart Categorization (sqlite-vec)
 - **Phase 5.6** — AI Chat (RAG)

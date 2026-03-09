@@ -53,8 +53,10 @@ debts, recurring detection, multi-account, undo/redo, real-time sync with
 E2E encryption, MCP server (17 tools), data export, monthly snapshots,
 PWA with offline support, DevTools panel (5 tabs).
 
-Next: Notifications (5.2), Annual Renewals (5.4), Command Palette (5.7),
+Next: Annual Renewals (5.4), Command Palette (5.7),
 Phase 6 (Annual Review, Net Worth, Tax, Savings Goals).
+
+Deferred: Notifications (5.2) — to be defined later.
 
 ---
 
