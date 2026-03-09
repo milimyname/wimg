@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.7 (2026-03-09)
+
+- Enhance WASM build process and add raw SQL query support
+
 ## v0.5.6 (2026-03-09)
 
 - Refactor category handling in MCP tools and enhance input fields in settings
