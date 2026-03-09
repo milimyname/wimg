@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.6 (2026-03-09)
+
+- Refactor category handling in MCP tools and enhance input fields in settings
+
 ## v0.5.5 (2026-03-09)
 
 - Enhance TransactionCard and AboutView components; add MCP connection guide
