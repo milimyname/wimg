@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.8 (2026-03-09)
+
+- Update release workflow to use the correct path for WASM artifact in GitHub Actions
+
 ## v0.5.7 (2026-03-09)
 
 - Enhance WASM build process and add raw SQL query support
