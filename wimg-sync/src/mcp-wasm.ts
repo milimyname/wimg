@@ -4,7 +4,8 @@
  */
 
 // Cloudflare bundles .wasm files as WebAssembly.Module via [[rules]]
-import wasmModule from "../../wimg-web/static/libwimg.wasm";
+// Uses compact build (smaller memory buffers) to fit CF Workers 128MB limit
+import wasmModule from "../libwimg-compact.wasm";
 
 // --- Types ---
 

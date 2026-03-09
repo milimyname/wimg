@@ -6,8 +6,9 @@
 import { z } from "zod/v4";
 import type { WasmInstance } from "./mcp-wasm";
 
-function formatAmount(cents: number): string {
-  return (cents / 100).toFixed(2);
+function formatAmount(euros: number): string {
+  // WASM already returns amounts in euros (Zig formatAmount converts cents → euros)
+  return euros.toFixed(2);
 }
 
 function categoryName(categories: Record<number, { name: string }>, id: number): string {
@@ -67,12 +68,16 @@ export function getToolDefinitions(): ToolDef[] {
       description: "Get recent transactions, optionally filtered by account",
       schema: {
         account: z.string().optional().describe("Account ID to filter by (omit for all)"),
-        limit: z.number().int().positive().default(50).describe("Max transactions to return"),
+        limit: z.number().int().positive().default(50).describe("Max transactions to return (default 50)"),
+        offset: z.number().int().min(0).default(0).describe("Skip first N transactions for pagination (default 0)"),
       },
       handler: (args, wasm) => {
         const txs = wasm.getTransactionsFiltered(args.account as string | undefined);
-        const limited = txs.slice(0, args.limit as number);
-        const formatted = limited.map((tx) => ({
+        const offset = (args.offset as number) || 0;
+        const limit = (args.limit as number) || 50;
+        const page = txs.slice(offset, offset + limit);
+        const hasMore = offset + limit < txs.length;
+        const formatted = page.map((tx) => ({
           id: tx.id,
           date: tx.date,
           description: tx.description,
@@ -84,7 +89,14 @@ export function getToolDefinitions(): ToolDef[] {
         }));
         return {
           text: JSON.stringify(
-            { total: txs.length, showing: limited.length, transactions: formatted },
+            {
+              total: txs.length,
+              offset,
+              showing: page.length,
+              has_more: hasMore,
+              ...(hasMore ? { next_offset: offset + limit } : {}),
+              transactions: formatted,
+            },
             null,
             2,
           ),
@@ -98,14 +110,18 @@ export function getToolDefinitions(): ToolDef[] {
       schema: {
         query: z.string().describe("Search term to match against transaction descriptions"),
         account: z.string().optional().describe("Account ID to filter by (omit for all)"),
-        limit: z.number().int().positive().default(20).describe("Max results"),
+        limit: z.number().int().positive().default(20).describe("Max results (default 20)"),
+        offset: z.number().int().min(0).default(0).describe("Skip first N matches for pagination (default 0)"),
       },
       handler: (args, wasm) => {
         const txs = wasm.getTransactionsFiltered(args.account as string | undefined);
         const q = (args.query as string).toLowerCase();
         const matches = txs.filter((tx) => tx.description.toLowerCase().includes(q));
-        const limited = matches.slice(0, args.limit as number);
-        const formatted = limited.map((tx) => ({
+        const offset = (args.offset as number) || 0;
+        const limit = (args.limit as number) || 20;
+        const page = matches.slice(offset, offset + limit);
+        const hasMore = offset + limit < matches.length;
+        const formatted = page.map((tx) => ({
           id: tx.id,
           date: tx.date,
           description: tx.description,
@@ -116,7 +132,15 @@ export function getToolDefinitions(): ToolDef[] {
         }));
         return {
           text: JSON.stringify(
-            { query: args.query, total_matches: matches.length, showing: limited.length, transactions: formatted },
+            {
+              query: args.query,
+              total_matches: matches.length,
+              offset,
+              showing: page.length,
+              has_more: hasMore,
+              ...(hasMore ? { next_offset: offset + limit } : {}),
+              transactions: formatted,
+            },
             null,
             2,
           ),

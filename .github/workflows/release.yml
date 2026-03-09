@@ -23,10 +23,10 @@ jobs:
       - name: Download SQLite amalgamation
         working-directory: libwimg/vendor
         run: |
-          curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3470200.zip -o sqlite.zip
+          curl -fsSL https://www.sqlite.org/2026/sqlite-amalgamation-3520000.zip -o sqlite.zip
           unzip -o sqlite.zip
-          cp sqlite-amalgamation-3470200/sqlite3.c sqlite3.c
-          cp sqlite-amalgamation-3470200/sqlite3.h sqlite3.h
+          cp sqlite-amalgamation-3520000/sqlite3.c sqlite3.c
+          cp sqlite-amalgamation-3520000/sqlite3.h sqlite3.h
 
       - name: Zig fmt check
         working-directory: libwimg
@@ -75,19 +75,21 @@ jobs:
       - name: Download SQLite amalgamation
         working-directory: libwimg/vendor
         run: |
-          curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3470200.zip -o sqlite.zip
+          curl -fsSL https://www.sqlite.org/2026/sqlite-amalgamation-3520000.zip -o sqlite.zip
           unzip -o sqlite.zip
-          cp sqlite-amalgamation-3470200/sqlite3.c sqlite3.c
-          cp sqlite-amalgamation-3470200/sqlite3.h sqlite3.h
+          cp sqlite-amalgamation-3520000/sqlite3.c sqlite3.c
+          cp sqlite-amalgamation-3520000/sqlite3.h sqlite3.h
 
       - name: Build WASM
         run: ./scripts/build-wasm.sh
 
-      - name: Upload WASM artifact
+      - name: Upload WASM artifacts
         uses: actions/upload-artifact@v4
         with:
           name: libwimg-wasm
-          path: wimg-web/static/libwimg.wasm
+          path: |
+            wimg-web/static/libwimg.wasm
+            wimg-sync/libwimg-compact.wasm
 
       - name: Install web dependencies
         working-directory: wimg-web
@@ -120,10 +122,10 @@ jobs:
       - name: Download SQLite amalgamation
         working-directory: libwimg/vendor
         run: |
-          curl -fsSL https://www.sqlite.org/2024/sqlite-amalgamation-3470200.zip -o sqlite.zip
+          curl -fsSL https://www.sqlite.org/2026/sqlite-amalgamation-3520000.zip -o sqlite.zip
           unzip -o sqlite.zip
-          cp sqlite-amalgamation-3470200/sqlite3.c sqlite3.c
-          cp sqlite-amalgamation-3470200/sqlite3.h sqlite3.h
+          cp sqlite-amalgamation-3520000/sqlite3.c sqlite3.c
+          cp sqlite-amalgamation-3520000/sqlite3.h sqlite3.h
 
       - name: Build iOS XCFramework
         run: ./scripts/build-ios.sh
@@ -149,11 +151,11 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
-      - name: Download WASM artifact
+      - name: Download WASM artifacts
         uses: actions/download-artifact@v4
         with:
           name: libwimg-wasm
-          path: wimg-web/static
+          path: .
 
       - name: Install dependencies
         working-directory: wimg-sync

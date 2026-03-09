@@ -1,5 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const config = @import("config");
 const types = @import("types.zig");
 const db_mod = @import("db.zig");
 const parser = @import("parser.zig");
@@ -49,7 +50,9 @@ fn log(comptime fmt: []const u8, args: anytype) void {
 }
 
 // --- WASM memory management ---
-var wasm_buf: [16 * 1024 * 1024]u8 = undefined; // 16 MB scratch — must fit in CF Worker 128 MB limit
+// compact=true (MCP/CF Workers): 16 MB. normal (web browser): 64 MB.
+const wasm_buf_size = if (config.compact) 16 * 1024 * 1024 else 64 * 1024 * 1024;
+var wasm_buf: [wasm_buf_size]u8 = undefined;
 var fba = std.heap.FixedBufferAllocator.init(&wasm_buf);
 
 // Global database instance
@@ -1131,6 +1134,54 @@ export fn wimg_export_db() ?[*]const u8 {
         return null;
     } orelse {
         setError("wimg_export_db: buffer too small", .{});
+        fba.allocator().free(buf);
+        return null;
+    };
+
+    const len_bytes: [4]u8 = @bitCast(@as(u32, @intCast(json_len)));
+    buf[0] = len_bytes[0];
+    buf[1] = len_bytes[1];
+    buf[2] = len_bytes[2];
+    buf[3] = len_bytes[3];
+
+    return buf.ptr;
+}
+
+/// Run arbitrary SQL and return JSON result. Input: null-terminated SQL string.
+/// Returns length-prefixed JSON: {"columns":[...],"rows":[...],"count":N,"truncated":bool}
+export fn wimg_query(sql_ptr: [*]const u8, sql_len: u32) ?[*]const u8 {
+    var database = global_db orelse {
+        setError("wimg_query: database not initialized", .{});
+        return null;
+    };
+
+    // Copy SQL to a null-terminated buffer
+    const sql_buf = fba.allocator().alloc(u8, sql_len + 1) catch {
+        setError("wimg_query: alloc failed", .{});
+        return null;
+    };
+    defer fba.allocator().free(sql_buf);
+    @memcpy(sql_buf[0..sql_len], sql_ptr[0..sql_len]);
+    sql_buf[sql_len] = 0;
+
+    const buf_size: usize = 2 * 1024 * 1024; // 2 MB result buffer
+    const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
+        setError("wimg_query: failed to allocate buffer", .{});
+        return null;
+    };
+
+    const json_len = database.rawQuery(@ptrCast(sql_buf.ptr), buf.ptr + 4, buf_size) catch |err| {
+        // Try to get SQLite error message
+        if (database.lastError()) |errmsg| {
+            const msg = std.mem.span(errmsg);
+            setError("wimg_query: {s}", .{msg});
+        } else {
+            setError("wimg_query: {s}", .{@errorName(err)});
+        }
+        fba.allocator().free(buf);
+        return null;
+    } orelse {
+        setError("wimg_query: result too large for buffer", .{});
         fba.allocator().free(buf);
         return null;
     };

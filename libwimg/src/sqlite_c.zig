@@ -49,4 +49,9 @@ pub extern fn sqlite3_column_text(stmt: *sqlite3_stmt, col: c_int) ?[*]const u8;
 pub extern fn sqlite3_column_bytes(stmt: *sqlite3_stmt, col: c_int) c_int;
 pub extern fn sqlite3_column_type(stmt: *sqlite3_stmt, col: c_int) c_int;
 
+pub extern fn sqlite3_column_count(stmt: *sqlite3_stmt) c_int;
+pub extern fn sqlite3_column_name(stmt: *sqlite3_stmt, col: c_int) ?[*:0]const u8;
+pub extern fn sqlite3_column_double(stmt: *sqlite3_stmt, col: c_int) f64;
+
 pub extern fn sqlite3_changes(db: *sqlite3) c_int;
+pub extern fn sqlite3_errmsg(db: *sqlite3) ?[*:0]const u8;

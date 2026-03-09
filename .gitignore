@@ -11,6 +11,7 @@ libwimg/vendor/sqlite3.h
 
 # WASM build artifact (generated from zig build)
 wimg-web/static/libwimg.wasm
+wimg-sync/libwimg-compact.wasm
 
 # Web — dependencies & build
 wimg-web/node_modules/
@@ -54,7 +55,8 @@ DerivedData/
 *.swo
 *~
 .agents/
-.claude/
+.claude/*
+!.claude/rules/
 
 # OS
 .DS_Store

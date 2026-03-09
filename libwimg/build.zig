@@ -12,6 +12,10 @@ pub fn build(b: *std.Build) void {
 
     const is_wasm = target.result.cpu.arch == .wasm32;
 
+    // Compact mode: smaller memory buffers for CF Workers (128MB limit).
+    // Default (false) = web app (larger buffers). Use -Dcompact=true for MCP WASM.
+    const compact = b.option(bool, "compact", "Use smaller memory buffers for CF Workers") orelse false;
+
     // Stub libc include path for wasm32-freestanding
     const libc_include = b.path("vendor/libc");
 
@@ -28,6 +32,9 @@ pub fn build(b: *std.Build) void {
 
     // --- WASM library (primary target) ---
     if (is_wasm) {
+        const options = b.addOptions();
+        options.addOption(bool, "compact", compact);
+
         const wasm_lib = b.addExecutable(.{
             .name = "libwimg",
             .root_module = b.createModule(.{
@@ -36,6 +43,7 @@ pub fn build(b: *std.Build) void {
                 .optimize = optimize,
             }),
         });
+        wasm_lib.root_module.addOptions("config", options);
 
         // Export all `export fn` symbols
         wasm_lib.entry = .disabled;
@@ -72,13 +80,25 @@ pub fn build(b: *std.Build) void {
             .file = b.path("vendor/sqlite3.c"),
             .flags = wasm_sqlite_flags,
         });
+        // Memory budgets: compact (MCP/CF Workers) vs normal (web browser)
+        //   compact: 8MB VFS + 4MB heap  = ~53MB total (fits CF Workers 128MB)
+        //   normal:  32MB VFS + 16MB heap = ~149MB total (browsers handle this fine)
+        const vfs_flags: []const []const u8 = if (compact)
+            &.{}
+        else
+            &.{"-DMAX_FILE_SIZE=(32*1024*1024)"};
+        const shim_flags: []const []const u8 = if (compact)
+            &.{}
+        else
+            &.{"-DHEAP_SIZE=(16*1024*1024)"};
+
         wasm_lib.root_module.addCSourceFile(.{
             .file = b.path("vendor/wasm_vfs.c"),
-            .flags = &.{},
+            .flags = vfs_flags,
         });
         wasm_lib.root_module.addCSourceFile(.{
             .file = b.path("vendor/libc_shim.c"),
-            .flags = &.{},
+            .flags = shim_flags,
         });
 
         // Stack size for WASM
@@ -95,6 +115,9 @@ pub fn build(b: *std.Build) void {
         b.getInstallStep().dependOn(&install_to_web.step);
     } else {
         // --- Native library (for testing / iOS / macOS) ---
+        const options = b.addOptions();
+        options.addOption(bool, "compact", false);
+
         const lib = b.addLibrary(.{
             .name = "wimg",
             .linkage = .static,
@@ -104,6 +127,7 @@ pub fn build(b: *std.Build) void {
                 .optimize = optimize,
             }),
         });
+        lib.root_module.addOptions("config", options);
 
         lib.root_module.addCSourceFile(.{
             .file = b.path("vendor/sqlite3.c"),

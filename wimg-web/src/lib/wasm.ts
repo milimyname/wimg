@@ -2,6 +2,34 @@
  * libwimg WASM loader and typed TypeScript wrappers.
  */
 
+// --- DevTools instrumentation ---
+// Uses dynamic import so devtools module is only loaded when active.
+// In prod without ?devtools, devtoolsEnabled is never set and the check is a cheap boolean read.
+import { devtoolsEnabled } from "./devtools.svelte";
+
+function timed<T>(name: string, fn: () => T): T {
+  if (!devtoolsEnabled) return fn();
+  const start = performance.now();
+  const result = fn();
+  const duration = performance.now() - start;
+  import("./devtools.svelte").then((m) => m.devtoolsStore.logWasmCall(name, duration));
+  return result;
+}
+
+async function timedAsync<T>(name: string, fn: () => Promise<T>): Promise<T> {
+  if (!devtoolsEnabled) return fn();
+  const start = performance.now();
+  const result = await fn();
+  const duration = performance.now() - start;
+  import("./devtools.svelte").then((m) => m.devtoolsStore.logWasmCall(name, duration));
+  return result;
+}
+
+function logAction(action: string, details: string): void {
+  if (!devtoolsEnabled) return;
+  import("./devtools.svelte").then((m) => m.devtoolsStore.logAction(action, details));
+}
+
 export interface Transaction {
   id: string;
   date: string;
@@ -145,6 +173,7 @@ interface WasmExports {
   wimg_derive_key: (sync_key: number, sync_key_len: number) => number;
   wimg_encrypt_field: (pt: number, pt_len: number, key: number, nonce: number) => number;
   wimg_decrypt_field: (ct: number, ct_len: number, key: number) => number;
+  wimg_query: (sql: number, len: number) => number;
   wimg_close: () => void;
   wimg_free: (ptr: number, len: number) => void;
   wimg_alloc: (size: number) => number;
@@ -231,7 +260,7 @@ async function opfsLoad(): Promise<Uint8Array | null> {
   }
 }
 
-async function opfsSave(): Promise<void> {
+async function opfsSaveInner(): Promise<void> {
   if (!wasm) return;
 
   const ptr = wasm.wimg_db_ptr();
@@ -282,6 +311,10 @@ async function opfsSave(): Promise<void> {
   } catch (e) {
     console.error("[wimg] OPFS save failed:", e);
   }
+}
+
+async function opfsSave(): Promise<void> {
+  return timedAsync("opfsSave", opfsSaveInner);
 }
 
 // --- Public API ---
@@ -370,358 +403,422 @@ export async function init(): Promise<void> {
 }
 
 export function parseCsv(csvContent: ArrayBuffer): ParseResult {
-  ensureInit();
+  return timed("parseCsv", () => {
+    ensureInit();
 
-  const data = new Uint8Array(csvContent);
-  const ptr = wasm!.wimg_alloc(data.length);
-  if (ptr === 0) throw new Error("WASM allocation failed");
+    const data = new Uint8Array(csvContent);
+    const ptr = wasm!.wimg_alloc(data.length);
+    if (ptr === 0) throw new Error("WASM allocation failed");
 
-  const mem = new Uint8Array(wasm!.memory.buffer);
-  mem.set(data, ptr);
+    const mem = new Uint8Array(wasm!.memory.buffer);
+    mem.set(data, ptr);
 
-  const resultPtr = wasm!.wimg_parse_csv(ptr, data.length);
-  if (resultPtr === 0) {
-    throw new Error(getLastError("CSV parsing failed"));
-  }
+    const resultPtr = wasm!.wimg_parse_csv(ptr, data.length);
+    if (resultPtr === 0) {
+      throw new Error(getLastError("CSV parsing failed"));
+    }
 
-  const json = readLengthPrefixedString(resultPtr);
-  wasm!.wimg_free(resultPtr, 0);
+    const json = readLengthPrefixedString(resultPtr);
+    wasm!.wimg_free(resultPtr, 0);
 
-  return JSON.parse(json) as ParseResult;
+    return JSON.parse(json) as ParseResult;
+  });
 }
 
 export async function importCsv(csvContent: ArrayBuffer): Promise<ImportResult> {
-  ensureInit();
+  return timedAsync("importCsv", async () => {
+    ensureInit();
 
-  const data = new Uint8Array(csvContent);
-  const ptr = wasm!.wimg_alloc(data.length);
-  if (ptr === 0) throw new Error("WASM allocation failed");
+    const data = new Uint8Array(csvContent);
+    const ptr = wasm!.wimg_alloc(data.length);
+    if (ptr === 0) throw new Error("WASM allocation failed");
 
-  const mem = new Uint8Array(wasm!.memory.buffer);
-  mem.set(data, ptr);
+    const mem = new Uint8Array(wasm!.memory.buffer);
+    mem.set(data, ptr);
 
-  const resultPtr = wasm!.wimg_import_csv(ptr, data.length);
-  if (resultPtr === 0) {
-    throw new Error(getLastError("CSV import failed"));
-  }
+    const resultPtr = wasm!.wimg_import_csv(ptr, data.length);
+    if (resultPtr === 0) {
+      throw new Error(getLastError("CSV import failed"));
+    }
 
-  const json = readLengthPrefixedString(resultPtr);
-  wasm!.wimg_free(resultPtr, 0);
+    const json = readLengthPrefixedString(resultPtr);
+    wasm!.wimg_free(resultPtr, 0);
 
-  const importResult = JSON.parse(json) as ImportResult;
+    const importResult = JSON.parse(json) as ImportResult;
 
-  if (importResult.imported > 0) {
-    await opfsSave();
-    onMutate?.();
-  }
+    if (importResult.imported > 0) {
+      await opfsSave();
+      onMutate?.();
+    }
 
-  return importResult;
+    logAction(
+      "importCsv",
+      `${importResult.imported} imported, ${importResult.skipped_duplicates} dupes, ${importResult.format}`,
+    );
+    return importResult;
+  });
 }
 
 export function getTransactions(): Transaction[] {
-  ensureInit();
+  return timed("getTransactions", () => {
+    ensureInit();
 
-  const ptr = wasm!.wimg_get_transactions();
-  if (ptr === 0) {
-    const err = getLastError("getTransactions failed");
-    console.error("[wimg]", err);
-    if (err.includes("buffer too small")) {
-      throw new Error(
-        "Zu viele Transaktionen zum Anzeigen. Daten sind gespeichert, aber der Anzeigepuffer ist voll.",
-      );
+    const ptr = wasm!.wimg_get_transactions();
+    if (ptr === 0) {
+      const err = getLastError("getTransactions failed");
+      console.error("[wimg]", err);
+      if (err.includes("buffer too small")) {
+        throw new Error(
+          "Zu viele Transaktionen zum Anzeigen. Daten sind gespeichert, aber der Anzeigepuffer ist voll.",
+        );
+      }
+      return [];
     }
-    return [];
-  }
 
-  const json = readLengthPrefixedString(ptr);
-  wasm!.wimg_free(ptr, 0);
+    const json = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
 
-  return JSON.parse(json) as Transaction[];
+    return JSON.parse(json) as Transaction[];
+  });
 }
 
 export async function setCategory(id: string, category: number): Promise<void> {
-  ensureInit();
+  return timedAsync("setCategory", async () => {
+    ensureInit();
 
-  const idPtr = writeString(id);
-  const rc = wasm!.wimg_set_category(idPtr, id.length, category);
-  if (rc !== 0) {
-    throw new Error(getLastError("Failed to set category"));
-  }
+    const idPtr = writeString(id);
+    const rc = wasm!.wimg_set_category(idPtr, id.length, category);
+    if (rc !== 0) {
+      throw new Error(getLastError("Failed to set category"));
+    }
 
-  await opfsSave();
-  onMutate?.();
+    await opfsSave();
+    onMutate?.();
+    logAction("setCategory", `${id.slice(0, 8)}... → cat ${category}`);
+  });
 }
 
 export async function setExcluded(id: string, excluded: boolean): Promise<void> {
-  ensureInit();
+  return timedAsync("setExcluded", async () => {
+    ensureInit();
 
-  const idPtr = writeString(id);
-  const rc = wasm!.wimg_set_excluded(idPtr, id.length, excluded ? 1 : 0);
-  if (rc !== 0) {
-    throw new Error(getLastError("Failed to set excluded"));
-  }
+    const idPtr = writeString(id);
+    const rc = wasm!.wimg_set_excluded(idPtr, id.length, excluded ? 1 : 0);
+    if (rc !== 0) {
+      throw new Error(getLastError("Failed to set excluded"));
+    }
 
-  await opfsSave();
-  onMutate?.();
+    await opfsSave();
+    onMutate?.();
+    logAction("setExcluded", `${id.slice(0, 8)}... → ${excluded ? "excluded" : "included"}`);
+  });
 }
 
 export function getSummary(year: number, month: number): MonthlySummary {
-  ensureInit();
+  return timed("getSummary", () => {
+    ensureInit();
 
-  const ptr = wasm!.wimg_get_summary(year, month);
-  if (ptr === 0) {
-    return {
-      year,
-      month,
-      income: 0,
-      expenses: 0,
-      available: 0,
-      tx_count: 0,
-      by_category: [],
-    };
-  }
+    const ptr = wasm!.wimg_get_summary(year, month);
+    if (ptr === 0) {
+      return {
+        year,
+        month,
+        income: 0,
+        expenses: 0,
+        available: 0,
+        tx_count: 0,
+        by_category: [],
+      };
+    }
 
-  const json = readLengthPrefixedString(ptr);
-  wasm!.wimg_free(ptr, 0);
+    const json = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
 
-  return JSON.parse(json) as MonthlySummary;
+    return JSON.parse(json) as MonthlySummary;
+  });
 }
 
 export function getDebts(): Debt[] {
-  ensureInit();
+  return timed("getDebts", () => {
+    ensureInit();
 
-  const ptr = wasm!.wimg_get_debts();
-  if (ptr === 0) return [];
+    const ptr = wasm!.wimg_get_debts();
+    if (ptr === 0) return [];
 
-  const json = readLengthPrefixedString(ptr);
-  wasm!.wimg_free(ptr, 0);
+    const json = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
 
-  return JSON.parse(json) as Debt[];
+    return JSON.parse(json) as Debt[];
+  });
 }
 
 export async function addDebt(name: string, total: number, monthly: number): Promise<void> {
-  ensureInit();
+  return timedAsync("addDebt", async () => {
+    ensureInit();
 
-  const id = generateUUID().replace(/-/g, "").slice(0, 32);
-  const json = JSON.stringify({ id, name, total, monthly });
-  const encoded = new TextEncoder().encode(json);
-  const ptr = writeBytes(encoded);
+    const id = generateUUID().replace(/-/g, "").slice(0, 32);
+    const json = JSON.stringify({ id, name, total, monthly });
+    const encoded = new TextEncoder().encode(json);
+    const ptr = writeBytes(encoded);
 
-  const rc = wasm!.wimg_add_debt(ptr, encoded.length);
-  if (rc !== 0) {
-    throw new Error(getLastError("Failed to add debt"));
-  }
+    const rc = wasm!.wimg_add_debt(ptr, encoded.length);
+    if (rc !== 0) {
+      throw new Error(getLastError("Failed to add debt"));
+    }
 
-  await opfsSave();
-  onMutate?.();
+    await opfsSave();
+    onMutate?.();
+    logAction("addDebt", `"${name}" ${(total / 100).toFixed(2)}€`);
+  });
 }
 
 export async function markDebtPaid(id: string, amountCents: number): Promise<void> {
-  ensureInit();
+  return timedAsync("markDebtPaid", async () => {
+    ensureInit();
 
-  const idPtr = writeString(id);
-  const rc = wasm!.wimg_mark_debt_paid(idPtr, id.length, BigInt(amountCents));
-  if (rc !== 0) {
-    throw new Error(getLastError("Failed to mark debt paid"));
-  }
+    const idPtr = writeString(id);
+    const rc = wasm!.wimg_mark_debt_paid(idPtr, id.length, BigInt(amountCents));
+    if (rc !== 0) {
+      throw new Error(getLastError("Failed to mark debt paid"));
+    }
 
-  await opfsSave();
-  onMutate?.();
+    await opfsSave();
+    onMutate?.();
+    logAction("markDebtPaid", `${id.slice(0, 8)}... +${(amountCents / 100).toFixed(2)}€`);
+  });
 }
 
 export async function deleteDebt(id: string): Promise<void> {
-  ensureInit();
+  return timedAsync("deleteDebt", async () => {
+    ensureInit();
 
-  const idPtr = writeString(id);
-  const rc = wasm!.wimg_delete_debt(idPtr, id.length);
-  if (rc !== 0) {
-    throw new Error(getLastError("Failed to delete debt"));
-  }
+    const idPtr = writeString(id);
+    const rc = wasm!.wimg_delete_debt(idPtr, id.length);
+    if (rc !== 0) {
+      throw new Error(getLastError("Failed to delete debt"));
+    }
 
-  await opfsSave();
-  onMutate?.();
+    await opfsSave();
+    onMutate?.();
+    logAction("deleteDebt", `${id.slice(0, 8)}...`);
+  });
 }
 
 export async function undo(): Promise<UndoResult | null> {
-  ensureInit();
+  return timedAsync("undo", async () => {
+    ensureInit();
 
-  const ptr = wasm!.wimg_undo();
-  if (ptr === 0) return null;
+    const ptr = wasm!.wimg_undo();
+    if (ptr === 0) return null;
 
-  const json = readLengthPrefixedString(ptr);
-  wasm!.wimg_free(ptr, 0);
+    const json = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
 
-  await opfsSave();
-  onMutate?.();
-  return JSON.parse(json) as UndoResult;
+    await opfsSave();
+    onMutate?.();
+    const undoResult = JSON.parse(json) as UndoResult;
+    logAction("undo", `${undoResult.op} ${undoResult.table}.${undoResult.row_id.slice(0, 8)}...`);
+    return undoResult;
+  });
 }
 
 export async function redo(): Promise<UndoResult | null> {
-  ensureInit();
+  return timedAsync("redo", async () => {
+    ensureInit();
 
-  const ptr = wasm!.wimg_redo();
-  if (ptr === 0) return null;
+    const ptr = wasm!.wimg_redo();
+    if (ptr === 0) return null;
 
-  const json = readLengthPrefixedString(ptr);
-  wasm!.wimg_free(ptr, 0);
+    const json = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
 
-  await opfsSave();
-  onMutate?.();
-  return JSON.parse(json) as UndoResult;
+    await opfsSave();
+    onMutate?.();
+    const redoResult = JSON.parse(json) as UndoResult;
+    logAction("redo", `${redoResult.op} ${redoResult.table}.${redoResult.row_id.slice(0, 8)}...`);
+    return redoResult;
+  });
 }
 
 export function autoCategorize(): number {
-  ensureInit();
-  return wasm!.wimg_auto_categorize();
+  return timed("autoCategorize", () => {
+    ensureInit();
+    return wasm!.wimg_auto_categorize();
+  });
 }
 
 export function detectRecurring(): number {
-  ensureInit();
-  return wasm!.wimg_detect_recurring();
+  return timed("detectRecurring", () => {
+    ensureInit();
+    return wasm!.wimg_detect_recurring();
+  });
 }
 
 export function getRecurring(): RecurringPattern[] {
-  ensureInit();
+  return timed("getRecurring", () => {
+    ensureInit();
 
-  const ptr = wasm!.wimg_get_recurring();
-  if (ptr === 0) return [];
+    const ptr = wasm!.wimg_get_recurring();
+    if (ptr === 0) return [];
 
-  const json = readLengthPrefixedString(ptr);
-  wasm!.wimg_free(ptr, 0);
+    const json = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
 
-  return JSON.parse(json) as RecurringPattern[];
+    return JSON.parse(json) as RecurringPattern[];
+  });
 }
 
 // --- Snapshots ---
 
 export function takeSnapshot(year: number, month: number): void {
-  ensureInit();
-  const rc = wasm!.wimg_take_snapshot(year, month);
-  if (rc !== 0) {
-    throw new Error(getLastError("Failed to take snapshot"));
-  }
+  timed("takeSnapshot", () => {
+    ensureInit();
+    const rc = wasm!.wimg_take_snapshot(year, month);
+    if (rc !== 0) {
+      throw new Error(getLastError("Failed to take snapshot"));
+    }
+  });
 }
 
 export function getSnapshots(): Snapshot[] {
-  ensureInit();
+  return timed("getSnapshots", () => {
+    ensureInit();
 
-  const ptr = wasm!.wimg_get_snapshots();
-  if (ptr === 0) return [];
+    const ptr = wasm!.wimg_get_snapshots();
+    if (ptr === 0) return [];
 
-  const json = readLengthPrefixedString(ptr);
-  wasm!.wimg_free(ptr, 0);
+    const json = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
 
-  return JSON.parse(json) as Snapshot[];
+    return JSON.parse(json) as Snapshot[];
+  });
 }
 
 // --- Export ---
 
 export function exportCsv(): string {
-  ensureInit();
+  return timed("exportCsv", () => {
+    ensureInit();
 
-  const ptr = wasm!.wimg_export_csv();
-  if (ptr === 0) throw new Error(getLastError("Failed to export CSV"));
+    const ptr = wasm!.wimg_export_csv();
+    if (ptr === 0) throw new Error(getLastError("Failed to export CSV"));
 
-  const csv = readLengthPrefixedString(ptr);
-  wasm!.wimg_free(ptr, 0);
+    const csv = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
 
-  return csv;
+    return csv;
+  });
 }
 
 export function exportDb(): string {
-  ensureInit();
+  return timed("exportDb", () => {
+    ensureInit();
 
-  const ptr = wasm!.wimg_export_db();
-  if (ptr === 0) throw new Error(getLastError("Failed to export database"));
+    const ptr = wasm!.wimg_export_db();
+    if (ptr === 0) throw new Error(getLastError("Failed to export database"));
 
-  const json = readLengthPrefixedString(ptr);
-  wasm!.wimg_free(ptr, 0);
+    const json = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
 
-  return json;
+    return json;
+  });
 }
 
 export function getAccounts(): Account[] {
-  ensureInit();
+  return timed("getAccounts", () => {
+    ensureInit();
 
-  const ptr = wasm!.wimg_get_accounts();
-  if (ptr === 0) return [];
+    const ptr = wasm!.wimg_get_accounts();
+    if (ptr === 0) return [];
 
-  const json = readLengthPrefixedString(ptr);
-  wasm!.wimg_free(ptr, 0);
+    const json = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
 
-  return JSON.parse(json) as Account[];
+    return JSON.parse(json) as Account[];
+  });
 }
 
 export async function addAccount(id: string, name: string, color: string): Promise<void> {
-  ensureInit();
+  return timedAsync("addAccount", async () => {
+    ensureInit();
 
-  const json = JSON.stringify({ id, name, color });
-  const encoded = new TextEncoder().encode(json);
-  const ptr = writeBytes(encoded);
+    const json = JSON.stringify({ id, name, color });
+    const encoded = new TextEncoder().encode(json);
+    const ptr = writeBytes(encoded);
 
-  const rc = wasm!.wimg_add_account(ptr, encoded.length);
-  if (rc !== 0) {
-    throw new Error(getLastError("Failed to add account"));
-  }
+    const rc = wasm!.wimg_add_account(ptr, encoded.length);
+    if (rc !== 0) {
+      throw new Error(getLastError("Failed to add account"));
+    }
 
-  await opfsSave();
-  onMutate?.();
+    await opfsSave();
+    onMutate?.();
+    logAction("addAccount", `"${name}" (${id})`);
+  });
 }
 
 export async function updateAccount(id: string, name: string, color: string): Promise<void> {
-  ensureInit();
+  return timedAsync("updateAccount", async () => {
+    ensureInit();
 
-  const json = JSON.stringify({ id, name, color });
-  const encoded = new TextEncoder().encode(json);
-  const ptr = writeBytes(encoded);
+    const json = JSON.stringify({ id, name, color });
+    const encoded = new TextEncoder().encode(json);
+    const ptr = writeBytes(encoded);
 
-  const rc = wasm!.wimg_update_account(ptr, encoded.length);
-  if (rc !== 0) {
-    throw new Error(getLastError("Failed to update account"));
-  }
+    const rc = wasm!.wimg_update_account(ptr, encoded.length);
+    if (rc !== 0) {
+      throw new Error(getLastError("Failed to update account"));
+    }
 
-  await opfsSave();
-  onMutate?.();
+    await opfsSave();
+    onMutate?.();
+    logAction("updateAccount", `"${name}" (${id})`);
+  });
 }
 
 export async function deleteAccount(id: string): Promise<void> {
-  ensureInit();
+  return timedAsync("deleteAccount", async () => {
+    ensureInit();
 
-  const idPtr = writeString(id);
-  const rc = wasm!.wimg_delete_account(idPtr, id.length);
-  if (rc !== 0) {
-    throw new Error(getLastError("Failed to delete account"));
-  }
+    const idPtr = writeString(id);
+    const rc = wasm!.wimg_delete_account(idPtr, id.length);
+    if (rc !== 0) {
+      throw new Error(getLastError("Failed to delete account"));
+    }
 
-  await opfsSave();
-  onMutate?.();
+    await opfsSave();
+    onMutate?.();
+    logAction("deleteAccount", id);
+  });
 }
 
 export function getTransactionsFiltered(account?: string | null): Transaction[] {
-  ensureInit();
+  return timed("getTransactionsFiltered", () => {
+    ensureInit();
 
-  if (!account) {
-    return getTransactions();
-  }
-
-  const acctEncoded = new TextEncoder().encode(account);
-  const acctPtr = writeBytes(acctEncoded);
-  const ptr = wasm!.wimg_get_transactions_filtered(acctPtr, acctEncoded.length);
-  if (ptr === 0) {
-    const err = getLastError("getTransactionsFiltered failed");
-    console.error("[wimg]", err);
-    if (err.includes("buffer too small")) {
-      throw new Error(
-        "Zu viele Transaktionen zum Anzeigen. Daten sind gespeichert, aber der Anzeigepuffer ist voll.",
-      );
+    if (!account) {
+      return getTransactions();
     }
-    return [];
-  }
 
-  const json = readLengthPrefixedString(ptr);
-  wasm!.wimg_free(ptr, 0);
+    const acctEncoded = new TextEncoder().encode(account);
+    const acctPtr = writeBytes(acctEncoded);
+    const ptr = wasm!.wimg_get_transactions_filtered(acctPtr, acctEncoded.length);
+    if (ptr === 0) {
+      const err = getLastError("getTransactionsFiltered failed");
+      console.error("[wimg]", err);
+      if (err.includes("buffer too small")) {
+        throw new Error(
+          "Zu viele Transaktionen zum Anzeigen. Daten sind gespeichert, aber der Anzeigepuffer ist voll.",
+        );
+      }
+      return [];
+    }
 
-  return JSON.parse(json) as Transaction[];
+    const json = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
+
+    return JSON.parse(json) as Transaction[];
+  });
 }
 
 export function getSummaryFiltered(
@@ -729,59 +826,65 @@ export function getSummaryFiltered(
   month: number,
   account?: string | null,
 ): MonthlySummary {
-  ensureInit();
+  return timed("getSummaryFiltered", () => {
+    ensureInit();
 
-  if (!account) {
-    return getSummary(year, month);
-  }
+    if (!account) {
+      return getSummary(year, month);
+    }
 
-  const acctEncoded = new TextEncoder().encode(account);
-  const acctPtr = writeBytes(acctEncoded);
-  const ptr = wasm!.wimg_get_summary_filtered(year, month, acctPtr, acctEncoded.length);
-  if (ptr === 0) {
-    return {
-      year,
-      month,
-      income: 0,
-      expenses: 0,
-      available: 0,
-      tx_count: 0,
-      by_category: [],
-    };
-  }
+    const acctEncoded = new TextEncoder().encode(account);
+    const acctPtr = writeBytes(acctEncoded);
+    const ptr = wasm!.wimg_get_summary_filtered(year, month, acctPtr, acctEncoded.length);
+    if (ptr === 0) {
+      return {
+        year,
+        month,
+        income: 0,
+        expenses: 0,
+        available: 0,
+        tx_count: 0,
+        by_category: [],
+      };
+    }
 
-  const json = readLengthPrefixedString(ptr);
-  wasm!.wimg_free(ptr, 0);
+    const json = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
 
-  return JSON.parse(json) as MonthlySummary;
+    return JSON.parse(json) as MonthlySummary;
+  });
 }
 
 export function getChanges(sinceTs: number): SyncRow[] {
-  ensureInit();
+  return timed("getChanges", () => {
+    ensureInit();
 
-  const ptr = wasm!.wimg_get_changes(BigInt(sinceTs));
-  if (ptr === 0) return [];
+    const ptr = wasm!.wimg_get_changes(BigInt(sinceTs));
+    if (ptr === 0) return [];
 
-  const json = readLengthPrefixedString(ptr);
-  wasm!.wimg_free(ptr, 0);
+    const json = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
 
-  const result = JSON.parse(json) as { rows: SyncRow[] };
-  return result.rows;
+    const result = JSON.parse(json) as { rows: SyncRow[] };
+    return result.rows;
+  });
 }
 
 export function applyChanges(rows: SyncRow[]): number {
-  ensureInit();
+  return timed("applyChanges", () => {
+    ensureInit();
 
-  const json = JSON.stringify({ rows });
-  const encoded = new TextEncoder().encode(json);
-  const ptr = writeBytes(encoded);
+    const json = JSON.stringify({ rows });
+    const encoded = new TextEncoder().encode(json);
+    const ptr = writeBytes(encoded);
 
-  const rc = wasm!.wimg_apply_changes(ptr, encoded.length);
-  if (rc < 0) {
-    throw new Error(getLastError("Failed to apply sync changes"));
-  }
+    const rc = wasm!.wimg_apply_changes(ptr, encoded.length);
+    if (rc < 0) {
+      throw new Error(getLastError("Failed to apply sync changes"));
+    }
 
-  return rc;
+    return rc;
+  });
 }
 
 export function deriveEncryptionKey(syncKey: string): Uint8Array {
@@ -856,7 +959,52 @@ export function decryptRows(rows: SyncRow[], key: Uint8Array): SyncRow[] {
 
 export { opfsSave };
 
+export interface QueryResult {
+  columns: string[];
+  rows: (string | number | null)[][];
+  count: number;
+  truncated: boolean;
+}
+
+export function queryRaw(sql: string): QueryResult {
+  return timed("queryRaw", () => {
+    ensureInit();
+
+    const encoded = new TextEncoder().encode(sql);
+    const ptr = writeBytes(encoded);
+
+    const resultPtr = wasm!.wimg_query(ptr, encoded.length);
+    if (resultPtr === 0) {
+      throw new Error(getLastError("SQL query failed"));
+    }
+
+    const json = readLengthPrefixedString(resultPtr);
+    wasm!.wimg_free(resultPtr, 0);
+
+    return JSON.parse(json) as QueryResult;
+  });
+}
+
 export function close(): void {
   if (!wasm) return;
   wasm.wimg_close();
+}
+
+/** DevTools: expose WASM memory and db_size for the Memory tab */
+export function getWasmMemoryBytes(): number {
+  return wasm?.memory.buffer.byteLength ?? 0;
+}
+
+export function getWasmDbSize(): number {
+  if (!wasm) return 0;
+  return wasm.wimg_db_size();
+}
+
+/** Debug: WASM memory size in MB. Call from console: __wimgMemoryMB() */
+if (typeof globalThis !== "undefined") {
+  (globalThis as Record<string, unknown>).__wimgMemoryMB = () => {
+    if (!wasm) return "WASM not loaded";
+    const bytes = wasm.memory.buffer.byteLength;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  };
 }

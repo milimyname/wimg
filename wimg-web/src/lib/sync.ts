@@ -16,6 +16,7 @@ import {
   decryptRows,
   type SyncRow,
 } from "./wasm";
+import { devtoolsEnabled } from "./devtools.svelte";
 import { accountStore } from "./account.svelte";
 import { syncWS } from "./sync-ws.svelte";
 import { SYNC_API_URL, LS_SYNC_KEY, LS_SYNC_LAST_TS } from "./config";
@@ -67,6 +68,7 @@ export function isSyncEnabled(): boolean {
 }
 
 export async function syncPush(syncKey: string): Promise<number> {
+  const start = devtoolsEnabled ? performance.now() : 0;
   const lastSync = getLastSyncTimestamp();
   const changes: SyncRow[] = getChanges(lastSync);
   console.log(`[wimg-sync] Push: ${changes.length} changes since ${lastSync}`);
@@ -97,10 +99,27 @@ export async function syncPush(syncKey: string): Promise<number> {
   // No need to also push via WS — that would cause duplicate broadcasts
 
   setLastSyncTimestamp(Date.now());
+
+  if (devtoolsEnabled) {
+    const duration = performance.now() - start;
+    import("./devtools.svelte").then((m) => {
+      m.devtoolsStore.logSyncEvent("push", `${changes.length} rows, ${duration.toFixed(0)}ms`);
+      m.devtoolsStore.logSyncDiff(
+        "push",
+        changes.map((r) => ({
+          table: r.table,
+          id: r.id,
+          fields: typeof r.data === "object" && r.data ? Object.keys(r.data) : [],
+        })),
+      );
+    });
+  }
+
   return result.merged;
 }
 
 export async function syncPull(syncKey: string): Promise<number> {
+  const start = devtoolsEnabled ? performance.now() : 0;
   const lastSync = getLastSyncTimestamp();
   console.log(`[wimg-sync] Pull: since=${lastSync}`);
 
@@ -124,6 +143,25 @@ export async function syncPull(syncKey: string): Promise<number> {
   setLastSyncTimestamp(Date.now());
   accountStore.reload();
   window.dispatchEvent(new CustomEvent("wimg:sync-received"));
+
+  if (devtoolsEnabled) {
+    const duration = performance.now() - start;
+    import("./devtools.svelte").then((m) => {
+      m.devtoolsStore.logSyncEvent("pull", `${rows.length} rows, ${duration.toFixed(0)}ms`);
+      m.devtoolsStore.logSyncDiff(
+        "pull",
+        decrypted.map((r) => ({
+          table: r.table,
+          id: r.id,
+          fields:
+            typeof r.data === "object" && r.data
+              ? Object.keys(r.data as Record<string, unknown>)
+              : [],
+        })),
+      );
+    });
+  }
+
   return applied;
 }
 

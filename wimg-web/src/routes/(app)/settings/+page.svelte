@@ -8,6 +8,8 @@
   import { LS_DEMO_LOADED, LS_ONBOARDING_COMPLETED } from "$lib/config";
   import { featureStore } from "$lib/features.svelte";
   import BottomSheet from "../../../components/BottomSheet.svelte";
+  import { pushState } from "$app/navigation";
+  import { page } from "$app/state";
   import {
     getSyncKey,
     setSyncKey,
@@ -29,17 +31,17 @@
   let syncError = $state("");
   let syncSuccess = $state("");
   let lastSync = $state(0);
-  let confirmReset = $state(false);
+  let confirmReset = $derived(page.state.sheet === "confirm-reset");
   let resetting = $state(false);
   let copied = $state(false);
   let hasLocalData = $state(false);
-  let showQR = $state(false);
+  let showQR = $derived(page.state.sheet === "qr");
   let qrSvg = $state("");
 
   // Export state
   let exporting = $state(false);
   let exportSuccess = $state("");
-  let showExportSheet = $state(false);
+  let showExportSheet = $derived(page.state.sheet === "export");
 
   // Feature toggles
   const featureToggles = [
@@ -61,8 +63,8 @@
   );
 
   let pendingSyncKey = $state("");
-  let showLinkConfirm = $state(false);
-  let showSyncInfo = $state(false);
+  let showLinkConfirm = $derived(page.state.sheet === "link-confirm");
+  let showSyncInfo = $derived(page.state.sheet === "sync-info");
 
   onMount(async () => {
     const stored = getSyncKey();
@@ -88,9 +90,9 @@
     const syncParam = params.get("sync");
     if (syncParam && !syncEnabled) {
       pendingSyncKey = syncParam;
-      showLinkConfirm = true;
       // Clean URL without reload
       window.history.replaceState({}, "", window.location.pathname);
+      pushState("", { sheet: "link-confirm" });
     }
 
   });
@@ -168,11 +170,11 @@
   function handleShowQR() {
     const syncUrl = `${window.location.origin}/settings?sync=${syncKey}`;
     qrSvg = generateQRSvg(syncUrl);
-    showQR = true;
+    pushState("", { sheet: "qr" });
   }
 
   async function handleConfirmLink() {
-    showLinkConfirm = false;
+    history.back();
     linkInput = pendingSyncKey;
     pendingSyncKey = "";
     await handleLink();
@@ -194,7 +196,7 @@
       window.location.reload();
     } catch (e) {
       resetting = false;
-      confirmReset = false;
+      history.back();
     }
   }
 
@@ -321,7 +323,7 @@
 
     {#if !syncEnabled}
       <button
-        onclick={() => (showSyncInfo = true)}
+        onclick={() => pushState("", { sheet: "sync-info" })}
         class="w-full py-3 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98]"
       >
         Sync aktivieren
@@ -553,7 +555,7 @@
   </a>
 
   <!-- Export Section -->
-  <button id="export" onclick={() => (showExportSheet = true)} class="bg-white rounded-3xl p-5 shadow-sm flex items-center gap-3 w-full text-left group active:scale-[0.98] transition-transform">
+  <button id="export" onclick={() => pushState("", { sheet: "export" })} class="bg-white rounded-3xl p-5 shadow-sm flex items-center gap-3 w-full text-left group active:scale-[0.98] transition-transform">
     <div class="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center">
       <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -611,7 +613,7 @@
     </div>
 
     <button
-      onclick={() => (confirmReset = true)}
+      onclick={() => pushState("", { sheet: "confirm-reset" })}
       class="w-full py-3 rounded-2xl border-2 border-red-200 text-red-600 font-bold text-sm transition-colors hover:bg-red-50 active:scale-[0.98]"
     >
       Alle Daten löschen
@@ -621,7 +623,7 @@
 </section>
 
 <!-- Sync Info / Confirmation Sheet -->
-<BottomSheet open={showSyncInfo} onclose={() => (showSyncInfo = false)} snaps={[0.62]}>
+<BottomSheet open={showSyncInfo} onclose={() => history.back()} snaps={[0.62]}>
   {#snippet children({ handle, content, footer })}
     <div {@attach handle} class="flex justify-center pt-3 pb-2">
       <div class="w-10 h-1 rounded-full bg-gray-200"></div>
@@ -693,7 +695,7 @@
 
     <div {@attach footer} class="px-6 pb-8 pt-4">
       <button
-        onclick={() => { showSyncInfo = false; handleEnableSync(); }}
+        onclick={() => { history.back(); handleEnableSync(); }}
         disabled={syncing}
         class="w-full py-3.5 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50 mb-2"
       >
@@ -707,7 +709,7 @@
         {/if}
       </button>
       <button
-        onclick={() => (showSyncInfo = false)}
+        onclick={() => history.back()}
         class="w-full py-3 rounded-2xl text-sm font-medium text-(--color-text-secondary) hover:bg-(--color-bg) transition-colors"
       >
         Abbrechen
@@ -717,7 +719,7 @@
 </BottomSheet>
 
 <!-- QR Code Sheet -->
-<BottomSheet open={showQR} onclose={() => (showQR = false)} snaps={[0.62]}>
+<BottomSheet open={showQR} onclose={() => history.back()} snaps={[0.62]}>
   {#snippet children({ handle, content, footer })}
     <div {@attach handle} class="flex justify-center pt-3 pb-2">
       <div class="w-10 h-1 rounded-full bg-gray-200"></div>
@@ -738,7 +740,7 @@
 
     <div {@attach footer} class="px-6 pb-8 pt-4">
       <button
-        onclick={() => (showQR = false)}
+        onclick={() => history.back()}
         class="w-full py-3.5 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98]"
       >
         Fertig
@@ -748,7 +750,7 @@
 </BottomSheet>
 
 <!-- QR Link Confirmation Sheet -->
-<BottomSheet open={showLinkConfirm} onclose={() => { showLinkConfirm = false; pendingSyncKey = ""; }} snaps={[0.38]}>
+<BottomSheet open={showLinkConfirm} onclose={() => { pendingSyncKey = ""; history.back(); }} snaps={[0.38]}>
   {#snippet children({ handle, content, footer })}
     <div {@attach handle} class="flex justify-center pt-3 pb-2">
       <div class="w-10 h-1 rounded-full bg-gray-200"></div>
@@ -775,7 +777,7 @@
         Verknüpfen
       </button>
       <button
-        onclick={() => { showLinkConfirm = false; pendingSyncKey = ""; }}
+        onclick={() => { pendingSyncKey = ""; history.back(); }}
         class="w-full py-3 rounded-2xl text-(--color-text-secondary) font-medium text-sm transition-colors hover:text-(--color-text)"
       >
         Abbrechen
@@ -785,7 +787,7 @@
 </BottomSheet>
 
 <!-- Delete Confirmation Sheet -->
-<BottomSheet open={confirmReset} onclose={() => (confirmReset = false)} snaps={[0.48]}>
+<BottomSheet open={confirmReset} onclose={() => history.back()} snaps={[0.48]}>
   {#snippet children({ handle, content, footer })}
     <div {@attach handle} class="flex justify-center pt-3 pb-2">
       <div class="w-10 h-1 rounded-full bg-gray-200"></div>
@@ -814,7 +816,7 @@
       </button>
 
       <button
-        onclick={() => (confirmReset = false)}
+        onclick={() => history.back()}
         class="w-full py-3 rounded-2xl text-sm font-medium text-(--color-text-secondary) hover:bg-(--color-bg) transition-colors"
       >
         Abbrechen
@@ -824,7 +826,7 @@
 </BottomSheet>
 
 <!-- Export Sheet -->
-<BottomSheet open={showExportSheet} onclose={() => (showExportSheet = false)} snaps={[0.58]}>
+<BottomSheet open={showExportSheet} onclose={() => history.back()} snaps={[0.58]}>
   {#snippet children({ handle, content, footer })}
     <div {@attach handle} class="flex justify-center pt-3 pb-2">
       <div class="w-10 h-1 rounded-full bg-gray-200"></div>
@@ -892,7 +894,7 @@
 
     <div {@attach footer} class="px-6 pb-8 pt-4">
       <button
-        onclick={() => (showExportSheet = false)}
+        onclick={() => history.back()}
         class="w-full py-3 rounded-2xl text-sm font-medium text-(--color-text-secondary) hover:bg-(--color-bg) transition-colors"
       >
         Schliessen

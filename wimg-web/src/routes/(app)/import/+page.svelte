@@ -218,7 +218,14 @@
   }
 </script>
 
-<h2 class="text-xl font-display font-extrabold text-center mb-5">CSV Import</h2>
+<div class="flex items-center gap-3 mb-5">
+  <a href="/more" class="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm" aria-label="Zurück">
+    <svg class="w-5 h-5 text-(--color-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+    </svg>
+  </a>
+  <h2 class="text-xl font-display font-extrabold text-(--color-text)">CSV Import</h2>
+</div>
 
 {#if fileQueue.length > 1}
   <div class="flex items-center justify-center gap-2 mb-4 text-sm font-bold text-(--color-text-secondary)">

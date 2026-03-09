@@ -12,6 +12,8 @@
   import { accountStore } from "$lib/account.svelte";
   import { toastStore } from "$lib/toast.svelte";
   import BottomSheet from "../../../components/BottomSheet.svelte";
+  import { pushState } from "$app/navigation";
+  import { page } from "$app/state";
 
   type Filter = "all" | "expenses" | "income";
 
@@ -58,11 +60,11 @@
   let filter = $state<Filter>("all");
   let selectedTxn = $state<Transaction | null>(null);
   let originalTxn = $state<Transaction | null>(null);
-  let showSheet = $state(false);
+  let showSheet = $derived(page.state.sheet === "txn-detail" && selectedTxn != null);
   let searchQuery = $state("");
   let showExcluded = $state(false);
   let filterCategories = $state<number[]>([]);
-  let showAdvancedSearch = $state(false);
+  let showAdvancedSearch = $derived(page.state.sheet === "txn-filter");
   let dateQuick = $state<string | null>(null);
   let amountQuick = $state<string | null>(null);
 
@@ -134,19 +136,17 @@
   function openDetail(txn: Transaction) {
     originalTxn = { ...txn };
     selectedTxn = { ...txn };
-    showSheet = true;
-    history.replaceState(null, "", `#${txn.id}`);
+    pushState(`#${txn.id}`, { sheet: "txn-detail" });
   }
 
   function dismissSheet() {
-    showSheet = false;
+    history.back();
   }
 
   function onSheetClosed() {
-    showSheet = false;
     selectedTxn = null;
     originalTxn = null;
-    history.replaceState(null, "", window.location.pathname);
+    history.back();
   }
 
   function handleCategoryChange(category: number) {
@@ -204,7 +204,7 @@
 <!-- Header -->
 <div class="flex items-center justify-between mb-4">
   <button
-    onclick={() => (showAdvancedSearch = true)}
+    onclick={() => pushState("", { sheet: "txn-filter" })}
     class="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-[var(--shadow-card)] cursor-pointer hover:shadow-[var(--shadow-soft)] transition-shadow"
     aria-label="Suchen"
   >
@@ -224,7 +224,7 @@
   </button>
   <h2 class="text-xl font-display font-extrabold">Transaktionen</h2>
   <button
-    onclick={() => (showAdvancedSearch = true)}
+    onclick={() => pushState("", { sheet: "txn-filter" })}
     class="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-[var(--shadow-card)] cursor-pointer hover:shadow-[var(--shadow-soft)] transition-shadow relative"
     aria-label="Filter"
   >
@@ -392,7 +392,7 @@
 <!-- Advanced Search Bottom Sheet -->
 <BottomSheet
   open={showAdvancedSearch}
-  onclose={() => (showAdvancedSearch = false)}
+  onclose={() => history.back()}
   snaps={[0.92]}
 >
   {#snippet children({ handle, content, footer })}
@@ -553,7 +553,7 @@
         {/if}
         <button
           class="flex-1 bg-(--color-accent) text-(--color-text) font-display font-extrabold text-lg py-4 rounded-2xl cursor-pointer hover:bg-(--color-accent-hover) transition-colors shadow-[0_8px_20px_rgba(255,233,125,0.25)]"
-          onclick={() => (showAdvancedSearch = false)}
+          onclick={() => history.back()}
         >
           Ergebnisse anzeigen
         </button>

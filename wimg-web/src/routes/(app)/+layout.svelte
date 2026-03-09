@@ -19,6 +19,7 @@
   let error = $state<string | null>(null);
   let showDrop = $state(false);
   let showOnboarding = $state(false);
+  let showDevTools = $state(false);
   let dragCounter = 0;
 
   function hasFiles(e: DragEvent): boolean {
@@ -87,6 +88,12 @@
       // Silently ignore snapshot errors
     }
 
+    // DevTools: enabled in dev mode or via ?devtools URL param
+    if (import.meta.env.DEV || new URLSearchParams(window.location.search).has("devtools")) {
+      showDevTools = true;
+      import("$lib/devtools.svelte").then((m) => m.devtoolsStore.enable());
+    }
+
     updateStore.init();
 
     // Real-time sync: connect WebSocket (onReconnect handles initial pull)
@@ -135,6 +142,12 @@
 
 <Toast />
 
+{#if showDevTools}
+  {#await import("../../components/DevTools.svelte") then DevTools}
+    <DevTools.default />
+  {/await}
+{/if}
+
 {#if showOnboarding}
   <OnboardingOverlay
     onclose={() => {
@@ -148,6 +161,12 @@
   ondragenter={handleDragEnter}
   ondragleave={handleDragLeave}
   ondrop={handleDrop}
+  onkeydown={(e) => {
+    if (showDevTools && e.ctrlKey && e.shiftKey && e.key === "D") {
+      e.preventDefault();
+      import("$lib/devtools.svelte").then((m) => m.devtoolsStore.toggle());
+    }
+  }}
 />
 
 <GlobalDropOverlay visible={showDrop} ondrop={handleFileDrop} />

@@ -8,6 +8,7 @@
  */
 
 import { applyChanges, opfsSave, deriveEncryptionKey, decryptRows, type SyncRow } from "./wasm";
+import { devtoolsEnabled } from "./devtools.svelte";
 import { accountStore } from "./account.svelte";
 import { SYNC_API_URL, LS_SYNC_KEY } from "./config";
 
@@ -51,6 +52,12 @@ class SyncWS {
       this.reconnectDelay = 1000;
       console.log("[wimg-sync] WebSocket connected");
 
+      if (devtoolsEnabled) {
+        import("./devtools.svelte").then((m) =>
+          m.devtoolsStore.logSyncEvent("ws-connect", "WebSocket connected"),
+        );
+      }
+
       // Catch up on any changes missed while disconnected
       this.onReconnect?.();
     };
@@ -73,12 +80,33 @@ class SyncWS {
               const key = deriveEncryptionKey(syncKey);
               rows = decryptRows(rows, key);
             }
-          } catch (e) {
-            console.error("[wimg-sync] WS decrypt failed:", e);
+          } catch (decryptErr) {
+            console.error("[wimg-sync] WS decrypt failed:", decryptErr);
             return;
           }
           const applied = applyChanges(rows);
           console.log(`[wimg-sync] WS: applied ${applied} of ${msg.rows.length} changes`);
+
+          if (devtoolsEnabled) {
+            import("./devtools.svelte").then((m) => {
+              m.devtoolsStore.logSyncEvent(
+                "ws-message",
+                `${msg.rows!.length} rows, ${applied} applied`,
+              );
+              m.devtoolsStore.logSyncDiff(
+                "ws",
+                rows.map((r) => ({
+                  table: r.table,
+                  id: r.id,
+                  fields:
+                    typeof r.data === "object" && r.data
+                      ? Object.keys(r.data as Record<string, unknown>)
+                      : [],
+                })),
+              );
+            });
+          }
+
           opfsSave().then(() => {
             accountStore.reload();
             window.dispatchEvent(new CustomEvent("wimg:sync-received"));
@@ -95,6 +123,13 @@ class SyncWS {
 
     this.ws.onclose = () => {
       this.connected = false;
+
+      if (devtoolsEnabled) {
+        import("./devtools.svelte").then((m) =>
+          m.devtoolsStore.logSyncEvent("ws-disconnect", "WebSocket disconnected"),
+        );
+      }
+
       if (!this.closed) {
         console.log(`[wimg-sync] Reconnecting in ${this.reconnectDelay}ms`);
         setTimeout(() => this.doConnect(), this.reconnectDelay);

@@ -369,6 +369,89 @@ pub const Db = struct {
         if (rc != c.SQLITE_OK) return DbError.ExecFailed;
     }
 
+    /// Run arbitrary SQL and write JSON result to buf. Returns bytes written, or null if buf too small.
+    pub fn rawQuery(self: *Db, sql: [*:0]const u8, buf: [*]u8, buf_size: usize) DbError!?usize {
+        var stmt: ?*c.sqlite3_stmt = null;
+        const rc = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
+        if (rc != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+
+        const s = stmt.?;
+        const col_count: usize = @intCast(c.sqlite3_column_count(s));
+
+        // Collect column names
+        var col_names: [64][*:0]const u8 = undefined;
+        const cols = @min(col_count, 64);
+        for (0..cols) |i| {
+            col_names[i] = c.sqlite3_column_name(s, @intCast(i)) orelse "?";
+        }
+
+        var stream = std.io.fixedBufferStream(buf[0..buf_size]);
+        const w = stream.writer();
+
+        w.writeAll("{\"columns\":[") catch return null;
+        for (0..cols) |i| {
+            if (i > 0) w.writeByte(',') catch return null;
+            w.writeByte('"') catch return null;
+            w.writeAll(std.mem.span(col_names[i])) catch return null;
+            w.writeByte('"') catch return null;
+        }
+        w.writeAll("],\"rows\":[") catch return null;
+
+        var row_idx: usize = 0;
+        const max_rows: usize = 500;
+        while (c.sqlite3_step(s) == c.SQLITE_ROW) {
+            if (row_idx >= max_rows) break;
+            if (row_idx > 0) w.writeByte(',') catch return null;
+            w.writeByte('[') catch return null;
+            for (0..cols) |i| {
+                if (i > 0) w.writeByte(',') catch return null;
+                const col_type = c.sqlite3_column_type(s, @intCast(i));
+                if (col_type == c.SQLITE_NULL) {
+                    w.writeAll("null") catch return null;
+                } else if (col_type == 1) { // INTEGER
+                    const v = c.sqlite3_column_int64(s, @intCast(i));
+                    std.fmt.format(w, "{d}", .{v}) catch return null;
+                } else if (col_type == 2) { // FLOAT
+                    const v = c.sqlite3_column_double(s, @intCast(i));
+                    std.fmt.format(w, "{d}", .{v}) catch return null;
+                } else { // TEXT or BLOB — render as string
+                    const ptr = c.sqlite3_column_text(s, @intCast(i));
+                    const len: usize = @intCast(c.sqlite3_column_bytes(s, @intCast(i)));
+                    w.writeByte('"') catch return null;
+                    if (ptr) |p| {
+                        // Escape JSON special chars
+                        const text = p[0..len];
+                        for (text) |ch| {
+                            switch (ch) {
+                                '"' => w.writeAll("\\\"") catch return null,
+                                '\\' => w.writeAll("\\\\") catch return null,
+                                '\n' => w.writeAll("\\n") catch return null,
+                                '\r' => w.writeAll("\\r") catch return null,
+                                '\t' => w.writeAll("\\t") catch return null,
+                                else => w.writeByte(ch) catch return null,
+                            }
+                        }
+                    }
+                    w.writeByte('"') catch return null;
+                }
+            }
+            w.writeByte(']') catch return null;
+            row_idx += 1;
+        }
+
+        w.writeAll("]") catch return null;
+        // Add row count + truncated flag
+        std.fmt.format(w, ",\"count\":{d},\"truncated\":{s}}}", .{ row_idx, if (row_idx >= max_rows) "true" else "false" }) catch return null;
+
+        return stream.pos;
+    }
+
+    /// Get the last SQLite error message
+    pub fn lastError(self: *Db) ?[*:0]const u8 {
+        return c.sqlite3_errmsg(self.handle);
+    }
+
     pub fn insertTransaction(self: *Db, txn: *const Transaction) DbError!bool {
         const sql =
             \\INSERT OR IGNORE INTO transactions
