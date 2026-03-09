@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.5 (2026-03-09)
+
+- Enhance TransactionCard and AboutView components; add MCP connection guide
+
 ## v0.5.4 (2026-03-09)
 
 - Optimize WASM memory management for Cloudflare Workers
