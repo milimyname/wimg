@@ -199,5 +199,5 @@ jobs:
           gh release create "$TAG" \
             --title "$TAG" \
             --notes-file release-notes.md \
-            artifacts/libwimg-wasm/libwimg.wasm \
+            artifacts/libwimg-wasm/wimg-web/static/libwimg.wasm \
             artifacts/libwimg-ios/libwimg.xcframework.zip
