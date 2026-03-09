@@ -687,7 +687,7 @@
           </div>
           <div>
             <p class="text-sm font-medium text-(--color-text)">MCP für KI-Agenten</p>
-            <p class="text-xs text-(--color-text-secondary)">Dein Sync-Schlüssel dient auch als MCP-Zugang. Claude.ai kann deine Finanzdaten abfragen und verwalten.</p>
+            <p class="text-xs text-(--color-text-secondary)">Dein Sync-Schlüssel dient auch als MCP-Zugang. Claude.ai kann deine Finanzdaten abfragen und verwalten. Personenbezogene Daten (IBANs, Kartennummern, Namen) werden automatisch entfernt.</p>
           </div>
         </div>
       </div>

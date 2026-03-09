@@ -11,6 +11,37 @@ function formatAmount(euros: number): string {
   return euros.toFixed(2);
 }
 
+/**
+ * Strip personally identifiable information from transaction descriptions.
+ * Keeps merchant names (REWE, SPOTIFY, etc.) but removes:
+ * - IBANs (e.g. DE89 3704 0044 0532 0130 00)
+ * - BICs/SWIFT codes (e.g. COBADEFFXXX)
+ * - Card numbers (4×4 digit groups)
+ * - Structured reference fields: EREF+, MREF+, CRED+, KREF+, ABWA+ (names)
+ */
+function stripPII(description: string): string {
+  return (
+    description
+      // IBANs: 2-letter country code + 2 check digits + up to 30 alphanumeric (with optional spaces)
+      .replace(/\b[A-Z]{2}\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{0,4}\s?\d{0,2}\b/g, "***")
+      // BIC/SWIFT: 8 or 11 chars (4 bank + 2 country + 2 location + optional 3 branch)
+      .replace(/\bBIC\+[A-Z0-9]{8,11}\b/g, "BIC+***")
+      // Card numbers: 4×4 digit groups
+      .replace(/\b\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\b/g, "***")
+      // Structured fields containing references or personal data
+      .replace(/\bEREF\+\S+/g, "EREF+***")
+      .replace(/\bMREF\+\S+/g, "MREF+***")
+      .replace(/\bCRED\+\S+/g, "CRED+***")
+      .replace(/\bKREF\+\S+/g, "KREF+***")
+      .replace(/\bIBAN\+\S+/g, "IBAN+***")
+      // ABWA+ (abweichender Auftraggeber/Empfänger — contains personal names)
+      .replace(/\bABWA\+[^+]+/g, "ABWA+***")
+      // Collapse multiple spaces
+      .replace(/\s{2,}/g, " ")
+      .trim()
+  );
+}
+
 function categoryName(categories: Record<number, CategoryInfo>, id: number): string {
   return categories[id]?.name ?? `Unknown (${id})`;
 }
@@ -168,11 +199,12 @@ export function getToolDefinitions(): ToolDef[] {
 
     {
       name: "get_transactions",
-      description: "Get transactions, optionally filtered by account and/or date",
+      description: "Get transactions, optionally filtered by account, date, and/or category",
       schema: {
         account: z.string().optional().describe("Account ID to filter by (omit for all)"),
         year: z.number().int().optional().describe("Filter by year (e.g. 2025)"),
         month: z.number().int().min(1).max(12).optional().describe("Filter by month (1-12, requires year)"),
+        category: z.string().optional().describe("Filter by category name (German, English, or alias). Use 'Unkategorisiert' or 'uncategorized' for uncategorized transactions."),
         limit: z.number().int().positive().default(50).describe("Max transactions to return (default 50)"),
         offset: z.number().int().min(0).default(0).describe("Skip first N transactions for pagination (default 0)"),
       },
@@ -180,11 +212,21 @@ export function getToolDefinitions(): ToolDef[] {
         let txs = wasm.getTransactionsFiltered(args.account as string | undefined);
         const year = args.year as number | undefined;
         const month = args.month as number | undefined;
+        const categoryFilter = args.category as string | undefined;
         if (year) {
           txs = txs.filter((tx) => {
             const [ty, tm] = tx.date.split("-").map(Number);
             return ty === year && (month ? tm === month : true);
           });
+        }
+        if (categoryFilter) {
+          const catId = resolveCategoryId(wasm.categories, categoryFilter);
+          if (catId === undefined) {
+            throw new Error(
+              `Unknown category: '${categoryFilter}'. Valid categories: ${validCategoryNames(wasm.categories)}`,
+            );
+          }
+          txs = txs.filter((tx) => tx.category === catId);
         }
         const offset = (args.offset as number) || 0;
         const limit = (args.limit as number) || 50;
@@ -193,7 +235,7 @@ export function getToolDefinitions(): ToolDef[] {
         const formatted = page.map((tx) => ({
           id: tx.id,
           date: tx.date,
-          description: tx.description,
+          description: stripPII(tx.description),
           amount: formatAmount(tx.amount),
           currency: tx.currency,
           category: categoryName(wasm.categories, tx.category),
@@ -238,7 +280,7 @@ export function getToolDefinitions(): ToolDef[] {
         const formatted = page.map((tx) => ({
           id: tx.id,
           date: tx.date,
-          description: tx.description,
+          description: stripPII(tx.description),
           amount: formatAmount(tx.amount),
           currency: tx.currency,
           category: categoryName(wasm.categories, tx.category),
@@ -339,6 +381,61 @@ export function getToolDefinitions(): ToolDef[] {
       handler: (_args, wasm) => {
         const count = wasm.detectRecurring();
         return { text: JSON.stringify({ patterns_detected: count }, null, 2) };
+      },
+    },
+
+    {
+      name: "get_uncategorized_transactions",
+      description:
+        "Get all uncategorized transactions, grouped by merchant/description pattern. Use this FIRST before categorizing — it shows everything that needs categorization in one call. Then use batch_set_category to categorize them all at once.",
+      schema: {
+        account: z.string().optional().describe("Account ID to filter by (omit for all)"),
+      },
+      handler: (args, wasm) => {
+        const txs = wasm.getTransactionsFiltered(args.account as string | undefined);
+        const uncategorized = txs.filter((tx) => tx.category === 0);
+
+        // Group by normalized description (lowercase, trim numbers/dates)
+        const groups: Record<string, Array<{ id: string; date: string; description: string; amount: string }>> = {};
+        for (const tx of uncategorized) {
+          // Normalize: lowercase, remove dates, trailing numbers, card numbers
+          const key = tx.description
+            .toLowerCase()
+            .replace(/\d{2}\.\d{2}\.\d{2,4}/g, "")
+            .replace(/\d{4}\s?\d{4}\s?\d{4}/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+          if (!groups[key]) groups[key] = [];
+          groups[key].push({
+            id: tx.id,
+            date: tx.date,
+            description: stripPII(tx.description),
+            amount: formatAmount(tx.amount),
+          });
+        }
+
+        // Sort groups by count (most common first)
+        const sorted = Object.entries(groups)
+          .sort((a, b) => b[1].length - a[1].length)
+          .map(([pattern, txns]) => ({
+            pattern,
+            count: txns.length,
+            total: formatAmount(txns.reduce((s, t) => s + parseFloat(t.amount), 0)),
+            transactions: txns,
+          }));
+
+        return {
+          text: JSON.stringify(
+            {
+              total_uncategorized: uncategorized.length,
+              groups: sorted.length,
+              by_merchant: sorted,
+              tip: "Use batch_set_category with the transaction IDs and category names to categorize them all at once.",
+            },
+            null,
+            2,
+          ),
+        };
       },
     },
 

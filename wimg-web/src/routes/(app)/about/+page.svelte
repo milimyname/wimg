@@ -292,8 +292,12 @@
           (Transaktionen, Schulden, Konten) an diesen Client weitergegeben. Die
           Daten sind zwar Ende-zu-Ende verschlüsselt zwischen deinen Geräten und
           dem Server, aber der MCP-Client selbst kann die entschlüsselten Daten
-          lesen. Verwende nur vertrauenswürdige MCP-Clients und teile deinen
-          Sync-Schlüssel niemals mit Dritten.
+          lesen. <strong>Zum Schutz deiner Privatsphäre werden personenbezogene
+          Daten (IBANs, Kartennummern, Referenznummern, Namen) automatisch aus
+          Transaktionsbeschreibungen entfernt, bevor sie an den MCP-Client
+          gesendet werden.</strong> Händlernamen bleiben erhalten, damit die
+          KI-Kategorisierung funktioniert. Verwende nur vertrauenswürdige
+          MCP-Clients und teile deinen Sync-Schlüssel niemals mit Dritten.
         </p>
       </div>
     </div>

@@ -31,3 +31,5 @@
 | Mar 2026 | SQLite 3.52.0                             | WAL corruption fix, query planner improvements, float precision                             |
 | Mar 2026 | DevTools via `?devtools` URL param        | Enables prod debugging; `devtoolsEnabled` boolean flag = zero overhead when off             |
 | Mar 2026 | `config` module for all Zig targets       | `root.zig` imports `config` unconditionally; native builds get `compact=false` default      |
+| Mar 2026 | No local LLMs, cloud AI only              | Tested wllama (llama.cpp WASM) with Qwen3 0.6B–1.7B: too slow on CPU, heats MacBook M2, no WebGPU on iPhone 11 (iOS 17), poor tool calling & structured output from small models. Cloud Claude API is far superior for categorization. |
+| Mar 2026 | PII stripping for MCP responses           | MCP clients see decrypted data; `stripPII()` removes IBANs, card numbers, BICs, references, personal names from descriptions. Merchant names kept for categorization. |
