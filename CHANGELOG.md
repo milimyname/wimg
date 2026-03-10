@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.13 (2026-03-10)
+
+- Enhance BottomSheet component with improved wheel and touch handling
+
 ## v0.5.12 (2026-03-10)
 
 - Refactor tokenizer tests to use helper functions for state reset
