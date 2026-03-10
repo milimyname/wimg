@@ -8,7 +8,14 @@
     onclose: () => void;
     snaps?: number[];
     children: Snippet<
-      [{ content: Attachment; handle: Attachment; footer: Attachment; height: number }]
+      [
+        {
+          content: Attachment;
+          handle: Attachment;
+          footer: Attachment;
+          height: number;
+        },
+      ]
     >;
   }
 
@@ -36,14 +43,25 @@
   let velocity = 0;
   let isDraggingSheet = false;
 
-  // Wheel state
-  let snapTimer: ReturnType<typeof setTimeout>;
+  // Wheel state: mirrors mobile touch — continuous drag + snap on stop
+  let wheelSnapTimer: ReturnType<typeof setTimeout> | undefined;
+  let lastWheelTime = 0;
+  let wheelVelocity = 0;
+  let isWheeling = false;
 
   const isVisible = $derived(height.current > 5);
   const isExpanded = $derived.by(() => {
     const s = getSnaps();
-    return height.current >= (s[s.length - 1] ?? 600) - 10;
+    return height.current >= (s[s.length - 1] ?? 600) - 5;
   });
+  // Lock content scroll: only scrollable when expanded and not being dragged
+  $effect(() => {
+    if (contentRef) {
+      contentRef.style.overflowY =
+        isExpanded && !isDraggingSheet ? "auto" : "hidden";
+    }
+  });
+
   // Footer becomes visible when sheet is past 40% of the first snap
   const footerReady = $derived.by(() => {
     const s = getSnaps();
@@ -79,20 +97,16 @@
       const origPosition = document.body.style.position;
       const origTop = document.body.style.top;
       const origWidth = document.body.style.width;
-      const origTouchAction = document.body.style.touchAction;
-
       document.body.style.overflow = "hidden";
       document.body.style.position = "fixed";
       document.body.style.top = `-${scrollY}px`;
       document.body.style.width = "100%";
-      document.body.style.touchAction = "none";
 
       return () => {
         document.body.style.overflow = origOverflow;
         document.body.style.position = origPosition;
         document.body.style.top = origTop;
         document.body.style.width = origWidth;
-        document.body.style.touchAction = origTouchAction;
         window.scrollTo(0, scrollY);
       };
     }
@@ -119,10 +133,12 @@
     el.addEventListener("touchstart", onTouchStart, { passive: false });
     el.addEventListener("touchmove", onTouchMove, { passive: false });
     el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("wheel", onWheel, { passive: false });
     return () => {
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("wheel", onWheel);
       sheetRef = undefined;
     };
   };
@@ -132,7 +148,7 @@
     contentRef = el;
     el.style.flex = "1";
     el.style.minHeight = "0";
-    el.style.overflowY = "auto";
+    el.style.overflowY = "hidden"; // Reactive effect controls this
     el.style.overscrollBehavior = "contain";
     el.style.touchAction = "pan-y";
     return () => {
@@ -140,12 +156,23 @@
     };
   };
 
+  // Click-to-snap: toggle between medium and max snap (desktop-friendly)
+  function onHandleClick() {
+    if (isDragging) return; // Ignore if it was a drag, not a click
+    const s = getSnaps();
+    const medium = s[1];
+    const max = s[s.length - 1];
+    height.target = Math.abs(height.current - medium) < 20 ? max : medium;
+  }
+
   const onHandle: Attachment = (node) => {
     const el = node as HTMLElement;
     handleRef = el;
     el.style.touchAction = "none";
-    el.style.cursor = "grab";
+    el.style.cursor = "pointer";
+    el.addEventListener("click", onHandleClick);
     return () => {
+      el.removeEventListener("click", onHandleClick);
       handleRef = undefined;
     };
   };
@@ -175,31 +202,80 @@
     }
   });
 
-  // Wheel handler (desktop scroll control)
+  // Wheel: mirrors mobile touch — continuous height tracking + snap on stop.
+  // Not expanded → all wheel events move the sheet (like mobile: touching content moves sheet).
+  // Expanded → content scrolls normally, overscroll at top chains to shrink.
   function onWheel(e: WheelEvent) {
-    if (contentRef && contentRef.contains(e.target as Node) && isExpanded) {
-      const isScrollable = contentRef.scrollHeight > contentRef.clientHeight;
-      if (isScrollable) {
-        const isAtTop = contentRef.scrollTop <= 0;
-        const isScrollingDown = e.deltaY > 0;
-        if (!isAtTop || isScrollingDown) return;
+    const onHandle = handleRef?.contains(e.target as Node);
+    const onContent = contentRef?.contains(e.target as Node);
+
+    if (!onHandle && !onContent) return;
+
+    if (onContent && !onHandle) {
+      if (isExpanded) {
+        // Expanded: hand off to content scroll, chain at top when pulling down
+        if (isWheeling) {
+          clearTimeout(wheelSnapTimer);
+          isWheeling = false;
+          isDragging = false;
+          wheelVelocity = 0;
+          // Snap to max so sheet settles cleanly
+          const s = getSnaps();
+          height.target = s[s.length - 1];
+        }
+        if (!contentRef) return;
+        const isAtTop = contentRef.scrollTop <= 1;
+        if (isAtTop && e.deltaY < 0) {
+          e.preventDefault();
+          applyWheelDelta(e.deltaY);
+          return;
+        }
+        // Normal content scroll
+        return;
       }
+      // Not expanded: wheel moves the sheet directly (same as mobile touch)
     }
 
+    e.preventDefault();
+    applyWheelDelta(e.deltaY);
+  }
+
+  function applyWheelDelta(deltaY: number) {
+    isWheeling = true;
     isDragging = true;
-    isDraggingSheet = true;
-    clearTimeout(snapTimer);
+
+    // Track velocity for snap (same units as touch: px/ms)
+    const now = Date.now();
+    const dt = now - lastWheelTime;
+    if (dt > 0 && dt < 200) {
+      wheelVelocity = deltaY / dt;
+    }
+    lastWheelTime = now;
 
     const s = getSnaps();
     const maxSnap = s[s.length - 1];
-    const newTarget = Math.max(-20, Math.min(maxSnap + 50, height.target - e.deltaY));
-    height.target = newTarget;
 
-    snapTimer = setTimeout(() => {
-      performSnap();
+    // deltaY > 0 → expand (trackpad: finger swipe up with natural scrolling)
+    // deltaY < 0 → shrink
+    let newHeight = height.target + deltaY;
+
+    // Rubber-band past max snap (iOS-style resistance)
+    if (newHeight > maxSnap) {
+      const overflow = newHeight - maxSnap;
+      newHeight = maxSnap + overflow * 0.15;
+    }
+
+    height.target = Math.max(0, newHeight);
+
+    // Snap when wheel stops (like touchEnd)
+    clearTimeout(wheelSnapTimer);
+    wheelSnapTimer = setTimeout(() => {
+      velocity = wheelVelocity;
+      wheelVelocity = 0;
       isDragging = false;
-      isDraggingSheet = false;
-    }, 100);
+      isWheeling = false;
+      performSnap();
+    }, 150);
   }
 
   // Touch handlers
@@ -217,7 +293,6 @@
 
     if (isHandle) {
       isDraggingSheet = true;
-      if (contentRef) contentRef.style.overflowY = "hidden";
     } else if (!isContent) {
       isDraggingSheet = true;
     }
@@ -229,8 +304,6 @@
     // Reset origin to handoff point so the sheet doesn't jump
     startY = currentY;
     startHeight = height.current;
-    // Lock content scroll immediately (not via async effect)
-    if (contentRef) contentRef.style.overflowY = "hidden";
   }
 
   function onTouchMove(e: TouchEvent) {
@@ -246,18 +319,14 @@
 
     // Hand off from content scroll → sheet drag at boundaries
     if (!isDraggingSheet && contentRef) {
-      const isScrollable =
-        contentRef.scrollHeight > contentRef.clientHeight + 1;
-      const isAtTop = contentRef.scrollTop <= 1;
-      const isAtBottom =
-        contentRef.scrollTop >=
-        contentRef.scrollHeight - contentRef.clientHeight - 1;
-
-      // Use instantaneous direction (velocity) not overall delta
-      // velocity > 0 = finger moving up, velocity < 0 = finger moving down
-      if (isAtTop && velocity < -0.05) {
-        takeOverDrag(currentY);
-      } else if (velocity > 0.05 && (!isScrollable || isAtBottom)) {
+      if (isExpanded) {
+        // When expanded: only take over if at top and pulling down
+        const isAtTop = contentRef.scrollTop <= 1;
+        if (isAtTop && velocity < -0.05) {
+          takeOverDrag(currentY);
+        }
+      } else {
+        // When not expanded: any touch on content moves the sheet
         takeOverDrag(currentY);
       }
     }
@@ -284,8 +353,6 @@
     isDragging = false;
     isDraggingSheet = false;
     velocity = 0;
-    // Restore content scrollability
-    if (contentRef) contentRef.style.overflowY = "auto";
   }
 
   function performSnap() {
@@ -300,12 +367,10 @@
 
     if (Math.abs(velocity) > velocityThreshold) {
       if (velocity > 0) {
-        targetSnap =
-          sortedSnaps.find((snap) => snap > current) ?? maxSnap;
+        targetSnap = sortedSnaps.find((snap) => snap > current) ?? maxSnap;
       } else {
         targetSnap =
-          [...sortedSnaps].reverse().find((snap) => snap < current) ??
-          minSnap;
+          [...sortedSnaps].reverse().find((snap) => snap < current) ?? minSnap;
       }
     } else {
       targetSnap = sortedSnaps.reduce((prev, curr) =>
@@ -334,7 +399,6 @@
     style:height="{Math.max(0, height.current)}px"
     style:visibility={isVisible ? "visible" : "hidden"}
     {@attach onSheet}
-    onwheel={onWheel}
     role="dialog"
     aria-modal="true"
   >
