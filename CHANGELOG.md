@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.12 (2026-03-10)
+
+- Refactor tokenizer tests to use helper functions for state reset
+
 ## v0.5.11 (2026-03-10)
 
 - Enhance embedding functionality and update documentation
