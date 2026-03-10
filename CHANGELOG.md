@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.11 (2026-03-10)
+
+- Enhance embedding functionality and update documentation
+
 ## v0.5.10 (2026-03-09)
 
 - Implement PII stripping in transaction descriptions and enhance transaction filtering
