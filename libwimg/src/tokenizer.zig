@@ -286,6 +286,20 @@ pub fn loadFromGguf(
     };
 }
 
+// --- Test helpers ---
+// Workaround for Zig 0.15.2 x86_64 backend bug: @memset on large arrays in
+// test blocks triggers "emit MIR failed: InvalidInstruction". Using noinline
+// helpers moves the memset out of the test function's codegen scope.
+
+fn testResetHash() void {
+    for (&g_vocab_hash) |*s| s.* = 0;
+    g_vocab_hash_ready = false;
+}
+
+fn testResetScores() void {
+    for (&g_merge_score) |*s| s.* = -std.math.inf(f32);
+}
+
 // --- Tests ---
 
 test "tokenizer bpe basic" {
@@ -310,8 +324,8 @@ test "tokenizer bpe basic" {
     };
 
     // Build hash table for this test vocab
-    @memset(&g_vocab_hash, 0);
-    @memset(&g_merge_score, -std.math.inf(f32));
+    testResetHash();
+    testResetScores();
     for (0..vocab.len) |idx| {
         vocabHashInsert(&vocab, @intCast(idx));
     }
@@ -343,7 +357,7 @@ test "tokenizer bpe basic" {
 }
 
 test "tokenizer empty input" {
-    @memset(&g_vocab_hash, 0);
+    testResetHash();
     g_vocab_hash_ready = true;
 
     var vocab = [_][]const u8{ "<s>", "<pad>", "</s>", "<unk>" };
@@ -374,8 +388,8 @@ test "tokenizer no merges falls back to chars" {
         "b", // 6
     };
 
-    @memset(&g_vocab_hash, 0);
-    @memset(&g_merge_score, -std.math.inf(f32));
+    testResetHash();
+    testResetScores();
     for (0..vocab.len) |idx| {
         vocabHashInsert(&vocab, @intCast(idx));
     }
@@ -404,7 +418,7 @@ test "tokenizer no merges falls back to chars" {
 test "vocab hash lookup" {
     var vocab = [_][]const u8{ "hello", "world", "foo" };
 
-    @memset(&g_vocab_hash, 0);
+    testResetHash();
     for (0..vocab.len) |idx| {
         vocabHashInsert(&vocab, @intCast(idx));
     }
