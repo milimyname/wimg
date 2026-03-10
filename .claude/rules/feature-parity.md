@@ -17,10 +17,10 @@ Settings, More page, About page, Data Export, Monthly Snapshots, Undo toast.
 
 ## Platform-Specific (intentional)
 
-| Feature                              | Platform    | Reason                         |
-| ------------------------------------ | ----------- | ------------------------------ |
-| FinTS bank connection                | iOS only    | Browsers can't do FinTS (CORS) |
-| PWA install + service worker updates | Web only    | Native concept                 |
-| OPFS persistence                     | Web only    | iOS uses file on disk          |
-| MCP server (AI agent access)         | Remote      | CF Worker DO, any MCP client   |
-| DevTools panel                       | Web only    | iOS uses Xcode Instruments     |
+| Feature                              | Platform | Reason                         |
+| ------------------------------------ | -------- | ------------------------------ |
+| FinTS bank connection                | iOS only | Browsers can't do FinTS (CORS) |
+| PWA install + service worker updates | Web only | Native concept                 |
+| OPFS persistence                     | Web only | iOS uses file on disk          |
+| MCP server (AI agent access)         | Remote   | CF Worker DO, any MCP client   |
+| DevTools panel                       | Web only | iOS uses Xcode Instruments     |

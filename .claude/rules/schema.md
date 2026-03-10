@@ -57,6 +57,13 @@ CREATE TABLE snapshots (
   updated_at  INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE embeddings (
+  tx_id       TEXT PRIMARY KEY,            -- FK to transactions.id
+  embedding   BLOB NOT NULL,              -- 384 x f32 = 1536 bytes
+  model_ver   TEXT NOT NULL DEFAULT 'e5-small-q8',
+  updated_at  INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE meta (
   key         TEXT PRIMARY KEY,
   value       TEXT NOT NULL

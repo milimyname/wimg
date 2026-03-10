@@ -21,6 +21,7 @@ wimg-web/.output/
 wimg-web/.vercel/
 wimg-web/.netlify/
 wimg-web/.wrangler/
+wimg-web/static/e5-small-q8_0.gguf
 .svelte-kit/
 
 # Sync Worker — dependencies & build

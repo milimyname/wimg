@@ -63,7 +63,6 @@ enum KeychainService {
     // MARK: - Account Keys
 
     static let syncKey = "sync_key"
-    static let claudeAPIKey = "claude_api_key"
     static let fintsBLZ = "fints_blz"
     static let fintsKennung = "fints_kennung"
 }

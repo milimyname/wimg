@@ -18,16 +18,16 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Tech Stack
 
-| Layer           | Choice                                     |
-| --------------- | ------------------------------------------ |
-| Shared core     | Zig 0.15.2 + SQLite 3.52.0 (amalgamation) |
-| Web UI          | Svelte 5 + TailwindCSS + LayerChart        |
-| Web persistence | OPFS (offline SQLite in browser)           |
-| iOS UI          | SwiftUI + C ABI (libwimg.a)                |
-| Sync            | CF Durable Objects + WebSocket + LWW       |
-| AI              | Claude API (JS-side, optional)             |
-| FinTS           | Pure Zig (native-only, iOS)                |
-| MCP server      | CF Worker DO + libwimg-compact.wasm        |
+| Layer           | Choice                                             |
+| --------------- | -------------------------------------------------- |
+| Shared core     | Zig 0.15.2 + SQLite 3.52.0 (amalgamation)          |
+| Web UI          | Svelte 5 + TailwindCSS + LayerChart                |
+| Web persistence | OPFS (offline SQLite in browser)                   |
+| iOS UI          | SwiftUI + C ABI (libwimg.a)                        |
+| Sync            | CF Durable Objects + WebSocket + LWW               |
+| AI              | Local embeddings (Zig, multilingual-e5-small Q8_0) |
+| FinTS           | Pure Zig (native-only, iOS)                        |
+| MCP server      | CF Worker DO + libwimg-compact.wasm                |
 
 ---
 
@@ -46,14 +46,19 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.8 all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.5, 5.8 all **done**.
 
 Working: CSV import (Comdirect/TR/Scalable), categorization, summaries,
 debts, recurring detection, multi-account, undo/redo, real-time sync with
-E2E encryption, MCP server (17 tools), data export, monthly snapshots,
-PWA with offline support, DevTools panel (5 tabs).
+E2E encryption, MCP server (20 tools), data export, monthly snapshots,
+PWA with offline support, DevTools panel (5 tabs), local embeddings
+(pure Zig inference, multilingual-e5-small Q8_0, 384-dim), smart categorization,
+semantic search.
 
-Next: Annual Renewals (5.4), Command Palette (5.7),
+Embeddings are infrastructure — they make categorization smarter and search
+better. No chat UI (Claude Desktop + MCP replaces it).
+
+Next: Annual Renewals (5.4), Command Palette + Semantic Search (5.7),
 Phase 6 (Annual Review, Net Worth, Tax, Savings Goals).
 
 Deferred: Notifications (5.2) — to be defined later.

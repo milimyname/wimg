@@ -63,7 +63,7 @@ function formatDate(year: number, month: number, day: number): string {
 function formatAmount(cents: number): string {
   const sign = cents < 0 ? "-" : "";
   const abs = Math.abs(cents);
-  const eur = Math.floor(abs / 100);
+  const eur = abs;
   const ct = abs % 100;
   return `${sign}${eur.toLocaleString("de-DE")},${String(ct).padStart(2, "0")}`;
 }

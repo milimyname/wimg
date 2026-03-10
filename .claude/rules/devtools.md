@@ -32,13 +32,13 @@ DevTools.svelte             Floating panel UI (5 tabs), macOS-style corner resiz
 
 ## Panel Tabs
 
-| Tab    | Shows                                                              |
-| ------ | ------------------------------------------------------------------ |
-| WASM   | Sparkline (60s) + aggregate stats + call log + Action Log          |
-| Memory | WASM linear memory, SQLite DB size, budget bar, growth indicator   |
-| Sync   | WS status pill, sync event log, Sync Diff Viewer                  |
+| Tab    | Shows                                                                            |
+| ------ | -------------------------------------------------------------------------------- |
+| WASM   | Sparkline (60s) + aggregate stats + call log + Action Log                        |
+| Memory | WASM linear memory, SQLite DB size, budget bar, growth indicator                 |
+| Sync   | WS status pill, sync event log, Sync Diff Viewer                                 |
 | Data   | Entity counts, Feature Flags, OPFS Browser, localStorage, Snapshots, Danger Zone |
-| SQL    | Query runner (Cmd+Enter), history, results, Schema Inspector       |
+| SQL    | Query runner (Cmd+Enter), history, results, Schema Inspector                     |
 
 ## Resize
 

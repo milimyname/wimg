@@ -96,7 +96,12 @@ interface WasmExports {
   wimg_get_transactions: () => number;
   wimg_get_transactions_filtered: (acct: number, acct_len: number) => number;
   wimg_get_summary: (year: number, month: number) => number;
-  wimg_get_summary_filtered: (year: number, month: number, acct: number, acct_len: number) => number;
+  wimg_get_summary_filtered: (
+    year: number,
+    month: number,
+    acct: number,
+    acct_len: number,
+  ) => number;
   wimg_get_debts: () => number;
   wimg_get_accounts: () => number;
   wimg_get_categories: () => number;

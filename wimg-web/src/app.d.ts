@@ -7,6 +7,7 @@ declare global {
     // interface PageData {}
     interface PageState {
       sheet?: string;
+      txnId?: string;
     }
     // interface Platform {}
   }

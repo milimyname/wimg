@@ -53,6 +53,15 @@ export fn wimg_restore_db(ptr: [*]const u8, len: usize) i32
 
 // SQL (DevTools)
 export fn wimg_query(sql_ptr: [*]const u8, sql_len: u32) ?[*]const u8
+
+// Embeddings (Phase 5.5)
+export fn wimg_alloc_model(size: u32) ?[*]u8           // grows WASM memory for model
+export fn wimg_load_model(data: [*]const u8, len: u32) i32
+export fn wimg_embed_text(text: [*]const u8, text_len: u32) ?[*]const u8
+export fn wimg_embed_transactions() i32
+export fn wimg_smart_categorize() i32
+export fn wimg_semantic_search(query: [*]const u8, query_len: u32, k: u32) ?[*]const u8
+export fn wimg_embedding_status() ?[*]const u8
 ```
 
 All functions return JSON strings into a caller-provided buffer.
@@ -67,20 +76,20 @@ Two WASM builds with different memory budgets, controlled by `-Dcompact` in
 
 **Web app** (default: `zig build --release=small`):
 
-| Source              | File              | Size    |
-| ------------------- | ----------------- | ------- |
-| `wasm_buf` (FBA)    | `root.zig`        | 64 MB   |
-| `mem_storage[4]`    | `wasm_vfs.c`      | 128 MB  |
-| `heap`              | `libc_shim.c`     | 16 MB   |
-| Stack               | `build.zig`       | 1 MB    |
-| **Total**           |                   | ~209 MB |
+| Source           | File          | Size    |
+| ---------------- | ------------- | ------- |
+| `wasm_buf` (FBA) | `root.zig`    | 64 MB   |
+| `mem_storage[4]` | `wasm_vfs.c`  | 128 MB  |
+| `heap`           | `libc_shim.c` | 16 MB   |
+| Stack            | `build.zig`   | 1 MB    |
+| **Total**        |               | ~209 MB |
 
 **MCP/CF Workers** (compact: `zig build --release=small -Dcompact=true`):
 
-| Source              | File              | Size   |
-| ------------------- | ----------------- | ------ |
-| `wasm_buf` (FBA)    | `root.zig`        | 16 MB  |
-| `mem_storage[4]`    | `wasm_vfs.c`      | 32 MB  |
-| `heap`              | `libc_shim.c`     | 4 MB   |
-| Stack               | `build.zig`       | 1 MB   |
-| **Total**           |                   | ~53 MB |
+| Source           | File          | Size   |
+| ---------------- | ------------- | ------ |
+| `wasm_buf` (FBA) | `root.zig`    | 16 MB  |
+| `mem_storage[4]` | `wasm_vfs.c`  | 32 MB  |
+| `heap`           | `libc_shim.c` | 4 MB   |
+| Stack            | `build.zig`   | 1 MB   |
+| **Total**        |               | ~53 MB |

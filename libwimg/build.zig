@@ -2,10 +2,12 @@ const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     // Default: wasm32-freestanding for the web target
+    // Enable SIMD for faster embedding inference (supported in all modern browsers)
     const target = b.standardTargetOptions(.{
         .default_target = .{
             .cpu_arch = .wasm32,
             .os_tag = .freestanding,
+            .cpu_features_add = std.Target.wasm.featureSet(&.{.simd128}),
         },
     });
     const optimize = b.standardOptimizeOption(.{});
@@ -103,6 +105,11 @@ pub fn build(b: *std.Build) void {
 
         // Stack size for WASM
         wasm_lib.stack_size = 1 * 1024 * 1024; // 1 MB stack
+
+        // Max memory: compact (MCP) = default, web = 512 MB (for embedding model ~157MB)
+        if (!compact) {
+            wasm_lib.max_memory = 512 * 1024 * 1024;
+        }
 
         b.installArtifact(wasm_lib);
 
@@ -260,6 +267,47 @@ pub fn build(b: *std.Build) void {
     });
     const run_crypto_tests = b.addRunArtifact(crypto_tests);
     test_step.dependOn(&run_crypto_tests.step);
+
+    // Embedding modules (Phase 5.5)
+    const gguf_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/gguf.zig"),
+            .target = b.resolveTargetQuery(.{}),
+            .optimize = optimize,
+        }),
+    });
+    const run_gguf_tests = b.addRunArtifact(gguf_tests);
+    test_step.dependOn(&run_gguf_tests.step);
+
+    const quants_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/quants.zig"),
+            .target = b.resolveTargetQuery(.{}),
+            .optimize = optimize,
+        }),
+    });
+    const run_quants_tests = b.addRunArtifact(quants_tests);
+    test_step.dependOn(&run_quants_tests.step);
+
+    const tokenizer_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tokenizer.zig"),
+            .target = b.resolveTargetQuery(.{}),
+            .optimize = optimize,
+        }),
+    });
+    const run_tokenizer_tests = b.addRunArtifact(tokenizer_tests);
+    test_step.dependOn(&run_tokenizer_tests.step);
+
+    const embed_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/embed.zig"),
+            .target = b.resolveTargetQuery(.{}),
+            .optimize = optimize,
+        }),
+    });
+    const run_embed_tests = b.addRunArtifact(embed_tests);
+    test_step.dependOn(&run_embed_tests.step);
 }
 
 /// Detect Apple SDK via xcrun and configure include/framework/library paths.

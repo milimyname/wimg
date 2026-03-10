@@ -5,6 +5,8 @@
     setCategory,
     setExcluded,
     undo,
+    smartCategorize,
+    isModelLoaded,
     CATEGORIES,
     type Transaction,
   } from "$lib/wasm";
@@ -12,28 +14,38 @@
   import { accountStore } from "$lib/account.svelte";
   import { toastStore } from "$lib/toast.svelte";
   import BottomSheet from "../../../components/BottomSheet.svelte";
-  import { pushState } from "$app/navigation";
+  import { pushState, replaceState } from "$app/navigation";
   import { page } from "$app/state";
 
   type Filter = "all" | "expenses" | "income";
 
+  const OPEN_TXN_KEY = "wimg_open_txn";
+
   let refreshKey = $state(0);
+  let sheetDismissed = $state(false);
 
   function onSyncReceived() {
     refreshKey++;
   }
 
-  onMount(async () => {
+  onMount(() => {
     window.addEventListener("wimg:sync-received", onSyncReceived);
 
-    // Deep link: #tx-id scrolls to and opens that transaction's detail sheet
-    const hash = window.location.hash.slice(1);
-    if (hash) {
-      await tick();
-      const tx = transactions.find((t) => t.id === hash);
-      if (tx) {
-        document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "center" });
-        openDetail(tx);
+    // Restore sheet on page reload (page.state is empty on first load)
+    if (!page.state.txnId) {
+      const storedId = sessionStorage.getItem(OPEN_TXN_KEY);
+      if (storedId) {
+        const tx = transactions.find((t) => t.id === storedId);
+        if (tx) {
+          selectedTxn = { ...tx };
+          originalTxn = { ...tx };
+          replaceState("", { sheet: "txn-detail", txnId: storedId });
+          tick().then(() => {
+            document.getElementById(storedId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+          });
+        } else {
+          sessionStorage.removeItem(OPEN_TXN_KEY);
+        }
       }
     }
   });
@@ -141,17 +153,45 @@
   function openDetail(txn: Transaction) {
     originalTxn = { ...txn };
     selectedTxn = { ...txn };
-    pushState(`#${txn.id}`, { sheet: "txn-detail" });
+    sheetDismissed = false;
+    sessionStorage.setItem(OPEN_TXN_KEY, txn.id);
+    // Replace existing shallow entry instead of stacking multiple
+    if (page.state.sheet === "txn-detail") {
+      replaceState("", { sheet: "txn-detail", txnId: txn.id });
+    } else {
+      pushState("", { sheet: "txn-detail", txnId: txn.id });
+    }
   }
 
+  // Restore transaction detail on back navigation (page.state preserved by SvelteKit)
+  $effect(() => {
+    const stateId = page.state.txnId;
+    if (stateId && !selectedTxn && !sheetDismissed) {
+      const tx = transactions.find((t) => t.id === stateId);
+      if (tx) {
+        selectedTxn = { ...tx };
+        originalTxn = { ...tx };
+        tick().then(() => {
+          document.getElementById(stateId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      }
+    }
+  });
+
   function dismissSheet() {
+    selectedTxn = null;
+    originalTxn = null;
+    sheetDismissed = true;
+    sessionStorage.removeItem(OPEN_TXN_KEY);
     history.back();
   }
 
   function onSheetClosed() {
+    // Don't pop history — preserve the entry so back navigation can restore the sheet
     selectedTxn = null;
     originalTxn = null;
-    history.back();
+    sheetDismissed = true;
+    sessionStorage.removeItem(OPEN_TXN_KEY);
   }
 
   function handleCategoryChange(category: number) {
@@ -205,6 +245,27 @@
     dateTo = "";
     amountQuick = null;
     filterCategories = [];
+  }
+
+  let categorizing = $state(false);
+  let categorizeResult = $state("");
+  let hasModel = $derived.by(() => {
+    try { return isModelLoaded(); } catch { return false; }
+  });
+
+  function handleSmartCategorize() {
+    categorizing = true;
+    categorizeResult = "";
+    try {
+      const count = smartCategorize();
+      categorizeResult = count === -2 ? "Zuerst manuell kategorisieren" : count > 0 ? `${count} kategorisiert` : "Keine unkategorisierten gefunden";
+      if (count > 0) refreshKey++;
+      setTimeout(() => { categorizeResult = ""; }, 4000);
+    } catch {
+      categorizeResult = "Fehler";
+    } finally {
+      categorizing = false;
+    }
   }
 </script>
 
@@ -567,6 +628,33 @@
           </button>
         </div>
       </section>
+
+      <!-- Smart Categorize -->
+      {#if hasModel}
+        <section class="mb-4">
+          <button
+            onclick={handleSmartCategorize}
+            disabled={categorizing}
+            class="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-indigo-50 text-indigo-700 font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50"
+          >
+            {#if categorizing}
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Kategorisiere...
+            {:else}
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              Smart Kategorisieren
+            {/if}
+          </button>
+          {#if categorizeResult}
+            <p class="text-xs text-center text-indigo-600 font-medium mt-2">{categorizeResult}</p>
+          {/if}
+        </section>
+      {/if}
     </div>
 
     <!-- Footer -->

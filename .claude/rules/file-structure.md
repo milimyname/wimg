@@ -25,9 +25,13 @@ wimg/
 │       ├── root.zig             C ABI exports (+ FinTS native-only exports)
 │       ├── db.zig               SQLite wrapper + schema + migrations
 │       ├── parser.zig           CSV parsers (Comdirect, TR, Scalable)
-│       ├── categories.zig       Rules + Claude API
+│       ├── categories.zig       Keyword rules
 │       ├── summary.zig          Calculations
 │       ├── types.zig            Shared structs
+│       ├── gguf.zig             GGUF v3 file parser
+│       ├── quants.zig           Q4_K/Q6_K/Q8_0/F16 dequant + vector math
+│       ├── tokenizer.zig        SentencePiece BPE tokenizer (vocab/scores from GGUF)
+│       ├── embed.zig            BERT transformer forward pass (12 layers, e5-small)
 │       ├── fints.zig            FinTS 3.0 protocol engine (native only)
 │       ├── fints_http.zig       HTTPS transport (native only)
 │       ├── mt940.zig            MT940 bank statement parser
@@ -43,8 +47,7 @@ wimg/
 │   └── src/
 │       ├── service-worker.ts    SvelteKit service worker (offline caching)
 │       ├── lib/
-│       │   ├── wasm.ts          TypeScript wrapper over C ABI
-│       │   ├── claude.ts        Claude API categorization (JS-side)
+│       │   ├── wasm.ts          TypeScript wrapper over C ABI + model loading
 │       │   ├── sync.ts          Sync orchestrator (push/pull/connect)
 │       │   ├── sync-ws.svelte.ts Real-time WebSocket sync store
 │       │   ├── config.ts        API URLs (prod/LAN detection)
@@ -61,7 +64,7 @@ wimg/
 │       │   ├── debts/           progress bars, mark paid
 │       │   ├── import/          file drop, CSV preview, Claude categorization
 │       │   ├── review/          monthly review, anomalies, checklist
-│       │   ├── settings/        sync config, Claude AI key, data reset
+│       │   ├── settings/        sync config, Claude AI key, embeddings, data reset
 │       │   └── about/           about page, FAQ, privacy, MCP info
 │       └── components/
 │           ├── BottomSheet.svelte   iOS-style sheet (vaul-inspired scale effect)
@@ -115,6 +118,6 @@ wimg/
         ├── sync-room.ts          SyncRoom DO (WebSocket Hibernation API)
         ├── mcp-session.ts        McpSession DO (WASM lifecycle + MCP handling)
         ├── mcp-wasm.ts           WASM loader for CF Workers (WasmInstance class)
-        ├── mcp-tools.ts          17 MCP tool definitions (8 read + 9 write)
+        ├── mcp-tools.ts          20 MCP tool definitions (10 read + 10 write)
         └── wasm.d.ts             TypeScript declaration for .wasm imports
 ```

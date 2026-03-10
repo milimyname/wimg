@@ -159,9 +159,11 @@ export class McpSession implements DurableObject {
 
     const stub = this.getSyncRoomStub();
     const url = `https://internal/sync/${this.syncKey}?since=${this.lastSyncTs}`;
-    const res = await stub.fetch(new Request(url, {
-      headers: { "X-Sync-Key": this.syncKey },
-    }));
+    const res = await stub.fetch(
+      new Request(url, {
+        headers: { "X-Sync-Key": this.syncKey },
+      }),
+    );
 
     if (!res.ok) return;
 
@@ -250,7 +252,10 @@ export class McpSession implements DurableObject {
         };
 
       case "tools/call":
-        return this.handleToolCall(id, params as { name: string; arguments?: Record<string, unknown> });
+        return this.handleToolCall(
+          id,
+          params as { name: string; arguments?: Record<string, unknown> },
+        );
 
       case "ping":
         return { jsonrpc: "2.0", id, result: {} };

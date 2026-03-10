@@ -9,11 +9,6 @@ struct SettingsView: View {
     @State private var syncSuccess = ""
     @State private var lastSync = 0
 
-    // Claude AI
-    @State private var claudeHasKey = ClaudeAPI.hasKey
-    @State private var claudeKeyDraft = ""
-    @State private var claudeShowInput = false
-
     // Feature toggles
     private let featureToggles: [(key: String, label: String, description: String)] = [
         ("debts", "Schulden", "Schulden verfolgen und abzahlen"),
@@ -190,107 +185,6 @@ struct SettingsView: View {
                                     .disabled(syncing || linkInput.trimmingCharacters(in: .whitespaces).isEmpty)
                                 }
                             }
-                        }
-                    }
-                }
-                .padding(20)
-                .wimgCard()
-
-                // MARK: - Claude AI Section
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack(spacing: 12) {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.purple.opacity(0.15))
-                            .frame(width: 40, height: 40)
-                            .overlay {
-                                Image(systemName: "sparkles")
-                                    .foregroundStyle(.purple)
-                            }
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 6) {
-                                Text("Claude AI")
-                                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                    .foregroundStyle(WimgTheme.text)
-                                if claudeHasKey {
-                                    Text("Aktiv")
-                                        .font(.system(.caption2, design: .rounded, weight: .bold))
-                                        .foregroundStyle(.green)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 3)
-                                        .background(.green.opacity(0.1))
-                                        .clipShape(Capsule())
-                                } else {
-                                    Text("Nicht konfiguriert")
-                                        .font(.system(.caption2, design: .rounded, weight: .bold))
-                                        .foregroundStyle(WimgTheme.textSecondary)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 3)
-                                        .background(Color(.systemGray5))
-                                        .clipShape(Capsule())
-                                }
-                            }
-                            Text("KI-Kategorisierung")
-                                .font(.caption2)
-                                .foregroundStyle(WimgTheme.textSecondary)
-                        }
-                    }
-
-                    if !claudeHasKey || claudeShowInput {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("API-Schlüssel")
-                                .font(.caption2)
-                                .foregroundStyle(WimgTheme.textSecondary)
-
-                            HStack(spacing: 8) {
-                                SecureField("sk-ant-...", text: $claudeKeyDraft)
-                                    .font(.subheadline)
-                                    .padding(10)
-                                    .background(WimgTheme.bg)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                                Button {
-                                    let trimmed = claudeKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                                    if !trimmed.isEmpty {
-                                        ClaudeAPI.setKey(trimmed)
-                                        claudeHasKey = true
-                                        claudeShowInput = false
-                                        claudeKeyDraft = ""
-                                    }
-                                } label: {
-                                    Text("Speichern")
-                                        .font(.system(.caption, design: .rounded, weight: .bold))
-                                        .foregroundStyle(.white)
-                                        .padding(.horizontal, 14)
-                                        .padding(.vertical, 10)
-                                        .background(WimgTheme.text)
-                                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                }
-                                .disabled(claudeKeyDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            }
-
-                            Text("Nur lokal gespeichert. Wird nur an die Anthropic API gesendet.")
-                                .font(.caption2)
-                                .foregroundStyle(WimgTheme.textSecondary)
-                        }
-                    }
-
-                    if claudeHasKey && !claudeShowInput {
-                        HStack(spacing: 12) {
-                            Button("Key ändern") {
-                                claudeShowInput = true
-                            }
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(WimgTheme.textSecondary)
-
-                            Button("Entfernen") {
-                                ClaudeAPI.removeKey()
-                                claudeHasKey = false
-                                claudeShowInput = false
-                                claudeKeyDraft = ""
-                            }
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(.red)
                         }
                     }
                 }
@@ -576,7 +470,6 @@ struct SettingsView: View {
 
         Task { await SyncService.shared.disconnectWebSocket() }
         SyncService.shared.clearSyncKey()
-        ClaudeAPI.removeKey()
         KeychainService.deleteAll()
         UserDefaults.standard.removeObject(forKey: "wimg_sync_last_ts")
         DemoDataService.clearDemoFlag()
@@ -586,7 +479,6 @@ struct SettingsView: View {
         try? LibWimg.initialize()
         syncEnabled = false
         syncKey = ""
-        claudeHasKey = false
         confirmReset = false
         resetting = false
 

@@ -1,10 +1,18 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { APP_VERSION, RELEASES_URL } from "$lib/version";
   import { generateQRSvg } from "$lib/qr";
-  import { getApiKey, setApiKey, removeApiKey } from "$lib/claude";
   import { isDemoLoaded, clearDemoFlag } from "$lib/demo";
-  import { exportCsv, exportDb } from "$lib/wasm";
+  import {
+    exportCsv,
+    exportDb,
+    loadEmbeddingModel,
+    deleteEmbeddingModel,
+    embeddingStatus,
+    smartCategorize,
+    type EmbeddingStatus,
+  } from "$lib/wasm";
+  import { embedStore } from "$lib/embed-store.svelte";
   import { LS_DEMO_LOADED, LS_ONBOARDING_COMPLETED } from "$lib/config";
   import { featureStore } from "$lib/features.svelte";
   import BottomSheet from "../../../components/BottomSheet.svelte";
@@ -50,13 +58,84 @@
     { key: "review", label: "Rückblick", description: "Monatliche Zusammenfassung und Analyse" },
   ];
 
+  // Embedding model state
+  let modelStatus = $state<EmbeddingStatus | null>(null);
+  let modelDownloading = $state(false);
+  let downloadProgress = $state(0);
+  let modelError = $state("");
+  let modelSuccess = $state("");
+  let categorizing = $state(false);
+  let showModelInfo = $derived(page.state.sheet === "model-info");
+  let showModelDelete = $derived(page.state.sheet === "model-delete");
+
+  function refreshModelStatus() {
+    try {
+      modelStatus = embeddingStatus();
+    } catch {
+      modelStatus = null;
+    }
+  }
+
+  async function handleDownloadModel() {
+    modelDownloading = true;
+    downloadProgress = 0;
+    modelError = "";
+    modelSuccess = "";
+    try {
+      await loadEmbeddingModel((pct) => {
+        downloadProgress = pct;
+      });
+      refreshModelStatus();
+      modelSuccess = "Modell geladen";
+      setTimeout(() => { modelSuccess = ""; }, 3000);
+    } catch (e) {
+      modelError = e instanceof Error ? e.message : "Download fehlgeschlagen";
+    } finally {
+      modelDownloading = false;
+    }
+  }
+
+  async function handleDeleteModel() {
+    history.back();
+    try {
+      await deleteEmbeddingModel();
+      modelStatus = null;
+      modelSuccess = "Modell-Cache gelöscht. Wird nach Neuladen nicht mehr geladen.";
+      setTimeout(() => { modelSuccess = ""; }, 3000);
+    } catch (e) {
+      modelError = e instanceof Error ? e.message : "Löschen fehlgeschlagen";
+    }
+  }
+
+  function handleEmbedNow() {
+    modelError = "";
+    modelSuccess = "";
+    embedStore.start();
+  }
+
+  function handleSmartCategorize() {
+    categorizing = true;
+    modelError = "";
+    modelSuccess = "";
+    try {
+      const count = smartCategorize();
+      if (count === -2) {
+        modelSuccess = "Kategorisiere zuerst ein paar Buchungen manuell als Referenz";
+      } else if (count > 0) {
+        modelSuccess = `${count} Buchungen kategorisiert`;
+      } else {
+        modelSuccess = "Keine unkategorisierten Buchungen gefunden";
+      }
+      setTimeout(() => { modelSuccess = ""; }, 5000);
+    } catch (e) {
+      modelError = e instanceof Error ? e.message : "Kategorisierung fehlgeschlagen";
+    } finally {
+      categorizing = false;
+    }
+  }
+
   // Demo state
   let demoLoaded = $state(false);
-
-  // Claude AI state
-  let claudeApiKey = $state("");
-  let claudeHasKey = $state(false);
-  let claudeShowInput = $state(false);
 
   const maskedKey = $derived(
     syncKey ? syncKey.slice(0, 4) + "••••-••••-••••-" + syncKey.slice(-4) : "",
@@ -66,16 +145,25 @@
   let showLinkConfirm = $derived(page.state.sheet === "link-confirm");
   let showSyncInfo = $derived(page.state.sheet === "sync-info");
 
+  function onEmbedDone() {
+    refreshModelStatus();
+  }
+
+  onDestroy(() => {
+    window.removeEventListener("wimg:embed-done", onEmbedDone);
+  });
+
   onMount(async () => {
+    window.addEventListener("wimg:embed-done", onEmbedDone);
+
     const stored = getSyncKey();
     if (stored) {
       syncEnabled = true;
       syncKey = stored;
     }
     lastSync = getLastSyncTimestamp();
-    claudeHasKey = !!getApiKey();
-    claudeApiKey = getApiKey() ?? "";
     demoLoaded = isDemoLoaded();
+    refreshModelStatus();
 
     try {
       const root = await navigator.storage.getDirectory();
@@ -198,22 +286,6 @@
       resetting = false;
       history.back();
     }
-  }
-
-  function handleSaveClaudeKey() {
-    const trimmed = claudeApiKey.trim();
-    if (trimmed) {
-      setApiKey(trimmed);
-      claudeHasKey = true;
-      claudeShowInput = false;
-    }
-  }
-
-  function handleRemoveClaudeKey() {
-    removeApiKey();
-    claudeApiKey = "";
-    claudeHasKey = false;
-    claudeShowInput = false;
   }
 
   function generateUUID(): string {
@@ -440,69 +512,129 @@
     {/if}
   </div>
 
-  <!-- Claude AI Section -->
-  <div id="claude" class="bg-white rounded-3xl p-5 shadow-sm space-y-4">
+  <!-- Embedding Model Section -->
+  <div id="embeddings" class="bg-white rounded-3xl p-5 shadow-sm space-y-4">
     <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center">
-        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      <div class="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center">
+        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
         </svg>
       </div>
       <div class="flex-1">
         <div class="flex items-center gap-2">
-          <h3 class="font-bold text-(--color-text)">Claude AI</h3>
-          {#if claudeHasKey}
+          <h3 class="font-bold text-(--color-text)">Smart Categorize</h3>
+          {#if modelStatus?.model_loaded}
             <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">Aktiv</span>
           {:else}
-            <span class="text-[10px] font-bold text-(--color-text-secondary) bg-gray-100 px-1.5 py-0.5 rounded-full">Nicht konfiguriert</span>
+            <span class="text-[10px] font-bold text-(--color-text-secondary) bg-gray-100 px-1.5 py-0.5 rounded-full">Nicht installiert</span>
           {/if}
         </div>
-        <p class="text-xs text-(--color-text-secondary)">KI-Kategorisierung</p>
+        <p class="text-xs text-(--color-text-secondary)">Lokales KI-Modell für Kategorisierung & Suche</p>
       </div>
     </div>
 
-    {#if !claudeHasKey || claudeShowInput}
-      <div>
-        <label class="text-xs font-medium text-(--color-text-secondary) mb-1 block" for="claude-key-input">API-Schlüssel</label>
-        <div class="flex gap-2">
-          <input
-            id="claude-key-input"
-            type="password"
-            bind:value={claudeApiKey}
-            autocomplete="off"
-            data-1p-ignore
-            placeholder="sk-ant-..."
-            class="flex-1 bg-(--color-bg) rounded-xl px-3 py-2.5 text-sm text-(--color-text) placeholder:text-(--color-text-secondary)/50 outline-none"
-          />
-          <button
-            onclick={handleSaveClaudeKey}
-            disabled={!claudeApiKey.trim()}
-            class="px-4 rounded-xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50"
-          >
-            Speichern
-          </button>
-        </div>
-        <p class="text-[10px] text-(--color-text-secondary) mt-1.5">
-          Nur lokal gespeichert. Wird nur an die Anthropic API gesendet.
-        </p>
+    {#if modelError}
+      <div class="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+        {modelError}
       </div>
     {/if}
 
-    {#if claudeHasKey && !claudeShowInput}
-      <div class="flex items-center gap-3">
+    {#if modelSuccess}
+      <div class="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-700">
+        {modelSuccess}
+      </div>
+    {/if}
+
+    {#if modelStatus?.model_loaded}
+      <!-- Status -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between py-1">
+          <span class="text-sm text-(--color-text-secondary)">Transaktionen</span>
+          <span class="text-sm font-medium text-(--color-text)">{embedStore.running && embedStore.progress.total > 0 ? embedStore.progress.total : modelStatus.total_txs}</span>
+        </div>
+        <div class="flex items-center justify-between py-1">
+          <span class="text-sm text-(--color-text-secondary)">Eingebettet</span>
+          <span class="text-sm font-medium text-(--color-text)">{embedStore.running && embedStore.progress.total > 0 ? embedStore.progress.current : modelStatus.embedded}</span>
+        </div>
+        {#if !embedStore.running && modelStatus.unembedded > 0}
+          <div class="flex items-center justify-between py-1">
+            <span class="text-sm text-(--color-text-secondary)">Ausstehend</span>
+            <span class="text-sm font-medium text-amber-600">{modelStatus.unembedded}</span>
+          </div>
+        {/if}
+      </div>
+
+      <div class="flex gap-2">
+        {#if modelStatus.unembedded > 0 || embedStore.running}
+          <button
+            onclick={handleEmbedNow}
+            disabled={embedStore.running}
+            class="flex-1 py-3 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50"
+          >
+            {#if embedStore.running}
+              <span class="inline-flex items-center gap-2">
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                {#if embedStore.progress.total > 0}
+                  {embedStore.progress.current} / {embedStore.progress.total}
+                {:else}
+                  {embedStore.state === "model" ? "Modell wird geladen..." : "Initialisiere..."}
+                {/if}
+              </span>
+            {:else}
+              Jetzt einbetten
+            {/if}
+          </button>
+        {:else}
+          <button
+            onclick={handleSmartCategorize}
+            disabled={categorizing}
+            class="flex-1 py-3 rounded-2xl bg-indigo-600 text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50"
+          >
+            {#if categorizing}
+              <span class="inline-flex items-center gap-2">
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Kategorisiere...
+              </span>
+            {:else}
+              Smart Kategorisieren
+            {/if}
+          </button>
+        {/if}
         <button
-          onclick={() => (claudeShowInput = true)}
-          class="text-xs text-(--color-text-secondary) hover:text-(--color-text) transition-colors"
+          onclick={() => pushState("", { sheet: "model-delete" })}
+          class="px-4 py-3 rounded-2xl border-2 border-red-200 text-red-600 font-bold text-sm transition-colors hover:bg-red-50 active:scale-[0.98]"
         >
-          Key ändern
-        </button>
-        <button
-          onclick={handleRemoveClaudeKey}
-          class="text-xs text-red-400 hover:text-red-600 transition-colors"
-        >
-          Entfernen
+          Löschen
         </button>
       </div>
+    {:else}
+      <!-- Not installed: show install button -->
+      {#if modelDownloading}
+        <div>
+          <div class="w-full bg-gray-100 rounded-full h-2.5">
+            <div
+              class="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
+              style="width: {downloadProgress}%"
+            ></div>
+          </div>
+          <p class="text-xs text-(--color-text-secondary) mt-2 text-center">
+            {downloadProgress}% heruntergeladen...
+          </p>
+        </div>
+      {:else}
+        <button
+          onclick={() => pushState("", { sheet: "model-info" })}
+          class="w-full py-3 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98]"
+        >
+          Modell installieren
+        </button>
+      {/if}
     {/if}
   </div>
 
@@ -818,6 +950,138 @@
       <button
         onclick={() => history.back()}
         class="w-full py-3 rounded-2xl text-sm font-medium text-(--color-text-secondary) hover:bg-(--color-bg) transition-colors"
+      >
+        Abbrechen
+      </button>
+    </div>
+  {/snippet}
+</BottomSheet>
+
+<!-- Model Info Sheet -->
+<BottomSheet open={showModelInfo} onclose={() => history.back()} snaps={[0.62]}>
+  {#snippet children({ handle, content, footer })}
+    <div {@attach handle} class="flex justify-center pt-3 pb-2">
+      <div class="w-10 h-1 rounded-full bg-gray-200"></div>
+    </div>
+
+    <div {@attach content} class="px-6">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-display font-extrabold text-lg text-(--color-text)">Smart Categorize</h3>
+          <p class="text-sm text-(--color-text-secondary)">Lokales KI-Modell installieren</p>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-(--color-text)">Was wird heruntergeladen?</p>
+            <p class="text-xs text-(--color-text-secondary)">Ein mehrsprachiges Embedding-Modell (multilingual-e5-small, ~125 MB). Es wandelt Transaktionsbeschreibungen in Vektoren um, die Ähnlichkeiten erkennen können — mit hervorragender Deutsch-Unterstützung.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-(--color-text)">Smarte Kategorisierung</p>
+            <p class="text-xs text-(--color-text-secondary)">Neue Buchungen werden automatisch kategorisiert, basierend auf Ähnlichkeit mit bereits kategorisierten Buchungen. Keine Regeln nötig.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-(--color-text)">Semantische Suche</p>
+            <p class="text-xs text-(--color-text-secondary)">Suche nach Bedeutung statt Keywords: „Lebensmittel" findet REWE, EDEKA, ALDI. Funktioniert komplett offline.</p>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-(--color-text)">100% lokal & privat</p>
+            <p class="text-xs text-(--color-text-secondary)">Das Modell läuft komplett in deinem Browser (WASM). Keine Daten verlassen dein Gerät. Einmaliger Download, danach gecacht.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div {@attach footer} class="px-6 pb-8 pt-4">
+      <button
+        onclick={() => { history.back(); handleDownloadModel(); }}
+        disabled={modelDownloading}
+        class="w-full py-3.5 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50 mb-2"
+      >
+        {#if modelDownloading}
+          <span class="inline-flex items-center gap-2">
+            <span class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+            Lade herunter...
+          </span>
+        {:else}
+          Modell herunterladen (~125 MB)
+        {/if}
+      </button>
+      <button
+        onclick={() => history.back()}
+        class="w-full py-3 rounded-2xl text-sm font-medium text-(--color-text-secondary) hover:bg-(--color-bg) transition-colors"
+      >
+        Abbrechen
+      </button>
+    </div>
+  {/snippet}
+</BottomSheet>
+
+<!-- Model Delete Confirmation Sheet -->
+<BottomSheet open={showModelDelete} onclose={() => history.back()} snaps={[0.38]}>
+  {#snippet children({ handle, content, footer })}
+    <div {@attach handle} class="flex justify-center pt-3 pb-2">
+      <div class="w-10 h-1 rounded-full bg-gray-200"></div>
+    </div>
+
+    <div {@attach content} class="px-6 flex flex-col items-center">
+      <div class="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-4">
+        <svg class="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </div>
+      <h3 class="font-bold text-lg text-(--color-text) mb-1">Modell löschen?</h3>
+      <p class="text-sm text-(--color-text-secondary) text-center">
+        Der Cache (~125 MB) wird gelöscht. Du kannst das Modell jederzeit erneut herunterladen. Bestehende Embeddings bleiben in der Datenbank.
+      </p>
+    </div>
+
+    <div {@attach footer} class="px-6 pb-8 pt-4">
+      <button
+        onclick={handleDeleteModel}
+        class="w-full py-3.5 rounded-2xl bg-red-600 text-white font-bold text-sm transition-transform active:scale-[0.98] mb-3"
+      >
+        Modell-Cache löschen
+      </button>
+      <button
+        onclick={() => history.back()}
+        class="w-full py-3 rounded-2xl text-(--color-text-secondary) font-medium text-sm transition-colors hover:text-(--color-text)"
       >
         Abbrechen
       </button>

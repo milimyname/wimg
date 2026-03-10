@@ -117,7 +117,11 @@ app.post("/mcp", async (c) => {
   const syncKey = extractBearerToken(c.req.header("Authorization"));
   if (!syncKey) {
     return c.json(
-      { jsonrpc: "2.0", id: null, error: { code: -32600, message: "Missing Authorization: Bearer <sync-key>" } },
+      {
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32600, message: "Missing Authorization: Bearer <sync-key>" },
+      },
       401,
     );
   }

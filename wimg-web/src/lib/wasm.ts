@@ -174,9 +174,16 @@ interface WasmExports {
   wimg_encrypt_field: (pt: number, pt_len: number, key: number, nonce: number) => number;
   wimg_decrypt_field: (ct: number, ct_len: number, key: number) => number;
   wimg_query: (sql: number, len: number) => number;
+  wimg_load_model: (data: number, len: number) => number;
+  wimg_embed_text: (text: number, len: number) => number;
+  wimg_embed_transactions: () => number;
+  wimg_smart_categorize: () => number;
+  wimg_semantic_search: (query: number, query_len: number, k: number) => number;
+  wimg_embedding_status: () => number;
   wimg_close: () => void;
   wimg_free: (ptr: number, len: number) => void;
   wimg_alloc: (size: number) => number;
+  wimg_alloc_model: (size: number) => number;
   wimg_get_error: () => number;
   wimg_db_ptr: () => number;
   wimg_db_size: () => number;
@@ -345,6 +352,9 @@ export async function init(): Promise<void> {
         }
       },
       js_time_ms: () => BigInt(Date.now()),
+      js_embed_progress: (done: number, total: number) => {
+        console.log(`[wimg] Embedding progress: ${done}/${total}`);
+      },
     },
   };
 
@@ -959,6 +969,26 @@ export function decryptRows(rows: SyncRow[], key: Uint8Array): SyncRow[] {
 
 export { opfsSave };
 
+/** Get raw SQLite DB bytes (for transferring to worker) */
+export function getDbBytes(): Uint8Array {
+  ensureInit();
+  const ptr = wasm!.wimg_db_ptr();
+  const size = wasm!.wimg_db_size();
+  return new Uint8Array(wasm!.memory.buffer).slice(ptr, ptr + size);
+}
+
+/** Reload DB from raw bytes (after worker returns modified DB) */
+export async function reloadDb(bytes: Uint8Array): Promise<void> {
+  ensureInit();
+  const ptr = wasm!.wimg_alloc(bytes.length);
+  if (ptr === 0) throw new Error("WASM allocation failed");
+  new Uint8Array(wasm!.memory.buffer).set(bytes, ptr);
+  const rc = wasm!.wimg_db_load(ptr, bytes.length);
+  if (rc !== 0) throw new Error("Failed to reload DB");
+  await opfsSave();
+  onMutate?.();
+}
+
 export interface QueryResult {
   columns: string[];
   rows: (string | number | null)[][];
@@ -998,6 +1028,204 @@ export function getWasmMemoryBytes(): number {
 export function getWasmDbSize(): number {
   if (!wasm) return 0;
   return wasm.wimg_db_size();
+}
+
+// --- Embedding Model (Phase 5.5) ---
+
+const MODEL_URL =
+  "https://huggingface.co/milimyname/multilingual-e5-small-Q8_0-GGUF/resolve/main/multilingual-e5-small-q8_0.gguf";
+const MODEL_OPFS_FILE = "e5-small-q8.gguf";
+
+export interface EmbeddingStatus {
+  total_txs: number;
+  embedded: number;
+  unembedded: number;
+  model_loaded: boolean;
+}
+
+export interface SemanticSearchResult {
+  id: string;
+  description: string;
+  amount: number;
+  category: number;
+  similarity: number;
+}
+
+export async function loadEmbeddingModel(onProgress?: (pct: number) => void): Promise<void> {
+  return timedAsync("loadEmbeddingModel", async () => {
+    ensureInit();
+
+    // Clean up old model caches and files
+    caches.delete("wimg-model-v1").catch(() => {}); // jina-v5-nano
+    caches.delete("wimg-model-v2").catch(() => {}); // all-MiniLM-L6-v2
+    caches.delete("wimg-model-v3").catch(() => {}); // e5-small (old Cache API)
+
+    // Check OPFS for cached model
+    const root = await navigator.storage.getDirectory();
+    // Clean up old FP32 OPFS file
+    root.removeEntry("e5-small.gguf").catch(() => {});
+    let modelBytes: Uint8Array;
+
+    try {
+      const fileHandle = await root.getFileHandle(MODEL_OPFS_FILE);
+      const file = await fileHandle.getFile();
+      if (file.size > 0) {
+        modelBytes = new Uint8Array(await file.arrayBuffer());
+      } else {
+        throw new Error("Empty model file");
+      }
+    } catch {
+      // Not in OPFS — download from HuggingFace
+      const fetchResp = await fetch(MODEL_URL);
+      if (!fetchResp.ok) {
+        throw new Error(`Model download failed: ${fetchResp.status}`);
+      }
+
+      const contentLength = Number(fetchResp.headers.get("content-length") || 0);
+      const reader = fetchResp.body!.getReader();
+      const chunks: Uint8Array[] = [];
+      let received = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+        if (onProgress && contentLength > 0) {
+          onProgress(Math.round((received / contentLength) * 100));
+        }
+      }
+
+      // Combine chunks
+      const totalLen = chunks.reduce((a, c) => a + c.length, 0);
+      modelBytes = new Uint8Array(totalLen);
+      let offset = 0;
+      for (const chunk of chunks) {
+        modelBytes.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      // Save to OPFS for persistence
+      const writeHandle = await root.getFileHandle(MODEL_OPFS_FILE, { create: true });
+      const writable = await writeHandle.createWritable();
+      await writable.write(modelBytes.buffer as ArrayBuffer);
+      await writable.close();
+    }
+
+    // Load model data into WASM memory (grows linear memory, bypasses 64MB FBA)
+    const ptr = wasm!.wimg_alloc_model(modelBytes.length);
+    if (ptr === 0) throw new Error("WASM allocation failed for model");
+
+    const mem = new Uint8Array(wasm!.memory.buffer);
+    mem.set(modelBytes, ptr);
+
+    const rc = wasm!.wimg_load_model(ptr, modelBytes.length);
+    if (rc !== 0) {
+      throw new Error(getLastError("Failed to load embedding model"));
+    }
+
+    console.log(
+      `[wimg] Embedding model loaded (${(modelBytes.length / 1024 / 1024).toFixed(1)} MB)`,
+    );
+    logAction("loadEmbeddingModel", `${(modelBytes.length / 1024 / 1024).toFixed(1)} MB`);
+  });
+}
+
+export async function deleteEmbeddingModel(): Promise<void> {
+  try {
+    const root = await navigator.storage.getDirectory();
+    await root.removeEntry(MODEL_OPFS_FILE);
+  } catch {
+    /* file may not exist */
+  }
+  // Also clean up any old Cache API entries
+  caches.delete("wimg-model-v3").catch(() => {});
+  console.log("[wimg] Embedding model deleted from OPFS");
+}
+
+export function isModelLoaded(): boolean {
+  ensureInit();
+  const status = embeddingStatus();
+  return status.model_loaded;
+}
+
+export function embeddingStatus(): EmbeddingStatus {
+  return timed("embeddingStatus", () => {
+    ensureInit();
+
+    const ptr = wasm!.wimg_embedding_status();
+    if (ptr === 0) {
+      return { total_txs: 0, embedded: 0, unembedded: 0, model_loaded: false };
+    }
+
+    const json = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
+
+    return JSON.parse(json) as EmbeddingStatus;
+  });
+}
+
+export function embedTransactions(): number {
+  return timed("embedTransactions", () => {
+    ensureInit();
+    const rc = wasm!.wimg_embed_transactions();
+    if (rc < 0) {
+      throw new Error(getLastError("Failed to embed transactions"));
+    }
+    logAction("embedTransactions", `${rc} embedded`);
+    return rc;
+  });
+}
+
+export function smartCategorize(): number {
+  return timed("smartCategorize", () => {
+    ensureInit();
+    const rc = wasm!.wimg_smart_categorize();
+    if (rc === -2) return -2; // No categorized reference transactions
+    if (rc < 0) {
+      throw new Error(getLastError("Smart categorization failed"));
+    }
+    logAction("smartCategorize", `${rc} categorized`);
+    return rc;
+  });
+}
+
+export function semanticSearch(query: string, k: number = 20): SemanticSearchResult[] {
+  return timed("semanticSearch", () => {
+    ensureInit();
+
+    const encoded = new TextEncoder().encode(query);
+    const ptr = writeBytes(encoded);
+
+    const resultPtr = wasm!.wimg_semantic_search(ptr, encoded.length, k);
+    if (resultPtr === 0) {
+      return [];
+    }
+
+    const json = readLengthPrefixedString(resultPtr);
+    wasm!.wimg_free(resultPtr, 0);
+
+    return JSON.parse(json) as SemanticSearchResult[];
+  });
+}
+
+export function embedText(text: string): number[] {
+  return timed("embedText", () => {
+    ensureInit();
+
+    const encoded = new TextEncoder().encode(text);
+    const ptr = writeBytes(encoded);
+
+    const resultPtr = wasm!.wimg_embed_text(ptr, encoded.length);
+    if (resultPtr === 0) {
+      throw new Error(getLastError("Failed to embed text"));
+    }
+
+    const json = readLengthPrefixedString(resultPtr);
+    wasm!.wimg_free(resultPtr, 0);
+
+    return JSON.parse(json) as number[];
+  });
 }
 
 /** Debug: WASM memory size in MB. Call from console: __wimgMemoryMB() */

@@ -12,15 +12,14 @@
 - **Phase 5.0** — UX Polish (Done): Onboarding, demo data, multi-file import
 - **Phase 5.1** — Recurring Detection (Done): Pure SQL, price alerts
 - **Phase 5.3** — Data Export + Snapshots (Done)
-- **Phase 5.8** — Remote MCP Server (Done): 17 tools, E2E encrypted
+- **Phase 5.5** — Embeddings + Smart Categorization (Done): Pure Zig inference engine (multilingual-e5-small, Q8_0), GGUF parser, SentencePiece BPE tokenizer, 384-dim embeddings, cosine similarity categorization, semantic search
+- **Phase 5.8** — Remote MCP Server (Done): 20 tools (10 read + 10 write), E2E encrypted
 
 ## In Progress / Future
 
 - **Phase 5.2** — Notifications (deferred, TBD)
 - **Phase 5.4** — Annual Renewals Calendar
-- **Phase 5.5** — Smart Categorization (sqlite-vec)
-- **Phase 5.6** — AI Chat (RAG)
-- **Phase 5.7** — Command Palette (Cmd+K)
+- **Phase 5.7** — Command Palette + Semantic Search (Cmd+K): fuzzy + vector search across transactions, categories, actions
 - **Phase 6.1** — Annual Review ("Geld-Wrapped")
 - **Phase 6.2** — Net Worth Over Time
 - **Phase 6.3** — Anlage N Assistant (Tax Estimation)

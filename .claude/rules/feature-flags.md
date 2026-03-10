@@ -9,15 +9,15 @@ Dashboard, Transactions, Analysis, Import, Settings, About, Sync
 
 ## Toggleable
 
-| Flag Key    | Label          | Description                    | Status      |
-| ----------- | -------------- | ------------------------------ | ----------- |
-| `debts`     | Schulden       | Debt tracking with progress    | Implemented |
-| `recurring` | Wiederkehrend  | Recurring payment detection    | Implemented |
-| `review`    | Rückblick      | Monthly review                 | Implemented |
-| `goals`     | Sparziele      | Savings goals (Phase 6.4)      | Future      |
-| `net_worth` | Vermögen       | Net worth tracking (Phase 6.2) | Future      |
-| `tax`       | Steuern        | Anlage N assistant (Phase 6.3) | Future      |
-| `ai_chat`   | KI-Chat        | AI chat (Phase 5.6)            | Future      |
+| Flag Key    | Label         | Description                    | Status      |
+| ----------- | ------------- | ------------------------------ | ----------- |
+| `debts`     | Schulden      | Debt tracking with progress    | Implemented |
+| `recurring` | Wiederkehrend | Recurring payment detection    | Implemented |
+| `review`    | Rückblick     | Monthly review                 | Implemented |
+| `goals`     | Sparziele     | Savings goals (Phase 6.4)      | Future      |
+| `net_worth` | Vermögen      | Net worth tracking (Phase 6.2) | Future      |
+| `tax`       | Steuern       | Anlage N assistant (Phase 6.3) | Future      |
+| `ai_chat`   | KI-Chat       | Removed — Claude Desktop + MCP | Removed     |
 
 ## Storage
 

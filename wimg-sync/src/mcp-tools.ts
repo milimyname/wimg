@@ -1,6 +1,6 @@
 /**
  * MCP tool definitions for remote wimg server.
- * 9 read tools + 9 write tools = 18 total.
+ * 10 read tools + 10 write tools = 20 total.
  */
 
 import { z } from "zod/v4";
@@ -111,7 +111,9 @@ function resolveCategoryId(
   }
 
   // 3. Substring match (e.g. "leben" matches "Lebensmittel")
-  const partial = Object.values(categories).find((c) => c.name.toLowerCase().includes(lower) || lower.includes(c.name.toLowerCase()));
+  const partial = Object.values(categories).find(
+    (c) => c.name.toLowerCase().includes(lower) || lower.includes(c.name.toLowerCase()),
+  );
   if (partial) return partial.id;
 
   return undefined;
@@ -203,10 +205,31 @@ export function getToolDefinitions(): ToolDef[] {
       schema: {
         account: z.string().optional().describe("Account ID to filter by (omit for all)"),
         year: z.number().int().optional().describe("Filter by year (e.g. 2025)"),
-        month: z.number().int().min(1).max(12).optional().describe("Filter by month (1-12, requires year)"),
-        category: z.string().optional().describe("Filter by category name (German, English, or alias). Use 'Unkategorisiert' or 'uncategorized' for uncategorized transactions."),
-        limit: z.number().int().positive().default(50).describe("Max transactions to return (default 50)"),
-        offset: z.number().int().min(0).default(0).describe("Skip first N transactions for pagination (default 0)"),
+        month: z
+          .number()
+          .int()
+          .min(1)
+          .max(12)
+          .optional()
+          .describe("Filter by month (1-12, requires year)"),
+        category: z
+          .string()
+          .optional()
+          .describe(
+            "Filter by category name (German, English, or alias). Use 'Unkategorisiert' or 'uncategorized' for uncategorized transactions.",
+          ),
+        limit: z
+          .number()
+          .int()
+          .positive()
+          .default(50)
+          .describe("Max transactions to return (default 50)"),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .default(0)
+          .describe("Skip first N transactions for pagination (default 0)"),
       },
       handler: (args, wasm) => {
         let txs = wasm.getTransactionsFiltered(args.account as string | undefined);
@@ -267,7 +290,12 @@ export function getToolDefinitions(): ToolDef[] {
         query: z.string().describe("Search term to match against transaction descriptions"),
         account: z.string().optional().describe("Account ID to filter by (omit for all)"),
         limit: z.number().int().positive().default(20).describe("Max results (default 20)"),
-        offset: z.number().int().min(0).default(0).describe("Skip first N matches for pagination (default 0)"),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .default(0)
+          .describe("Skip first N matches for pagination (default 0)"),
       },
       handler: (args, wasm) => {
         const txs = wasm.getTransactionsFiltered(args.account as string | undefined);
@@ -387,7 +415,7 @@ export function getToolDefinitions(): ToolDef[] {
     {
       name: "get_uncategorized_transactions",
       description:
-        "Get all uncategorized transactions, grouped by merchant/description pattern. Use this FIRST before categorizing — it shows everything that needs categorization in one call. Then use batch_set_category to categorize them all at once.",
+        "Get all uncategorized transactions grouped by merchant pattern. Returns compact output (pattern + count + sample). Use batch_categorize_by_pattern to categorize them by merchant name — no need to extract individual IDs.",
       schema: {
         account: z.string().optional().describe("Account ID to filter by (omit for all)"),
       },
@@ -396,9 +424,11 @@ export function getToolDefinitions(): ToolDef[] {
         const uncategorized = txs.filter((tx) => tx.category === 0);
 
         // Group by normalized description (lowercase, trim numbers/dates)
-        const groups: Record<string, Array<{ id: string; date: string; description: string; amount: string }>> = {};
+        const groups: Record<
+          string,
+          Array<{ id: string; description: string; amount: number }>
+        > = {};
         for (const tx of uncategorized) {
-          // Normalize: lowercase, remove dates, trailing numbers, card numbers
           const key = tx.description
             .toLowerCase()
             .replace(/\d{2}\.\d{2}\.\d{2,4}/g, "")
@@ -406,31 +436,30 @@ export function getToolDefinitions(): ToolDef[] {
             .replace(/\s+/g, " ")
             .trim();
           if (!groups[key]) groups[key] = [];
-          groups[key].push({
-            id: tx.id,
-            date: tx.date,
-            description: stripPII(tx.description),
-            amount: formatAmount(tx.amount),
-          });
+          groups[key].push({ id: tx.id, description: tx.description, amount: tx.amount });
         }
 
-        // Sort groups by count (most common first)
+        // Sort by count, compact output
         const sorted = Object.entries(groups)
           .sort((a, b) => b[1].length - a[1].length)
           .map(([pattern, txns]) => ({
-            pattern,
+            pattern: stripPII(pattern).slice(0, 80),
             count: txns.length,
-            total: formatAmount(txns.reduce((s, t) => s + parseFloat(t.amount), 0)),
-            transactions: txns,
+            total: formatAmount(txns.reduce((s, t) => s + t.amount, 0)),
+            sample: stripPII(txns[0].description).slice(0, 100),
           }));
+
+        // Include valid categories so LLM doesn't need a separate list_categories call
+        const cats = Object.values(wasm.categories).map((c) => c.name);
 
         return {
           text: JSON.stringify(
             {
               total_uncategorized: uncategorized.length,
               groups: sorted.length,
+              valid_categories: cats,
               by_merchant: sorted,
-              tip: "Use batch_set_category with the transaction IDs and category names to categorize them all at once.",
+              tip: "Use batch_categorize_by_pattern to categorize by merchant name. Example: [{pattern: 'rewe', category: 'Groceries'}]",
             },
             null,
             2,
@@ -446,7 +475,9 @@ export function getToolDefinitions(): ToolDef[] {
       schema: {
         category: z
           .string()
-          .describe("Category name (e.g. 'Lebensmittel', 'Groceries', 'Food', 'Transport', 'Shopping')"),
+          .describe(
+            "Category name (e.g. 'Lebensmittel', 'Groceries', 'Food', 'Transport', 'Shopping')",
+          ),
         months: z.number().int().positive().default(6).describe("Number of months to look back"),
       },
       handler: (args, wasm) => {
@@ -508,7 +539,11 @@ export function getToolDefinitions(): ToolDef[] {
         wasm.setCategory(args.transaction_id as string, catId);
         const resolved = categoryName(wasm.categories, catId);
         return {
-          text: JSON.stringify({ success: true, transaction_id: args.transaction_id, category: resolved }),
+          text: JSON.stringify({
+            success: true,
+            transaction_id: args.transaction_id,
+            category: resolved,
+          }),
         };
       },
     },
@@ -528,7 +563,9 @@ export function getToolDefinitions(): ToolDef[] {
             ),
             z.string().describe("JSON-encoded array of {transaction_id, category} objects"),
           ])
-          .describe("Array of {transaction_id, category} pairs (max 100). Can be a JSON string or array."),
+          .describe(
+            "Array of {transaction_id, category} pairs (max 500). Can be a JSON string or array.",
+          ),
       },
       handler: (args, wasm) => {
         let updates: Array<{ transaction_id: string; category: string }>;
@@ -537,7 +574,9 @@ export function getToolDefinitions(): ToolDef[] {
           try {
             updates = JSON.parse(raw);
           } catch {
-            throw new Error("updates must be valid JSON array of {transaction_id, category} objects");
+            throw new Error(
+              "updates must be valid JSON array of {transaction_id, category} objects",
+            );
           }
         } else if (Array.isArray(raw)) {
           updates = raw as Array<{ transaction_id: string; category: string }>;
@@ -547,8 +586,8 @@ export function getToolDefinitions(): ToolDef[] {
         if (!Array.isArray(updates) || updates.length === 0) {
           throw new Error("updates must be a non-empty array");
         }
-        if (updates.length > 100) {
-          throw new Error("Maximum 100 updates per batch");
+        if (updates.length > 500) {
+          throw new Error("Maximum 500 updates per batch");
         }
         const results: Array<{
           transaction_id: string;
@@ -578,7 +617,12 @@ export function getToolDefinitions(): ToolDef[] {
               success: true,
             });
           } catch (e) {
-            results.push({ transaction_id: u.transaction_id, category: u.category, success: false, error: String(e) });
+            results.push({
+              transaction_id: u.transaction_id,
+              category: u.category,
+              success: false,
+              error: String(e),
+            });
           }
         }
 
@@ -586,6 +630,88 @@ export function getToolDefinitions(): ToolDef[] {
         return {
           text: JSON.stringify(
             { total: updates.length, succeeded, failed: updates.length - succeeded, results },
+            null,
+            2,
+          ),
+        };
+      },
+    },
+
+    {
+      name: "batch_categorize_by_pattern",
+      description:
+        "Categorize all uncategorized transactions matching merchant patterns. Much faster than batch_set_category — no need to extract individual IDs. Each pattern is matched case-insensitively against transaction descriptions.",
+      schema: {
+        mappings: z
+          .array(
+            z.object({
+              pattern: z
+                .string()
+                .describe(
+                  "Merchant/description pattern to match (case-insensitive substring, e.g. 'rewe', 'klarna', 'paypal')",
+                ),
+              category: z.string().describe("Category name (German, English, or alias)"),
+            }),
+          )
+          .describe("Array of {pattern, category} pairs"),
+      },
+      handler: (args, wasm) => {
+        const mappings = args.mappings as Array<{ pattern: string; category: string }>;
+        const txs = wasm.getTransactionsFiltered(undefined);
+        const uncategorized = txs.filter((tx) => tx.category === 0);
+
+        const results: Array<{
+          pattern: string;
+          category: string;
+          matched: number;
+          error?: string;
+        }> = [];
+        let totalCategorized = 0;
+        const alreadyMatched = new Set<string>();
+
+        for (const m of mappings) {
+          const catId = resolveCategoryId(wasm.categories, m.category);
+          if (catId === undefined) {
+            results.push({
+              pattern: m.pattern,
+              category: m.category,
+              matched: 0,
+              error: `Unknown category: '${m.category}'`,
+            });
+            continue;
+          }
+
+          const lower = m.pattern.toLowerCase();
+          let matched = 0;
+          for (const tx of uncategorized) {
+            if (alreadyMatched.has(tx.id)) continue;
+            if (tx.description.toLowerCase().includes(lower)) {
+              try {
+                wasm.setCategory(tx.id, catId);
+                alreadyMatched.add(tx.id);
+                matched++;
+              } catch {
+                // skip failed
+              }
+            }
+          }
+
+          totalCategorized += matched;
+          results.push({
+            pattern: m.pattern,
+            category: categoryName(wasm.categories, catId),
+            matched,
+          });
+        }
+
+        const remaining = uncategorized.length - totalCategorized;
+        return {
+          text: JSON.stringify(
+            {
+              total_categorized: totalCategorized,
+              remaining_uncategorized: remaining,
+              results,
+            },
             null,
             2,
           ),
@@ -632,7 +758,8 @@ export function getToolDefinitions(): ToolDef[] {
 
     {
       name: "mark_debt_paid",
-      description: "Record a payment towards a debt. Use get_debt_status first to find the debt ID.",
+      description:
+        "Record a payment towards a debt. Use get_debt_status first to find the debt ID.",
       schema: {
         debt_id: z.string().describe("Debt ID"),
         amount: z.number().positive().describe("Payment amount in euros (e.g. 200.00)"),
@@ -710,6 +837,7 @@ export function getToolDefinitions(): ToolDef[] {
 export const WRITE_TOOL_NAMES = new Set([
   "set_category",
   "batch_set_category",
+  "batch_categorize_by_pattern",
   "set_excluded",
   "add_debt",
   "mark_debt_paid",

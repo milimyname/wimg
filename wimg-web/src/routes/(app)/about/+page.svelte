@@ -15,6 +15,10 @@
       a: "Lade deinen Kontoauszug im CSV-Format hoch. wimg erkennt das Format automatisch, analysiert die Transaktionen lokal und kategorisiert sie mit intelligenten Regeln.",
     },
     {
+      q: "Was ist Smart Categorize?",
+      a: "Smart Categorize nutzt ein lokales KI-Modell (multilingual-e5-small), das direkt im Browser läuft — ohne Cloud. Es versteht Deutsch und 93 weitere Sprachen. Es analysiert deine Buchungstexte und ordnet neue Buchungen automatisch Kategorien zu, basierend auf bereits kategorisierten Buchungen. Je mehr du manuell kategorisierst, desto besser wird die automatische Zuordnung. Das Modell kann in den Einstellungen heruntergeladen werden (~125 MB).",
+    },
+    {
       q: "Ist wimg wirklich kostenlos?",
       a: "Ja. wimg ist ein Leidenschaftsprojekt unter Open-Source-Lizenz. Keine Abonnements, keine versteckten Kosten, kein Verkauf deiner Daten.",
     },

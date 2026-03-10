@@ -27,8 +27,6 @@ struct ImportView: View {
 
     // Auto-categorize state
     @State private var rulesCategorizedCount: Int?
-    @State private var claudeLoading = false
-    @State private var claudeResult: ClaudeResult?
 
     private var previewTotals: (income: Double, expenses: Double) {
         guard let txns = parseResult?.transactions else { return (0, 0) }
@@ -403,112 +401,6 @@ struct ImportView: View {
             .wimgCard(radius: WimgTheme.radiusMedium)
             .padding(.horizontal)
 
-            // Claude AI
-            VStack(spacing: 12) {
-                HStack(spacing: 14) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.purple.opacity(0.1))
-                            .frame(width: 44, height: 44)
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 18))
-                            .foregroundStyle(.purple)
-                    }
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 6) {
-                            Text("Claude AI")
-                                .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundStyle(WimgTheme.text)
-                            if ClaudeAPI.hasKey {
-                                Text("Aktiv")
-                                    .font(.system(.caption2, design: .rounded, weight: .bold))
-                                    .foregroundStyle(.green)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3)
-                                    .background(.green.opacity(0.1))
-                                    .clipShape(Capsule())
-                            }
-                        }
-                        Text("KI-Kategorisierung für verbleibende Buchungen")
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(WimgTheme.textSecondary)
-                    }
-
-                    Spacer()
-                }
-
-                if ClaudeAPI.hasKey {
-                    HStack(spacing: 8) {
-                        Button {
-                            runClaudeCategorize()
-                        } label: {
-                            if claudeLoading {
-                                ProgressView()
-                                    .controlSize(.small)
-                            } else {
-                                Text("Mit Claude kategorisieren")
-                            }
-                        }
-                        .font(.system(.caption, design: .rounded, weight: .bold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Color.purple)
-                        .clipShape(Capsule())
-                        .disabled(claudeLoading)
-                    }
-                    .padding(.leading, 58)
-                } else {
-                    NavigationLink(destination: SettingsView()) {
-                        Text("API-Schlüssel in Einstellungen konfigurieren")
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(.purple)
-                    }
-                    .padding(.leading, 58)
-                }
-
-                // Claude Result
-                if let result = claudeResult {
-                    VStack(alignment: .leading, spacing: 4) {
-                        if result.categorized > 0 {
-                            Text("\(result.categorized) Buchungen von Claude kategorisiert")
-                                .font(.system(.caption, design: .rounded, weight: .medium))
-                                .foregroundStyle(.green)
-                        } else if result.errors.isEmpty {
-                            Text("Keine unkategorisierten Buchungen gefunden")
-                                .font(.system(.caption, design: .rounded))
-                                .foregroundStyle(WimgTheme.textSecondary)
-                        }
-                        ForEach(result.errors, id: \.self) { err in
-                            Text(err)
-                                .font(.system(.caption, design: .rounded))
-                                .foregroundStyle(.red)
-                        }
-                    }
-                    .padding(.leading, 58)
-                }
-            }
-            .padding(16)
-            .wimgCard(radius: WimgTheme.radiusMedium)
-            .padding(.horizontal)
-        }
-    }
-
-    private func runClaudeCategorize() {
-        claudeLoading = true
-        claudeResult = nil
-
-        Task {
-            let transactions = (try? LibWimg.getTransactions()) ?? []
-            let result = await ClaudeAPI.categorize(transactions: transactions)
-            await MainActor.run {
-                claudeResult = result
-                claudeLoading = false
-                if result.categorized > 0 {
-                    NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
-                }
-            }
         }
     }
 
@@ -613,7 +505,6 @@ struct ImportView: View {
         csvData = nil
         errorMessage = nil
         rulesCategorizedCount = nil
-        claudeResult = nil
         processURL(fileQueue[queueIndex])
     }
 
@@ -652,8 +543,6 @@ struct ImportView: View {
         csvData = nil
         errorMessage = nil
         rulesCategorizedCount = nil
-        claudeResult = nil
-        claudeLoading = false
     }
 
     private func formatLabel(_ format: String) -> String {
