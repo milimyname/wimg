@@ -25,7 +25,8 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 | Web persistence | OPFS (offline SQLite in browser)                   |
 | iOS UI          | SwiftUI + C ABI (libwimg.a)                        |
 | Sync            | CF Durable Objects + WebSocket + LWW               |
-| AI              | Local embeddings (Zig, e5-small Q8_0) + FTS5 search |
+| Categorization  | Keyword rules (~80%) + learned rules + MCP (long tail) |
+| Search          | SQL LIKE (planned: FTS5 if needed at scale)        |
 | FinTS           | Pure Zig (native-only, iOS)                        |
 | MCP server      | CF Worker DO + libwimg-compact.wasm                |
 
@@ -46,23 +47,22 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.5, 5.8 all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.8, 5.9 all **done**.
 
-Working: CSV import (Comdirect/TR/Scalable), categorization, summaries,
-debts, recurring detection, multi-account, undo/redo, real-time sync with
-E2E encryption, MCP server (20 tools), data export, monthly snapshots,
-PWA with offline support, DevTools panel (5 tabs), local embeddings
-(pure Zig inference, multilingual-e5-small Q8_0, 384-dim, Viterbi tokenizer),
-smart categorization.
+Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules),
+summaries, debts, recurring detection, multi-account, undo/redo, real-time
+sync with E2E encryption, MCP server (20 tools), data export, monthly
+snapshots, PWA with offline support, DevTools panel (5 tabs), Command Palette.
 
-Embeddings are infrastructure for **smart categorization only** (tx↔tx cosine
-similarity). Semantic search via embeddings was tested but e5-small doesn't
-differentiate well for short queries against banking descriptions at scale.
-Search uses **FTS5 + fuzzy matching** instead. No chat UI (Claude Desktop +
-MCP replaces it).
+Embeddings were built (Phase 5.5) then removed (Phase 5.9) — 4,400 lines
+deleted. Keyword rules cover ~80% of categorization, MCP + Claude handles
+the long tail. Semantic search didn't differentiate well for short queries
+against banking descriptions. Simplicity won.
 
-Next: Command Palette + Hybrid Search (5.7), Annual Renewals (5.4),
-Phase 6 (Annual Review, Net Worth, Tax, Savings Goals).
+No chat UI — Claude Desktop + MCP replaces it.
+
+Next: Auto-learn Rules (5.10), Command Palette + Search (5.7),
+Annual Renewals (5.4), Phase 6 (Annual Review, Net Worth, Tax, Savings Goals).
 
 Deferred: Notifications (5.2) — to be defined later.
 

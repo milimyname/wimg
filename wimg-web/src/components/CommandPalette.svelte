@@ -5,13 +5,8 @@
   import { paletteStore } from "$lib/commandPalette.svelte";
   import {
     getTransactions,
-    semanticSearch,
-    isModelLoaded,
-    loadEmbeddingModel,
-    embeddingStatus,
     CATEGORIES,
     type Transaction,
-    type SemanticSearchResult,
   } from "$lib/wasm";
   import { formatAmountSigned, formatDateShort } from "$lib/format";
   import { toastStore } from "$lib/toast.svelte";
@@ -22,36 +17,9 @@
   let query = $state("");
   let selectedIndex = $state(0);
   let confirmingAction = $state<PaletteAction | null>(null);
-  let semanticResults = $state<SemanticSearchResult[]>([]);
-  let semanticLoading = $state(false);
-  let semanticTimer: ReturnType<typeof setTimeout> | null = null;
-  let expandedMerchant = $state<string | null>(null);
-  let modelLoaded = $state(false);
-  let modelAutoLoading = $state(false);
 
   // Derive open from shallow routing state (same pattern as transactions page)
   let showPalette = $derived(page.state.sheet === "command-palette");
-
-  // Auto-load model when palette opens (if embeddings exist but model not loaded)
-  $effect(() => {
-    if (showPalette) {
-      modelLoaded = isModelLoaded();
-      if (!modelLoaded && !modelAutoLoading) {
-        try {
-          const status = embeddingStatus();
-          if (status.embedded > 0) {
-            modelAutoLoading = true;
-            loadEmbeddingModel().then(() => {
-              modelLoaded = true;
-              modelAutoLoading = false;
-            }).catch(() => {
-              modelAutoLoading = false;
-            });
-          }
-        } catch { /* wasm not ready */ }
-      }
-    }
-  });
 
   // Auto-focus input when sheet opens
   $effect(() => {
@@ -66,33 +34,7 @@
       query = "";
       selectedIndex = 0;
       confirmingAction = null;
-      semanticResults = [];
-      semanticLoading = false;
-      expandedMerchant = null;
     }
-  });
-
-  // Debounced semantic search — fetch more results for merchant grouping
-  $effect(() => {
-    const q = query;
-    if (semanticTimer) clearTimeout(semanticTimer);
-    if (!q || q.length < 2 || !modelLoaded) {
-      semanticResults = [];
-      semanticLoading = false;
-      return;
-    }
-    semanticLoading = true;
-    semanticTimer = setTimeout(() => {
-      try {
-        semanticResults = semanticSearch(q, 30);
-        if (semanticResults.length > 0) {
-          console.log(`[semantic] query="${q}", top results:`, semanticResults.slice(0, 5).map(r => `${r.description.slice(0, 30)}… sim=${r.similarity.toFixed(4)}`));
-        }
-      } catch {
-        semanticResults = [];
-      }
-      semanticLoading = false;
-    }, 300);
   });
 
   // Filter actions by query
@@ -124,73 +66,11 @@
     }
   });
 
-  // Deduplicated semantic results
-  const deduplicatedSemantic = $derived.by(() => {
-    const fuzzyIds = new Set(fuzzyTxResults.map((t) => t.id));
-    return semanticResults.filter((r) => !fuzzyIds.has(r.id));
-  });
-
-  const hasSemanticResults = $derived(deduplicatedSemantic.length > 0);
-
-  // --- Merchant grouping for semantic results ---
-
-  interface MerchantGroup {
-    merchant: string;
-    count: number;
-    totalAmount: number;
-    category: number;
-    topSimilarity: number;
-    items: SemanticSearchResult[];
-  }
-
-  function extractMerchant(desc: string): string {
-    const clean = desc
-      .replace(/\/\/.*$/, "") // remove location after //
-      .replace(/\s+\d{5,}.*$/, "") // remove trailing reference numbers
-      .trim();
-    const words = clean.split(/\s+/);
-    return words.slice(0, 2).join(" ") || desc.slice(0, 15);
-  }
-
-  const semanticGroups = $derived.by((): MerchantGroup[] => {
-    if (deduplicatedSemantic.length === 0) return [];
-    const groups = new Map<string, MerchantGroup>();
-    for (const r of deduplicatedSemantic) {
-      const key = extractMerchant(r.description);
-      const existing = groups.get(key);
-      if (existing) {
-        existing.count++;
-        existing.totalAmount += r.amount;
-        existing.items.push(r);
-        if (r.similarity > existing.topSimilarity)
-          existing.topSimilarity = r.similarity;
-      } else {
-        groups.set(key, {
-          merchant: key,
-          count: 1,
-          totalAmount: r.amount,
-          category: r.category,
-          topSimilarity: r.similarity,
-          items: [r],
-        });
-      }
-    }
-    return [...groups.values()].toSorted(
-      (a, b) => b.topSimilarity - a.topSimilarity,
-    );
-  });
-
-  const semanticTotal = $derived(
-    deduplicatedSemantic.reduce((sum, r) => sum + r.amount, 0),
-  );
-
   // Flat result list with section headers
   interface ResultItem {
-    type: "header" | "action" | "transaction" | "merchant-group" | "semantic";
+    type: "header" | "action" | "transaction";
     action?: PaletteAction;
     transaction?: Transaction;
-    semantic?: SemanticSearchResult;
-    merchantGroup?: MerchantGroup;
     label: string;
   }
 
@@ -234,24 +114,6 @@
       }
     }
 
-    // Semantic results: merchant groups with drill-down
-    if (semanticGroups.length > 0) {
-      items.push({ type: "header", label: "Semantische Suche" });
-      for (const g of semanticGroups) {
-        items.push({
-          type: "merchant-group",
-          merchantGroup: g,
-          label: g.merchant,
-        });
-        // Drill-down: show individual transactions when expanded
-        if (expandedMerchant === g.merchant) {
-          for (const s of g.items) {
-            items.push({ type: "semantic", semantic: s, label: s.description });
-          }
-        }
-      }
-    }
-
     return items;
   });
 
@@ -287,8 +149,6 @@
     } else if (e.key === "Escape") {
       if (confirmingAction) {
         confirmingAction = null;
-      } else if (expandedMerchant) {
-        expandedMerchant = null;
       } else if (query) {
         query = "";
         selectedIndex = 0;
@@ -303,13 +163,6 @@
       executeAction(item.action);
     } else if (item.type === "transaction" && item.transaction) {
       openTransaction(item.transaction.id);
-    } else if (item.type === "semantic" && item.semantic) {
-      openTransaction(item.semantic.id);
-    } else if (item.type === "merchant-group" && item.merchantGroup) {
-      expandedMerchant =
-        expandedMerchant === item.merchantGroup.merchant
-          ? null
-          : item.merchantGroup.merchant;
     }
   }
 
@@ -352,7 +205,6 @@
     query = (e.target as HTMLInputElement).value;
     selectedIndex = 0;
     confirmingAction = null;
-    expandedMerchant = null;
   }
 
   function getCategoryName(cat: number): string {
@@ -365,9 +217,7 @@
 
   function getItemKey(item: ResultItem): string {
     if (item.type === "header") return `h-${item.label}`;
-    if (item.type === "merchant-group")
-      return `mg-${item.merchantGroup?.merchant}`;
-    return `${item.type}-${item.action?.id ?? item.transaction?.id ?? item.semantic?.id}`;
+    return `${item.type}-${item.action?.id ?? item.transaction?.id}`;
   }
 </script>
 
@@ -412,7 +262,6 @@
               query = "";
               selectedIndex = 0;
               confirmingAction = null;
-              expandedMerchant = null;
             }}
             class="absolute right-3 text-gray-400 hover:text-gray-600 transition-colors"
             aria-label="Suche leeren"
@@ -433,26 +282,6 @@
           </button>
         {/if}
       </div>
-      <!-- Semantic status indicator -->
-      {#if modelAutoLoading}
-        <div class="flex items-center gap-1.5 mt-2 ml-1">
-          <span class="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"></span>
-          <span class="text-[11px] text-amber-600">KI-Modell wird geladen…</span>
-        </div>
-      {:else if modelLoaded && query.length >= 2}
-        <div class="flex items-center gap-1.5 mt-2 ml-1">
-          {#if semanticLoading}
-            <span class="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"
-            ></span>
-            <span class="text-[11px] text-amber-600">KI-Suche läuft…</span>
-          {:else if hasSemanticResults}
-            <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
-            <span class="text-[11px] text-emerald-600"
-              >{deduplicatedSemantic.length} semantische Treffer</span
-            >
-          {/if}
-        </div>
-      {/if}
     </div>
 
     <!-- Confirm dialog -->
@@ -491,42 +320,13 @@
         {#each flatResults as item, i (getItemKey(item))}
           {#if item.type === "header"}
             <div>
-              <div class="flex items-center justify-between px-4 pt-4 pb-1.5">
+              <div class="px-4 pt-4 pb-1.5">
                 <h2
                   class="text-[11px] font-bold text-gray-400 uppercase tracking-wider"
                 >
                   {item.label}
                 </h2>
-                {#if item.label === "Semantische Suche"}
-                  <span
-                    class="bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5 border border-amber-200/60"
-                  >
-                    <span
-                      class="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"
-                    ></span>
-                    KI-SUCHE
-                  </span>
-                {/if}
               </div>
-              <!-- Semantic summary: total count + amount -->
-              {#if item.label === "Semantische Suche" && semanticGroups.length > 0}
-                <div
-                  class="mx-4 mb-2 px-3 py-2 bg-amber-50/60 rounded-xl border border-amber-100/80"
-                >
-                  <p class="text-[12px] text-gray-600">
-                    {deduplicatedSemantic.length} Treffer ·
-                    <span
-                      class="font-bold tabular-nums"
-                      class:text-emerald-600={semanticTotal > 0}
-                      class:text-gray-800={semanticTotal <= 0}
-                    >
-                      {formatAmountSigned(semanticTotal)}
-                    </span>
-                    gesamt · {semanticGroups.length}
-                    {semanticGroups.length === 1 ? "Händler" : "Händler"}
-                  </p>
-                </div>
-              {/if}
             </div>
           {:else}
             {@const selIdx = selectableItems.indexOf(item)}
@@ -589,90 +389,6 @@
                   </p>
                 </div>
               </button>
-            {:else if item.type === "merchant-group" && item.merchantGroup}
-              {@const isExpanded =
-                expandedMerchant === item.merchantGroup.merchant}
-              <button
-                data-idx={selIdx}
-                class="w-full flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
-                  {selIdx === selectedIndex
-                  ? 'bg-amber-50/80 border-l-[3px] border-amber-400 pl-[13px]'
-                  : 'hover:bg-gray-50 border-l-[3px] border-transparent pl-[13px]'}"
-                onclick={() => executeItem(item)}
-                onpointerenter={() => (selectedIndex = selIdx)}
-              >
-                <div class="flex items-center min-w-0">
-                  <span class="mr-3 text-lg shrink-0"
-                    >{getCategoryIcon(item.merchantGroup.category)}</span
-                  >
-                  <div class="min-w-0">
-                    <p class="text-sm font-semibold text-gray-900 truncate">
-                      {item.merchantGroup.merchant}
-                    </p>
-                    <p class="text-[11px] text-gray-400">
-                      {item.merchantGroup.count}× · {getCategoryName(
-                        item.merchantGroup.category,
-                      )}
-                    </p>
-                  </div>
-                </div>
-                <div class="flex items-center gap-2 ml-3 shrink-0">
-                  <div class="text-right">
-                    <p
-                      class="text-sm font-bold tabular-nums"
-                      class:text-emerald-600={item.merchantGroup.totalAmount >
-                        0}
-                      class:text-gray-900={item.merchantGroup.totalAmount <= 0}
-                    >
-                      {formatAmountSigned(item.merchantGroup.totalAmount)}
-                    </p>
-                  </div>
-                  <svg
-                    class="w-3.5 h-3.5 text-gray-400 transition-transform {isExpanded
-                      ? 'rotate-90'
-                      : ''}"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </div>
-              </button>
-            {:else if item.type === "semantic" && item.semantic}
-              <!-- Drill-down: individual transaction under expanded merchant group -->
-              <button
-                data-idx={selIdx}
-                class="w-full flex items-center justify-between rounded-xl cursor-pointer transition-all
-                  {selIdx === selectedIndex
-                  ? 'bg-amber-50/60 border-l-[3px] border-amber-300 pl-[45px] pr-4 py-2'
-                  : 'hover:bg-gray-50/50 border-l-[3px] border-transparent pl-[45px] pr-4 py-2'}"
-                onclick={() => executeItem(item)}
-                onpointerenter={() => (selectedIndex = selIdx)}
-              >
-                <p class="text-[13px] text-gray-600 truncate min-w-0">
-                  {item.semantic.description}
-                </p>
-                <div class="flex items-center gap-2 ml-3 shrink-0">
-                  <p
-                    class="text-[13px] font-semibold tabular-nums"
-                    class:text-emerald-600={item.semantic.amount > 0}
-                    class:text-gray-700={item.semantic.amount <= 0}
-                  >
-                    {formatAmountSigned(item.semantic.amount)}
-                  </p>
-                  <span
-                    class="text-[9px] font-mono text-amber-600 bg-amber-50 px-1 py-0.5 rounded border border-amber-100"
-                  >
-                    {(item.semantic.similarity * 100).toFixed(0)}%
-                  </span>
-                </div>
-              </button>
             {/if}
           {/if}
         {/each}
@@ -713,12 +429,6 @@
               >Esc</kbd
             > Schließen</span
           >
-        {/if}
-        {#if modelLoaded}
-          <span class="ml-auto flex items-center gap-1 text-amber-500">
-            <span class="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
-            Semantic
-          </span>
         {/if}
       </p>
     </div>

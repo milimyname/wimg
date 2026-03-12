@@ -1,7 +1,7 @@
 <script lang="ts">
   import { devtoolsStore, type SyncEvent, type SyncDiff } from "$lib/devtools.svelte";
   import { syncWS } from "$lib/sync-ws.svelte";
-  import { getWasmMemoryBytes, getWasmDbSize, getTransactions, getAccounts, getDebts, getRecurring, getSnapshots, close, queryRaw, deleteEmbeddingModel, type QueryResult } from "$lib/wasm";
+  import { getWasmMemoryBytes, getWasmDbSize, getTransactions, getAccounts, getDebts, getRecurring, getSnapshots, close, queryRaw, type QueryResult } from "$lib/wasm";
   import { clearSyncKey, getSyncKey } from "$lib/sync";
   import { featureStore } from "$lib/features.svelte";
 
@@ -877,16 +877,14 @@
                 {#if confirmAction}
                   <div class="rounded-xl bg-red-50 p-3">
                     <p class="text-[11px] text-red-700 font-medium mb-2">
-                      {confirmAction === "model" ? "Delete embedding model from OPFS?" :
-                       confirmAction === "opfs" ? "Delete OPFS database? (wimg.db)" :
+                      {confirmAction === "opfs" ? "Delete OPFS database? (wimg.db)" :
                        confirmAction === "ls" ? "Clear all localStorage?" :
                        "Full reset? (OPFS + localStorage + sync key)"}
                     </p>
                     <div class="flex gap-2">
                       <button
                         onclick={() => {
-                          if (confirmAction === "model") { deleteEmbeddingModel().then(() => { confirmAction = null; refreshOpfs(); }); }
-                          else if (confirmAction === "opfs") clearOpfs();
+                          if (confirmAction === "opfs") clearOpfs();
                           else if (confirmAction === "ls") clearLocalStorage();
                           else fullReset();
                         }}
@@ -903,12 +901,6 @@
                     </div>
                   </div>
                 {:else}
-                  <button
-                    onclick={() => { confirmAction = "model"; }}
-                    class="w-full text-left text-[11px] font-medium text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
-                  >
-                    Delete embedding model <span class="text-(--color-text-secondary)">(e5-small GGUF from OPFS)</span>
-                  </button>
                   <button
                     onclick={() => { confirmAction = "opfs"; }}
                     class="w-full text-left text-[11px] font-medium text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"

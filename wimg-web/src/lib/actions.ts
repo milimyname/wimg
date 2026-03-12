@@ -3,20 +3,7 @@
  * Used by CommandPalette.svelte in both page and overlay modes.
  */
 import { goto } from "$app/navigation";
-import {
-  autoCategorize,
-  // smartCategorize,
-  exportCsv,
-  exportDb,
-  takeSnapshot,
-  isModelLoaded,
-  loadEmbeddingModel,
-  deleteEmbeddingModel,
-  embeddingStatus,
-  undo,
-  redo,
-  close,
-} from "$lib/wasm";
+import { autoCategorize, exportCsv, exportDb, takeSnapshot, undo, redo, close } from "$lib/wasm";
 import {
   getSyncKey,
   setSyncKey,
@@ -26,7 +13,6 @@ import {
   connectSync,
 } from "$lib/sync";
 import { featureStore } from "$lib/features.svelte";
-import { embedStore } from "$lib/embed-store.svelte";
 import { toastStore } from "$lib/toast.svelte";
 
 export interface PaletteAction {
@@ -120,18 +106,6 @@ export const ACTIONS: PaletteAction[] = [
 
   // --- Categorization ---
   {
-    id: "smart-categorize",
-    label: "Smart Kategorisieren",
-    group: "Kategorisierung",
-    icon: "🧠",
-    keywords: ["categorize", "smart", "embed", "ai"],
-    handler: () => {
-      if (embedStore.running) return;
-      embedStore.start();
-    },
-    enabled: () => isModelLoaded() && !embedStore.running,
-  },
-  {
     id: "auto-categorize",
     label: "Auto-Kategorisieren",
     group: "Kategorisierung",
@@ -140,56 +114,6 @@ export const ACTIONS: PaletteAction[] = [
     handler: () => {
       const n = autoCategorize();
       toastStore.show(n > 0 ? `${n} Transaktionen kategorisiert` : "Keine neuen Kategorien");
-    },
-  },
-  {
-    id: "embed-transactions",
-    label: "Transaktionen einbetten",
-    group: "Kategorisierung",
-    icon: "🔢",
-    keywords: ["embed", "embedding", "vector"],
-    handler: () => embedStore.start(),
-    enabled: () => isModelLoaded() && !embedStore.running,
-  },
-
-  // --- Embedding Model ---
-  {
-    id: "model-download",
-    label: "Modell herunterladen",
-    group: "Embedding-Modell",
-    icon: "⬇️",
-    keywords: ["model", "download", "e5", "modell"],
-    handler: async () => {
-      toastStore.show("Modell wird heruntergeladen…");
-      await loadEmbeddingModel();
-      toastStore.show("Modell geladen");
-    },
-    enabled: () => !isModelLoaded(),
-  },
-  {
-    id: "model-delete",
-    label: "Modell löschen",
-    group: "Embedding-Modell",
-    icon: "🗑️",
-    keywords: ["model", "delete", "remove", "modell", "löschen"],
-    handler: async () => {
-      await deleteEmbeddingModel();
-      toastStore.show("Modell gelöscht");
-    },
-    enabled: () => isModelLoaded(),
-    danger: true,
-  },
-  {
-    id: "embedding-status",
-    label: "Einbettungsstatus",
-    group: "Embedding-Modell",
-    icon: "📈",
-    keywords: ["status", "embedding", "stats"],
-    handler: () => {
-      const s = embeddingStatus();
-      toastStore.show(
-        `Eingebettet: ${s.embedded}/${s.total_txs} | Modell: ${s.model_loaded ? "Ja" : "Nein"}`,
-      );
     },
   },
 

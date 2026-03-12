@@ -5,8 +5,6 @@
     setCategory,
     setExcluded,
     undo,
-    smartCategorize,
-    isModelLoaded,
     CATEGORIES,
     type Transaction,
   } from "$lib/wasm";
@@ -256,26 +254,6 @@
     filterCategories = [];
   }
 
-  let categorizing = $state(false);
-  let categorizeResult = $state("");
-  let hasModel = $derived.by(() => {
-    try { return isModelLoaded(); } catch { return false; }
-  });
-
-  function handleSmartCategorize() {
-    categorizing = true;
-    categorizeResult = "";
-    try {
-      const count = smartCategorize();
-      categorizeResult = count === -2 ? "Zuerst manuell kategorisieren" : count > 0 ? `${count} kategorisiert` : "Keine unkategorisierten gefunden";
-      if (count > 0) refreshKey++;
-      setTimeout(() => { categorizeResult = ""; }, 4000);
-    } catch {
-      categorizeResult = "Fehler";
-    } finally {
-      categorizing = false;
-    }
-  }
 </script>
 
 <!-- Header -->
@@ -638,32 +616,6 @@
         </div>
       </section>
 
-      <!-- Smart Categorize -->
-      {#if hasModel}
-        <section class="mb-4">
-          <button
-            onclick={handleSmartCategorize}
-            disabled={categorizing}
-            class="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-indigo-50 text-indigo-700 font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50"
-          >
-            {#if categorizing}
-              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Kategorisiere...
-            {:else}
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-              Smart Kategorisieren
-            {/if}
-          </button>
-          {#if categorizeResult}
-            <p class="text-xs text-center text-indigo-600 font-medium mt-2">{categorizeResult}</p>
-          {/if}
-        </section>
-      {/if}
     </div>
 
     <!-- Footer -->

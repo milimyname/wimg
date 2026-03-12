@@ -28,7 +28,7 @@ pub const DbError = error{
     StepFailed,
 };
 
-const CURRENT_SCHEMA_VERSION = 12;
+const CURRENT_SCHEMA_VERSION = 13;
 const MAX_UNDO_ENTRIES = 50;
 
 pub const Db = struct {
@@ -108,12 +108,6 @@ pub const Db = struct {
         \\  expenses INTEGER NOT NULL DEFAULT 0,
         \\  tx_count INTEGER NOT NULL DEFAULT 0,
         \\  breakdown TEXT NOT NULL DEFAULT '[]',
-        \\  updated_at INTEGER NOT NULL DEFAULT 0
-        \\);
-        \\CREATE TABLE IF NOT EXISTS embeddings (
-        \\  tx_id TEXT PRIMARY KEY,
-        \\  embedding BLOB NOT NULL,
-        \\  model_ver TEXT NOT NULL DEFAULT 'e5-small-q8',
         \\  updated_at INTEGER NOT NULL DEFAULT 0
         \\);
     ;
@@ -248,33 +242,14 @@ pub const Db = struct {
             ) catch {};
         }
 
-        if (version < 10) {
-            // v10: embeddings table for smart categorization (Phase 5.5)
-            self.exec(
-                \\CREATE TABLE IF NOT EXISTS embeddings (
-                \\  tx_id TEXT PRIMARY KEY,
-                \\  embedding BLOB NOT NULL,
-                \\  model_ver TEXT NOT NULL DEFAULT 'e5-small-q8',
-                \\  updated_at INTEGER NOT NULL DEFAULT 0
-                \\);
-            ) catch {};
-        }
-
-        if (version < 11) {
-            // v11: model swap jina-v5-nano → all-MiniLM-L6-v2 (different dim: 256→384)
-            // Clear old embeddings — incompatible dimensions
-            self.exec("DELETE FROM embeddings;") catch {};
-        }
-
-        if (version < 12) {
-            // v12: model swap all-MiniLM-L6-v2 → multilingual-e5-small
-            // Same 384-dim but different tokenizer + model weights → re-embed
-            self.exec("DELETE FROM embeddings;") catch {};
+        if (version < 13) {
+            // v13: remove embeddings table (Phase 5.9 — embeddings removed)
+            self.exec("DROP TABLE IF EXISTS embeddings;") catch {};
         }
 
         // Store current version
         if (version < CURRENT_SCHEMA_VERSION) {
-            self.setMeta("schema_version", "12") catch {};
+            self.setMeta("schema_version", "13") catch {};
         }
     }
 
@@ -388,91 +363,6 @@ pub const Db = struct {
             if (c.sqlite3_bind_int(s, 3, @intCast(rule.priority)) != c.SQLITE_OK) continue;
             _ = c.sqlite3_step(s);
         }
-    }
-
-    // --- Embeddings (Phase 5.5) ---
-
-    /// Insert or replace an embedding for a transaction.
-    pub fn insertEmbedding(self: *Db, tx_id: []const u8, embedding: []const u8, now: i64) DbError!void {
-        const sql = "INSERT OR REPLACE INTO embeddings (tx_id, embedding, model_ver, updated_at) VALUES (?1, ?2, ?3, ?4);";
-        var stmt: ?*c.sqlite3_stmt = null;
-        const rc = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
-        if (rc != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
-        defer _ = c.sqlite3_finalize(stmt.?);
-
-        const s = stmt.?;
-        const model_ver = "e5-small-q8-v7";
-        if (c.sqlite3_bind_text(s, 1, tx_id.ptr, @intCast(tx_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
-        if (c.sqlite3_bind_blob(s, 2, embedding.ptr, @intCast(embedding.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
-        if (c.sqlite3_bind_text(s, 3, model_ver, model_ver.len, c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
-        if (c.sqlite3_bind_int64(s, 4, now) != c.SQLITE_OK) return DbError.BindFailed;
-
-        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
-    }
-
-    /// Get the embedding for a transaction. Returns null if not found.
-    /// Copies into the provided buffer.
-    pub fn getEmbedding(self: *Db, tx_id: []const u8, out: []u8) DbError!?usize {
-        const sql = "SELECT embedding FROM embeddings WHERE tx_id = ?1;";
-        var stmt: ?*c.sqlite3_stmt = null;
-        const rc = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
-        if (rc != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
-        defer _ = c.sqlite3_finalize(stmt.?);
-
-        const s = stmt.?;
-        if (c.sqlite3_bind_text(s, 1, tx_id.ptr, @intCast(tx_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
-
-        if (c.sqlite3_step(s) != c.SQLITE_ROW) return null;
-
-        const blob_ptr = c.sqlite3_column_blob(s, 0) orelse return null;
-        const blob_len: usize = @intCast(c.sqlite3_column_bytes(s, 0));
-        if (blob_len > out.len) return null;
-
-        @memcpy(out[0..blob_len], blob_ptr[0..blob_len]);
-        return blob_len;
-    }
-
-    /// Count transactions that don't have embeddings yet (or with outdated model_ver).
-    pub fn countUnembeddedTransactions(self: *Db) DbError!u32 {
-        const sql = "SELECT COUNT(*) FROM transactions WHERE id NOT IN (SELECT tx_id FROM embeddings WHERE model_ver = 'e5-small-q8-v7');";
-        var stmt: ?*c.sqlite3_stmt = null;
-        const rc = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
-        if (rc != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
-        defer _ = c.sqlite3_finalize(stmt.?);
-
-        if (c.sqlite3_step(stmt.?) != c.SQLITE_ROW) return 0;
-        return @intCast(c.sqlite3_column_int(stmt.?, 0));
-    }
-
-    /// Count total embeddings stored.
-    pub fn countEmbeddings(self: *Db) DbError!u32 {
-        const sql = "SELECT COUNT(*) FROM embeddings;";
-        var stmt: ?*c.sqlite3_stmt = null;
-        const rc = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
-        if (rc != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
-        defer _ = c.sqlite3_finalize(stmt.?);
-
-        if (c.sqlite3_step(stmt.?) != c.SQLITE_ROW) return 0;
-        return @intCast(c.sqlite3_column_int(stmt.?, 0));
-    }
-
-    /// Count total transactions.
-    pub fn countTransactions(self: *Db) DbError!u32 {
-        const sql = "SELECT COUNT(*) FROM transactions;";
-        var stmt: ?*c.sqlite3_stmt = null;
-        const rc = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
-        if (rc != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
-        defer _ = c.sqlite3_finalize(stmt.?);
-
-        if (c.sqlite3_step(stmt.?) != c.SQLITE_ROW) return 0;
-        return @intCast(c.sqlite3_column_int(stmt.?, 0));
-    }
-
-    /// Delete embeddings for transactions that no longer exist.
-    pub fn cleanOrphanedEmbeddings(self: *Db) DbError!void {
-        const sql = "DELETE FROM embeddings WHERE tx_id NOT IN (SELECT id FROM transactions);";
-        const rc = c.sqlite3_exec(self.handle, sql, null, null, null);
-        if (rc != c.SQLITE_OK) return DbError.ExecFailed;
     }
 
     pub fn close(self: *Db) void {

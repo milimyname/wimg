@@ -268,46 +268,6 @@ pub fn build(b: *std.Build) void {
     const run_crypto_tests = b.addRunArtifact(crypto_tests);
     test_step.dependOn(&run_crypto_tests.step);
 
-    // Embedding modules (Phase 5.5)
-    const gguf_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/gguf.zig"),
-            .target = b.resolveTargetQuery(.{}),
-            .optimize = optimize,
-        }),
-    });
-    const run_gguf_tests = b.addRunArtifact(gguf_tests);
-    test_step.dependOn(&run_gguf_tests.step);
-
-    const quants_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/quants.zig"),
-            .target = b.resolveTargetQuery(.{}),
-            .optimize = optimize,
-        }),
-    });
-    const run_quants_tests = b.addRunArtifact(quants_tests);
-    test_step.dependOn(&run_quants_tests.step);
-
-    const tokenizer_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/tokenizer.zig"),
-            .target = b.resolveTargetQuery(.{}),
-            .optimize = optimize,
-        }),
-    });
-    const run_tokenizer_tests = b.addRunArtifact(tokenizer_tests);
-    test_step.dependOn(&run_tokenizer_tests.step);
-
-    const embed_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/embed.zig"),
-            .target = b.resolveTargetQuery(.{}),
-            .optimize = optimize,
-        }),
-    });
-    const run_embed_tests = b.addRunArtifact(embed_tests);
-    test_step.dependOn(&run_embed_tests.step);
 }
 
 /// Detect Apple SDK via xcrun and configure include/framework/library paths.
