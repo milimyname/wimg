@@ -28,10 +28,20 @@
     refreshKey++;
   }
 
+  function onOpenTxn(e: Event) {
+    const id = (e as CustomEvent<{ id: string }>).detail.id;
+    const tx = transactions.find((t) => t.id === id);
+    if (tx) {
+      openDetail(tx);
+      sessionStorage.removeItem(OPEN_TXN_KEY);
+    }
+  }
+
   onMount(() => {
     window.addEventListener("wimg:sync-received", onSyncReceived);
+    window.addEventListener("wimg:open-txn", onOpenTxn);
 
-    // Restore sheet on page reload (page.state is empty on first load)
+    // Restore sheet on page reload (check URL params first, then sessionStorage)
     if (!page.state.txnId) {
       const storedId = sessionStorage.getItem(OPEN_TXN_KEY);
       if (storedId) {
@@ -52,6 +62,7 @@
 
   onDestroy(() => {
     window.removeEventListener("wimg:sync-received", onSyncReceived);
+    window.removeEventListener("wimg:open-txn", onOpenTxn);
   });
   let txResult = $derived.by(() => {
     void refreshKey;
@@ -179,8 +190,6 @@
   });
 
   function dismissSheet() {
-    selectedTxn = null;
-    originalTxn = null;
     sheetDismissed = true;
     sessionStorage.removeItem(OPEN_TXN_KEY);
     history.back();

@@ -67,19 +67,19 @@ pub const ParseError = error{
 };
 
 /// Read a little-endian u32 from data at offset.
-fn readU32(data: []const u8, off: usize) ParseError!u32 {
+pub fn readU32(data: []const u8, off: usize) ParseError!u32 {
     if (off + 4 > data.len) return ParseError.TruncatedData;
     return std.mem.readInt(u32, data[off..][0..4], .little);
 }
 
 /// Read a little-endian u64 from data at offset.
-fn readU64(data: []const u8, off: usize) ParseError!u64 {
+pub fn readU64(data: []const u8, off: usize) ParseError!u64 {
     if (off + 8 > data.len) return ParseError.TruncatedData;
     return std.mem.readInt(u64, data[off..][0..8], .little);
 }
 
 /// Read a GGUF string (u64 length + bytes). Returns the string slice and new offset.
-fn readString(data: []const u8, off: usize) ParseError!struct { []const u8, usize } {
+pub fn readString(data: []const u8, off: usize) ParseError!struct { []const u8, usize } {
     const len = try readU64(data, off);
     const str_start = off + 8;
     const str_end = str_start + @as(usize, @intCast(len));
@@ -88,7 +88,7 @@ fn readString(data: []const u8, off: usize) ParseError!struct { []const u8, usiz
 }
 
 /// Skip a GGUF metadata value, returning the new offset.
-fn skipValue(data: []const u8, off: usize, vtype: GgufValueType) ParseError!usize {
+pub fn skipValue(data: []const u8, off: usize, vtype: GgufValueType) ParseError!usize {
     switch (vtype) {
         .uint8, .int8, .bool_ => return off + 1,
         .uint16, .int16 => return off + 2,

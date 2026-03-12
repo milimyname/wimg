@@ -1,11 +1,13 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from "svelte";
-  import { goto } from "$app/navigation";
+  import { goto, pushState } from "$app/navigation";
+  import { page } from "$app/state";
   import { init, takeSnapshot } from "$lib/wasm";
   import { accountStore } from "$lib/account.svelte";
   import { updateStore } from "$lib/update.svelte";
   import { dropStore } from "$lib/drop.svelte";
   import { isSyncEnabled, connectSync, disconnectSync } from "$lib/sync";
+  import { paletteStore } from "$lib/commandPalette.svelte";
   import { LS_ONBOARDING_COMPLETED, LS_LAST_SNAPSHOT_MONTH } from "$lib/config";
   import BottomNav from "../../components/BottomNav.svelte";
   import Toast from "../../components/Toast.svelte";
@@ -94,6 +96,13 @@
       import("$lib/devtools.svelte").then((m) => m.devtoolsStore.enable());
     }
 
+    // Dev mode: unregister stale service workers so rebuilt WASM isn't served from cache
+    if (import.meta.env.DEV && "serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        for (const reg of regs) reg.unregister();
+      });
+    }
+
     updateStore.init();
 
     // Real-time sync: connect WebSocket (onReconnect handles initial pull)
@@ -105,6 +114,12 @@
   onDestroy(() => {
     disconnectSync();
   });
+
+  function openPalette() {
+    if (paletteStore.open) return;
+    pushState("", { sheet: "command-palette" });
+    paletteStore.show();
+  }
 </script>
 
 <div
@@ -148,6 +163,12 @@
   {/await}
 {/if}
 
+{#if paletteStore.open}
+  {#await import("../../components/CommandPalette.svelte") then Palette}
+    <Palette.default />
+  {/await}
+{/if}
+
 {#if showOnboarding}
   <OnboardingOverlay
     onclose={() => {
@@ -162,6 +183,14 @@
   ondragleave={handleDragLeave}
   ondrop={handleDrop}
   onkeydown={(e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      e.preventDefault();
+      if (page.state.sheet === "command-palette") {
+        history.back();
+      } else {
+        openPalette();
+      }
+    }
     if (showDevTools && e.ctrlKey && e.shiftKey && e.key === "D") {
       e.preventDefault();
       import("$lib/devtools.svelte").then((m) => m.devtoolsStore.toggle());

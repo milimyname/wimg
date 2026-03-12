@@ -92,7 +92,7 @@
       }
     }
 
-    return items.sort(
+    return items.toSorted(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     );
   });
@@ -122,14 +122,14 @@
         });
       }
     }
-    return results.sort((a, b) => b.increase - a.increase);
+    return results.toSorted((a, b) => b.increase - a.increase);
   });
 
   // Top spending categories
   let topCategories = $derived.by(() =>
     summary.by_category
       .filter((c) => c.id !== 10 && c.id !== 11 && c.amount !== 0)
-      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+      .toSorted((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
       .slice(0, 5),
   );
 

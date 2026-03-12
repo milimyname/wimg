@@ -170,7 +170,10 @@
 
   <!-- MCP Connection Guide -->
   <div id="mcp">
-    <a href="#mcp" class="text-xl font-display font-extrabold text-(--color-text) mb-4 flex items-center gap-2">
+    <a
+      href="#mcp"
+      class="text-xl font-display font-extrabold text-(--color-text) mb-4 flex items-center gap-2"
+    >
       <svg
         class="w-5 h-5 text-purple-500"
         fill="none"
@@ -224,24 +227,28 @@
           />
         </svg>
       </a>
-      <div class="bg-white rounded-2xl p-4 shadow-sm flex gap-3">
-        <span
-          class="w-7 h-7 rounded-full bg-(--color-accent) flex items-center justify-center font-bold text-sm shrink-0"
-          >2</span
-        >
-        <div>
-          <p class="font-semibold text-sm text-(--color-text)">
-            MCP-Client konfigurieren
-          </p>
-          <p class="text-xs text-(--color-text-secondary) mt-0.5">
-            In Claude Desktop oder Claude Code die folgende Konfiguration
-            hinzufügen:
-          </p>
-          <div
-            class="mt-2 bg-gray-50 rounded-xl p-3 text-xs font-mono text-(--color-text) overflow-x-auto"
-            style="scrollbar-width: none;"
+      <div class="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+        <div class="flex gap-3">
+          <span
+            class="w-7 h-7 rounded-full bg-(--color-accent) flex items-center justify-center font-bold text-sm shrink-0"
           >
-            <pre>{`{
+            2
+          </span>
+          <div>
+            <p class="font-semibold text-sm text-(--color-text)">
+              MCP-Client konfigurieren
+            </p>
+            <p class="text-xs text-(--color-text-secondary) mt-0.5">
+              In Claude Desktop oder Claude Code die folgende Konfiguration
+              hinzufügen:
+            </p>
+          </div>
+        </div>
+        <div
+          class="mt-2 overflow-auto bg-gray-50 rounded-xl p-3 text-xs font-mono text-(--color-text) overflow-x-auto"
+          style="scrollbar-width: none;"
+        >
+          <pre>{`{
   "mcpServers": {
     "wimg": {
       "command": "npx",
@@ -254,7 +261,6 @@
     }
   }
 }`}</pre>
-          </div>
         </div>
       </div>
       <div class="bg-white rounded-2xl p-4 shadow-sm flex gap-3">
@@ -296,12 +302,14 @@
           (Transaktionen, Schulden, Konten) an diesen Client weitergegeben. Die
           Daten sind zwar Ende-zu-Ende verschlüsselt zwischen deinen Geräten und
           dem Server, aber der MCP-Client selbst kann die entschlüsselten Daten
-          lesen. <strong>Zum Schutz deiner Privatsphäre werden personenbezogene
-          Daten (IBANs, Kartennummern, Referenznummern, Namen) automatisch aus
-          Transaktionsbeschreibungen entfernt, bevor sie an den MCP-Client
-          gesendet werden.</strong> Händlernamen bleiben erhalten, damit die
-          KI-Kategorisierung funktioniert. Verwende nur vertrauenswürdige
-          MCP-Clients und teile deinen Sync-Schlüssel niemals mit Dritten.
+          lesen. <strong
+            >Zum Schutz deiner Privatsphäre werden personenbezogene Daten
+            (IBANs, Kartennummern, Referenznummern, Namen) automatisch aus
+            Transaktionsbeschreibungen entfernt, bevor sie an den MCP-Client
+            gesendet werden.</strong
+          > Händlernamen bleiben erhalten, damit die KI-Kategorisierung funktioniert.
+          Verwende nur vertrauenswürdige MCP-Clients und teile deinen Sync-Schlüssel
+          niemals mit Dritten.
         </p>
       </div>
     </div>
@@ -309,7 +317,10 @@
 
   <!-- FAQ -->
   <div id="faq">
-    <a href="#faq" class="text-xl font-display font-extrabold text-(--color-text) mb-4 flex items-center gap-2">
+    <a
+      href="#faq"
+      class="text-xl font-display font-extrabold text-(--color-text) mb-4 flex items-center gap-2"
+    >
       <svg
         class="w-5 h-5 text-amber-500"
         fill="none"

@@ -144,61 +144,97 @@ int strncasecmp(const char *s1, const char *s2, size_t n) {
 
 /* --- stdlib functions --- */
 
-/* Simple bump allocator for WASM — SQLite uses malloc/free extensively */
+/* First-fit heap allocator with proper free() and coalescing.
+   SQLite calls malloc/free extensively — a bump allocator exhausts
+   the heap after enough operations (embedding, smart categorize). */
 #ifndef HEAP_SIZE
-#define HEAP_SIZE (4 * 1024 * 1024)  /* 4 MB heap */
+#define HEAP_SIZE (8 * 1024 * 1024)  /* 8 MB heap */
 #endif
 static unsigned char heap[HEAP_SIZE];
-static size_t heap_offset = 0;
+static int heap_ready = 0;
 
-/* Simple block header for tracking allocations */
+/* Each block: [BlockHeader][payload of `size` bytes] */
 typedef struct {
-    size_t size;
-    size_t magic; /* 0xDEADBEEF for valid blocks */
+    size_t size;   /* payload size (aligned) */
+    size_t used;   /* 1 = allocated, 0 = free */
 } BlockHeader;
 
-#define BLOCK_MAGIC 0xDEADBEEF
 #define ALIGN_UP(x, a) (((x) + (a) - 1) & ~((a) - 1))
+#define BH_SIZE ALIGN_UP(sizeof(BlockHeader), 8)
+
+static void heap_init(void) {
+    BlockHeader *b = (BlockHeader *)heap;
+    b->size = HEAP_SIZE - BH_SIZE;
+    b->used = 0;
+    heap_ready = 1;
+}
 
 void *malloc(size_t size) {
     if (size == 0) return NULL;
+    if (!heap_ready) heap_init();
 
-    size_t total = ALIGN_UP(sizeof(BlockHeader) + size, 8);
-    if (heap_offset + total > HEAP_SIZE) return NULL;
+    size = ALIGN_UP(size, 8);
 
-    BlockHeader *hdr = (BlockHeader *)(heap + heap_offset);
-    hdr->size = size;
-    hdr->magic = BLOCK_MAGIC;
-    heap_offset += total;
+    unsigned char *p = heap;
+    unsigned char *end = heap + HEAP_SIZE;
 
-    return (void *)(hdr + 1);
+    while (p + BH_SIZE <= end) {
+        BlockHeader *b = (BlockHeader *)p;
+        if (b->size == 0) break;
+
+        if (!b->used) {
+            /* Coalesce consecutive free blocks */
+            unsigned char *np = p + BH_SIZE + b->size;
+            while (np + BH_SIZE <= end) {
+                BlockHeader *nb = (BlockHeader *)np;
+                if (nb->size == 0 || nb->used) break;
+                b->size += BH_SIZE + nb->size;
+                np = p + BH_SIZE + b->size;
+            }
+
+            if (b->size >= size) {
+                /* Split if there's room for another block */
+                if (b->size >= size + BH_SIZE + 8) {
+                    BlockHeader *s = (BlockHeader *)(p + BH_SIZE + size);
+                    s->size = b->size - size - BH_SIZE;
+                    s->used = 0;
+                    b->size = size;
+                }
+                b->used = 1;
+                return p + BH_SIZE;
+            }
+        }
+
+        p += BH_SIZE + b->size;
+    }
+
+    return NULL;
 }
 
 void free(void *ptr) {
-    /* Bump allocator doesn't free individual blocks.
-       For SQLite's usage pattern this is fine — the total
-       memory usage stays bounded for typical workloads. */
-    (void)ptr;
+    if (!ptr) return;
+    BlockHeader *b = (BlockHeader *)((unsigned char *)ptr - BH_SIZE);
+    b->used = 0;
+    /* Coalescing done lazily in malloc's scan */
 }
 
 void *realloc(void *ptr, size_t size) {
     if (!ptr) return malloc(size);
     if (size == 0) { free(ptr); return NULL; }
 
-    BlockHeader *hdr = (BlockHeader *)ptr - 1;
-    if (hdr->magic != BLOCK_MAGIC) return NULL;
-
-    size_t old_size = hdr->size;
-    if (size <= old_size) return ptr; /* shrink = no-op */
+    BlockHeader *b = (BlockHeader *)((unsigned char *)ptr - BH_SIZE);
+    size_t old_size = b->size;
+    if (ALIGN_UP(size, 8) <= old_size) return ptr;
 
     void *new_ptr = malloc(size);
     if (!new_ptr) return NULL;
 
-    /* memcpy */
+    size_t copy = old_size < size ? old_size : size;
     unsigned char *dst = (unsigned char *)new_ptr;
     unsigned char *src = (unsigned char *)ptr;
-    for (size_t i = 0; i < old_size; i++) dst[i] = src[i];
+    for (size_t i = 0; i < copy; i++) dst[i] = src[i];
 
+    free(ptr);
     return new_ptr;
 }
 

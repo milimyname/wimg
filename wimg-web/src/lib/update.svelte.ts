@@ -81,7 +81,7 @@ export const updateStore = {
       // Smooth fade-out before reload to avoid white flash
       const overlay = document.createElement("div");
       overlay.style.cssText =
-        "position:fixed;inset:0;z-index:9999;background:var(--color-bg,#faf8f4);opacity:0;transition:opacity 300ms ease";
+        "position:fixed;inset:0;z-index:9999;background:var(--color-bg,#faf9f6);opacity:0;transition:opacity 300ms ease";
       document.body.appendChild(overlay);
       requestAnimationFrame(() => {
         overlay.style.opacity = "1";
@@ -98,6 +98,7 @@ export const updateStore = {
       window.location.reload();
       return;
     }
+    // eslint-disable-next-line unicorn/require-post-message-target-origin -- Worker.postMessage has no targetOrigin
     waitingSW.postMessage({ type: "SKIP_WAITING" });
   },
 

@@ -10,6 +10,7 @@
     deleteEmbeddingModel,
     embeddingStatus,
     smartCategorize,
+    opfsSave,
     type EmbeddingStatus,
   } from "$lib/wasm";
   import { embedStore } from "$lib/embed-store.svelte";
@@ -39,6 +40,7 @@
   let syncError = $state("");
   let syncSuccess = $state("");
   let lastSync = $state(0);
+  let isOnline = $state(navigator.onLine);
   let confirmReset = $derived(page.state.sheet === "confirm-reset");
   let resetting = $state(false);
   let copied = $state(false);
@@ -107,13 +109,14 @@
     }
   }
 
-  function handleEmbedNow() {
+  async function handleEmbedNow() {
     modelError = "";
     modelSuccess = "";
-    embedStore.start();
+    await embedStore.start();
+    refreshModelStatus();
   }
 
-  function handleSmartCategorize() {
+  async function handleSmartCategorize() {
     categorizing = true;
     modelError = "";
     modelSuccess = "";
@@ -122,6 +125,7 @@
       if (count === -2) {
         modelSuccess = "Kategorisiere zuerst ein paar Buchungen manuell als Referenz";
       } else if (count > 0) {
+        await opfsSave();
         modelSuccess = `${count} Buchungen kategorisiert`;
       } else {
         modelSuccess = "Keine unkategorisierten Buchungen gefunden";
@@ -149,12 +153,33 @@
     refreshModelStatus();
   }
 
+  function onOnline() { isOnline = true; }
+  function onOffline() { isOnline = false; }
+
+  // Refresh model status live during embedding (DB is updated incrementally)
+  let embedPollTimer: ReturnType<typeof setInterval> | null = null;
+  $effect(() => {
+    // Clear previous interval first (prevents stacking when state changes)
+    if (embedPollTimer) {
+      clearInterval(embedPollTimer);
+      embedPollTimer = null;
+    }
+    if (embedStore.running) {
+      embedPollTimer = setInterval(refreshModelStatus, 1000);
+    }
+  });
+
   onDestroy(() => {
+    if (embedPollTimer) clearInterval(embedPollTimer);
     window.removeEventListener("wimg:embed-done", onEmbedDone);
+    window.removeEventListener("online", onOnline);
+    window.removeEventListener("offline", onOffline);
   });
 
   onMount(async () => {
     window.addEventListener("wimg:embed-done", onEmbedDone);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
 
     const stored = getSyncKey();
     if (stored) {
@@ -393,10 +418,17 @@
       </div>
     {/if}
 
+    {#if !isOnline}
+      <div class="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-700">
+        Kein Internet — Sync nicht verfügbar
+      </div>
+    {/if}
+
     {#if !syncEnabled}
       <button
         onclick={() => pushState("", { sheet: "sync-info" })}
-        class="w-full py-3 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98]"
+        disabled={!isOnline}
+        class="w-full py-3 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50"
       >
         Sync aktivieren
       </button>
@@ -470,7 +502,7 @@
 
         <button
           onclick={handleSyncNow}
-          disabled={syncing}
+          disabled={syncing || !isOnline}
           class="w-full py-3 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50"
         >
           {#if syncing}
@@ -481,6 +513,8 @@
               </svg>
               Synchronisiere...
             </span>
+          {:else if !isOnline}
+            Offline
           {:else}
             Jetzt synchronisieren
           {/if}
@@ -533,6 +567,22 @@
       </div>
     </div>
 
+    <!-- How it works -->
+    <div class="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
+      <p class="text-xs font-bold text-(--color-text) mb-1">So funktioniert's</p>
+      <p class="text-[11px] text-(--color-text-secondary) leading-relaxed">
+        Das KI-Modell läuft komplett lokal auf deinem Gerät. Es wandelt Transaktionen in Vektoren um, sodass die Suche nach Bedeutung funktioniert — z.B. „Essen" findet auch REWE, Lieferando, McDonald's.
+      </p>
+      <ol class="text-[11px] text-(--color-text-secondary) mt-2 ml-3.5 list-decimal leading-relaxed space-y-0.5">
+        <li><span class="font-medium text-(--color-text)">Modell installieren</span> — einmaliger Download (~125 MB), wird offline gespeichert</li>
+        <li><span class="font-medium text-(--color-text)">Einbettungen erstellen</span> — verarbeitet Transaktionen inkrementell, Suche funktioniert sofort</li>
+        <li><span class="font-medium text-(--color-text)">Nutzen</span> — KI-Suche in der Suchleiste + Smart Kategorisieren</li>
+      </ol>
+      <p class="text-[11px] text-amber-700 bg-amber-50 rounded-lg px-3 py-2 mt-2.5 leading-relaxed">
+        <span class="font-bold">Tipp:</span> Nach jedem CSV-Import „Jetzt einbetten" erneut ausführen — neue Transaktionen werden erst nach dem Einbetten in der KI-Suche gefunden.
+      </p>
+    </div>
+
     {#if modelError}
       <div class="rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
         {modelError}
@@ -550,11 +600,11 @@
       <div class="space-y-2">
         <div class="flex items-center justify-between py-1">
           <span class="text-sm text-(--color-text-secondary)">Transaktionen</span>
-          <span class="text-sm font-medium text-(--color-text)">{embedStore.running && embedStore.progress.total > 0 ? embedStore.progress.total : modelStatus.total_txs}</span>
+          <span class="text-sm font-medium text-(--color-text)">{modelStatus.total_txs}</span>
         </div>
         <div class="flex items-center justify-between py-1">
           <span class="text-sm text-(--color-text-secondary)">Eingebettet</span>
-          <span class="text-sm font-medium text-(--color-text)">{embedStore.running && embedStore.progress.total > 0 ? embedStore.progress.current : modelStatus.embedded}</span>
+          <span class="text-sm font-medium text-(--color-text)">{modelStatus.embedded}</span>
         </div>
         {#if !embedStore.running && modelStatus.unembedded > 0}
           <div class="flex items-center justify-between py-1">
@@ -580,7 +630,7 @@
                 {#if embedStore.progress.total > 0}
                   {embedStore.progress.current} / {embedStore.progress.total}
                 {:else}
-                  {embedStore.state === "model" ? "Modell wird geladen..." : "Initialisiere..."}
+                  {embedStore.state === "model" ? "Modell wird geladen..." : embedStore.state === "categorize" ? "Kategorisiere..." : "Einbetten..."}
                 {/if}
               </span>
             {:else}

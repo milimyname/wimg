@@ -18,6 +18,7 @@
       /* Prevent FOUC: hide body briefly, fade in once CSS + JS are loaded */
       body {
         opacity: 0;
+        background: #faf9f6;
       }
       body.ready {
         opacity: 1;
@@ -28,8 +29,5 @@
   </head>
   <body data-sveltekit-preload-data="hover">
     <div style="display: contents">%sveltekit.body%</div>
-    <script>
-      requestAnimationFrame(() => document.body.classList.add("ready"));
-    </script>
   </body>
 </html>

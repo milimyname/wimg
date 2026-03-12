@@ -394,16 +394,18 @@ pub const Db = struct {
 
     /// Insert or replace an embedding for a transaction.
     pub fn insertEmbedding(self: *Db, tx_id: []const u8, embedding: []const u8, now: i64) DbError!void {
-        const sql = "INSERT OR REPLACE INTO embeddings (tx_id, embedding, model_ver, updated_at) VALUES (?1, ?2, 'e5-small-q8', ?3);";
+        const sql = "INSERT OR REPLACE INTO embeddings (tx_id, embedding, model_ver, updated_at) VALUES (?1, ?2, ?3, ?4);";
         var stmt: ?*c.sqlite3_stmt = null;
         const rc = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
         if (rc != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
         defer _ = c.sqlite3_finalize(stmt.?);
 
         const s = stmt.?;
+        const model_ver = "e5-small-q8-v7";
         if (c.sqlite3_bind_text(s, 1, tx_id.ptr, @intCast(tx_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
         if (c.sqlite3_bind_blob(s, 2, embedding.ptr, @intCast(embedding.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
-        if (c.sqlite3_bind_int64(s, 3, now) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 3, model_ver, model_ver.len, c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 4, now) != c.SQLITE_OK) return DbError.BindFailed;
 
         if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
     }
@@ -430,9 +432,9 @@ pub const Db = struct {
         return blob_len;
     }
 
-    /// Count transactions that don't have embeddings yet.
+    /// Count transactions that don't have embeddings yet (or with outdated model_ver).
     pub fn countUnembeddedTransactions(self: *Db) DbError!u32 {
-        const sql = "SELECT COUNT(*) FROM transactions WHERE id NOT IN (SELECT tx_id FROM embeddings);";
+        const sql = "SELECT COUNT(*) FROM transactions WHERE id NOT IN (SELECT tx_id FROM embeddings WHERE model_ver = 'e5-small-q8-v7');";
         var stmt: ?*c.sqlite3_stmt = null;
         const rc = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
         if (rc != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
@@ -452,6 +454,25 @@ pub const Db = struct {
 
         if (c.sqlite3_step(stmt.?) != c.SQLITE_ROW) return 0;
         return @intCast(c.sqlite3_column_int(stmt.?, 0));
+    }
+
+    /// Count total transactions.
+    pub fn countTransactions(self: *Db) DbError!u32 {
+        const sql = "SELECT COUNT(*) FROM transactions;";
+        var stmt: ?*c.sqlite3_stmt = null;
+        const rc = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
+        if (rc != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+
+        if (c.sqlite3_step(stmt.?) != c.SQLITE_ROW) return 0;
+        return @intCast(c.sqlite3_column_int(stmt.?, 0));
+    }
+
+    /// Delete embeddings for transactions that no longer exist.
+    pub fn cleanOrphanedEmbeddings(self: *Db) DbError!void {
+        const sql = "DELETE FROM embeddings WHERE tx_id NOT IN (SELECT id FROM transactions);";
+        const rc = c.sqlite3_exec(self.handle, sql, null, null, null);
+        if (rc != c.SQLITE_OK) return DbError.ExecFailed;
     }
 
     pub fn close(self: *Db) void {
@@ -509,7 +530,10 @@ pub const Db = struct {
                 } else if (col_type == 2) { // FLOAT
                     const v = c.sqlite3_column_double(s, @intCast(i));
                     std.fmt.format(w, "{d}", .{v}) catch return null;
-                } else { // TEXT or BLOB — render as string
+                } else if (col_type == 4) { // SQLITE_BLOB
+                    const len: usize = @intCast(c.sqlite3_column_bytes(s, @intCast(i)));
+                    std.fmt.format(w, "\"<BLOB {d} bytes>\"", .{len}) catch return null;
+                } else { // TEXT
                     const ptr = c.sqlite3_column_text(s, @intCast(i));
                     const len: usize = @intCast(c.sqlite3_column_bytes(s, @intCast(i)));
                     w.writeByte('"') catch return null;
@@ -523,7 +547,14 @@ pub const Db = struct {
                                 '\n' => w.writeAll("\\n") catch return null,
                                 '\r' => w.writeAll("\\r") catch return null,
                                 '\t' => w.writeAll("\\t") catch return null,
-                                else => w.writeByte(ch) catch return null,
+                                else => {
+                                    if (ch < 0x20) {
+                                        // Escape control characters as \u00XX
+                                        std.fmt.format(w, "\\u{d:0>4}", .{@as(u16, ch)}) catch return null;
+                                    } else {
+                                        w.writeByte(ch) catch return null;
+                                    }
+                                },
                             }
                         }
                     }
@@ -555,7 +586,9 @@ pub const Db = struct {
 
         var stmt: ?*c.sqlite3_stmt = null;
         var rc = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
-        if (rc != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        if (rc != c.SQLITE_OK or stmt == null) {
+            return DbError.PrepareFailed;
+        }
         defer _ = c.sqlite3_finalize(stmt.?);
 
         const s = stmt.?;

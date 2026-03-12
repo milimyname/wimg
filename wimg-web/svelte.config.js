@@ -9,9 +9,9 @@ const config = {
         exclude: ["<all>"],
       },
     }),
-    version: {
-      pollInterval: 5 * 60 * 1000, // check for new deployment every 5 minutes
-    },
+    // version: {
+    //   pollInterval: typeof import.meta.env !== 'undefined' && import.meta.env.DEV ? 1 * 1000 : 5 * 60 * 1000, // check for new deployment every 5 minutes
+    // },
   },
 };
 

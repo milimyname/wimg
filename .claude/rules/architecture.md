@@ -14,7 +14,7 @@ libwimg (Zig)
 │   ├── types.zig       Transaction, Category, Summary structs
 │   ├── gguf.zig        GGUF v3 file parser
 │   ├── quants.zig      Dequantization (Q4_K, Q6_K, Q8_0, F16) + vector math
-│   ├── tokenizer.zig   SentencePiece BPE tokenizer (vocab/scores from GGUF)
+│   ├── tokenizer.zig   SentencePiece Unigram tokenizer (Viterbi, vocab/scores from GGUF)
 │   └── embed.zig       BERT transformer forward pass (12 layers, e5-small)
 │
 ├── → libwimg.wasm      (wasm32-freestanding) ← web
@@ -81,7 +81,7 @@ GGUF file (from HuggingFace)
   → embed.zig loads tensor weights (Q8_0 quantized)
 
 Input text ("REWE MARKT BERLIN")
-  → tokenizer.zig: SentencePiece BPE → token IDs [▁RE, WE, ▁MAR, KT, ...]
+  → tokenizer.zig: SentencePiece Unigram (Viterbi) → token IDs [▁RE, WE, ▁MAR, KT, ...]
   → embed.zig: 12-layer BERT forward pass
      1. Token embeddings + position embeddings (lookup)
      2. Per layer: self-attention (Q/K/V) → FFN (up → GELU → down)
@@ -95,8 +95,10 @@ Smart categorize:
   → Sign-aware: only matches income↔income, expense↔expense
   → Threshold > 0.7 → assign same category
 
-Semantic search:
-  → Embed query text → cosine similarity against all tx embeddings → top-K
+Search (Phase 5.7 — planned):
+  → FTS5 full-text search (primary) for 5K-10K+ transactions
+  → Fuzzy substring via LIKE as fallback
+  → Embeddings as optional secondary re-ranking signal
 ```
 
 **Key implementation details:**
@@ -105,7 +107,8 @@ Semantic search:
 - All computation in f32 (no SIMD, single-threaded — fast enough for WASM)
 - Model loaded via `@wasmMemoryGrow` (too large for 64MB FBA)
 - Tokenizer vocab/scores in file-level statics (too large for 1MB stack)
-- Web worker (`embed.worker.ts`) runs inference off main thread
+- SentencePiece Unigram tokenizer with Viterbi DP (not BPE — model type is Unigram)
+- GGUF patched with `tokenizer.ggml.scores` (original converter omitted them)
 - Model stored in OPFS (persistent, not affected by SW cache cleanup)
 
 ---
@@ -120,7 +123,8 @@ Semantic search:
 | Web persistence | OPFS                                      | SQLite-on-browser, offline, no server                 |
 | iOS UI          | SwiftUI                                   | Native, links libwimg.a via C ABI                     |
 | Sync            | CF Durable Objects + WebSocket + LWW      | Real-time, hibernation = cost-efficient               |
-| AI              | Local embeddings (Zig)                    | Pure Zig inference for smart categorization + search  |
-| Embeddings      | multilingual-e5-small (Q8_0 GGUF, ~125MB) | 384-dim vectors, pure Zig inference, semantic search  |
+| AI              | Local embeddings (Zig)                    | Pure Zig inference for smart categorization            |
+| Embeddings      | multilingual-e5-small (Q8_0 GGUF, ~125MB) | 384-dim vectors, smart categorization (tx↔tx cosine)  |
+| Search          | SQLite FTS5 (planned)                     | Full-text search for 5K-10K+ transactions              |
 | FinTS           | Pure Zig (fints.zig + mt940.zig)          | No external deps, native-only, direct bank connection |
 | MCP server      | CF Worker DO + libwimg.wasm + Zod         | Remote MCP via POST /mcp, Bearer auth = sync key      |

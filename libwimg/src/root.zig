@@ -51,6 +51,25 @@ fn log(comptime fmt: []const u8, args: anytype) void {
     }
 }
 
+/// Log a SQLite error with the actual error message from sqlite3_errmsg.
+/// Sets the error buffer AND logs to console so failures are always visible.
+fn sqliteError(comptime context: []const u8, handle: anytype) void {
+    const sqlite_c = @import("sqlite_c.zig");
+    const h: *sqlite_c.sqlite3 = switch (@TypeOf(handle)) {
+        *sqlite_c.sqlite3 => handle,
+        *db_mod.Db => handle.handle,
+        else => {
+            setError(context, .{});
+            return;
+        },
+    };
+    if (sqlite_c.sqlite3_errmsg(h)) |msg| {
+        setError(context ++ ": {s}", .{msg});
+    } else {
+        setError(context, .{});
+    }
+}
+
 // --- WASM memory management ---
 // compact=true (MCP/CF Workers): 16 MB. normal (web browser): 64 MB.
 const wasm_buf_size = if (config.compact) 16 * 1024 * 1024 else 64 * 1024 * 1024;
@@ -81,9 +100,17 @@ export fn wimg_get_error() ?[*]const u8 {
     return out.ptr;
 }
 
+/// Build identifier for verifying the correct WASM is loaded.
+const WASM_BUILD_ID = "v7-bpe-scores";
+
+/// Get the build ID string (length-prefixed).
+export fn wimg_build_id() ?[*]const u8 {
+    return makeLengthPrefixed(WASM_BUILD_ID);
+}
+
 /// Initialize the database. Returns 0 on success, -1 on error.
 export fn wimg_init(path: [*:0]const u8) i32 {
-    log("wimg_init called", .{});
+    log("wimg_init: build=" ++ WASM_BUILD_ID, .{});
 
     if (global_db != null) {
         global_db.?.close();
@@ -140,10 +167,10 @@ export fn wimg_import_csv(data: [*]const u8, len: u32) ?[*]const u8 {
         var batch_insert_errors: u32 = 0;
 
         for (txn_buf[0..batch_result.imported]) |*txn| {
-            const inserted = database.insertTransaction(txn) catch |err| {
+            const inserted = database.insertTransaction(txn) catch {
                 batch_insert_errors += 1;
                 if (result.errors + batch_insert_errors <= 3) {
-                    setError("wimg_import_csv: insert failed: {s}", .{@errorName(err)});
+                    sqliteError("wimg_import_csv: insert failed", database.handle);
                 }
                 continue;
             };
@@ -396,7 +423,10 @@ export fn wimg_auto_categorize() i32 {
     var stmt: ?*@import("sqlite_c.zig").sqlite3_stmt = null;
     const c = @import("sqlite_c.zig");
     const rc = c.sqlite3_prepare_v2(database.handle, sql, -1, &stmt, null);
-    if (rc != c.SQLITE_OK or stmt == null) return -1;
+    if (rc != c.SQLITE_OK or stmt == null) {
+        sqliteError("wimg_auto_categorize: prepare failed", database.handle);
+        return -1;
+    }
     defer _ = c.sqlite3_finalize(stmt.?);
 
     const s = stmt.?;
@@ -497,7 +527,7 @@ export fn wimg_get_summary(year: u32, month: u32) ?[*]const u8 {
         buf.ptr + 4,
         buf_size,
     ) orelse {
-        setError("wimg_get_summary: failed to generate summary", .{});
+        sqliteError("wimg_get_summary: failed", database.handle);
         fba.allocator().free(buf);
         return null;
     };
@@ -891,7 +921,7 @@ export fn wimg_get_summary_filtered(year: u32, month: u32, acct: [*]const u8, ac
         acct,
         acct_len,
     ) orelse {
-        setError("wimg_get_summary_filtered: failed to generate summary", .{});
+        sqliteError("wimg_get_summary_filtered: failed", database.handle);
         fba.allocator().free(buf);
         return null;
     };
@@ -1037,6 +1067,15 @@ export fn wimg_load_model(data: [*]const u8, len: u32) i32 {
         return -1;
     };
 
+    // Diagnostic: verify tokenizer works
+    if (embed_model) |*m| {
+        const tokenizer_mod = @import("tokenizer.zig");
+        const score6 = tokenizer_mod.getMergeScore(6);
+        var test_ids: [16]u32 = undefined;
+        const n = m.tokenizer.encode("hello", &test_ids) catch 0;
+        log("wimg_load_model: vocab={d} score[6]={d:.4} encode('hello')={d}tok", .{ m.tokenizer.vocab_size, score6, n });
+    }
+
     log("wimg_load_model: model loaded successfully", .{});
     return 0;
 }
@@ -1048,19 +1087,10 @@ export fn wimg_embed_text(text: [*]const u8, text_len: u32) ?[*]const u8 {
         return null;
     };
 
-    const raw_input = text[0..text_len];
-
-    // e5 models require "query: " prefix for best results
-    var prefixed_buf: [1024]u8 = undefined;
-    const prefix = "query: ";
-    const prefixed = blk: {
-        if (prefix.len + raw_input.len <= prefixed_buf.len) {
-            @memcpy(prefixed_buf[0..prefix.len], prefix);
-            @memcpy(prefixed_buf[prefix.len .. prefix.len + raw_input.len], raw_input);
-            break :blk prefixed_buf[0 .. prefix.len + raw_input.len];
-        }
-        break :blk raw_input; // fallback if too long
-    };
+    // Caller is responsible for adding the correct e5 prefix:
+    //   "passage: " for document embeddings (embed.worker.ts)
+    //   "query: "   for search queries (wimg_semantic_search)
+    const input = text[0..text_len];
 
     var out_vec: [384]f32 = undefined;
 
@@ -1072,7 +1102,7 @@ export fn wimg_embed_text(text: [*]const u8, text_len: u32) ?[*]const u8 {
     };
     defer fba.allocator().free(scratch);
 
-    model.embed(prefixed, &out_vec, scratch) catch |err| {
+    model.embed(input, &out_vec, scratch) catch |err| {
         setError("wimg_embed_text: embed failed: {s}", .{@errorName(err)});
         return null;
     };
@@ -1119,12 +1149,12 @@ export fn wimg_embed_transactions() i32 {
     defer fba.allocator().free(scratch);
 
     // Query unembedded transactions
-    const sql = "SELECT id, description FROM transactions WHERE id NOT IN (SELECT tx_id FROM embeddings);";
+    const sql = "SELECT id, description FROM transactions WHERE id NOT IN (SELECT tx_id FROM embeddings WHERE model_ver = 'e5-small-q8-v7');";
     const c = @import("sqlite_c.zig");
     var raw_stmt: ?*c.sqlite3_stmt = null;
     const rc = c.sqlite3_prepare_v2(database.handle, sql, -1, &raw_stmt, null);
     if (rc != c.SQLITE_OK or raw_stmt == null) {
-        setError("wimg_embed_transactions: prepare failed", .{});
+        sqliteError("wimg_embed_transactions: prepare failed", database.handle);
         return -1;
     }
     defer _ = c.sqlite3_finalize(raw_stmt.?);
@@ -1182,6 +1212,105 @@ export fn wimg_embed_transactions() i32 {
     return @intCast(count);
 }
 
+/// Store a pre-computed embedding for a transaction. Called from main thread after worker computes the vector.
+/// Returns 0 on success, -1 on error.
+export fn wimg_store_embedding(id_ptr: [*]const u8, id_len: u32, emb_ptr: [*]const u8, emb_len: u32) i32 {
+    var database = global_db orelse {
+        setError("wimg_store_embedding: database not initialized", .{});
+        return -1;
+    };
+
+    const id = id_ptr[0..id_len];
+    const emb = emb_ptr[0..emb_len];
+    const now = db_mod.nowMs();
+    database.insertEmbedding(id, emb, now) catch |err| {
+        if (database.lastError()) |errmsg| {
+            const msg = std.mem.span(errmsg);
+            setError("wimg_store_embedding: {s} - sqlite: {s} (id_len={d}, emb_len={d})", .{ @errorName(err), msg, id_len, emb_len });
+        } else {
+            setError("wimg_store_embedding: {s} (id_len={d}, emb_len={d})", .{ @errorName(err), id_len, emb_len });
+        }
+        return -1;
+    };
+    return 0;
+}
+
+/// Embed up to `limit` unembedded transactions. Returns count embedded (0 = done), or -1 on error.
+/// Caller loops with setTimeout(0) between batches for incremental embedding.
+export fn wimg_embed_batch(limit: u32) i32 {
+    const model = embed_model orelse {
+        setError("wimg_embed_batch: model not loaded", .{});
+        return -1;
+    };
+
+    var database = global_db orelse {
+        setError("wimg_embed_batch: database not initialized", .{});
+        return -1;
+    };
+
+    const scratch_size = embed_mod.scratchSize();
+    const scratch = fba.allocator().alloc(f32, scratch_size) catch {
+        setError("wimg_embed_batch: scratch alloc failed", .{});
+        return -1;
+    };
+    defer fba.allocator().free(scratch);
+
+    const sql = "SELECT id, description FROM transactions WHERE id NOT IN (SELECT tx_id FROM embeddings WHERE model_ver = 'e5-small-q8-v7') LIMIT ?1;";
+    const c = @import("sqlite_c.zig");
+    var raw_stmt: ?*c.sqlite3_stmt = null;
+    const rc = c.sqlite3_prepare_v2(database.handle, sql, -1, &raw_stmt, null);
+    if (rc != c.SQLITE_OK or raw_stmt == null) {
+        sqliteError("wimg_embed_batch: prepare failed", database.handle);
+        return -1;
+    }
+    defer _ = c.sqlite3_finalize(raw_stmt.?);
+
+    const s = raw_stmt.?;
+    _ = c.sqlite3_bind_int(s, 1, @intCast(limit));
+
+    var count: u32 = 0;
+
+    while (c.sqlite3_step(s) == c.SQLITE_ROW) {
+        const id_ptr = c.sqlite3_column_text(s, 0) orelse continue;
+        const id_len: usize = @intCast(c.sqlite3_column_bytes(s, 0));
+        const desc_ptr = c.sqlite3_column_text(s, 1) orelse continue;
+        const desc_len: usize = @intCast(c.sqlite3_column_bytes(s, 1));
+
+        const id = id_ptr[0..id_len];
+        const desc = desc_ptr[0..desc_len];
+
+        var prefixed_buf: [1024]u8 = undefined;
+        const prefix = "passage: ";
+        const prefixed_desc = blk: {
+            if (prefix.len + desc.len <= prefixed_buf.len) {
+                @memcpy(prefixed_buf[0..prefix.len], prefix);
+                @memcpy(prefixed_buf[prefix.len .. prefix.len + desc.len], desc);
+                break :blk prefixed_buf[0 .. prefix.len + desc.len];
+            }
+            break :blk desc;
+        };
+
+        var out_vec: [384]f32 = undefined;
+        model.embed(prefixed_desc, &out_vec, scratch) catch |err| {
+            log("embed batch failed: {s}", .{@errorName(err)});
+            continue;
+        };
+
+        const embedding_bytes = std.mem.sliceAsBytes(&out_vec);
+        const now = db_mod.nowMs();
+        database.insertEmbedding(id, embedding_bytes, now) catch continue;
+
+        count += 1;
+
+        if (is_wasm) {
+            js_embed_progress(count, limit);
+        }
+    }
+
+    log("wimg_embed_batch: embedded {d} transactions", .{count});
+    return @intCast(count);
+}
+
 /// Smart categorize: find uncategorized txns, match against categorized ones using embeddings.
 /// Returns count categorized, or -1 on error.
 export fn wimg_smart_categorize() i32 {
@@ -1192,12 +1321,24 @@ export fn wimg_smart_categorize() i32 {
 
     const sqlite_c = @import("sqlite_c.zig");
 
+    // Early out: if no transactions at all, nothing to do
+    {
+        var cnt_stmt: ?*sqlite_c.sqlite3_stmt = null;
+        const cnt_rc = sqlite_c.sqlite3_prepare_v2(database.handle, "SELECT COUNT(*) FROM transactions;", -1, &cnt_stmt, null);
+        if (cnt_rc == sqlite_c.SQLITE_OK and cnt_stmt != null) {
+            defer _ = sqlite_c.sqlite3_finalize(cnt_stmt.?);
+            if (sqlite_c.sqlite3_step(cnt_stmt.?) == sqlite_c.SQLITE_ROW) {
+                if (sqlite_c.sqlite3_column_int(cnt_stmt.?, 0) == 0) return 0;
+            }
+        }
+    }
+
     // Get all categorized transactions with embeddings (include amount sign)
-    const cat_sql = "SELECT t.id, t.category, e.embedding, t.amount FROM transactions t JOIN embeddings e ON t.id = e.tx_id WHERE t.category != 0;";
+    const cat_sql = "SELECT t.id, t.category, e.embedding, t.amount_cents FROM transactions t JOIN embeddings e ON t.id = e.tx_id WHERE t.category != 0;";
     var cat_stmt: ?*sqlite_c.sqlite3_stmt = null;
     const cat_rc = sqlite_c.sqlite3_prepare_v2(database.handle, cat_sql, -1, &cat_stmt, null);
     if (cat_rc != sqlite_c.SQLITE_OK or cat_stmt == null) {
-        setError("wimg_smart_categorize: prepare cat failed", .{});
+        sqliteError("wimg_smart_categorize: prepare cat failed", database.handle);
         return -1;
     }
 
@@ -1247,11 +1388,11 @@ export fn wimg_smart_categorize() i32 {
     if (n_cat == 0) return -2; // No categorized reference transactions
 
     // Get uncategorized transactions with embeddings (include amount sign)
-    const uncat_sql = "SELECT t.id, e.embedding, t.amount FROM transactions t JOIN embeddings e ON t.id = e.tx_id WHERE t.category = 0;";
+    const uncat_sql = "SELECT t.id, e.embedding, t.amount_cents FROM transactions t JOIN embeddings e ON t.id = e.tx_id WHERE t.category = 0;";
     var uncat_stmt: ?*sqlite_c.sqlite3_stmt = null;
     const uncat_rc = sqlite_c.sqlite3_prepare_v2(database.handle, uncat_sql, -1, &uncat_stmt, null);
     if (uncat_rc != sqlite_c.SQLITE_OK or uncat_stmt == null) {
-        setError("wimg_smart_categorize: prepare uncat failed", .{});
+        sqliteError("wimg_smart_categorize: prepare uncat failed", database.handle);
         return -1;
     }
     defer _ = sqlite_c.sqlite3_finalize(uncat_stmt.?);
@@ -1366,11 +1507,11 @@ export fn wimg_semantic_search(query: [*]const u8, query_len: u32, k: u32) ?[*]c
     const sqlite_c = @import("sqlite_c.zig");
 
     // Search through all embeddings
-    const search_sql = "SELECT t.id, t.description, t.amount_cents, t.category, e.embedding FROM transactions t JOIN embeddings e ON t.id = e.tx_id;";
+    const search_sql = "SELECT t.id, t.description, t.amount_cents, t.category, e.embedding FROM transactions t JOIN embeddings e ON t.id = e.tx_id WHERE e.model_ver = 'e5-small-q8-v7';";
     var stmt: ?*sqlite_c.sqlite3_stmt = null;
     const rc = sqlite_c.sqlite3_prepare_v2(database.handle, search_sql, -1, &stmt, null);
     if (rc != sqlite_c.SQLITE_OK or stmt == null) {
-        setError("wimg_semantic_search: prepare failed", .{});
+        sqliteError("wimg_semantic_search: prepare failed", database.handle);
         return null;
     }
     defer _ = sqlite_c.sqlite3_finalize(stmt.?);
@@ -1453,6 +1594,14 @@ export fn wimg_semantic_search(query: [*]const u8, query_len: u32, k: u32) ?[*]c
         }
     }
 
+    // Filter out low-similarity noise (below 0.4 threshold)
+    const min_sim: f32 = 0.4;
+    var filtered_count: usize = 0;
+    for (0..n_results) |i| {
+        if (results[i].sim >= min_sim) filtered_count += 1 else break; // sorted desc, so first below = all below
+    }
+    n_results = filtered_count;
+
     // Format as JSON
     const buf_size: usize = 64 * 1024;
     const json = fba.allocator().alloc(u8, buf_size) catch {
@@ -1471,17 +1620,48 @@ export fn wimg_semantic_search(query: [*]const u8, query_len: u32, k: u32) ?[*]c
         }
 
         const r = &results[i];
-        // JSON-escape description
-        const desc_slice = r.desc[0..r.desc_len];
 
-        const entry = std.fmt.bufPrint(json[pos..], "{{\"id\":\"{s}\",\"description\":\"{s}\",\"amount\":{d},\"category\":{d},\"similarity\":{d:.4}}}", .{
-            r.id[0..r.id_len],
-            desc_slice,
-            r.amount,
-            r.category,
-            r.sim,
-        }) catch break;
-        pos += entry.len;
+        // {"id":"
+        const p1 = "{\"id\":\"";
+        @memcpy(json[pos .. pos + p1.len], p1);
+        pos += p1.len;
+
+        @memcpy(json[pos .. pos + r.id_len], r.id[0..r.id_len]);
+        pos += r.id_len;
+
+        // ","description":"
+        const p2 = "\",\"description\":\"";
+        @memcpy(json[pos .. pos + p2.len], p2);
+        pos += p2.len;
+
+        // JSON-escaped description
+        pos += db_mod.jsonEscapeString(json[pos..], r.desc[0..r.desc_len]) orelse break;
+
+        // ","amount":
+        const p3 = "\",\"amount\":";
+        @memcpy(json[pos .. pos + p3.len], p3);
+        pos += p3.len;
+
+        // Formatted amount (cents → euros, consistent with getTransactions)
+        pos += db_mod.formatAmount(json[pos..], r.amount) orelse break;
+
+        // ,"category":
+        const p4 = ",\"category\":";
+        @memcpy(json[pos .. pos + p4.len], p4);
+        pos += p4.len;
+
+        pos += db_mod.formatInt(json[pos..], @as(i64, r.category)) orelse break;
+
+        // ,"similarity":
+        const p5 = ",\"similarity\":";
+        @memcpy(json[pos .. pos + p5.len], p5);
+        pos += p5.len;
+
+        const sim_entry = std.fmt.bufPrint(json[pos..], "{d:.4}", .{r.sim}) catch break;
+        pos += sim_entry.len;
+
+        json[pos] = '}';
+        pos += 1;
     }
 
     json[pos] = ']';
@@ -1498,15 +1678,19 @@ export fn wimg_embedding_status() ?[*]const u8 {
         return null;
     };
 
-    const total = database.countUnembeddedTransactions() catch 0;
-    const embedded = database.countEmbeddings() catch 0;
+    const unembedded = database.countUnembeddedTransactions() catch 0;
+    const total_txs = database.countTransactions() catch 0;
+    const embedded = total_txs - unembedded;
     const model_loaded: u8 = if (embed_model != null) 1 else 0;
+
+    // Clean up orphaned embeddings (for deleted transactions)
+    database.cleanOrphanedEmbeddings() catch {};
 
     var buf: [256]u8 = undefined;
     const json = std.fmt.bufPrint(&buf, "{{\"total_txs\":{d},\"embedded\":{d},\"unembedded\":{d},\"model_loaded\":{s}}}", .{
-        embedded + total,
+        total_txs,
         embedded,
-        total,
+        unembedded,
         if (model_loaded == 1) "true" else "false",
     }) catch {
         setError("wimg_embedding_status: format failed", .{});

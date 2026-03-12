@@ -1,5 +1,6 @@
-// SentencePiece BPE tokenizer for XLM-RoBERTa-based embedding models.
-// Loads vocab and merges from GGUF metadata. Used by multilingual-e5-small.
+// SentencePiece Unigram tokenizer for XLM-RoBERTa-based embedding models.
+// Loads vocab and scores from GGUF metadata. Used by multilingual-e5-small.
+// Uses Viterbi algorithm to find optimal segmentation (max total log-prob).
 // Cased tokenizer (no lowercasing). Uses ▁ (U+2581) as word boundary.
 
 const std = @import("std");
@@ -133,65 +134,89 @@ pub const Tokenizer = struct {
             @memcpy(word_buf[3 .. 3 + word_len], raw_word[0..word_len]);
             const full_word = word_buf[0 .. 3 + word_len];
 
-            // Split into UTF-8 characters and get initial token IDs
-            var char_tokens: [256]u32 = undefined;
-            var n_chars: usize = 0;
-            var ci: usize = 0;
-            while (ci < full_word.len and n_chars < char_tokens.len) {
-                const char_len = utf8CharLen(full_word[ci]);
-                const char_end = @min(ci + char_len, full_word.len);
-                const char_str = full_word[ci..char_end];
-                char_tokens[n_chars] = vocabHashLookup(
-                    self.vocab,
-                    self.vocab_size,
-                    char_str,
-                ) orelse self.unk_id;
-                n_chars += 1;
-                ci = char_end;
+            // Viterbi segmentation: find segmentation maximizing total score.
+            // best_score[j] = best total score for full_word[0..j]
+            // best_len[j] = byte length of last token in the best path to j
+            // best_id[j] = token ID of that last token
+            const wlen = full_word.len;
+            var best_score_dp: [513]f32 = undefined;
+            var best_len: [513]usize = undefined;
+            var best_id: [513]u32 = undefined;
+            best_score_dp[0] = 0;
+            best_len[0] = 0;
+            best_id[0] = 0;
+            for (1..wlen + 1) |j| {
+                best_score_dp[j] = -std.math.inf(f32);
+                best_len[j] = 0;
+                best_id[j] = self.unk_id;
             }
 
-            // BPE merge loop: repeatedly merge the pair with highest score
-            while (n_chars > 1) {
-                var best_score: f32 = -std.math.inf(f32);
-                var best_i: usize = 0;
-                var best_merged: u32 = 0;
-                var found = false;
+            // Max token length in vocab is 48 bytes; limit substring search
+            const MAX_TOKEN_BYTES = 48;
 
-                for (0..n_chars - 1) |j| {
-                    // Skip UNK tokens — can't merge them
-                    if (char_tokens[j] == self.unk_id or char_tokens[j + 1] == self.unk_id) continue;
-
-                    // Concatenate strings of adjacent tokens
-                    const str_a = self.vocab[char_tokens[j]];
-                    const str_b = self.vocab[char_tokens[j + 1]];
-                    var concat_buf: [256]u8 = undefined;
-                    if (str_a.len + str_b.len > concat_buf.len) continue;
-                    @memcpy(concat_buf[0..str_a.len], str_a);
-                    @memcpy(concat_buf[str_a.len .. str_a.len + str_b.len], str_b);
-                    const concat = concat_buf[0 .. str_a.len + str_b.len];
-
-                    // Look up merged token in vocab
-                    if (vocabHashLookup(self.vocab, self.vocab_size, concat)) |merged_id| {
-                        const score = g_merge_score[merged_id];
-                        if (score > best_score) {
-                            best_score = score;
-                            best_i = j;
-                            best_merged = merged_id;
-                            found = true;
+            for (1..wlen + 1) |j| {
+                // Try all substrings ending at byte position j
+                const min_start = if (j > MAX_TOKEN_BYTES) j - MAX_TOKEN_BYTES else 0;
+                var start = min_start;
+                while (start < j) : (start += 1) {
+                    const substr = full_word[start..j];
+                    if (vocabHashLookup(self.vocab, self.vocab_size, substr)) |tid| {
+                        const score = g_merge_score[tid];
+                        const total = best_score_dp[start] + score;
+                        if (total > best_score_dp[j]) {
+                            best_score_dp[j] = total;
+                            best_len[j] = j - start;
+                            best_id[j] = tid;
                         }
                     }
                 }
 
-                if (!found) break;
-
-                // Apply the best merge
-                char_tokens[best_i] = best_merged;
-                // Shift remaining tokens left by 1
-                var k: usize = best_i + 1;
-                while (k + 1 < n_chars) : (k += 1) {
-                    char_tokens[k] = char_tokens[k + 1];
+                // UNK fallback: if no vocab token ends at j, try single UTF-8 char
+                if (best_score_dp[j] == -std.math.inf(f32)) {
+                    // Find the UTF-8 char that ends at or contains position j
+                    // by backing up to find a valid char start
+                    var char_start = j - 1;
+                    while (char_start > 0 and (full_word[char_start] & 0xC0) == 0x80) {
+                        char_start -= 1;
+                    }
+                    const clen = utf8CharLen(full_word[char_start]);
+                    const char_end = @min(char_start + clen, wlen);
+                    if (char_end == j) {
+                        // This is a complete UTF-8 char boundary — emit UNK
+                        const unk_penalty: f32 = -100.0;
+                        const total = best_score_dp[char_start] + unk_penalty;
+                        if (total > best_score_dp[j]) {
+                            best_score_dp[j] = total;
+                            best_len[j] = j - char_start;
+                            best_id[j] = self.unk_id;
+                        }
+                    }
                 }
-                n_chars -= 1;
+            }
+
+            // Backtrace: collect tokens in reverse, then reverse
+            var char_tokens: [256]u32 = undefined;
+            var n_chars: usize = 0;
+            var pos = wlen;
+            while (pos > 0 and n_chars < char_tokens.len) {
+                char_tokens[n_chars] = best_id[pos];
+                n_chars += 1;
+                const step = best_len[pos];
+                if (step == 0) break; // shouldn't happen, safety check
+                pos -= step;
+            }
+
+            // Reverse in-place to get left-to-right order
+            if (n_chars > 1) {
+                var lo: usize = 0;
+                var hi: usize = n_chars - 1;
+                while (lo < hi) {
+                    const tmp = char_tokens[lo];
+                    char_tokens[lo] = char_tokens[hi];
+                    char_tokens[hi] = tmp;
+                    lo += 1;
+                    hi -= 1;
+                }
             }
 
             // Emit tokens (truncate if buffer full, reserving 1 slot for </s>)
@@ -224,6 +249,24 @@ pub fn loadFromGguf(
     const vocab_count = (try gguf.getStringArrayKV(data, header, "tokenizer.ggml.tokens", vocab_buf)) orelse
         return TokenizerError.VocabNotFound;
     const vs: u32 = @intCast(@min(@as(usize, @intCast(vocab_count)), vocab_buf.len));
+
+    // 1b. Strip spurious ▁ prefix from all vocab entries.
+    // Some GGUF converters (convert_hf_to_gguf.py) prepend ▁ to every token
+    // in SentencePiece models. Detect and strip if special tokens like <s> have it.
+    if (vs > 0 and vocab_buf[0].len >= 3 and
+        vocab_buf[0][0] == SPIECE_PREFIX[0] and
+        vocab_buf[0][1] == SPIECE_PREFIX[1] and
+        vocab_buf[0][2] == SPIECE_PREFIX[2])
+    {
+        for (0..vs) |idx| {
+            const tok = vocab_buf[idx];
+            if (tok.len >= 3 and tok[0] == SPIECE_PREFIX[0] and
+                tok[1] == SPIECE_PREFIX[1] and tok[2] == SPIECE_PREFIX[2])
+            {
+                vocab_buf[idx] = tok[3..]; // Strip leading ▁
+            }
+        }
+    }
 
     // 2. Build vocab hash table
     @memset(&g_vocab_hash, 0);
@@ -286,6 +329,12 @@ pub fn loadFromGguf(
     };
 }
 
+/// Get BPE merge score for a token ID (for diagnostics).
+pub fn getMergeScore(id: u32) f32 {
+    if (id < MAX_VOCAB_SIZE) return g_merge_score[id];
+    return -std.math.inf(f32);
+}
+
 // --- Test helpers ---
 // Workaround for Zig 0.15.2 x86_64 backend bug: @memset on large arrays in
 // test blocks triggers "emit MIR failed: InvalidInstruction". Using noinline
@@ -302,10 +351,11 @@ fn testResetScores() void {
 
 // --- Tests ---
 
-test "tokenizer bpe basic" {
-    // Tiny vocab simulating SentencePiece BPE with bottom-up merge chain:
-    // "▁hello" = ▁ + h + e + l + l + o
-    //   → h+e=he → l+l=ll → he+ll=hell → hell+o=hello → ▁+hello=▁hello
+test "tokenizer viterbi basic" {
+    // Tiny vocab simulating SentencePiece Unigram model.
+    // Viterbi picks the segmentation with maximum total score.
+    // For "▁hello", the full token ▁hello has score -5.0,
+    // while splitting into ▁hell + o has -8.0 + -2.0 = -10.0 (worse).
     var vocab = [_][]const u8{
         "<s>", // 0 (CLS)
         "<pad>", // 1
@@ -316,14 +366,14 @@ test "tokenizer bpe basic" {
         "e", // 6
         "l", // 7
         "o", // 8
-        "he", // 9:  h + e
-        "ll", // 10: l + l
-        "hell", // 11: he + ll
-        "hello", // 12: hell + o
-        "\xE2\x96\x81hello", // 13: ▁ + hello
+        "he", // 9
+        "ll", // 10
+        "hell", // 11
+        "hello", // 12
+        "\xE2\x96\x81hello", // 13: ▁hello
+        "\xE2\x96\x81hell", // 14: ▁hell
     };
 
-    // Build hash table for this test vocab
     testResetHash();
     testResetScores();
     for (0..vocab.len) |idx| {
@@ -331,12 +381,18 @@ test "tokenizer bpe basic" {
     }
     g_vocab_hash_ready = true;
 
-    // Set merge scores (higher = higher priority, applied first)
-    g_merge_score[9] = 5.0; // h + e → he (highest priority)
-    g_merge_score[10] = 4.0; // l + l → ll
-    g_merge_score[11] = 3.0; // he + ll → hell
-    g_merge_score[12] = 2.0; // hell + o → hello
-    g_merge_score[13] = 1.0; // ▁ + hello → ▁hello (lowest priority)
+    // Unigram log-probabilities (higher = more likely)
+    g_merge_score[4] = -10.0; // ▁
+    g_merge_score[5] = -12.0; // h
+    g_merge_score[6] = -11.0; // e
+    g_merge_score[7] = -11.5; // l
+    g_merge_score[8] = -9.0; // o
+    g_merge_score[9] = -10.0; // he
+    g_merge_score[10] = -10.5; // ll
+    g_merge_score[11] = -8.0; // hell
+    g_merge_score[12] = -7.0; // hello
+    g_merge_score[13] = -5.0; // ▁hello (best: -5.0 total)
+    g_merge_score[14] = -6.0; // ▁hell
 
     const tok = Tokenizer{
         .vocab = &vocab,
@@ -349,11 +405,66 @@ test "tokenizer bpe basic" {
 
     var ids: [10]u32 = undefined;
     const n = try tok.encode("hello", &ids);
+    // Viterbi picks ▁hello (score -5.0) over ▁hell+o (-6.0+-9.0=-15.0)
     // <s>, ▁hello, </s>
     try std.testing.expectEqual(@as(u32, 3), n);
     try std.testing.expectEqual(@as(u32, 0), ids[0]); // <s>
     try std.testing.expectEqual(@as(u32, 13), ids[1]); // ▁hello
     try std.testing.expectEqual(@as(u32, 2), ids[2]); // </s>
+}
+
+test "tokenizer viterbi prefers optimal split" {
+    // Viterbi should pick ▁hell + o over ▁hel + lo when that has better total score
+    var vocab = [_][]const u8{
+        "<s>", // 0
+        "<pad>", // 1
+        "</s>", // 2
+        "<unk>", // 3
+        "\xE2\x96\x81", // 4: ▁
+        "h", // 5
+        "e", // 6
+        "l", // 7
+        "o", // 8
+        "\xE2\x96\x81hell", // 9: ▁hell
+        "\xE2\x96\x81hel", // 10: ▁hel
+        "lo", // 11
+    };
+
+    testResetHash();
+    testResetScores();
+    for (0..vocab.len) |idx| {
+        vocabHashInsert(&vocab, @intCast(idx));
+    }
+    g_vocab_hash_ready = true;
+
+    // Scores: ▁hell + o = -9.0 + -2.0 = -11.0 (better)
+    //         ▁hel + lo = -8.5 + -8.5 = -17.0 (worse)
+    g_merge_score[4] = -10.0;
+    g_merge_score[5] = -12.0;
+    g_merge_score[6] = -11.0;
+    g_merge_score[7] = -11.5;
+    g_merge_score[8] = -2.0; // o
+    g_merge_score[9] = -9.0; // ▁hell
+    g_merge_score[10] = -8.5; // ▁hel
+    g_merge_score[11] = -8.5; // lo
+
+    const tok = Tokenizer{
+        .vocab = &vocab,
+        .vocab_size = @intCast(vocab.len),
+        .cls_id = 0,
+        .sep_id = 2,
+        .unk_id = 3,
+        .pad_id = 1,
+    };
+
+    var ids: [10]u32 = undefined;
+    const n = try tok.encode("hello", &ids);
+    // Viterbi: ▁hell(-9.0) + o(-2.0) = -11.0 beats ▁hel(-8.5) + lo(-8.5) = -17.0
+    try std.testing.expectEqual(@as(u32, 4), n);
+    try std.testing.expectEqual(@as(u32, 0), ids[0]); // <s>
+    try std.testing.expectEqual(@as(u32, 9), ids[1]); // ▁hell
+    try std.testing.expectEqual(@as(u32, 8), ids[2]); // o
+    try std.testing.expectEqual(@as(u32, 2), ids[3]); // </s>
 }
 
 test "tokenizer empty input" {
@@ -378,6 +489,8 @@ test "tokenizer empty input" {
 }
 
 test "tokenizer no merges falls back to chars" {
+    // When vocab only has single chars (no multi-char tokens for "ab"),
+    // Viterbi segments into individual character tokens.
     var vocab = [_][]const u8{
         "<s>", // 0
         "<pad>", // 1
@@ -386,18 +499,27 @@ test "tokenizer no merges falls back to chars" {
         "\xE2\x96\x81", // 4: ▁
         "a", // 5
         "b", // 6
+        "\xE2\x96\x81" ++ "a", // 7: ▁a
+        "\xE2\x96\x81" ++ "ab", // 8: ▁ab  (not in vocab → forces char split)
     };
+    // Only use first 7 entries (0-6), so ▁ab is NOT available
+    const vs: u32 = 7;
 
     testResetHash();
     testResetScores();
-    for (0..vocab.len) |idx| {
+    for (0..vs) |idx| {
         vocabHashInsert(&vocab, @intCast(idx));
     }
     g_vocab_hash_ready = true;
 
+    // Set unigram scores for character tokens
+    g_merge_score[4] = -5.0; // ▁
+    g_merge_score[5] = -6.0; // a
+    g_merge_score[6] = -6.0; // b
+
     const tok = Tokenizer{
-        .vocab = &vocab,
-        .vocab_size = @intCast(vocab.len),
+        .vocab = vocab[0..vs],
+        .vocab_size = vs,
         .cls_id = 0,
         .sep_id = 2,
         .unk_id = 3,

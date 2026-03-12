@@ -125,7 +125,7 @@ export const devtoolsStore = {
     }
     return [...map.entries()]
       .map(([name, stats]) => ({ name, ...stats }))
-      .sort((a, b) => b.totalMs - a.totalMs);
+      .toSorted((a, b) => b.totalMs - a.totalMs);
   },
 
   /** Sparkline data: call counts per second for the last 60 seconds */

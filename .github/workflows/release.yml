@@ -187,7 +187,15 @@ jobs:
         run: |
           TAG=${GITHUB_REF#refs/tags/}
 
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          # Find the last tag that has a GitHub release (skips failed CI tags)
+          PREV_TAG=""
+          for t in $(git tag -l --sort=-v:refname | tail -n +2); do
+            if gh release view "$t" --json tagName >/dev/null 2>&1; then
+              PREV_TAG="$t"
+              break
+            fi
+          done
+
           if [ -n "$PREV_TAG" ]; then
             NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD)
           else

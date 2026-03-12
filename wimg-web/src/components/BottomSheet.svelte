@@ -34,6 +34,7 @@
   let contentRef: HTMLElement | undefined = $state();
   let handleRef: HTMLElement | undefined = $state();
   let isDragging = $state(false);
+  let wasOpen = $state(false);
 
   // Touch state
   let startY = 0;
@@ -82,6 +83,7 @@
   // Open/close reactivity
   $effect(() => {
     if (open) {
+      wasOpen = true;
       const s = getSnaps();
       height.target = s[1]; // medium snap
     } else {
@@ -112,10 +114,12 @@
     }
   });
 
-  // Close when spring settles near 0 after being open
+  // Close when spring settles near 0 (works for both swipe-down AND programmatic close)
+  // Guard: skip if `open` is already false (back button already popped history)
   $effect(() => {
-    if (open && height.current < 15 && !isDragging && height.target === 0) {
-      onclose();
+    if (wasOpen && height.current < 15 && !isDragging && height.target === 0) {
+      wasOpen = false;
+      if (open) onclose();
     }
   });
 
@@ -206,12 +210,12 @@
   // Not expanded → all wheel events move the sheet (like mobile: touching content moves sheet).
   // Expanded → content scrolls normally, overscroll at top chains to shrink.
   function onWheel(e: WheelEvent) {
-    const onHandle = handleRef?.contains(e.target as Node);
-    const onContent = contentRef?.contains(e.target as Node);
+    const hitHandle = handleRef?.contains(e.target as Node);
+    const hitContent = contentRef?.contains(e.target as Node);
 
-    if (!onHandle && !onContent) return;
+    if (!hitHandle && !hitContent) return;
 
-    if (onContent && !onHandle) {
+    if (hitContent && !hitHandle) {
       if (isExpanded) {
         // Expanded: hand off to content scroll, chain at top when pulling down
         if (isWheeling) {
@@ -358,7 +362,7 @@
   function performSnap() {
     const current = height.current;
     const s = getSnaps();
-    const sortedSnaps = [...s].sort((a, b) => a - b);
+    const sortedSnaps = s.toSorted((a, b) => a - b);
     const minSnap = sortedSnaps[0];
     const maxSnap = sortedSnaps[sortedSnaps.length - 1];
     const velocityThreshold = 0.4;
@@ -370,7 +374,7 @@
         targetSnap = sortedSnaps.find((snap) => snap > current) ?? maxSnap;
       } else {
         targetSnap =
-          [...sortedSnaps].reverse().find((snap) => snap < current) ?? minSnap;
+          sortedSnaps.toReversed().find((snap) => snap < current) ?? minSnap;
       }
     } else {
       targetSnap = sortedSnaps.reduce((prev, curr) =>

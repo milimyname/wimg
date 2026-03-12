@@ -1,7 +1,9 @@
 <script lang="ts">
   import { page } from "$app/state";
+  import { pushState } from "$app/navigation";
   import { updateStore } from "$lib/update.svelte";
   import { featureStore } from "$lib/features.svelte";
+  import { paletteStore } from "$lib/commandPalette.svelte";
 
   const tabs = [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -38,6 +40,18 @@
   style="padding-bottom: env(safe-area-inset-bottom, 0px)"
 >
   <div class="max-w-lg mx-auto flex px-4 pt-3 pb-4">
+    <!-- Search button (opens Command Palette) -->
+    <button
+      onclick={() => { pushState("", { sheet: "command-palette" }); paletteStore.show(); }}
+      class="flex-1 flex flex-col items-center gap-1 py-1.5 text-gray-400 transition-colors bg-transparent border-none cursor-pointer"
+      style="-webkit-tap-highlight-color: transparent"
+    >
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+      <span class="text-[11px] font-bold">Suche</span>
+    </button>
+
     {#each tabs as tab}
       <a
         href={tab.href}

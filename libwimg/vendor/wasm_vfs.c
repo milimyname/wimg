@@ -303,7 +303,8 @@ int wasm_vfs_get_db_size(const char *name) {
 }
 
 /* Load DB bytes into the named file's memory before sqlite3_open.
-   Creates the file slot if it doesn't exist. */
+   Creates the file slot if it doesn't exist.
+   Also clears any stale WAL/SHM files to prevent OpenFailed on re-init. */
 int wasm_vfs_load_db(const char *name, const unsigned char *data, int size) {
     init_mem_files();
     MemFile *mf = alloc_file(name);
@@ -311,5 +312,20 @@ int wasm_vfs_load_db(const char *name, const unsigned char *data, int size) {
     if (size > mf->capacity) return -2;
     memcpy(mf->data, data, size);
     mf->size = size;
+
+    /* Clear stale WAL/SHM files — after sqlite3_close these persist in VFS
+       but don't match the freshly loaded DB bytes. */
+    size_t name_len = strlen(name);
+    if (name_len < 248) {
+        char buf[256];
+        memcpy(buf, name, name_len);
+        memcpy(buf + name_len, "-wal", 5);
+        MemFile *wal = find_file(buf);
+        if (wal) { wal->name[0] = 0; wal->size = 0; }
+        memcpy(buf + name_len, "-shm", 5);
+        MemFile *shm = find_file(buf);
+        if (shm) { shm->name[0] = 0; shm->size = 0; }
+    }
+
     return 0;
 }

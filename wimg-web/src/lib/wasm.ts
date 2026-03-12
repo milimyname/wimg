@@ -177,6 +177,8 @@ interface WasmExports {
   wimg_load_model: (data: number, len: number) => number;
   wimg_embed_text: (text: number, len: number) => number;
   wimg_embed_transactions: () => number;
+  wimg_embed_batch: (limit: number) => number;
+  wimg_store_embedding: (id: number, id_len: number, emb: number, emb_len: number) => number;
   wimg_smart_categorize: () => number;
   wimg_semantic_search: (query: number, query_len: number, k: number) => number;
   wimg_embedding_status: () => number;
@@ -185,6 +187,7 @@ interface WasmExports {
   wimg_alloc: (size: number) => number;
   wimg_alloc_model: (size: number) => number;
   wimg_get_error: () => number;
+  wimg_build_id: () => number;
   wimg_db_ptr: () => number;
   wimg_db_size: () => number;
   wimg_db_load: (data: number, size: number) => number;
@@ -198,6 +201,12 @@ const OPFS_DB_NAME = "wimg.db";
 let onMutate: (() => void) | null = null;
 export function setOnMutate(cb: (() => void) | null): void {
   onMutate = cb;
+}
+
+// --- Embed progress callback ---
+let embedProgressCallback: ((done: number, total: number) => void) | null = null;
+export function setEmbedProgressCallback(cb: typeof embedProgressCallback): void {
+  embedProgressCallback = cb;
 }
 
 // --- Internal helpers ---
@@ -218,15 +227,17 @@ function readLengthPrefixedString(ptr: number): string {
 }
 
 function getLastError(fallback: string): string {
+  let msg = fallback;
   try {
     const ptr = wasm!.wimg_get_error();
     if (ptr !== 0) {
-      return readLengthPrefixedString(ptr);
+      msg = readLengthPrefixedString(ptr);
     }
   } catch {
     // ignore
   }
-  return fallback;
+  console.error("[wimg]", msg);
+  return msg;
 }
 
 function writeString(s: string): number {
@@ -303,15 +314,15 @@ async function opfsSaveInner(): Promise<void> {
       const workerBlob = new Blob([workerCode], { type: "text/javascript" });
       const worker = new Worker(URL.createObjectURL(workerBlob));
       await new Promise<void>((resolve, reject) => {
-        worker.onmessage = () => {
+        worker.addEventListener("message", () => {
           worker.terminate();
           resolve();
-        };
-        worker.onerror = (err) => {
+        });
+        worker.addEventListener("error", (err) => {
           worker.terminate();
           reject(err);
-        };
-        worker.postMessage({ name: OPFS_DB_NAME, bytes: dbBytes }, [dbBytes.buffer]);
+        });
+        worker.postMessage({ name: OPFS_DB_NAME, bytes: dbBytes }, [dbBytes.buffer]); // eslint-disable-line unicorn/require-post-message-target-origin
       });
     }
     console.log(`[wimg] OPFS: saved ${size} bytes`);
@@ -353,7 +364,7 @@ export async function init(): Promise<void> {
       },
       js_time_ms: () => BigInt(Date.now()),
       js_embed_progress: (done: number, total: number) => {
-        console.log(`[wimg] Embedding progress: ${done}/${total}`);
+        if (embedProgressCallback) embedProgressCallback(done, total);
       },
     },
   };
@@ -397,6 +408,14 @@ export async function init(): Promise<void> {
   const rc = wasm.wimg_init(pathPtr);
   if (rc !== 0) {
     throw new Error(getLastError("Failed to initialize wimg database"));
+  }
+
+  // Log WASM build version
+  const buildPtr = wasm.wimg_build_id();
+  if (buildPtr !== 0) {
+    const buildId = readLengthPrefixedString(buildPtr);
+    console.log(`[wimg] build: ${buildId}`);
+    wasm.wimg_free(buildPtr, 0);
   }
 
   // Load category metadata from WASM
@@ -980,11 +999,20 @@ export function getDbBytes(): Uint8Array {
 /** Reload DB from raw bytes (after worker returns modified DB) */
 export async function reloadDb(bytes: Uint8Array): Promise<void> {
   ensureInit();
+  // Close existing SQLite connection to flush page cache and release stale state
+  wasm!.wimg_close();
+
   const ptr = wasm!.wimg_alloc(bytes.length);
   if (ptr === 0) throw new Error("WASM allocation failed");
   new Uint8Array(wasm!.memory.buffer).set(bytes, ptr);
   const rc = wasm!.wimg_db_load(ptr, bytes.length);
   if (rc !== 0) throw new Error("Failed to reload DB");
+
+  // Reopen SQLite connection with fresh page cache over new VFS data
+  const pathPtr = writeString("/wimg.db");
+  const initRc = wasm!.wimg_init(pathPtr);
+  if (initRc !== 0) throw new Error("Failed to reinitialize DB after reload");
+
   await opfsSave();
   onMutate?.();
 }
@@ -1034,7 +1062,7 @@ export function getWasmDbSize(): number {
 
 const MODEL_URL =
   "https://huggingface.co/milimyname/multilingual-e5-small-Q8_0-GGUF/resolve/main/multilingual-e5-small-q8_0.gguf";
-const MODEL_OPFS_FILE = "e5-small-q8.gguf";
+const MODEL_OPFS_FILE = "e5-small-q8-v7.gguf";
 
 export interface EmbeddingStatus {
   total_txs: number;
@@ -1062,8 +1090,9 @@ export async function loadEmbeddingModel(onProgress?: (pct: number) => void): Pr
 
     // Check OPFS for cached model
     const root = await navigator.storage.getDirectory();
-    // Clean up old FP32 OPFS file
+    // Clean up old OPFS model files
     root.removeEntry("e5-small.gguf").catch(() => {});
+    root.removeEntry("e5-small-q8.gguf").catch(() => {});
     let modelBytes: Uint8Array;
 
     try {
@@ -1087,7 +1116,7 @@ export async function loadEmbeddingModel(onProgress?: (pct: number) => void): Pr
       let received = 0;
 
       while (true) {
-        const { done, value } = await reader.read();
+        const { done, value } = await reader.read(); // eslint-disable-line no-await-in-loop -- sequential stream reads
         if (done) break;
         chunks.push(value);
         received += value.length;
@@ -1105,11 +1134,39 @@ export async function loadEmbeddingModel(onProgress?: (pct: number) => void): Pr
         offset += chunk.length;
       }
 
-      // Save to OPFS for persistence
+      // Save to OPFS for persistence (Safari fallback for missing createWritable)
       const writeHandle = await root.getFileHandle(MODEL_OPFS_FILE, { create: true });
-      const writable = await writeHandle.createWritable();
-      await writable.write(modelBytes.buffer as ArrayBuffer);
-      await writable.close();
+      if (typeof writeHandle.createWritable === "function") {
+        const writable = await writeHandle.createWritable();
+        await writable.write(modelBytes.buffer as ArrayBuffer);
+        await writable.close();
+      } else {
+        const workerCode = `
+          onmessage = async (e) => {
+            const root = await navigator.storage.getDirectory();
+            const fh = await root.getFileHandle(e.data.name, { create: true });
+            const ah = await fh.createSyncAccessHandle();
+            ah.truncate(0);
+            ah.write(e.data.bytes);
+            ah.flush();
+            ah.close();
+            postMessage("done");
+          };
+        `;
+        const workerBlob = new Blob([workerCode], { type: "text/javascript" });
+        const worker = new Worker(URL.createObjectURL(workerBlob));
+        await new Promise<void>((resolve, reject) => {
+          worker.addEventListener("message", () => {
+            worker.terminate();
+            resolve();
+          });
+          worker.addEventListener("error", (err) => {
+            worker.terminate();
+            reject(err);
+          });
+          worker.postMessage({ name: MODEL_OPFS_FILE, bytes: modelBytes }); // eslint-disable-line unicorn/require-post-message-target-origin
+        });
+      }
     }
 
     // Load model data into WASM memory (grows linear memory, bypasses 64MB FBA)
@@ -1174,6 +1231,31 @@ export function embedTransactions(): number {
     }
     logAction("embedTransactions", `${rc} embedded`);
     return rc;
+  });
+}
+
+export function embedBatch(limit: number): number {
+  return timed("embedBatch", () => {
+    ensureInit();
+    const rc = wasm!.wimg_embed_batch(limit);
+    if (rc < 0) {
+      throw new Error(getLastError("Failed to embed batch"));
+    }
+    logAction("embedBatch", `${rc} embedded`);
+    return rc;
+  });
+}
+
+export function storeEmbedding(id: string, embedding: Uint8Array): void {
+  timed("storeEmbedding", () => {
+    ensureInit();
+    const idEncoded = new TextEncoder().encode(id);
+    const idPtr = writeBytes(idEncoded);
+    const embPtr = writeBytes(embedding);
+    const rc = wasm!.wimg_store_embedding(idPtr, idEncoded.length, embPtr, embedding.length);
+    if (rc !== 0) {
+      throw new Error(getLastError("Failed to store embedding"));
+    }
   });
 }
 

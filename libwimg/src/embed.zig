@@ -72,6 +72,9 @@ pub const EmbedModel = struct {
     token_embed: TensorRef, // [vocab_size, EMBED_DIM]
     position_embed: TensorRef, // [MAX_POS, EMBED_DIM]
     token_type_embed: TensorRef, // [2, EMBED_DIM]
+    // Embedding LayerNorm — applied after token+position+type embeddings, before transformer
+    embd_norm_weight: ?TensorRef,
+    embd_norm_bias: ?TensorRef,
     // Final LayerNorm (weight + bias) — optional, may not exist in all BERT variants
     final_norm_weight: ?TensorRef,
     final_norm_bias: ?TensorRef,
@@ -124,6 +127,17 @@ pub const EmbedModel = struct {
         // Step 1: Token embeddings + position embeddings + token_type embeddings
         self.lookupEmbeddings(token_ids[0..seq_len], hidden);
 
+        // Step 1b: Embedding LayerNorm (required by XLM-RoBERTa / BERT)
+        if (self.embd_norm_weight) |enw| {
+            if (self.embd_norm_bias) |enb| {
+                for (0..seq_len) |t| {
+                    const h = hidden[t * EMBED_DIM .. (t + 1) * EMBED_DIM];
+                    self.layerNorm(h, enw, enb, scratch1);
+                    @memcpy(h, scratch1[0..EMBED_DIM]);
+                }
+            }
+        }
+
         // Step 2: Transformer layers (post-norm BERT style)
         for (0..N_LAYERS) |layer| {
             self.transformerLayer(layer, hidden, seq_len, scratch1, ffn_up_buf, attn_scores, q_buf, k_buf, v_buf);
@@ -171,6 +185,9 @@ pub const EmbedModel = struct {
             @memset(&type_buf, 0);
         }
 
+        // XLM-RoBERTa position offset: padding_idx=1, so positions start at 2
+        const POS_OFFSET: u32 = 2;
+
         for (token_ids, 0..) |tid, t| {
             // Token embedding
             const tok_row = self.getTensorRow(self.token_embed, tid);
@@ -181,8 +198,8 @@ pub const EmbedModel = struct {
                 @memset(hidden[t * EMBED_DIM .. (t + 1) * EMBED_DIM], 0);
             }
 
-            // Add position embedding
-            const pos_row = self.getTensorRow(self.position_embed, @intCast(t));
+            // Add position embedding (XLM-RoBERTa: offset by padding_idx + 1 = 2)
+            const pos_row = self.getTensorRow(self.position_embed, @as(u32, @intCast(t)) + POS_OFFSET);
             if (pos_row) |rb| {
                 quants.dequantize(rb, &pos_buf, self.position_embed.type_, EMBED_DIM);
                 quants.vecAdd(hidden[t * EMBED_DIM .. (t + 1) * EMBED_DIM], &pos_buf);
@@ -414,6 +431,10 @@ pub fn loadModel(data: []const u8) !EmbedModel {
 
     model.token_type_embed = try findTensorRef(data, tensor_info_offset, header.n_tensors, model.tensor_data_start, "token_types.weight") orelse
         return EmbedError.TensorNotFound;
+
+    // Embedding LayerNorm — applied after token+position+type embeddings (XLM-RoBERTa / BERT)
+    model.embd_norm_weight = try findTensorRef(data, tensor_info_offset, header.n_tensors, model.tensor_data_start, "token_embd_norm.weight");
+    model.embd_norm_bias = try findTensorRef(data, tensor_info_offset, header.n_tensors, model.tensor_data_start, "token_embd_norm.bias");
 
     // Final norm is optional — some BERT models don't have it
     model.final_norm_weight = try findTensorRef(data, tensor_info_offset, header.n_tensors, model.tensor_data_start, "output_norm.weight");

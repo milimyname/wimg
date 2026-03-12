@@ -12,14 +12,20 @@
 - **Phase 5.0** — UX Polish (Done): Onboarding, demo data, multi-file import
 - **Phase 5.1** — Recurring Detection (Done): Pure SQL, price alerts
 - **Phase 5.3** — Data Export + Snapshots (Done)
-- **Phase 5.5** — Embeddings + Smart Categorization (Done): Pure Zig inference engine (multilingual-e5-small, Q8_0), GGUF parser, SentencePiece BPE tokenizer, 384-dim embeddings, cosine similarity categorization, semantic search
+- **Phase 5.5** — Embeddings + Smart Categorization (Done): Pure Zig inference engine (multilingual-e5-small, Q8_0), GGUF parser, SentencePiece Unigram tokenizer (Viterbi), 384-dim embeddings, cosine similarity categorization. Semantic search tested but deprioritized — e5-small doesn't differentiate well for short queries against banking descriptions.
 - **Phase 5.8** — Remote MCP Server (Done): 20 tools (10 read + 10 write), E2E encrypted
 
 ## In Progress / Future
 
 - **Phase 5.2** — Notifications (deferred, TBD)
 - **Phase 5.4** — Annual Renewals Calendar
-- **Phase 5.7** — Command Palette + Semantic Search (Cmd+K): fuzzy + vector search across transactions, categories, actions
+- **Phase 5.7** — Command Palette + Hybrid Search (Cmd+K):
+  - **FTS5** for full-text search (primary) — compile FTS5 into SQLite amalgamation, create virtual table, trigram tokenizer for fuzzy matching
+  - **Fuzzy substring** fallback via `LIKE` for merchant names
+  - **Embeddings as secondary signal** (optional re-ranking, not primary search)
+  - Search across transactions, categories, and actions
+  - Expected dataset: 5,000–10,000+ transactions (5 years of banking history)
+  - Remove embed worker (dead code), simplify to main-thread batch embedding for smart categorization only
 - **Phase 6.1** — Annual Review ("Geld-Wrapped")
 - **Phase 6.2** — Net Worth Over Time
 - **Phase 6.3** — Anlage N Assistant (Tax Estimation)

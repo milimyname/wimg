@@ -47,7 +47,7 @@ class SyncWS {
     const wsUrl = SYNC_API_URL.replace(/^http/, "ws") + `/ws/${this.syncKey}`;
     this.ws = new WebSocket(wsUrl);
 
-    this.ws.onopen = () => {
+    this.ws.addEventListener("open", () => {
       this.connected = true;
       this.reconnectDelay = 1000;
       console.log("[wimg-sync] WebSocket connected");
@@ -60,9 +60,9 @@ class SyncWS {
 
       // Catch up on any changes missed while disconnected
       this.onReconnect?.();
-    };
+    });
 
-    this.ws.onmessage = (e) => {
+    this.ws.addEventListener("message", (e) => {
       try {
         const msg = JSON.parse(e.data) as WSMessage;
 
@@ -119,9 +119,9 @@ class SyncWS {
       } catch {
         // Ignore malformed messages
       }
-    };
+    });
 
-    this.ws.onclose = () => {
+    this.ws.addEventListener("close", () => {
       this.connected = false;
 
       if (devtoolsEnabled) {
@@ -135,11 +135,11 @@ class SyncWS {
         setTimeout(() => this.doConnect(), this.reconnectDelay);
         this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30_000);
       }
-    };
+    });
 
-    this.ws.onerror = () => {
+    this.ws.addEventListener("error", () => {
       // onclose will fire after this — handles reconnect
-    };
+    });
   }
 
   /** Mark that we just pushed — suppress echo for 2 seconds */

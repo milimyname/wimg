@@ -25,7 +25,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 | Web persistence | OPFS (offline SQLite in browser)                   |
 | iOS UI          | SwiftUI + C ABI (libwimg.a)                        |
 | Sync            | CF Durable Objects + WebSocket + LWW               |
-| AI              | Local embeddings (Zig, multilingual-e5-small Q8_0) |
+| AI              | Local embeddings (Zig, e5-small Q8_0) + FTS5 search |
 | FinTS           | Pure Zig (native-only, iOS)                        |
 | MCP server      | CF Worker DO + libwimg-compact.wasm                |
 
@@ -52,27 +52,64 @@ Working: CSV import (Comdirect/TR/Scalable), categorization, summaries,
 debts, recurring detection, multi-account, undo/redo, real-time sync with
 E2E encryption, MCP server (20 tools), data export, monthly snapshots,
 PWA with offline support, DevTools panel (5 tabs), local embeddings
-(pure Zig inference, multilingual-e5-small Q8_0, 384-dim), smart categorization,
-semantic search.
+(pure Zig inference, multilingual-e5-small Q8_0, 384-dim, Viterbi tokenizer),
+smart categorization.
 
-Embeddings are infrastructure — they make categorization smarter and search
-better. No chat UI (Claude Desktop + MCP replaces it).
+Embeddings are infrastructure for **smart categorization only** (tx↔tx cosine
+similarity). Semantic search via embeddings was tested but e5-small doesn't
+differentiate well for short queries against banking descriptions at scale.
+Search uses **FTS5 + fuzzy matching** instead. No chat UI (Claude Desktop +
+MCP replaces it).
 
-Next: Annual Renewals (5.4), Command Palette + Semantic Search (5.7),
+Next: Command Palette + Hybrid Search (5.7), Annual Renewals (5.4),
 Phase 6 (Annual Review, Net Worth, Tax, Savings Goals).
 
 Deferred: Notifications (5.2) — to be defined later.
 
 ---
 
-## Key Principles
+## Principles
 
-- Local-first: all data in SQLite, works fully offline
-- Last-write-wins sync (no CRDTs) — one person, two devices
-- C ABI for cross-platform: same Zig library on web (WASM) and iOS (FFI)
-- E2E encryption: key derived from sync key, server sees only ciphertext
-- Friendly fintech design: light, cards, warm tones, calm
-- Zero production overhead for dev features (DevTools tree-shaken in prod)
+### Simplicity above all
+Less code is better code. If a feature needs 2000 lines of infra for marginal
+gain, it's not worth it. Prefer boring, proven solutions (SQL LIKE, keyword
+rules) over clever ones (ML models, vector search). Every line of code is a
+liability.
+
+### 80/20 — Pareto Principle
+Solve 80% of the problem with 20% of the effort. Keyword rules categorize ~80%
+of transactions — that's good enough. MCP + Claude handles the long tail
+on-demand. Don't build complex systems to automate the last 20%.
+
+### Local-first, offline always
+All data lives in SQLite. The app works fully offline with zero server
+dependency. Network is an enhancement (sync), not a requirement. No loading
+spinners for core functionality.
+
+### Library is the product
+One Zig library (libwimg) IS the app. Every platform (web, iOS) is a thin
+shell that renders what the library returns. No logic duplication. Same CSV
+parser, same categorization, same queries, everywhere. Inspired by libghostty.
+
+### Don't fight the platform
+C ABI for cross-platform. WASM for web, static lib for iOS. Use what each
+platform gives you (OPFS on web, files on iOS, SwiftUI vs Svelte). Don't
+abstract away platform differences — embrace them at the shell level.
+
+### Earned complexity
+Start simple. Add complexity only when the simple solution demonstrably fails.
+LWW sync instead of CRDTs (one person, two devices). SQL LIKE before FTS5.
+Keyword rules before embeddings. Every abstraction must justify its existence.
+
+### Security by default
+E2E encryption for sync — key derived from sync key, server sees only
+ciphertext. PII stripping for MCP responses. No accounts, no passwords —
+sync key IS the identity.
+
+### Zero overhead for dev features
+DevTools, feature flags, debug logging — all tree-shaken in production.
+`devtoolsEnabled` boolean = zero cost when off. No runtime overhead for
+things users never see.
 
 ---
 
