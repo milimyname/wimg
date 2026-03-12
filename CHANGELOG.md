@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.14 (2026-03-12)
+
+- Fix tokenizer: replace greedy BPE with Viterbi for Unigram model
+
 ## v0.5.13 (2026-03-10)
 
 - Enhance BottomSheet component with improved wheel and touch handling
