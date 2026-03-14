@@ -121,6 +121,11 @@
 .dark .bg-\(--color-accent\) .border-\(--color-text\) {
   border-color: #1a1a1a !important;
 }
+/* Primary buttons (bg-text + text-white): invert in dark mode */
+.dark .bg-\(--color-text\).text-white {
+  background-color: #f5f5f5 !important;
+  color: #111114 !important;
+}
 /* Inputs and interactive elements */
 .dark input,
 .dark textarea {
