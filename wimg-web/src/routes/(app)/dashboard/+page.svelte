@@ -1,6 +1,6 @@
 <script lang="ts">
   import { CATEGORIES, type Transaction } from "$lib/wasm";
-  import { formatEur } from "$lib/format";
+  import { formatEur, formatEurCompact } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
   import { data } from "$lib/data.svelte";
   import { loadDemoData } from "$lib/demo";
@@ -180,7 +180,7 @@
         <DonutChart data={expenseCategories} size={130} />
         <div class="absolute inset-0 flex flex-col items-center justify-center">
           <span class="text-xs text-(--color-text-secondary) font-bold uppercase tracking-wide">Total</span>
-          <span class="text-lg font-display font-extrabold">{formatEur(Math.abs(summary.expenses))}</span>
+          <span class="text-lg font-display font-extrabold">{formatEurCompact(Math.abs(summary.expenses))}</span>
         </div>
       </div>
       <div class="flex flex-col gap-4 flex-1">

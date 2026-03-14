@@ -17,6 +17,13 @@ export function formatEur(amount: number): string {
   return eurFmt.format(amount);
 }
 
+/** Compact format for tight spaces: 1.234 → "1,2k€", 999 → "999€" */
+export function formatEurCompact(amount: number): string {
+  const abs = Math.abs(amount);
+  if (abs >= 1000) return `${(abs / 1000).toFixed(1).replace(".", ",")}k€`;
+  return `${Math.round(abs)}€`;
+}
+
 export function formatAmountSigned(amount: number): string {
   return eurSignedFmt.format(amount);
 }
