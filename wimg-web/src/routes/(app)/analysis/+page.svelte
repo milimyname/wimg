@@ -1,6 +1,6 @@
 <script lang="ts">
   import { CATEGORIES, type Transaction } from "$lib/wasm";
-  import { formatEur } from "$lib/format";
+  import { formatEur, formatEurCompact } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
   import { data } from "$lib/data.svelte";
   import { dateNav } from "$lib/dateNav.svelte";
@@ -102,7 +102,7 @@
       <DonutChart data={expenseCategories} size={220} />
       <div class="absolute inset-0 flex flex-col items-center justify-center">
         <p class="text-xs font-bold uppercase tracking-wider text-(--color-text-secondary) mb-1">Ausgaben</p>
-        <p class="text-3xl font-display font-black">{formatEur(totalExpenses)}</p>
+        <p class="text-3xl font-display font-black">{totalExpenses >= 10000 ? formatEurCompact(totalExpenses) : formatEur(totalExpenses)}</p>
         {#if monthDelta !== null}
           <div
             class="flex items-center gap-1 mt-2 text-xs font-bold bg-gray-50 px-2.5 py-1 rounded-full"
@@ -128,7 +128,7 @@
     <div class="flex w-full justify-around mt-4 bg-gray-50 rounded-2xl p-4">
       <div class="text-center flex-1">
         <p class="text-xs text-(--color-text-secondary) font-bold uppercase mb-1">Einnahmen</p>
-        <p class="font-extrabold text-emerald-600 text-lg">{formatEur(summary.income)}</p>
+        <p class="font-extrabold text-emerald-600 text-lg">{summary.income >= 10000 ? formatEurCompact(summary.income) : formatEur(summary.income)}</p>
       </div>
       <div class="w-px bg-gray-200 mx-2"></div>
       <div class="text-center flex-1">
@@ -138,7 +138,7 @@
           class:text-emerald-600={summary.available >= 0}
           class:text-rose-500={summary.available < 0}
         >
-          {formatEur(Math.abs(summary.available))}
+          {Math.abs(summary.available) >= 10000 ? formatEurCompact(Math.abs(summary.available)) : formatEur(Math.abs(summary.available))}
         </p>
       </div>
     </div>
@@ -165,21 +165,21 @@
           (expandedCategory =
             expandedCategory === cat.id ? null : cat.id)}
       >
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-4">
+        <div class="flex items-center justify-between mb-4 gap-3">
+          <div class="flex items-center gap-4 min-w-0">
             <div
-              class="w-14 h-14 rounded-[1.25rem] flex items-center justify-center text-2xl"
+              class="w-14 h-14 rounded-[1.25rem] flex items-center justify-center text-2xl shrink-0"
               style="background-color: {CATEGORIES[cat.id]?.color ?? '#dfe6e9'}15"
             >
               {CATEGORIES[cat.id]?.icon ?? "📦"}
             </div>
-            <div>
-              <p class="text-lg font-bold">{cat.name}</p>
+            <div class="min-w-0">
+              <p class="text-lg font-bold truncate">{cat.name}</p>
               <p class="text-sm font-bold text-(--color-text-secondary)">{pct}%</p>
             </div>
           </div>
-          <div class="text-right">
-            <p class="text-lg font-extrabold">{formatEur(cat.amount)}</p>
+          <div class="text-right shrink-0">
+            <p class="text-lg font-extrabold">{Math.abs(cat.amount) >= 10000 ? formatEurCompact(cat.amount) : formatEur(cat.amount)}</p>
             {#if delta !== null}
               <div
                 class="flex items-center justify-end gap-0.5 text-xs font-bold mt-0.5"

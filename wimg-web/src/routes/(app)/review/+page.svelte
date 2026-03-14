@@ -1,6 +1,6 @@
 <script lang="ts">
   import { CATEGORIES, type Transaction } from "$lib/wasm";
-  import { formatEur, formatDateShort } from "$lib/format";
+  import { formatEur, formatEurCompact, formatDateShort } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
   import { data } from "$lib/data.svelte";
   import { dateNav } from "$lib/dateNav.svelte";
@@ -139,7 +139,7 @@
         {saved >= 0 ? "Gespart" : "Defizit"}
       </p>
       <p class="text-5xl font-display font-black tracking-tighter">
-        {formatEur(Math.abs(saved))}
+        {Math.abs(saved) >= 10000 ? formatEurCompact(Math.abs(saved)) : formatEur(Math.abs(saved))}
       </p>
       {#if savingsDelta !== null}
         <div class="mt-4 inline-flex items-center justify-center px-3 py-1.5 rounded-full text-xs font-bold gap-1 shadow-md" style="background: #1a1a1a; color: white">
@@ -163,11 +163,11 @@
     <div class="px-6 pb-6 pt-2 grid grid-cols-2 gap-4 relative z-10">
       <div class="p-4 rounded-2xl flex flex-col items-center backdrop-blur-sm" style="background: rgba(255,255,255,0.4)">
         <p class="text-xs font-bold uppercase tracking-wider mb-1" style="color: rgba(26,26,26,0.7)">Einnahmen</p>
-        <p class="font-extrabold text-lg" style="color: #1a1a1a">{formatEur(summary.income)}</p>
+        <p class="font-extrabold text-lg" style="color: #1a1a1a">{summary.income >= 10000 ? formatEurCompact(summary.income) : formatEur(summary.income)}</p>
       </div>
       <div class="p-4 rounded-2xl flex flex-col items-center backdrop-blur-sm" style="background: rgba(255,255,255,0.4)">
         <p class="text-xs font-bold uppercase tracking-wider mb-1" style="color: rgba(26,26,26,0.7)">Ausgaben</p>
-        <p class="font-extrabold text-lg" style="color: #1a1a1a">{formatEur(Math.abs(summary.expenses))}</p>
+        <p class="font-extrabold text-lg" style="color: #1a1a1a">{Math.abs(summary.expenses) >= 10000 ? formatEurCompact(Math.abs(summary.expenses)) : formatEur(Math.abs(summary.expenses))}</p>
       </div>
     </div>
   </div>
@@ -220,15 +220,15 @@
       <a href="#checklist" class="text-xl font-display font-extrabold mb-4 px-1 block">Zahlungs-Checkliste</a>
       <div class="space-y-3">
         {#each checklist as item}
-          <div class="flex items-center justify-between p-4 bg-white rounded-[1.5rem] shadow-[var(--shadow-card)]">
-            <div class="flex items-center gap-4">
-              <div class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="flex items-center justify-between gap-3 p-4 bg-white rounded-[1.5rem] shadow-[var(--shadow-card)]">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <div>
-                <p class="text-base font-bold truncate max-w-[180px] mb-0.5">
+              <div class="min-w-0">
+                <p class="text-sm font-bold truncate mb-0.5">
                   {item.description}
                 </p>
                 <p class="text-xs text-(--color-text-secondary) font-medium">
@@ -236,8 +236,8 @@
                 </p>
               </div>
             </div>
-            <p class="text-base font-extrabold tabular-nums">
-              {formatEur(Math.abs(item.amount))}
+            <p class="text-sm font-extrabold tabular-nums shrink-0">
+              {Math.abs(item.amount) >= 10000 ? formatEurCompact(Math.abs(item.amount)) : formatEur(Math.abs(item.amount))}
             </p>
           </div>
         {/each}

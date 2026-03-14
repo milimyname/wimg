@@ -116,7 +116,7 @@
     </div>
   </div>
   <p class="text-[2.75rem] font-display font-black tracking-tight leading-tight relative z-10 mb-4">
-    {formatEur(summary.available)}
+    {Math.abs(summary.available) >= 10000 ? formatEurCompact(summary.available) : formatEur(summary.available)}
   </p>
   {#if delta !== null}
     <div class="relative z-10">
@@ -148,7 +148,7 @@
     </div>
     <div>
       <p class="text-xs text-(--color-text-secondary) font-bold uppercase tracking-wide mb-1">Einnahmen</p>
-      <p class="text-lg font-display font-extrabold text-emerald-600">+ {formatEur(summary.income)}</p>
+      <p class="text-lg font-display font-extrabold text-emerald-600">+ {formatEurCompact(summary.income)}</p>
     </div>
   </div>
   <div class="bg-white rounded-[1.75rem] p-5 shadow-[var(--shadow-card)] flex flex-col gap-3">
@@ -159,7 +159,7 @@
     </div>
     <div>
       <p class="text-xs text-(--color-text-secondary) font-bold uppercase tracking-wide mb-1">Ausgaben</p>
-      <p class="text-lg font-display font-extrabold text-rose-600">- {formatEur(Math.abs(summary.expenses))}</p>
+      <p class="text-lg font-display font-extrabold text-rose-600">- {formatEurCompact(Math.abs(summary.expenses))}</p>
     </div>
   </div>
 </div>
@@ -175,15 +175,15 @@
       >Details</a>
     </div>
 
-    <div class="flex items-center gap-8">
+    <div class="flex items-center gap-5">
       <div class="relative shrink-0">
-        <DonutChart data={expenseCategories} size={130} />
+        <DonutChart data={expenseCategories} size={120} />
         <div class="absolute inset-0 flex flex-col items-center justify-center">
-          <span class="text-xs text-(--color-text-secondary) font-bold uppercase tracking-wide">Total</span>
-          <span class="text-lg font-display font-extrabold">{formatEurCompact(Math.abs(summary.expenses))}</span>
+          <span class="text-[10px] text-(--color-text-secondary) font-bold uppercase tracking-wide">Total</span>
+          <span class="text-base font-display font-extrabold">{formatEurCompact(Math.abs(summary.expenses))}</span>
         </div>
       </div>
-      <div class="flex flex-col gap-4 flex-1">
+      <div class="flex flex-col gap-4 flex-1 min-w-0">
         {#each expenseCategories.slice(0, 4) as cat}
           {@const pct =
             Math.abs(summary.expenses) > 0
@@ -192,15 +192,15 @@
                   100
                 ).toFixed(0)
               : "0"}
-          <div class="flex items-center justify-between text-sm">
-            <div class="flex items-center gap-3">
+          <div class="flex items-center justify-between text-sm gap-2">
+            <div class="flex items-center gap-2 min-w-0">
               <div
-                class="w-2.5 h-2.5 rounded-full"
+                class="w-2.5 h-2.5 rounded-full shrink-0"
                 style="background-color: {CATEGORIES[cat.id]?.color ?? '#dfe6e9'}"
               ></div>
-              <span class="text-(--color-text-secondary) font-medium">{cat.name}</span>
+              <span class="text-(--color-text-secondary) font-medium truncate">{cat.name}</span>
             </div>
-            <span class="font-extrabold">{pct}%</span>
+            <span class="font-extrabold shrink-0">{pct}%</span>
           </div>
         {/each}
       </div>
