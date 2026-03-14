@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const fints = @import("fints.zig");
 
 pub const HttpError = error{
@@ -7,17 +8,32 @@ pub const HttpError = error{
     ResponseTooLarge,
     Base64Error,
     OutOfMemory,
+    NoCallback,
 };
+
+/// Callback type for platform-native HTTP POST.
+/// Parameters: url, url_len, body, body_len, out_buf, out_buf_len
+/// Returns: bytes written to out_buf, or -1 on error.
+pub const HttpCallback = *const fn (
+    [*]const u8, // url
+    u32, // url_len
+    [*]const u8, // body (Base64-encoded)
+    u32, // body_len
+    [*]u8, // out_buf (for Base64-encoded response)
+    u32, // out_buf_len
+) callconv(.c) i32;
+
+/// Stored callback — set by platform (Swift on iOS, or Zig stdlib fallback on native tests).
+var http_callback: ?HttpCallback = null;
+
+/// Set the HTTP callback. Called once from Swift at app init.
+pub fn setCallback(cb: HttpCallback) void {
+    http_callback = cb;
+}
 
 /// Send a FinTS message to the bank server.
 /// The raw FinTS message is Base64-encoded before sending.
 /// The Base64-encoded response is decoded before returning.
-///
-/// `url` — bank FinTS endpoint (e.g. "https://fints.comdirect.de/fints")
-/// `message` — raw FinTS message bytes
-/// `out_buf` — buffer for decoded response
-///
-/// Returns the number of bytes written to out_buf.
 pub fn sendFintsMessage(
     allocator: std.mem.Allocator,
     url: []const u8,
@@ -31,19 +47,57 @@ pub fn sendFintsMessage(
     defer allocator.free(enc_buf);
     _ = encoder.encode(enc_buf, message);
 
-    // Create HTTP client
+    if (http_callback) |cb| {
+        // Use platform callback (Swift URLSession on iOS)
+        var resp_b64_buf: [131072]u8 = undefined; // 128KB for Base64 response
+        const resp_b64_len = cb(
+            url.ptr,
+            @intCast(url.len),
+            enc_buf.ptr,
+            @intCast(enc_buf.len),
+            &resp_b64_buf,
+            @intCast(resp_b64_buf.len),
+        );
+
+        if (resp_b64_len <= 0) return HttpError.RequestFailed;
+        const resp_data = resp_b64_buf[0..@intCast(resp_b64_len)];
+
+        // Base64-decode the response
+        const decoded_len = fints.base64Decode(out_buf, resp_data) orelse return HttpError.Base64Error;
+        return decoded_len;
+    }
+
+    // Fallback: Zig stdlib on native, error on iOS (callback must be set)
+    return sendViaStdlib(allocator, url, enc_buf, out_buf);
+}
+
+/// Zig stdlib HTTP — only available on platforms with filesystem CA certs.
+/// Excluded from iOS builds entirely (URLSession callback used instead).
+const sendViaStdlib = if (builtin.target.os.tag == .ios)
+    struct {
+        fn f(_: std.mem.Allocator, _: []const u8, _: []const u8, _: []u8) HttpError!usize {
+            return HttpError.NoCallback;
+        }
+    }.f
+else
+    sendViaStdlibImpl;
+
+fn sendViaStdlibImpl(
+    allocator: std.mem.Allocator,
+    url: []const u8,
+    body: []const u8,
+    out_buf: []u8,
+) HttpError!usize {
     var client: std.http.Client = .{ .allocator = allocator };
     defer client.deinit();
 
-    // Use the Allocating writer to capture response body
     var response_body: std.Io.Writer.Allocating = .init(allocator);
     defer response_body.deinit();
 
-    // Perform the request using fetch
     const result = client.fetch(.{
         .location = .{ .url = url },
         .method = .POST,
-        .payload = enc_buf,
+        .payload = body,
         .headers = .{
             .content_type = .{ .override = "text/plain" },
         },
@@ -57,7 +111,6 @@ pub fn sendFintsMessage(
     const resp_data = response_body.written();
     if (resp_data.len == 0) return HttpError.RequestFailed;
 
-    // Base64-decode the response
     const decoded_len = fints.base64Decode(out_buf, resp_data) orelse return HttpError.Base64Error;
     return decoded_len;
 }

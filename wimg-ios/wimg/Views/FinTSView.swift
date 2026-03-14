@@ -517,7 +517,19 @@ struct FinTSView: View {
         errorMessage = nil
 
         do {
-            let result = try LibWimg.fintsConnect(blz: bank.blz, user: kennung, pin: pin)
+            // Run blocking FinTS/HTTP work on a dedicated queue to avoid
+            // deadlocking the Swift cooperative thread pool (semaphore.wait
+            // inside the HTTP callback blocks the current thread).
+            let result: FintsStatusResult = try await withCheckedThrowingContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        let r = try LibWimg.fintsConnect(blz: bank.blz, user: kennung, pin: pin)
+                        continuation.resume(returning: r)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
             await MainActor.run {
                 connecting = false
                 if result.isOk {
@@ -536,9 +548,23 @@ struct FinTSView: View {
         } catch {
             await MainActor.run {
                 connecting = false
-                errorMessage = error.localizedDescription
+                errorMessage = friendlyError(error)
             }
         }
+    }
+
+    private func friendlyError(_ error: Error) -> String {
+        let msg = error.localizedDescription
+        if msg.contains("HTTP request failed") {
+            return "Verbindung zur Bank fehlgeschlagen. Bitte prüfe deine Internetverbindung und versuche es erneut."
+        }
+        if msg.contains("unknown BLZ") {
+            return "Diese Bankleitzahl wird nicht unterstützt."
+        }
+        if msg.contains("auth") || msg.contains("Auth") {
+            return "Anmeldung fehlgeschlagen. Bitte überprüfe Kennung und PIN."
+        }
+        return msg
     }
 
     private func handleSendTan() async {
@@ -546,7 +572,16 @@ struct FinTSView: View {
         errorMessage = nil
 
         do {
-            let result = try LibWimg.fintsSendTan(tan: tanInput)
+            let result: FintsStatusResult = try await withCheckedThrowingContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        let r = try LibWimg.fintsSendTan(tan: tanInput)
+                        continuation.resume(returning: r)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
             await MainActor.run {
                 sendingTan = false
                 if result.isOk {
@@ -571,7 +606,16 @@ struct FinTSView: View {
         let toStr = formatter.string(from: dateTo)
 
         do {
-            let result = try LibWimg.fintsFetch(from: fromStr, to: toStr)
+            let result: FintsFetchResult = try await withCheckedThrowingContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        let r = try LibWimg.fintsFetch(from: fromStr, to: toStr)
+                        continuation.resume(returning: r)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
             await MainActor.run {
                 if result.needsTan {
                     challengeText = result.challenge ?? "TAN erforderlich"

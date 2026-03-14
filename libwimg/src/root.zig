@@ -1464,7 +1464,12 @@ comptime {
         @export(&wimg_fints_send_tan, .{ .name = "wimg_fints_send_tan" });
         @export(&wimg_fints_fetch, .{ .name = "wimg_fints_fetch" });
         @export(&wimg_fints_get_banks, .{ .name = "wimg_fints_get_banks" });
+        @export(&wimg_set_http_callback, .{ .name = "wimg_set_http_callback" });
     }
+}
+
+fn wimg_set_http_callback(cb: fints_http_mod.HttpCallback) callconv(.c) void {
+    fints_http_mod.setCallback(cb);
 }
 
 /// Connect to a bank via FinTS. Input JSON: {"blz":"...","user":"...","pin":"..."}

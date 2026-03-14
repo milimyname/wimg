@@ -183,6 +183,17 @@ const uint8_t *wimg_decrypt_field(const uint8_t *ciphertext, uint32_t ciphertext
 // --- FinTS (native only — not available in WASM builds) ---
 #if !defined(LIBWIMG_WASM)
 
+// Set HTTP callback for platform-native HTTPS.
+// On iOS, this should be set to a function using URLSession.
+// Signature: int callback(url, url_len, body, body_len, out, out_len)
+// Returns bytes written to out, or -1 on error.
+typedef int32_t (*wimg_http_callback_t)(
+    const uint8_t *url, uint32_t url_len,
+    const uint8_t *body, uint32_t body_len,
+    uint8_t *out, uint32_t out_len
+);
+void wimg_set_http_callback(wimg_http_callback_t callback);
+
 // Connect to a bank via FinTS 3.0.
 // Input JSON: {"blz":"20041133","user":"...","pin":"...","product":"..."}
 // Returns length-prefixed JSON:

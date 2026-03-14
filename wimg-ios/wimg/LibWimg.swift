@@ -19,6 +19,68 @@ final class LibWimg {
             }
         }
         isInitialized = true
+
+        // Set HTTP callback for FinTS (uses URLSession for native TLS)
+        wimg_set_http_callback { url, urlLen, body, bodyLen, outBuf, outBufLen in
+            guard let url, let body, let outBuf else {
+                print("[FinTS HTTP] callback received nil pointers")
+                return -1
+            }
+
+            let urlStr = String(bytes: UnsafeBufferPointer(start: url, count: Int(urlLen)), encoding: .utf8) ?? ""
+            let bodyData = Data(bytes: body, count: Int(bodyLen))
+
+            guard let requestUrl = URL(string: urlStr) else {
+                print("[FinTS HTTP] invalid URL: \(urlStr)")
+                return -1
+            }
+
+            print("[FinTS HTTP] POST \(urlStr) (\(bodyData.count) bytes)")
+
+            var request = URLRequest(url: requestUrl)
+            request.httpMethod = "POST"
+            request.httpBody = bodyData
+            request.setValue("text/plain", forHTTPHeaderField: "Content-Type")
+            request.timeoutInterval = 30
+
+            // Synchronous request on a dedicated queue (FinTS calls are blocking from Zig)
+            let semaphore = DispatchSemaphore(value: 0)
+            var responseData: Data?
+            var responseError: Error?
+
+            let session = URLSession(configuration: .ephemeral)
+            session.dataTask(with: request) { data, response, error in
+                responseData = data
+                responseError = error
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("[FinTS HTTP] response: \(httpResponse.statusCode), \(data?.count ?? 0) bytes")
+                }
+                semaphore.signal()
+            }.resume()
+
+            let waitResult = semaphore.wait(timeout: .now() + 35)
+            if waitResult == .timedOut {
+                print("[FinTS HTTP] request timed out after 35s")
+                session.invalidateAndCancel()
+                return -1
+            }
+
+            if let error = responseError {
+                print("[FinTS HTTP] error: \(error.localizedDescription)")
+                return -1
+            }
+            guard let data = responseData else {
+                print("[FinTS HTTP] no response data")
+                return -1
+            }
+            guard data.count <= outBufLen else {
+                print("[FinTS HTTP] response too large: \(data.count) > \(outBufLen)")
+                return -1
+            }
+
+            data.copyBytes(to: outBuf, count: data.count)
+            return Int32(data.count)
+        }
     }
 
     static func close() {
