@@ -3,6 +3,7 @@
   import { formatEur, formatDateShort } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
   import { data } from "$lib/data.svelte";
+  import { dateNav } from "$lib/dateNav.svelte";
   import MonthPicker from "../../../components/MonthPicker.svelte";
 
   const monthNames = [
@@ -10,15 +11,11 @@
     "Juli", "August", "September", "Oktober", "November", "Dezember",
   ];
 
-  const now = new Date();
-  let year = $state(now.getFullYear());
-  let month = $state(now.getMonth() + 1);
-
-  let summary = $derived(data.summary(year, month, accountStore.selected));
+  let summary = $derived(data.summary(dateNav.year, dateNav.month, accountStore.selected));
 
   let prevSummary = $derived.by(() => {
-    const pm = month === 1 ? 12 : month - 1;
-    const py = month === 1 ? year - 1 : year;
+    const pm = dateNav.month === 1 ? 12 : dateNav.month - 1;
+    const py = dateNav.month === 1 ? dateNav.year - 1 : dateNav.year;
     return data.summary(py, pm, accountStore.selected);
   });
 
@@ -34,7 +31,7 @@
   let monthTransactions = $derived.by(() => {
     return data.transactions(accountStore.selected).filter((t: Transaction) => {
       const [ty, tm] = t.date.split("-").map(Number);
-      return ty === year && tm === month;
+      return ty === dateNav.year && tm === dateNav.month;
     });
   });
 
@@ -127,10 +124,10 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
       </svg>
     </a>
-    <h2 class="text-2xl font-display font-extrabold text-(--color-text)">{monthNames[month - 1]} Rückblick</h2>
+    <h2 class="text-2xl font-display font-extrabold text-(--color-text)">{monthNames[dateNav.month - 1]} Rückblick</h2>
   </div>
 
-<MonthPicker bind:year bind:month />
+<MonthPicker bind:year={dateNav.year} bind:month={dateNav.month} />
 
 {#if summary.tx_count > 0}
   <!-- Summary Hero Card -->
@@ -155,7 +152,7 @@
               <path d="M10 15l-5-5h10l-5 5z" />
             </svg>
           {/if}
-          <span>{savingsDelta >= 0 ? "+" : ""}{savingsDelta}% vs. {monthNames[month === 1 ? 11 : month - 2]}</span>
+          <span>{savingsDelta >= 0 ? "+" : ""}{savingsDelta}% vs. {monthNames[dateNav.month === 1 ? 11 : dateNav.month - 2]}</span>
         </div>
       {/if}
       <p class="text-(--color-text)/80 text-sm mt-4 font-medium leading-relaxed max-w-[280px]">
@@ -320,7 +317,7 @@
         <p class="text-lg font-display font-extrabold mt-1">
           {formatEur(
             Math.abs(summary.expenses) /
-              new Date(year, month, 0).getDate() /
+              new Date(dateNav.year, dateNav.month, 0).getDate() /
               100,
           )}
         </p>

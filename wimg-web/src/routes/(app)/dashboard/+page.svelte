@@ -5,21 +5,18 @@
   import { data } from "$lib/data.svelte";
   import { loadDemoData } from "$lib/demo";
   import { featureStore } from "$lib/features.svelte";
+  import { dateNav } from "$lib/dateNav.svelte";
   import MonthPicker from "../../../components/MonthPicker.svelte";
   import DonutChart from "../../../components/DonutChart.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
-
-  const now = new Date();
-  let year = $state(now.getFullYear());
-  let month = $state(now.getMonth() + 1);
   let loadingDemo = $state(false);
 
   let hasAnyData = $derived(data.hasAnyData());
-  let summary = $derived(data.summary(year, month, accountStore.selected));
+  let summary = $derived(data.summary(dateNav.year, dateNav.month, accountStore.selected));
 
   let prevSummary = $derived.by(() => {
-    const pm = month === 1 ? 12 : month - 1;
-    const py = month === 1 ? year - 1 : year;
+    const pm = dateNav.month === 1 ? 12 : dateNav.month - 1;
+    const py = dateNav.month === 1 ? dateNav.year - 1 : dateNav.year;
     return data.summary(py, pm, accountStore.selected);
   });
 
@@ -32,7 +29,7 @@
     data.transactions(accountStore.selected)
       .filter((t: Transaction) => {
         const [ty, tm] = t.date.split("-").map(Number);
-        return ty === year && tm === month;
+        return ty === dateNav.year && tm === dateNav.month;
       })
       .slice(0, 3),
   );
@@ -105,7 +102,7 @@
   </EmptyState>
 {:else}
 
-<MonthPicker bind:year bind:month />
+<MonthPicker bind:year={dateNav.year} bind:month={dateNav.month} />
 
 <!-- Hero: Verfügbares Einkommen -->
 <div class="bg-(--color-accent) rounded-[2rem] p-7 mb-5 shadow-[var(--shadow-soft)] relative overflow-hidden">

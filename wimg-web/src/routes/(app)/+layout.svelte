@@ -8,6 +8,7 @@
   import { dropStore } from "$lib/drop.svelte";
   import { isSyncEnabled, connectSync, disconnectSync } from "$lib/sync";
   import { paletteStore } from "$lib/commandPalette.svelte";
+  import { themeStore } from "$lib/theme.svelte";
   import { LS_ONBOARDING_COMPLETED, LS_LAST_SNAPSHOT_MONTH } from "$lib/config";
   import BottomNav from "../../components/BottomNav.svelte";
   import Toast from "../../components/Toast.svelte";
@@ -115,6 +116,7 @@
     }
 
     updateStore.init();
+    themeStore.init();
 
     // Real-time sync: connect WebSocket (onReconnect handles initial pull)
     if (isSyncEnabled()) {

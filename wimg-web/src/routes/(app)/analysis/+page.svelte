@@ -3,21 +3,18 @@
   import { formatEur } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
   import { data } from "$lib/data.svelte";
+  import { dateNav } from "$lib/dateNav.svelte";
   import MonthPicker from "../../../components/MonthPicker.svelte";
   import DonutChart from "../../../components/DonutChart.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
 
-  const now = new Date();
-  let year = $state(now.getFullYear());
-  let month = $state(now.getMonth() + 1);
-
   let expandedCategory = $state<number | null>(null);
 
-  let summary = $derived(data.summary(year, month, accountStore.selected));
+  let summary = $derived(data.summary(dateNav.year, dateNav.month, accountStore.selected));
 
   let prevSummary = $derived.by(() => {
-    const pm = month === 1 ? 12 : month - 1;
-    const py = month === 1 ? year - 1 : year;
+    const pm = dateNav.month === 1 ? 12 : dateNav.month - 1;
+    const py = dateNav.month === 1 ? dateNav.year - 1 : dateNav.year;
     return data.summary(py, pm, accountStore.selected);
   });
 
@@ -27,7 +24,7 @@
     if (expandedCategory === null) return [];
     return allTransactions.filter((t: Transaction) => {
       const [ty, tm] = t.date.split("-").map(Number);
-      return ty === year && tm === month && t.category === expandedCategory;
+      return ty === dateNav.year && tm === dateNav.month && t.category === expandedCategory;
     });
   });
 
@@ -95,7 +92,7 @@
   </EmptyState>
 {:else}
 
-<MonthPicker bind:year bind:month />
+<MonthPicker bind:year={dateNav.year} bind:month={dateNav.month} />
 
 {#if summary.by_category.length > 0}
   <!-- Donut Chart Hero Card -->

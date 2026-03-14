@@ -26,6 +26,8 @@ import { featureStore } from "$lib/features.svelte";
 import { updateStore } from "$lib/update.svelte";
 import { toastStore } from "$lib/toast.svelte";
 import { data } from "$lib/data.svelte";
+import { dateNav } from "$lib/dateNav.svelte";
+import { themeStore } from "$lib/theme.svelte";
 
 export interface PaletteAction {
   id: string;
@@ -37,6 +39,21 @@ export interface PaletteAction {
   enabled?: () => boolean;
   danger?: boolean;
 }
+
+const MONTH_NAMES = [
+  "Januar",
+  "Februar",
+  "März",
+  "April",
+  "Mai",
+  "Juni",
+  "Juli",
+  "August",
+  "September",
+  "Oktober",
+  "November",
+  "Dezember",
+];
 
 function accountActions(): PaletteAction[] {
   const accounts = accountStore.accounts;
@@ -364,6 +381,55 @@ const STATIC_ACTIONS: PaletteAction[] = [
     handler: () => {
       featureStore.toggle("review");
       toastStore.show(`Rückblick: ${featureStore.isEnabled("review") ? "Ein" : "Aus"}`);
+    },
+  },
+
+  // --- Month Navigation ---
+  {
+    id: "date-prev",
+    label: "Vorheriger Monat",
+    group: "Zeitraum",
+    icon: "⬅️",
+    keywords: ["monat", "zurück", "prev", "vorherig", "month"],
+    handler: () => {
+      dateNav.prev();
+      toastStore.show(`${MONTH_NAMES[dateNav.month - 1]} ${dateNav.year}`);
+    },
+  },
+  {
+    id: "date-next",
+    label: "Nächster Monat",
+    group: "Zeitraum",
+    icon: "➡️",
+    keywords: ["monat", "weiter", "next", "nächst", "month"],
+    handler: () => {
+      dateNav.next();
+      toastStore.show(`${MONTH_NAMES[dateNav.month - 1]} ${dateNav.year}`);
+    },
+  },
+  {
+    id: "date-today",
+    label: "Aktueller Monat",
+    group: "Zeitraum",
+    icon: "📅",
+    keywords: ["heute", "today", "jetzt", "aktuell", "current"],
+    handler: () => {
+      dateNav.reset();
+      toastStore.show(`${MONTH_NAMES[dateNav.month - 1]} ${dateNav.year}`);
+    },
+  },
+
+  // --- Theme ---
+  {
+    id: "theme-toggle",
+    label: "Design wechseln",
+    group: "App",
+    icon: "🌗",
+    keywords: ["dark", "light", "theme", "dunkel", "hell", "design", "mode", "nacht"],
+    handler: () => {
+      themeStore.toggle();
+      const labels = { light: "Hell", dark: "Dunkel", system: "System" };
+      toastStore.show(`Design: ${labels[themeStore.mode]}`);
     },
   },
 

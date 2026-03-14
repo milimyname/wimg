@@ -14,11 +14,23 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
+    <script>
+      // Dark mode flash prevention — runs before CSS/JS load
+      (function () {
+        var t = localStorage.getItem("wimg_theme");
+        var dark =
+          t === "dark" || (t !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+        if (dark) document.documentElement.classList.add("dark");
+      })();
+    </script>
     <style>
       /* Prevent FOUC: hide body briefly, fade in once CSS + JS are loaded */
       body {
         opacity: 0;
         background: #faf9f6;
+      }
+      html.dark body {
+        background: #141414;
       }
       body.ready {
         opacity: 1;

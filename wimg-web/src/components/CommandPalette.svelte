@@ -3,12 +3,14 @@
   import { page } from "$app/state";
   import { getActions, type PaletteAction } from "$lib/actions";
   import { paletteStore } from "$lib/commandPalette.svelte";
-  import { searchTransactions, CATEGORIES, type Transaction } from "$lib/wasm";
+  import { searchTransactions, setCategory, setExcluded, CATEGORIES, type Transaction } from "$lib/wasm";
   import { formatAmountSigned, formatDateShort } from "$lib/format";
   import { toastStore } from "$lib/toast.svelte";
+  import { data } from "$lib/data.svelte";
   import BottomSheet from "./BottomSheet.svelte";
 
   let inputEl = $state<HTMLInputElement | null>(null);
+  let editingTxn = $state<Transaction | null>(null);
   let resultsEl = $state<HTMLDivElement | null>(null);
   let query = $state("");
   let selectedIndex = $state(0);
@@ -53,6 +55,7 @@
       query = "";
       selectedIndex = 0;
       confirmingAction = null;
+      editingTxn = null;
     }
   });
 
@@ -176,7 +179,9 @@
       const item = selectableItems[selectedIndex];
       if (item) executeItem(item);
     } else if (e.key === "Escape") {
-      if (confirmingAction) {
+      if (editingTxn) {
+        editingTxn = null;
+      } else if (confirmingAction) {
         confirmingAction = null;
       } else if (query) {
         query = "";
@@ -339,11 +344,48 @@
       </div>
     {/if}
 
+    <!-- Inline category picker -->
+    {#if editingTxn}
+      <div class="px-4 py-3 border-b border-gray-100">
+        <button
+          onclick={() => (editingTxn = null)}
+          class="text-sm text-gray-500 hover:text-gray-700 font-medium mb-2 flex items-center gap-1"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Zurück
+        </button>
+        <p class="text-sm font-bold text-gray-900 truncate mb-3">{editingTxn.description}</p>
+        <div class="flex flex-wrap gap-2">
+          {#each Object.entries(CATEGORIES) as [catId, cat]}
+            <button
+              onclick={async () => {
+                if (!editingTxn) return;
+                await setCategory(editingTxn.id, Number(catId));
+                data.bump();
+                toastStore.show(`Kategorie: ${cat.name}`);
+                editingTxn = null;
+              }}
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all
+                {editingTxn.category === Number(catId)
+                ? 'ring-2 ring-amber-400 bg-amber-50'
+                : 'bg-gray-50 hover:bg-gray-100'}"
+            >
+              <span>{cat.icon}</span>
+              <span>{cat.name}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
     <!-- Results (scrollable) -->
     <div
       {@attach content}
       bind:this={resultsEl}
       class="palette-scroll p-2 pb-40"
+      class:hidden={editingTxn !== null}
     >
       {#if flatResults.length === 0 && query}
         <div class="px-4 py-10 text-center">
@@ -417,41 +459,79 @@
                 >
               </button>
             {:else if item.type === "transaction" && item.transaction}
-              <button
+              <div
                 data-idx={selIdx}
-                class="w-full flex items-center justify-between px-4 py-3 rounded-xl cursor-pointer transition-all
+                class="flex items-center justify-between px-4 py-3 rounded-xl transition-all
                   {selIdx === selectedIndex
                   ? 'bg-amber-50/80 border-l-[3px] border-amber-400 pl-[13px]'
                   : 'hover:bg-gray-50 border-l-[3px] border-transparent pl-[13px]'}"
-                onclick={() => executeItem(item)}
+                role="button"
+                tabindex="-1"
                 onpointerenter={() => (selectedIndex = selIdx)}
               >
-                <div class="flex items-center min-w-0">
+                <button
+                  class="flex items-center min-w-0 flex-1 text-left"
+                  onclick={() => executeItem(item)}
+                >
                   <span class="mr-3 text-lg shrink-0"
                     >{getCategoryIcon(item.transaction.category)}</span
                   >
                   <div class="min-w-0">
-                    <p class="text-sm font-semibold text-gray-900 truncate">
+                    <p class="text-sm font-semibold text-gray-900 truncate" class:opacity-40={item.transaction.excluded}>
                       {item.transaction.description}
                     </p>
                     <p class="text-[11px] text-gray-400">
                       {getCategoryName(item.transaction.category)}
                     </p>
                   </div>
-                </div>
-                <div class="text-right ml-3 shrink-0">
-                  <p
-                    class="text-sm font-bold tabular-nums"
-                    class:text-emerald-600={item.transaction.amount > 0}
-                    class:text-gray-900={item.transaction.amount <= 0}
+                </button>
+                <div class="flex items-center gap-1 ml-2 shrink-0">
+                  <button
+                    onclick={() => { editingTxn = item.transaction ?? null; }}
+                    class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                    aria-label="Kategorie ändern"
+                    title="Kategorie ändern"
                   >
-                    {formatAmountSigned(item.transaction.amount)}
-                  </p>
-                  <p class="text-[11px] text-gray-400">
-                    {formatDateShort(item.transaction.date)}
-                  </p>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                  </button>
+                  <button
+                    onclick={async () => {
+                      if (!item.transaction) return;
+                      const tx = item.transaction;
+                      const nowExcluded = !tx.excluded;
+                      await setExcluded(tx.id, nowExcluded);
+                      data.bump();
+                      toastStore.show(nowExcluded ? "Ausgeblendet" : "Eingeblendet");
+                    }}
+                    class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                    aria-label={item.transaction.excluded ? "Einblenden" : "Ausblenden"}
+                    title={item.transaction.excluded ? "Einblenden" : "Ausblenden"}
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {#if item.transaction.excluded}
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      {:else}
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      {/if}
+                    </svg>
+                  </button>
+                  <div class="text-right ml-1">
+                    <p
+                      class="text-sm font-bold tabular-nums"
+                      class:text-emerald-600={item.transaction.amount > 0}
+                      class:text-gray-900={item.transaction.amount <= 0}
+                    >
+                      {formatAmountSigned(item.transaction.amount)}
+                    </p>
+                    <p class="text-[11px] text-gray-400">
+                      {formatDateShort(item.transaction.date)}
+                    </p>
+                  </div>
                 </div>
-              </button>
+              </div>
             {/if}
           {/if}
         {/each}
