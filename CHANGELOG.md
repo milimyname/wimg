@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.6.7 (2026-03-14)
+
+- feat: iOS search nav links + FAQ deep-link scroll
+- feat: iOS parity — search tab, advanced filters, FAQ sync
+- refactor: align iOS tabs with web — 3 tabs, Analyse in More
+- docs: fix feature parity — iOS search already implemented
+- fix: goals undo/redo, iOS TaxView compile, vitest in CI
+- feat: iOS parity — savings goals, tax helper, net worth chart
+
 ## v0.6.6 (2026-03-14)
 
 - feat: add vitest tests, custom tax keywords, and extract tax logic
