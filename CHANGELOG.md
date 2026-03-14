@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.19 (2026-03-14)
+
+- fix: revert Vite+ migration, restore bun + oxfmt/oxlint
+
 ## v0.5.18 (2026-03-14)
 
 - feat: add in-app changelog and migrate to Vite+
