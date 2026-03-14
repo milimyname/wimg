@@ -47,22 +47,29 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.8, 5.9 all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.8, 5.9, 5.10 all **done**.
 
-Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules),
-summaries, debts, recurring detection, multi-account, undo/redo, real-time
-sync with E2E encryption, MCP server (20 tools), data export, monthly
-snapshots, PWA with offline support, DevTools panel (5 tabs), Command Palette.
+Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules +
+auto-learn), summaries, debts, recurring detection, multi-account, undo/redo,
+real-time sync with E2E encryption, MCP server (20 tools), data export,
+monthly snapshots, PWA with offline support, DevTools panel (5 tabs), Command
+Palette with SQL LIKE search + search history + transaction deep-links,
+advanced search with date range, amount range slider, and category filters.
 
 Embeddings were built (Phase 5.5) then removed (Phase 5.9) — 4,400 lines
 deleted. Keyword rules cover ~80% of categorization, MCP + Claude handles
 the long tail. Semantic search didn't differentiate well for short queries
 against banking descriptions. Simplicity won.
 
+All Svelte stores use class-based reactive pattern (`class Store { #v = $state(...) }`).
 No chat UI — Claude Desktop + MCP replaces it.
 
-Next: Auto-learn Rules (5.10), Command Palette + Search (5.7),
-Annual Renewals (5.4), Phase 6 (Annual Review, Net Worth, Tax, Savings Goals).
+BottomNav has 3 tabs (Home, Umsätze, Mehr). Analyse moved to More page.
+Landing page (`+page.svelte`) is German. Import and About pages redesigned
+with card-based layouts, border styling, and project design tokens.
+
+Next: Command Palette Refinement (5.7b), Annual Renewals (5.4),
+Phase 6 (Annual Review, Net Worth, Tax, Savings Goals).
 
 Deferred: Notifications (5.2) — to be defined later.
 

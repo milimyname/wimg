@@ -1,14 +1,8 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import {
-    getSummaryFiltered,
-    getTransactionsFiltered,
-    getTransactions,
-    CATEGORIES,
-    type Transaction,
-  } from "$lib/wasm";
+  import { CATEGORIES, type Transaction } from "$lib/wasm";
   import { formatEur } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
+  import { data } from "$lib/data.svelte";
   import MonthPicker from "../../../components/MonthPicker.svelte";
   import DonutChart from "../../../components/DonutChart.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
@@ -16,38 +10,18 @@
   const now = new Date();
   let year = $state(now.getFullYear());
   let month = $state(now.getMonth() + 1);
-  let refreshKey = $state(0);
 
   let expandedCategory = $state<number | null>(null);
 
-  function onSyncReceived() {
-    refreshKey++;
-  }
-
-  onMount(() => {
-    window.addEventListener("wimg:sync-received", onSyncReceived);
-  });
-
-  onDestroy(() => {
-    window.removeEventListener("wimg:sync-received", onSyncReceived);
-  });
-
-  let summary = $derived.by(() => {
-    void refreshKey;
-    return getSummaryFiltered(year, month, accountStore.selected);
-  });
+  let summary = $derived(data.summary(year, month, accountStore.selected));
 
   let prevSummary = $derived.by(() => {
-    void refreshKey;
     const pm = month === 1 ? 12 : month - 1;
     const py = month === 1 ? year - 1 : year;
-    return getSummaryFiltered(py, pm, accountStore.selected);
+    return data.summary(py, pm, accountStore.selected);
   });
 
-  let allTransactions = $derived.by(() => {
-    void refreshKey;
-    return getTransactionsFiltered(accountStore.selected);
-  });
+  let allTransactions = $derived(data.transactions(accountStore.selected));
 
   let categoryTransactions = $derived.by(() => {
     if (expandedCategory === null) return [];
@@ -57,8 +31,7 @@
     });
   });
 
-  // Only expense categories for the chart
-  let expenseCategories = $derived.by(() =>
+  let expenseCategories = $derived(
     summary.by_category.filter((c) => c.id !== 10 && c.id !== 11),
   );
 
@@ -67,13 +40,11 @@
 
   let monthDelta = $derived.by(() => {
     if (prevTotalExpenses === 0) return null;
-    const pct = ((totalExpenses - prevTotalExpenses) / prevTotalExpenses) * 100;
-    return Math.round(pct);
+    return Math.round(((totalExpenses - prevTotalExpenses) / prevTotalExpenses) * 100);
   });
 
   function getPrevAmount(catId: number): number {
-    const prev = prevSummary.by_category.find((c) => c.id === catId);
-    return prev?.amount ?? 0;
+    return prevSummary.by_category.find((c) => c.id === catId)?.amount ?? 0;
   }
 
   function getDeltaPct(current: number, previous: number): number | null {
@@ -86,14 +57,7 @@
     return Math.round((Math.abs(amount) / totalExpenses) * 100);
   }
 
-  let hasAnyData = $derived.by(() => {
-    void refreshKey;
-    try {
-      return getTransactions().length > 0;
-    } catch {
-      return false;
-    }
-  });
+  let hasAnyData = $derived(data.hasAnyData());
 </script>
 
 <h2 class="text-xl font-display font-extrabold text-center mb-5">Insights</h2>

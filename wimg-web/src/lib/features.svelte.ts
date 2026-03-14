@@ -14,23 +14,26 @@ function saveFeatures(features: Record<string, boolean>) {
   localStorage.setItem(LS_FEATURES, JSON.stringify(features));
 }
 
-export const featureStore = (() => {
-  let features = $state(loadFeatures());
+class FeatureStore {
+  #features = $state(loadFeatures());
 
-  return {
-    get enabled() {
-      return features;
-    },
-    isEnabled(key: string): boolean {
-      return features[key] ?? false;
-    },
-    toggle(key: string) {
-      features = { ...features, [key]: !features[key] };
-      saveFeatures(features);
-    },
-    set(key: string, value: boolean) {
-      features = { ...features, [key]: value };
-      saveFeatures(features);
-    },
-  };
-})();
+  get enabled() {
+    return this.#features;
+  }
+
+  isEnabled(key: string): boolean {
+    return this.#features[key] ?? false;
+  }
+
+  toggle(key: string) {
+    this.#features = { ...this.#features, [key]: !this.#features[key] };
+    saveFeatures(this.#features);
+  }
+
+  set(key: string, value: boolean) {
+    this.#features = { ...this.#features, [key]: value };
+    saveFeatures(this.#features);
+  }
+}
+
+export const featureStore = new FeatureStore();

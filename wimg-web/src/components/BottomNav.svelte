@@ -8,7 +8,6 @@
   const tabs = [
     { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/transactions", label: "Umsätze", icon: "list" },
-    { href: "/analysis", label: "Analyse", icon: "chart" },
     { href: "/more", label: "Mehr", icon: "more" },
   ];
 
@@ -19,7 +18,7 @@
   };
 
   const moreSubRoutes = $derived(
-    ["/more", "/debts", "/recurring", "/import", "/review", "/settings", "/about"].filter(
+    ["/more", "/analysis", "/debts", "/recurring", "/import", "/review", "/settings", "/about"].filter(
       (r) => !featureRoutes[r] || featureStore.isEnabled(featureRoutes[r]),
     ),
   );
@@ -42,7 +41,7 @@
   <div class="max-w-lg mx-auto flex px-4 pt-3 pb-4">
     <!-- Search button (opens Command Palette) -->
     <button
-      onclick={() => { pushState("", { sheet: "command-palette" }); paletteStore.show(); }}
+      onclick={() => { pushState("?cmd", { sheet: "command-palette" }); paletteStore.show(); }}
       class="flex-1 flex flex-col items-center gap-1 py-1.5 text-gray-400 transition-colors bg-transparent border-none cursor-pointer"
       style="-webkit-tap-highlight-color: transparent"
     >
@@ -67,10 +66,6 @@
         {:else if tab.icon === "list"}
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-          </svg>
-        {:else if tab.icon === "chart"}
-          <svg class="w-6 h-6" fill={isActive(tab.href) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={isActive(tab.href) ? "0" : "1.5"} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         {:else if tab.icon === "more"}
           <svg class="w-6 h-6" fill={isActive(tab.href) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">

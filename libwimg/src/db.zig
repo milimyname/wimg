@@ -1,6 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const types = @import("types.zig");
+const categories = @import("categories.zig");
 const c = @import("sqlite_c.zig");
 
 const Transaction = types.Transaction;
@@ -549,6 +550,62 @@ pub const Db = struct {
             const new_len = formatInt(&new_buf, @as(u32, category)) orelse return;
             self.recordHistory(1, "transactions", id[0..id_len], "category", old_buf[0..old_len], new_buf[0..new_len]) catch {};
         }
+
+        // Auto-learn: extract keyword from description, insert rule if new
+        if (category != 0) {
+            self.learnRule(id, id_len, category) catch {};
+        }
+    }
+
+    /// Auto-learn a categorization rule from a manual user action.
+    /// Extracts a merchant keyword from the transaction description and inserts
+    /// a low-priority rule if no rule with that pattern already exists.
+    fn learnRule(self: *Db, id: [*]const u8, id_len: usize, category: u8) DbError!void {
+        // 1. Get description for this transaction
+        const desc_sql = "SELECT description FROM transactions WHERE id = ?1;";
+        var desc_stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, desc_sql, -1, &desc_stmt, null) != c.SQLITE_OK or desc_stmt == null)
+            return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(desc_stmt.?);
+
+        if (c.sqlite3_bind_text(desc_stmt.?, 1, @ptrCast(id), @intCast(id_len), c.SQLITE_STATIC) != c.SQLITE_OK)
+            return DbError.BindFailed;
+        if (c.sqlite3_step(desc_stmt.?) != c.SQLITE_ROW) return;
+
+        const desc_ptr = c.sqlite3_column_text(desc_stmt.?, 0) orelse return;
+        const desc_len: usize = @intCast(c.sqlite3_column_bytes(desc_stmt.?, 0));
+        if (desc_len == 0) return;
+
+        // 2. Extract merchant keyword
+        const keyword = categories.extractKeyword(desc_ptr[0..desc_len]) orelse return;
+
+        // 3. Check if a rule with this pattern already exists
+        const check_sql = "SELECT COUNT(*) FROM rules WHERE pattern = ?1 COLLATE NOCASE;";
+        var check_stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, check_sql, -1, &check_stmt, null) != c.SQLITE_OK or check_stmt == null)
+            return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(check_stmt.?);
+
+        if (c.sqlite3_bind_text(check_stmt.?, 1, @ptrCast(keyword.ptr), @intCast(keyword.len), c.SQLITE_STATIC) != c.SQLITE_OK)
+            return DbError.BindFailed;
+        if (c.sqlite3_step(check_stmt.?) == c.SQLITE_ROW) {
+            if (c.sqlite3_column_int(check_stmt.?, 0) > 0) return; // rule exists
+        }
+
+        // 4. Insert learned rule with low priority (1) so seed rules always win
+        const ins_sql = "INSERT INTO rules (pattern, category, priority, updated_at) VALUES (?1, ?2, 1, ?3);";
+        var ins_stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, ins_sql, -1, &ins_stmt, null) != c.SQLITE_OK or ins_stmt == null)
+            return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(ins_stmt.?);
+
+        if (c.sqlite3_bind_text(ins_stmt.?, 1, @ptrCast(keyword.ptr), @intCast(keyword.len), c.SQLITE_STATIC) != c.SQLITE_OK)
+            return DbError.BindFailed;
+        if (c.sqlite3_bind_int(ins_stmt.?, 2, @intCast(category)) != c.SQLITE_OK)
+            return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(ins_stmt.?, 3, nowMs()) != c.SQLITE_OK)
+            return DbError.BindFailed;
+        _ = c.sqlite3_step(ins_stmt.?);
     }
 
     /// Update category for a transaction by ID (32-byte hex), using prepared statement.

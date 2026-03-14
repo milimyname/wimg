@@ -10,6 +10,7 @@
 import { applyChanges, opfsSave, deriveEncryptionKey, decryptRows, type SyncRow } from "./wasm";
 import { devtoolsEnabled } from "./devtools.svelte";
 import { accountStore } from "./account.svelte";
+import { data } from "./data.svelte";
 import { SYNC_API_URL, LS_SYNC_KEY } from "./config";
 
 interface WSMessage {
@@ -109,7 +110,7 @@ class SyncWS {
 
           opfsSave().then(() => {
             accountStore.reload();
-            window.dispatchEvent(new CustomEvent("wimg:sync-received"));
+            data.bump();
           });
         }
 

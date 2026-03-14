@@ -896,8 +896,8 @@ test "writeSegment basic" {
 
 test "buildAnonInit produces valid envelope" {
     var s = FintsSession.init("20041133", "https://x.de/f", "user", "pin");
-    s.product_id_len = 11;
-    @memcpy(s.product_id[0..11], "fints000001");
+    s.product_id_len = 25;
+    @memcpy(s.product_id[0..25], "F7C4049477F6136957A46EC28");
 
     var buf: [4096]u8 = undefined;
     const len = buildAnonInit(&s, &buf) orelse return error.TestUnexpectedResult;

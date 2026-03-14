@@ -3,7 +3,16 @@
  * Used by CommandPalette.svelte in both page and overlay modes.
  */
 import { goto } from "$app/navigation";
-import { autoCategorize, exportCsv, exportDb, takeSnapshot, undo, redo, close } from "$lib/wasm";
+import {
+  autoCategorize,
+  detectRecurring,
+  exportCsv,
+  exportDb,
+  takeSnapshot,
+  undo,
+  redo,
+  close,
+} from "$lib/wasm";
 import {
   getSyncKey,
   setSyncKey,
@@ -12,8 +21,11 @@ import {
   syncFull,
   connectSync,
 } from "$lib/sync";
+import { accountStore } from "$lib/account.svelte";
 import { featureStore } from "$lib/features.svelte";
+import { updateStore } from "$lib/update.svelte";
 import { toastStore } from "$lib/toast.svelte";
+import { data } from "$lib/data.svelte";
 
 export interface PaletteAction {
   id: string;
@@ -26,7 +38,45 @@ export interface PaletteAction {
   danger?: boolean;
 }
 
-export const ACTIONS: PaletteAction[] = [
+function accountActions(): PaletteAction[] {
+  const accounts = accountStore.accounts;
+  if (accounts.length < 2) return [];
+  const items: PaletteAction[] = [
+    {
+      id: "account-all",
+      label: "Alle Konten",
+      group: "Konto",
+      icon: "👁️",
+      keywords: ["account", "konto", "alle", "all"],
+      handler: () => {
+        accountStore.select(null);
+        toastStore.show("Alle Konten ausgewählt");
+      },
+      enabled: () => accountStore.selected !== null,
+    },
+  ];
+  for (const acct of accounts) {
+    items.push({
+      id: `account-${acct.id}`,
+      label: acct.name,
+      group: "Konto",
+      icon: "🏦",
+      keywords: ["account", "konto", "wechseln", "switch", acct.name.toLowerCase()],
+      handler: () => {
+        accountStore.select(acct.id);
+        toastStore.show(`Konto: ${acct.name}`);
+      },
+      enabled: () => accountStore.selected !== acct.id,
+    });
+  }
+  return items;
+}
+
+export function getActions(): PaletteAction[] {
+  return [...STATIC_ACTIONS, ...accountActions()];
+}
+
+const STATIC_ACTIONS: PaletteAction[] = [
   // --- Navigation ---
   {
     id: "nav-dashboard",
@@ -116,6 +166,19 @@ export const ACTIONS: PaletteAction[] = [
       toastStore.show(n > 0 ? `${n} Transaktionen kategorisiert` : "Keine neuen Kategorien");
     },
   },
+  {
+    id: "detect-recurring",
+    label: "Wiederkehrende erkennen",
+    group: "Kategorisierung",
+    icon: "🔍",
+    keywords: ["recurring", "detect", "erkennen", "abo", "muster"],
+    handler: () => {
+      const n = detectRecurring();
+      data.bump();
+      toastStore.show(n > 0 ? `${n} Muster erkannt` : "Keine neuen Muster");
+    },
+    enabled: () => featureStore.isEnabled("recurring"),
+  },
 
   // --- Data ---
   {
@@ -145,10 +208,10 @@ export const ACTIONS: PaletteAction[] = [
     icon: "💾",
     keywords: ["export", "database", "db", "sqlite", "backup"],
     handler: () => {
-      const b64 = exportDb();
-      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-      downloadBlob(bytes, "wimg.db", "application/x-sqlite3");
-      toastStore.show("Datenbank exportiert");
+      const json = exportDb();
+      const date = new Date().toISOString().slice(0, 10);
+      downloadText(json, `wimg-backup-${date}.json`, "application/json");
+      toastStore.show("Backup exportiert");
     },
   },
   {
@@ -177,6 +240,29 @@ export const ACTIONS: PaletteAction[] = [
       await syncFull(key);
       connectSync();
       toastStore.show("Sync aktiviert");
+    },
+    enabled: () => !isSyncEnabled(),
+  },
+  {
+    id: "sync-link",
+    label: "Gerät verknüpfen",
+    group: "Sync",
+    icon: "📲",
+    keywords: ["sync", "link", "device", "gerät", "verknüpfen", "paste", "einfügen"],
+    handler: async () => {
+      try {
+        const key = await navigator.clipboard.readText();
+        if (!key || key.length < 10) {
+          toastStore.show("Kein gültiger Sync-Key in der Zwischenablage");
+          return;
+        }
+        setSyncKey(key);
+        await syncFull(key);
+        connectSync();
+        toastStore.show("Gerät verknüpft — Sync aktiv");
+      } catch {
+        toastStore.show("Zwischenablage konnte nicht gelesen werden");
+      }
     },
     enabled: () => !isSyncEnabled(),
   },
@@ -281,6 +367,19 @@ export const ACTIONS: PaletteAction[] = [
     },
   },
 
+  // --- PWA Update ---
+  {
+    id: "pwa-update",
+    label: "App aktualisieren",
+    group: "App",
+    icon: "🔄",
+    keywords: ["update", "aktualisieren", "version", "pwa"],
+    handler: () => {
+      updateStore.sheetOpen = true;
+    },
+    enabled: () => updateStore.showBanner,
+  },
+
   // --- DevTools ---
   {
     id: "devtools-open",
@@ -356,16 +455,6 @@ export const ACTIONS: PaletteAction[] = [
 
 function downloadText(content: string, filename: string, mime: string) {
   const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function downloadBlob(bytes: Uint8Array, filename: string, mime: string) {
-  const blob = new Blob([new Uint8Array(bytes)], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

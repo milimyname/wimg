@@ -2,10 +2,6 @@ import { APP_VERSION, RELEASES_URL, IS_BREAKING } from "./version";
 import { LS_LAST_VERSION } from "./config";
 import { updated } from "$app/stores";
 
-let showBanner = $state(false);
-let sheetOpen = $state(false);
-let waitingSW: ServiceWorker | null = $state(null);
-
 function getLastVersion(): string | null {
   return localStorage.getItem(LS_LAST_VERSION);
 }
@@ -14,30 +10,34 @@ function setLastVersion(version: string) {
   localStorage.setItem(LS_LAST_VERSION, version);
 }
 
-function trackWaitingSW(sw: ServiceWorker) {
-  waitingSW = sw;
-  showBanner = true;
-}
+class UpdateStore {
+  #showBanner = $state(false);
+  #sheetOpen = $state(false);
+  #waitingSW: ServiceWorker | null = $state(null);
 
-export const updateStore = {
   get showBanner() {
-    return showBanner;
-  },
+    return this.#showBanner;
+  }
+
   get hasBreaking() {
     return IS_BREAKING;
-  },
+  }
+
   get targetVersion() {
     return APP_VERSION;
-  },
+  }
+
   get releasesUrl() {
     return RELEASES_URL;
-  },
+  }
+
   get sheetOpen() {
-    return sheetOpen;
-  },
+    return this.#sheetOpen;
+  }
+
   set sheetOpen(v: boolean) {
-    sheetOpen = v;
-  },
+    this.#sheetOpen = v;
+  }
 
   init() {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
@@ -51,7 +51,7 @@ export const updateStore = {
 
     navigator.serviceWorker.ready.then((registration) => {
       if (registration.waiting) {
-        trackWaitingSW(registration.waiting);
+        this.#trackWaitingSW(registration.waiting);
       }
 
       registration.addEventListener("updatefound", () => {
@@ -60,7 +60,7 @@ export const updateStore = {
 
         installing.addEventListener("statechange", () => {
           if (installing.state === "installed" && navigator.serviceWorker.controller) {
-            trackWaitingSW(installing);
+            this.#trackWaitingSW(installing);
           }
         });
       });
@@ -70,7 +70,7 @@ export const updateStore = {
     // When detected, trigger SW update check so the waiting worker is ready
     updated.subscribe((isUpdated) => {
       if (isUpdated) {
-        showBanner = true;
+        this.#showBanner = true;
         // Kick SW to check for the new version
         navigator.serviceWorker.ready.then((reg) => reg.update());
       }
@@ -90,21 +90,26 @@ export const updateStore = {
         setTimeout(() => window.location.reload(), 400);
       });
     });
-  },
+  }
+
+  #trackWaitingSW(sw: ServiceWorker) {
+    this.#waitingSW = sw;
+    this.#showBanner = true;
+  }
 
   activateUpdate() {
-    if (!waitingSW) {
+    if (!this.#waitingSW) {
       // SvelteKit detected update but SW hasn't installed yet — hard reload
       window.location.reload();
       return;
     }
     // eslint-disable-next-line unicorn/require-post-message-target-origin -- Worker.postMessage has no targetOrigin
-    waitingSW.postMessage({ type: "SKIP_WAITING" });
-  },
+    this.#waitingSW.postMessage({ type: "SKIP_WAITING" });
+  }
 
   dismiss() {
-    showBanner = false;
-  },
+    this.#showBanner = false;
+  }
 
   async clearData() {
     const root = await navigator.storage.getDirectory();
@@ -113,10 +118,12 @@ export const updateStore = {
     } catch {
       // File may not exist
     }
-  },
+  }
 
   async clearDataAndUpdate() {
-    await updateStore.clearData();
-    updateStore.activateUpdate();
-  },
-};
+    await this.clearData();
+    this.activateUpdate();
+  }
+}
+
+export const updateStore = new UpdateStore();

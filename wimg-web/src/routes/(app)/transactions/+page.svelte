@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { onMount, onDestroy, tick } from "svelte";
+  import { onMount, tick } from "svelte";
   import {
-    getTransactionsFiltered,
+    getTransactionById,
     setCategory,
     setExcluded,
     undo,
@@ -10,6 +10,7 @@
   } from "$lib/wasm";
   import { formatAmountSigned, formatDateHeading } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
+  import { data } from "$lib/data.svelte";
   import { toastStore } from "$lib/toast.svelte";
   import BottomSheet from "../../../components/BottomSheet.svelte";
   import { pushState, replaceState } from "$app/navigation";
@@ -17,56 +18,42 @@
 
   type Filter = "all" | "expenses" | "income";
 
-  const OPEN_TXN_KEY = "wimg_open_txn";
-
-  let refreshKey = $state(0);
   let sheetDismissed = $state(false);
 
-  function onSyncReceived() {
-    refreshKey++;
-  }
-
-  function onOpenTxn(e: Event) {
-    const id = (e as CustomEvent<{ id: string }>).detail.id;
-    const tx = transactions.find((t) => t.id === id);
-    if (tx) {
-      openDetail(tx);
-      sessionStorage.removeItem(OPEN_TXN_KEY);
-    }
-  }
-
-  onMount(() => {
-    window.addEventListener("wimg:sync-received", onSyncReceived);
-    window.addEventListener("wimg:open-txn", onOpenTxn);
-
-    // Restore sheet on page reload (check URL params first, then sessionStorage)
-    if (!page.state.txnId) {
-      const storedId = sessionStorage.getItem(OPEN_TXN_KEY);
-      if (storedId) {
-        const tx = transactions.find((t) => t.id === storedId);
-        if (tx) {
+  onMount(async () => {
+    // Restore sheet on hard reload — URL param ?txn=id survives refresh
+    const txnParam = page.url.searchParams.get("txn");
+    if (txnParam && !page.state.txnId) {
+      const tx =
+        transactions.find((t) => t.id === txnParam) ??
+        getTransactionById(txnParam);
+      if (tx) {
+        originalTxn = { ...tx };
+        // Delay to let page layout fully settle before opening sheet
+        setTimeout(() => {
           selectedTxn = { ...tx };
-          originalTxn = { ...tx };
-          replaceState("", { sheet: "txn-detail", txnId: storedId });
-          tick().then(() => {
-            document.getElementById(storedId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+          replaceState(`?txn=${txnParam}`, {
+            sheet: "txn-detail",
+            txnId: txnParam,
           });
-        } else {
-          sessionStorage.removeItem(OPEN_TXN_KEY);
-        }
+          document
+            .getElementById(txnParam)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 100);
+      } else {
+        replaceState(page.url.pathname, {});
       }
     }
-  });
 
-  onDestroy(() => {
-    window.removeEventListener("wimg:sync-received", onSyncReceived);
-    window.removeEventListener("wimg:open-txn", onOpenTxn);
+    // Restore filter sheet on hard reload
+    if (page.url.searchParams.has("filter") && !page.state.sheet) {
+      replaceState("?filter", { sheet: "txn-filter" });
+    }
   });
   let txResult = $derived.by(() => {
-    void refreshKey;
     try {
       return {
-        data: getTransactionsFiltered(accountStore.selected),
+        data: data.transactions(accountStore.selected),
         error: null as string | null,
       };
     } catch (e) {
@@ -81,17 +68,25 @@
   let filter = $state<Filter>("all");
   let selectedTxn = $state<Transaction | null>(null);
   let originalTxn = $state<Transaction | null>(null);
-  let showSheet = $derived(page.state.sheet === "txn-detail" && selectedTxn != null);
+  let showSheet = $derived(
+    page.state.sheet === "txn-detail" && selectedTxn != null,
+  );
   let searchQuery = $state("");
   let showExcluded = $state(false);
   let filterCategories = $state<number[]>([]);
-  let showAdvancedSearch = $derived(page.state.sheet === "txn-filter");
+  let showAdvancedSearch = $derived(
+    page.state.sheet === "txn-filter" || page.url.searchParams.has("filter"),
+  );
   let dateQuick = $state<string | null>(null);
   let dateFrom = $state("");
   let dateTo = $state("");
-  let amountQuick = $state<string | null>(null);
+  let amountMin = $state(0);
+  let amountMax = $state(1000);
 
-  const QUICK_CATEGORIES = [1, 2, 3, 7, 6]; // groceries, dining, transport, shopping, entertainment
+  const DEFAULT_QUICK_CATEGORIES = [1, 2, 3, 7, 6]; // groceries, dining, transport, shopping, entertainment
+  let quickCategories = $derived(
+    filterCategories.length > 0 ? filterCategories : DEFAULT_QUICK_CATEGORIES,
+  );
 
   function getDateFrom(range: string): string {
     const today = new Date();
@@ -110,7 +105,7 @@
 
   let activeFilterCount = $derived(
     (dateQuick || dateFrom || dateTo ? 1 : 0) +
-      (amountQuick ? 1 : 0) +
+      (amountMin > 0 || amountMax < 1000 ? 1 : 0) +
       (filterCategories.length > 0 ? 1 : 0) +
       (searchQuery.trim() ? 1 : 0),
   );
@@ -133,15 +128,11 @@
       if (dateFrom) list = list.filter((t) => t.date >= dateFrom);
       if (dateTo) list = list.filter((t) => t.date <= dateTo);
     }
-    if (amountQuick) {
-      if (amountQuick === "lt50")
-        list = list.filter((t) => Math.abs(t.amount) < 50);
-      else if (amountQuick === "50-200")
-        list = list.filter(
-          (t) => Math.abs(t.amount) >= 50 && Math.abs(t.amount) <= 200,
-        );
-      else if (amountQuick === "gt200")
-        list = list.filter((t) => Math.abs(t.amount) > 200);
+    if (amountMin > 0 || amountMax < 1000) {
+      list = list.filter((t) => {
+        const abs = Math.abs(t.amount);
+        return abs >= amountMin && (amountMax >= 1000 || abs <= amountMax);
+      });
     }
     return list;
   });
@@ -163,42 +154,36 @@
     originalTxn = { ...txn };
     selectedTxn = { ...txn };
     sheetDismissed = false;
-    sessionStorage.setItem(OPEN_TXN_KEY, txn.id);
-    // Replace existing shallow entry instead of stacking multiple
-    if (page.state.sheet === "txn-detail") {
-      replaceState("", { sheet: "txn-detail", txnId: txn.id });
-    } else {
-      pushState("", { sheet: "txn-detail", txnId: txn.id });
-    }
+    pushState(`?txn=${txn.id}`, { sheet: "txn-detail", txnId: txn.id });
   }
 
-  // Restore transaction detail on back navigation (page.state preserved by SvelteKit)
+  // Sync transaction detail with browser history (back/forward)
   $effect(() => {
     const stateId = page.state.txnId;
-    if (stateId && !selectedTxn && !sheetDismissed) {
-      const tx = transactions.find((t) => t.id === stateId);
-      if (tx) {
-        selectedTxn = { ...tx };
-        originalTxn = { ...tx };
-        tick().then(() => {
-          document.getElementById(stateId)?.scrollIntoView({ behavior: "smooth", block: "center" });
-        });
-      }
+    if (!stateId || sheetDismissed) return;
+    // Skip if already showing this transaction
+    if (selectedTxn?.id === stateId) return;
+    const tx =
+      transactions.find((t) => t.id === stateId) ?? getTransactionById(stateId);
+    if (tx) {
+      selectedTxn = { ...tx };
+      originalTxn = { ...tx };
     }
   });
 
   function dismissSheet() {
     sheetDismissed = true;
-    sessionStorage.removeItem(OPEN_TXN_KEY);
     history.back();
   }
 
   function onSheetClosed() {
-    // Don't pop history — preserve the entry so back navigation can restore the sheet
     selectedTxn = null;
     originalTxn = null;
     sheetDismissed = true;
-    sessionStorage.removeItem(OPEN_TXN_KEY);
+    // Pop the ?txn=... history entry (only fires on swipe/escape, not browser back)
+    if (page.url.searchParams.has("txn")) {
+      history.back();
+    }
   }
 
   function handleCategoryChange(category: number) {
@@ -227,10 +212,10 @@
     }
 
     if (changed) {
-      refreshKey++;
+      data.bump();
       toastStore.show("Änderungen gespeichert", async () => {
         await undo();
-        refreshKey++;
+        data.bump();
       });
     }
 
@@ -250,16 +235,16 @@
     dateQuick = null;
     dateFrom = "";
     dateTo = "";
-    amountQuick = null;
+    amountMin = 0;
+    amountMax = 1000;
     filterCategories = [];
   }
-
 </script>
 
 <!-- Header -->
 <div class="flex items-center justify-between mb-4">
   <button
-    onclick={() => pushState("", { sheet: "txn-filter" })}
+    onclick={() => pushState("?filter", { sheet: "txn-filter" })}
     class="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-[var(--shadow-card)] cursor-pointer hover:shadow-[var(--shadow-soft)] transition-shadow"
     aria-label="Suchen"
   >
@@ -279,7 +264,7 @@
   </button>
   <h2 class="text-xl font-display font-extrabold">Transaktionen</h2>
   <button
-    onclick={() => pushState("", { sheet: "txn-filter" })}
+    onclick={() => pushState("?filter", { sheet: "txn-filter" })}
     class="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-[var(--shadow-card)] cursor-pointer hover:shadow-[var(--shadow-soft)] transition-shadow relative"
     aria-label="Filter"
   >
@@ -311,7 +296,12 @@
     <!-- Sliding indicator -->
     <div
       class="absolute top-1.5 bottom-1.5 rounded-full bg-white shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)]"
-      style="width: calc((100% - 12px) / 3); left: 6px; transform: translateX({filter === 'all' ? '0%' : filter === 'expenses' ? '100%' : '200%'})"
+      style="width: calc((100% - 12px) / 3); left: 6px; transform: translateX({filter ===
+      'all'
+        ? '0%'
+        : filter === 'expenses'
+          ? '100%'
+          : '200%'})"
     ></div>
     <button
       class="relative z-10 flex-1 py-2.5 rounded-full text-sm font-bold transition-colors duration-200 cursor-pointer"
@@ -339,24 +329,22 @@
 
 <!-- Quick Category Filter (top 5) -->
 {#if Object.keys(CATEGORIES).length > 0}
-  <div class="flex justify-between mb-8 px-2">
-    {#each QUICK_CATEGORIES as catId}
+  <div
+    class="mb-8 py-1 {quickCategories.length > 5
+      ? 'flex gap-4 overflow-x-auto scrollbar-hide full-bleed'
+      : 'grid grid-cols-5 gap-2 px-1'}"
+  >
+    {#each quickCategories as catId}
       {@const cat = CATEGORIES[catId]}
       {#if cat}
-        {@const active =
-          filterCategories.length === 1 && filterCategories[0] === catId}
+        {@const active = filterCategories.includes(catId)}
         <button
-          class="flex flex-col items-center gap-2 cursor-pointer"
-          onclick={() => {
-            if (active) {
-              filterCategories = [];
-            } else {
-              filterCategories = [catId];
-            }
-          }}
+          class="flex flex-col items-center gap-1.5 cursor-pointer"
+          class:shrink-0={quickCategories.length > 5}
+          onclick={() => toggleFilterCategory(catId)}
         >
           <div
-            class="w-14 h-14 rounded-full flex items-center justify-center text-xl transition-all"
+            class="w-13 h-13 rounded-full flex items-center justify-center text-xl transition-all"
             style="background-color: {cat.color}15;{active
               ? ` box-shadow: 0 0 0 2.5px ${cat.color}`
               : ''}"
@@ -364,7 +352,7 @@
             {cat.icon}
           </div>
           <span
-            class="text-xs text-center transition-colors"
+            class="text-[11px] text-center transition-colors"
             class:font-bold={active}
             class:font-medium={!active}
             class:text-(--color-text)={active}
@@ -498,7 +486,10 @@
               class:border-gray-200={dateQuick !== chip.id}
               onclick={() => {
                 dateQuick = dateQuick === chip.id ? null : chip.id;
-                if (dateQuick) { dateFrom = ""; dateTo = ""; }
+                if (dateQuick) {
+                  dateFrom = "";
+                  dateTo = "";
+                }
               }}
             >
               {chip.label}
@@ -507,20 +498,30 @@
         </div>
         <div class="flex gap-3">
           <label class="flex-1">
-            <span class="text-xs font-bold text-(--color-text-secondary) uppercase tracking-wider mb-1.5 block">Von</span>
+            <span
+              class="text-xs font-bold text-(--color-text-secondary) uppercase tracking-wider mb-1.5 block"
+              >Von</span
+            >
             <input
               type="date"
               bind:value={dateFrom}
-              onchange={() => { if (dateFrom) dateQuick = null; }}
+              onchange={() => {
+                if (dateFrom) dateQuick = null;
+              }}
               class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-(--color-accent) focus:border-transparent"
             />
           </label>
           <label class="flex-1">
-            <span class="text-xs font-bold text-(--color-text-secondary) uppercase tracking-wider mb-1.5 block">Bis</span>
+            <span
+              class="text-xs font-bold text-(--color-text-secondary) uppercase tracking-wider mb-1.5 block"
+              >Bis</span
+            >
             <input
               type="date"
               bind:value={dateTo}
-              onchange={() => { if (dateTo) dateQuick = null; }}
+              onchange={() => {
+                if (dateTo) dateQuick = null;
+              }}
               class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3 px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-(--color-accent) focus:border-transparent"
             />
           </label>
@@ -573,20 +574,72 @@
       <!-- Amount -->
       <section class="mb-6">
         <h2 class="text-base font-display font-extrabold mb-3">Betrag</h2>
-        <div class="flex gap-2">
-          {#each [{ id: "lt50", label: "< 50\u20AC" }, { id: "50-200", label: "50 \u2013 200\u20AC" }, { id: "gt200", label: "> 200\u20AC" }] as chip}
+        <!-- Quick chips -->
+        <div class="flex gap-2 mb-4">
+          {#each [{ min: 0, max: 50, label: "< 50\u20AC" }, { min: 50, max: 200, label: "50 \u2013 200\u20AC" }, { min: 200, max: 1000, label: "> 200\u20AC" }] as chip}
+            {@const active = amountMin === chip.min && amountMax === chip.max}
             <button
               class="flex-1 py-3 rounded-2xl text-sm font-bold cursor-pointer transition-all"
-              class:bg-(--color-accent)={amountQuick === chip.id}
-              class:bg-gray-50={amountQuick !== chip.id}
-              class:border={amountQuick !== chip.id}
-              class:border-gray-200={amountQuick !== chip.id}
-              onclick={() =>
-                (amountQuick = amountQuick === chip.id ? null : chip.id)}
+              class:bg-(--color-accent)={active}
+              class:bg-gray-50={!active}
+              class:border={!active}
+              class:border-gray-200={!active}
+              onclick={() => {
+                if (active) {
+                  amountMin = 0;
+                  amountMax = 1000;
+                } else {
+                  amountMin = chip.min;
+                  amountMax = chip.max;
+                }
+              }}
             >
               {chip.label}
             </button>
           {/each}
+        </div>
+        <!-- Range slider -->
+        <div class="bg-white p-5 rounded-2xl border border-gray-100">
+          <div
+            class="flex justify-between text-sm font-bold text-(--color-text) mb-4"
+          >
+            <span>{amountMin}&euro;</span>
+            <span
+              >{amountMax >= 1000 ? "1.000\u20AC+" : `${amountMax}\u20AC`}</span
+            >
+          </div>
+          <div class="range-slider">
+            <div class="range-track"></div>
+            <div
+              class="range-fill"
+              style="left: {(amountMin / 1000) * 100}%; right: {((1000 -
+                amountMax) /
+                1000) *
+                100}%"
+            ></div>
+            <input
+              type="range"
+              min="0"
+              max="1000"
+              step="10"
+              bind:value={amountMin}
+              oninput={() => {
+                if (amountMin > amountMax - 10) amountMin = amountMax - 10;
+              }}
+              class="range-input"
+            />
+            <input
+              type="range"
+              min="0"
+              max="1000"
+              step="10"
+              bind:value={amountMax}
+              oninput={() => {
+                if (amountMax < amountMin + 10) amountMax = amountMin + 10;
+              }}
+              class="range-input"
+            />
+          </div>
         </div>
       </section>
 
@@ -615,7 +668,6 @@
           </button>
         </div>
       </section>
-
     </div>
 
     <!-- Footer -->
@@ -743,3 +795,69 @@
     {/snippet}
   </BottomSheet>
 {/if}
+
+<style>
+  .full-bleed {
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
+    padding-left: calc(50vw - 50%);
+    padding-right: calc(50vw - 50%);
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .range-slider {
+    position: relative;
+    height: 8px;
+  }
+  .range-track {
+    position: absolute;
+    inset: 0;
+    background: #f0f0f0;
+    border-radius: 9999px;
+  }
+  .range-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: var(--color-accent);
+    border-radius: 9999px;
+  }
+  .range-input {
+    position: absolute;
+    width: 100%;
+    top: -6px;
+    height: 20px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    pointer-events: none;
+    margin: 0;
+  }
+  .range-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 24px;
+    height: 24px;
+    background: white;
+    border: 2.5px solid var(--color-accent);
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  .range-input::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    background: white;
+    border: 2.5px solid var(--color-accent);
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    pointer-events: auto;
+    cursor: pointer;
+    appearance: none;
+  }
+</style>

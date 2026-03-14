@@ -1,14 +1,8 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import {
-    getSummaryFiltered,
-    getTransactionsFiltered,
-    getTransactions,
-    CATEGORIES,
-    type Transaction,
-  } from "$lib/wasm";
+  import { CATEGORIES, type Transaction } from "$lib/wasm";
   import { formatEur } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
+  import { data } from "$lib/data.svelte";
   import { loadDemoData } from "$lib/demo";
   import { featureStore } from "$lib/features.svelte";
   import MonthPicker from "../../../components/MonthPicker.svelte";
@@ -18,65 +12,32 @@
   const now = new Date();
   let year = $state(now.getFullYear());
   let month = $state(now.getMonth() + 1);
-  let refreshKey = $state(0);
   let loadingDemo = $state(false);
 
-  function onSyncReceived() {
-    refreshKey++;
-  }
-
-  onMount(() => {
-    window.addEventListener("wimg:sync-received", onSyncReceived);
-  });
-
-  onDestroy(() => {
-    window.removeEventListener("wimg:sync-received", onSyncReceived);
-  });
-
-  // Check if DB has any transactions at all
-  let hasAnyData = $derived.by(() => {
-    void refreshKey;
-    try {
-      return getTransactions().length > 0;
-    } catch {
-      return false;
-    }
-  });
-
-  let summary = $derived.by(() => {
-    void refreshKey;
-    return getSummaryFiltered(year, month, accountStore.selected);
-  });
+  let hasAnyData = $derived(data.hasAnyData());
+  let summary = $derived(data.summary(year, month, accountStore.selected));
 
   let prevSummary = $derived.by(() => {
-    void refreshKey;
     const pm = month === 1 ? 12 : month - 1;
     const py = month === 1 ? year - 1 : year;
-    return getSummaryFiltered(py, pm, accountStore.selected);
+    return data.summary(py, pm, accountStore.selected);
   });
 
   let delta = $derived.by(() => {
     if (prevSummary.available === 0) return null;
-    const diff =
-      ((summary.available - prevSummary.available) /
-        Math.abs(prevSummary.available)) *
-      100;
-    return diff;
+    return ((summary.available - prevSummary.available) / Math.abs(prevSummary.available)) * 100;
   });
 
-  // Latest transactions for preview
-  let recentTransactions = $derived.by(() => {
-    void refreshKey;
-    return getTransactionsFiltered(accountStore.selected)
+  let recentTransactions = $derived(
+    data.transactions(accountStore.selected)
       .filter((t: Transaction) => {
         const [ty, tm] = t.date.split("-").map(Number);
         return ty === year && tm === month;
       })
-      .slice(0, 3);
-  });
+      .slice(0, 3),
+  );
 
-  // Expense categories only for donut
-  let expenseCategories = $derived.by(() =>
+  let expenseCategories = $derived(
     summary.by_category.filter((c) => c.id !== 10 && c.id !== 11),
   );
 
@@ -92,7 +53,7 @@
     try {
       await loadDemoData();
       accountStore.reload();
-      refreshKey++;
+      data.bump();
     } finally {
       loadingDemo = false;
     }

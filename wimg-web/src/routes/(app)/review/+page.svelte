@@ -1,13 +1,8 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import {
-    getSummaryFiltered,
-    getTransactionsFiltered,
-    CATEGORIES,
-    type Transaction,
-  } from "$lib/wasm";
+  import { CATEGORIES, type Transaction } from "$lib/wasm";
   import { formatEur, formatDateShort } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
+  import { data } from "$lib/data.svelte";
   import MonthPicker from "../../../components/MonthPicker.svelte";
 
   const monthNames = [
@@ -18,30 +13,13 @@
   const now = new Date();
   let year = $state(now.getFullYear());
   let month = $state(now.getMonth() + 1);
-  let refreshKey = $state(0);
 
-  function onSyncReceived() {
-    refreshKey++;
-  }
-
-  onMount(() => {
-    window.addEventListener("wimg:sync-received", onSyncReceived);
-  });
-
-  onDestroy(() => {
-    window.removeEventListener("wimg:sync-received", onSyncReceived);
-  });
-
-  let summary = $derived.by(() => {
-    void refreshKey;
-    return getSummaryFiltered(year, month, accountStore.selected);
-  });
+  let summary = $derived(data.summary(year, month, accountStore.selected));
 
   let prevSummary = $derived.by(() => {
-    void refreshKey;
     const pm = month === 1 ? 12 : month - 1;
     const py = month === 1 ? year - 1 : year;
-    return getSummaryFiltered(py, pm, accountStore.selected);
+    return data.summary(py, pm, accountStore.selected);
   });
 
   let saved = $derived(summary.income + summary.expenses);
@@ -54,8 +32,7 @@
 
   // All transactions for this month
   let monthTransactions = $derived.by(() => {
-    void refreshKey;
-    return getTransactionsFiltered(accountStore.selected).filter((t: Transaction) => {
+    return data.transactions(accountStore.selected).filter((t: Transaction) => {
       const [ty, tm] = t.date.split("-").map(Number);
       return ty === year && tm === month;
     });

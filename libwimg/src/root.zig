@@ -1381,7 +1381,7 @@ fn wimg_fints_connect(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
         setError("wimg_fints_connect: missing pin field", .{});
         return null;
     };
-    const product = jsonExtractString(json, "\"product\"") orelse "0000000000000000000000000";
+    const product = jsonExtractString(json, "\"product\"") orelse "F7C4049477F6136957A46EC28";
 
     // Look up bank
     const bank = banks_mod.findByBlz(blz) orelse {
@@ -1603,7 +1603,7 @@ fn wimg_fints_fetch(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
 fn wimg_fints_get_banks() callconv(.c) ?[*]const u8 {
     if (is_wasm) return null;
 
-    var buf: [16384]u8 = undefined;
+    var buf: [262144]u8 = undefined; // 256KB — ~1750 banks × ~140 bytes each
     const len = banks_mod.toJson(&buf) orelse {
         setError("wimg_fints_get_banks: buffer too small", .{});
         return null;

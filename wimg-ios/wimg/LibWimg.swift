@@ -352,7 +352,7 @@ final class LibWimg {
         return (try? decodeLengthPrefixed(ptr)) ?? []
     }
 
-    static func fintsConnect(blz: String, user: String, pin: String, product: String = "0000000000000000000000000") throws -> FintsStatusResult {
+    static func fintsConnect(blz: String, user: String, pin: String, product: String = "F7C4049477F6136957A46EC28") throws -> FintsStatusResult {
         try ensureInit()
         let json = """
         {"blz":"\(blz)","user":"\(user)","pin":"\(pin)","product":"\(product)"}

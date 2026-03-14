@@ -18,6 +18,7 @@ import {
 } from "./wasm";
 import { devtoolsEnabled } from "./devtools.svelte";
 import { accountStore } from "./account.svelte";
+import { data } from "./data.svelte";
 import { syncWS } from "./sync-ws.svelte";
 import { SYNC_API_URL, LS_SYNC_KEY, LS_SYNC_LAST_TS } from "./config";
 
@@ -142,7 +143,7 @@ export async function syncPull(syncKey: string): Promise<number> {
   await opfsSave();
   setLastSyncTimestamp(Date.now());
   accountStore.reload();
-  window.dispatchEvent(new CustomEvent("wimg:sync-received"));
+  data.bump();
 
   if (devtoolsEnabled) {
     const duration = performance.now() - start;

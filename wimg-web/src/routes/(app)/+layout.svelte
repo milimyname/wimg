@@ -61,6 +61,12 @@
       accountStore.reload();
     } catch (e) {
       error = e instanceof Error ? e.message : "Failed to initialize";
+      // WASM init failed — if an update is available, auto-open the update sheet
+      // so the user can fix it immediately instead of seeing a cryptic error
+      updateStore.init();
+      if (updateStore.showBanner) {
+        updateStore.sheetOpen = true;
+      }
     } finally {
       loading = false;
     }
@@ -69,7 +75,9 @@
     // while the loading gate hides children)
     if (window.location.hash) {
       await tick();
-      document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document
+        .getElementById(window.location.hash.slice(1))
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     // Show onboarding on first visit
@@ -91,7 +99,10 @@
     }
 
     // DevTools: enabled in dev mode or via ?devtools URL param
-    if (import.meta.env.DEV || new URLSearchParams(window.location.search).has("devtools")) {
+    if (
+      import.meta.env.DEV ||
+      new URLSearchParams(window.location.search).has("devtools")
+    ) {
       showDevTools = true;
       import("$lib/devtools.svelte").then((m) => m.devtoolsStore.enable());
     }
@@ -117,7 +128,7 @@
 
   function openPalette() {
     if (paletteStore.open) return;
-    pushState("", { sheet: "command-palette" });
+    pushState("?cmd", { sheet: "command-palette" });
     paletteStore.show();
   }
 </script>
@@ -126,8 +137,12 @@
   class="min-h-screen bg-(--color-bg) page-shell"
   style="padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px))"
 >
-  <header class="sticky top-0 z-10 bg-(--color-bg)/90 backdrop-blur-xl px-5 py-4 flex items-center justify-between">
-    <h1 class="text-xl font-display font-extrabold text-(--color-text)">wimg</h1>
+  <header
+    class="sticky top-0 z-14 bg-(--color-bg)/90 backdrop-blur-xl px-5 py-4 flex items-center justify-between"
+  >
+    <h1 class="text-xl font-display font-extrabold text-(--color-text)">
+      wimg
+    </h1>
     <AccountSwitcher />
   </header>
 
@@ -141,10 +156,24 @@
     </div>
   {:else if error}
     <main class="max-w-lg mx-auto px-5 py-6">
-      <div
-        class="bg-red-50 rounded-3xl p-5 text-red-700 text-sm"
-      >
-        {error}
+      <div class="bg-red-50 rounded-3xl p-5 text-red-700 text-sm">
+        <p class="font-bold mb-1">Initialisierung fehlgeschlagen</p>
+        <p class="text-xs text-red-600/70 mb-3">{error}</p>
+        {#if updateStore.showBanner}
+          <button
+            onclick={() => (updateStore.sheetOpen = true)}
+            class="w-full py-3 rounded-2xl bg-(--color-text) text-white text-sm font-bold transition-all active:scale-[0.98]"
+          >
+            Update verfügbar — jetzt aktualisieren
+          </button>
+        {:else}
+          <button
+            onclick={() => window.location.reload()}
+            class="w-full py-3 rounded-2xl bg-red-100 text-red-700 text-sm font-bold transition-all active:scale-[0.98]"
+          >
+            Seite neu laden
+          </button>
+        {/if}
       </div>
     </main>
   {:else}
@@ -185,7 +214,10 @@
   onkeydown={(e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "k") {
       e.preventDefault();
-      if (page.state.sheet === "command-palette") {
+      if (
+        page.state.sheet === "command-palette" ||
+        page.url.searchParams.has("cmd")
+      ) {
         history.back();
       } else {
         openPalette();

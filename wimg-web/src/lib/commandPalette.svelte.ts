@@ -2,41 +2,51 @@
  * Command Palette reactive store — controls overlay open state and search query.
  */
 
-let open = $state(false);
-let query = $state("");
-let selectedIndex = $state(0);
+class PaletteStore {
+  #open = $state(false);
+  #query = $state("");
+  #selectedIndex = $state(0);
 
-export const paletteStore = {
   get open() {
-    return open;
-  },
+    return this.#open;
+  }
+
   set open(v: boolean) {
-    open = v;
+    this.#open = v;
     if (!v) {
-      query = "";
-      selectedIndex = 0;
+      this.#query = "";
+      this.#selectedIndex = 0;
     }
-  },
+  }
+
   get query() {
-    return query;
-  },
+    return this.#query;
+  }
+
   set query(v: string) {
-    query = v;
-    selectedIndex = 0;
-  },
+    this.#query = v;
+    this.#selectedIndex = 0;
+  }
+
   get selectedIndex() {
-    return selectedIndex;
-  },
+    return this.#selectedIndex;
+  }
+
   set selectedIndex(v: number) {
-    selectedIndex = v;
-  },
+    this.#selectedIndex = v;
+  }
+
   toggle() {
-    paletteStore.open = !open;
-  },
+    this.open = !this.#open;
+  }
+
   show() {
-    paletteStore.open = true;
-  },
+    this.open = true;
+  }
+
   hide() {
-    paletteStore.open = false;
-  },
-};
+    this.open = false;
+  }
+}
+
+export const paletteStore = new PaletteStore();

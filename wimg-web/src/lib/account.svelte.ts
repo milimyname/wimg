@@ -1,23 +1,29 @@
 import { getAccounts, type Account } from "$lib/wasm";
 
-let selectedAccountId = $state<string | null>(null);
-let accounts = $state<Account[]>([]);
+class AccountStore {
+  #selectedId = $state<string | null>(null);
+  #accounts = $state<Account[]>([]);
 
-export const accountStore = {
   get selected() {
-    return selectedAccountId;
-  },
+    return this.#selectedId;
+  }
+
   get accounts() {
-    return accounts;
-  },
+    return this.#accounts;
+  }
+
   get selectedAccount(): Account | null {
-    if (!selectedAccountId) return null;
-    return accounts.find((a) => a.id === selectedAccountId) ?? null;
-  },
+    if (!this.#selectedId) return null;
+    return this.#accounts.find((a) => a.id === this.#selectedId) ?? null;
+  }
+
   select(id: string | null) {
-    selectedAccountId = id;
-  },
+    this.#selectedId = id;
+  }
+
   reload() {
-    accounts = getAccounts();
-  },
-};
+    this.#accounts = getAccounts();
+  }
+}
+
+export const accountStore = new AccountStore();

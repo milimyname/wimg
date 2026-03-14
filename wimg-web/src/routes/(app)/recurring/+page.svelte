@@ -1,28 +1,17 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
   import {
-    getRecurring,
     detectRecurring,
     CATEGORIES,
     type RecurringPattern,
   } from "$lib/wasm";
   import { formatEur } from "$lib/format";
+  import { data } from "$lib/data.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
 
-  let patterns = $state<RecurringPattern[]>(getRecurring());
+  let patterns = $derived(data.recurring());
   let detecting = $state(false);
-
-  function onSyncReceived() {
-    patterns = getRecurring();
-  }
-
-  onMount(() => {
-    window.addEventListener("wimg:sync-received", onSyncReceived);
-  });
-
-  onDestroy(() => {
-    window.removeEventListener("wimg:sync-received", onSyncReceived);
-  });
+  let hasDetected = $state(false);
+  let hasData = $derived(data.hasAnyData());
 
   let activePatterns = $derived(patterns.filter((p) => p.active));
   let priceAlerts = $derived(
@@ -56,7 +45,8 @@
     detecting = true;
     try {
       detectRecurring();
-      patterns = getRecurring();
+      data.bump();
+      hasDetected = true;
     } finally {
       detecting = false;
     }
@@ -152,7 +142,7 @@
   <a href="#subscriptions" class="text-2xl font-display font-extrabold">Abonnements</a>
   <button
     onclick={handleDetect}
-    disabled={detecting}
+    disabled={detecting || !hasData}
     class="flex items-center gap-1.5 px-4 py-2 bg-(--color-accent) hover:bg-(--color-accent-hover) text-(--color-text) text-sm font-bold rounded-2xl cursor-pointer transition-colors shadow-sm disabled:opacity-50"
   >
     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,24 +154,57 @@
 
 <!-- Recurring Patterns -->
 {#if activePatterns.length === 0}
-  <EmptyState
-    title="Keine Muster erkannt"
-    subtitle="Importiere Transaktionen und tippe auf Erkennen, um wiederkehrende Zahlungen zu finden."
-  >
-    {#snippet icon()}
-      <svg class="w-10 h-10 text-(--color-text)/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-      </svg>
-    {/snippet}
-    {#snippet actions()}
-      <button
-        onclick={handleDetect}
-        class="px-6 py-3 rounded-2xl bg-(--color-accent) text-(--color-text) font-bold text-sm transition-transform active:scale-[0.98]"
-      >
-        Muster erkennen
-      </button>
-    {/snippet}
-  </EmptyState>
+  {#if !hasData}
+    <EmptyState
+      title="Keine Transaktionen"
+      subtitle="Importiere zuerst Transaktionen, um wiederkehrende Zahlungen erkennen zu können."
+    >
+      {#snippet icon()}
+        <svg class="w-10 h-10 text-(--color-text)/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      {/snippet}
+      {#snippet actions()}
+        <a
+          href="/import"
+          class="px-6 py-3 rounded-2xl bg-(--color-accent) text-(--color-text) font-bold text-sm transition-transform active:scale-[0.98] inline-block"
+        >
+          CSV importieren
+        </a>
+      {/snippet}
+    </EmptyState>
+  {:else if hasDetected}
+    <EmptyState
+      title="Keine Muster gefunden"
+      subtitle="Die Erkennung hat keine wiederkehrenden Zahlungen in deinen Transaktionen gefunden. Mehr Daten über mehrere Monate verbessern die Erkennung."
+    >
+      {#snippet icon()}
+        <svg class="w-10 h-10 text-(--color-text)/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      {/snippet}
+    </EmptyState>
+  {:else}
+    <EmptyState
+      title="Muster erkennen"
+      subtitle="Analysiere deine Transaktionen, um Abos und regelmäßige Zahlungen automatisch zu finden."
+    >
+      {#snippet icon()}
+        <svg class="w-10 h-10 text-(--color-text)/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      {/snippet}
+      {#snippet actions()}
+        <button
+          onclick={handleDetect}
+          disabled={detecting}
+          class="px-6 py-3 rounded-2xl bg-(--color-accent) text-(--color-text) font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50"
+        >
+          {detecting ? "Erkennung..." : "Muster erkennen"}
+        </button>
+      {/snippet}
+    </EmptyState>
+  {/if}
 {:else}
   {#each Object.entries(grouped) as [interval, items]}
     <div class="mb-5">

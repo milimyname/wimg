@@ -1,7 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
   import {
-    getDebts,
     addDebt,
     markDebtPaid,
     deleteDebt,
@@ -9,22 +7,11 @@
     type Debt,
   } from "$lib/wasm";
   import { formatEur } from "$lib/format";
+  import { data } from "$lib/data.svelte";
   import { toastStore } from "$lib/toast.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
 
-  let debts = $state<Debt[]>(getDebts());
-
-  function onSyncReceived() {
-    debts = getDebts();
-  }
-
-  onMount(() => {
-    window.addEventListener("wimg:sync-received", onSyncReceived);
-  });
-
-  onDestroy(() => {
-    window.removeEventListener("wimg:sync-received", onSyncReceived);
-  });
+  let debts = $derived(data.debts());
   let showForm = $state(false);
   let error = $state<string | null>(null);
   let deletingId = $state<string | null>(null);
@@ -58,14 +45,14 @@
       error = null;
       const name = formName.trim();
       await addDebt(name, total, monthly);
-      debts = getDebts();
+      data.bump();
       formName = "";
       formTotal = "";
       formMonthly = "";
       showForm = false;
       toastStore.show(`Schuld hinzugefügt: ${name}`, async () => {
         await undo();
-        debts = getDebts();
+        data.bump();
       });
     } catch (e) {
       error = e instanceof Error ? e.message : "Fehler beim Hinzufügen";
@@ -81,10 +68,10 @@
           : debt.total - debt.paid;
       const payCents = Math.round(payAmount * 100);
       await markDebtPaid(debt.id, payCents);
-      debts = getDebts();
+      data.bump();
       toastStore.show(`${debt.name}: Zahlung verbucht`, async () => {
         await undo();
-        debts = getDebts();
+        data.bump();
       });
     } catch (e) {
       error = e instanceof Error ? e.message : "Fehler beim Bezahlen";
@@ -96,11 +83,11 @@
       error = null;
       const name = debt.name;
       await deleteDebt(debt.id);
-      debts = getDebts();
+      data.bump();
       deletingId = null;
       toastStore.show(`Schuld gelöscht: ${name}`, async () => {
         await undo();
-        debts = getDebts();
+        data.bump();
       });
     } catch (e) {
       error = e instanceof Error ? e.message : "Fehler beim Löschen";

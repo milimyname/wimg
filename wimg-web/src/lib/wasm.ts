@@ -493,6 +493,45 @@ export function getTransactions(): Transaction[] {
   });
 }
 
+const TX_SELECT = `SELECT id, date_year || '-' || printf('%02d', date_month) || '-' || printf('%02d', date_day) as date, description, amount_cents as amount, currency, category, account, excluded FROM transactions`;
+
+function rowToTransaction(r: (string | number | null)[]): Transaction {
+  return {
+    id: r[0] as string,
+    date: r[1] as string,
+    description: r[2] as string,
+    amount: r[3] as number,
+    currency: r[4] as string,
+    category: r[5] as number,
+    account: r[6] as string,
+    excluded: r[7] as number,
+  };
+}
+
+export function searchTransactions(query: string, limit = 10, amountCents?: number): Transaction[] {
+  return timed("searchTransactions", () => {
+    ensureInit();
+    const escaped = query.replace(/'/g, "''");
+    let where = `description LIKE '%${escaped}%' COLLATE NOCASE`;
+    if (amountCents !== undefined) {
+      where = `(${where} OR ABS(amount_cents) = ${amountCents})`;
+    }
+    const sql = `${TX_SELECT} WHERE ${where} ORDER BY date_year DESC, date_month DESC, date_day DESC, rowid DESC LIMIT ${limit}`;
+    const result = queryRaw(sql);
+    return result.rows.map(rowToTransaction);
+  });
+}
+
+export function getTransactionById(id: string): Transaction | null {
+  return timed("getTransactionById", () => {
+    ensureInit();
+    const escaped = id.replace(/'/g, "''");
+    const result = queryRaw(`${TX_SELECT} WHERE id = '${escaped}' LIMIT 1`);
+    if (result.rows.length === 0) return null;
+    return rowToTransaction(result.rows[0]);
+  });
+}
+
 export async function setCategory(id: string, category: number): Promise<void> {
   return timedAsync("setCategory", async () => {
     ensureInit();

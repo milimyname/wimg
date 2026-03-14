@@ -2,43 +2,47 @@
  * Reactive toast store for undo snackbar.
  */
 
-let visible = $state(false);
-let message = $state("");
-let undoCallback: (() => Promise<void>) | null = $state(null);
-let timer: ReturnType<typeof setTimeout> | null = null;
+class ToastStore {
+  #visible = $state(false);
+  #message = $state("");
+  #undoCallback: (() => Promise<void>) | null = $state(null);
+  #timer: ReturnType<typeof setTimeout> | null = null;
 
-export const toastStore = {
   get visible() {
-    return visible;
-  },
+    return this.#visible;
+  }
+
   get message() {
-    return message;
-  },
+    return this.#message;
+  }
+
   get hasUndo() {
-    return undoCallback !== null;
-  },
+    return this.#undoCallback !== null;
+  }
 
   show(msg: string, onUndo?: () => Promise<void>) {
-    if (timer) clearTimeout(timer);
-    message = msg;
-    undoCallback = onUndo ?? null;
-    visible = true;
-    timer = setTimeout(() => {
-      toastStore.dismiss();
+    if (this.#timer) clearTimeout(this.#timer);
+    this.#message = msg;
+    this.#undoCallback = onUndo ?? null;
+    this.#visible = true;
+    this.#timer = setTimeout(() => {
+      this.dismiss();
     }, 5000);
-  },
+  }
 
   dismiss() {
-    if (timer) clearTimeout(timer);
-    timer = null;
-    visible = false;
-    undoCallback = null;
-  },
+    if (this.#timer) clearTimeout(this.#timer);
+    this.#timer = null;
+    this.#visible = false;
+    this.#undoCallback = null;
+  }
 
   async triggerUndo() {
-    if (!undoCallback) return;
-    const cb = undoCallback;
-    toastStore.dismiss();
+    if (!this.#undoCallback) return;
+    const cb = this.#undoCallback;
+    this.dismiss();
     await cb();
-  },
-};
+  }
+}
+
+export const toastStore = new ToastStore();

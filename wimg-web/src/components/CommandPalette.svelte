@@ -1,13 +1,9 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { ACTIONS, type PaletteAction } from "$lib/actions";
+  import { getActions, type PaletteAction } from "$lib/actions";
   import { paletteStore } from "$lib/commandPalette.svelte";
-  import {
-    getTransactions,
-    CATEGORIES,
-    type Transaction,
-  } from "$lib/wasm";
+  import { searchTransactions, CATEGORIES, type Transaction } from "$lib/wasm";
   import { formatAmountSigned, formatDateShort } from "$lib/format";
   import { toastStore } from "$lib/toast.svelte";
   import BottomSheet from "./BottomSheet.svelte";
@@ -18,8 +14,31 @@
   let selectedIndex = $state(0);
   let confirmingAction = $state<PaletteAction | null>(null);
 
-  // Derive open from shallow routing state (same pattern as transactions page)
-  let showPalette = $derived(page.state.sheet === "command-palette");
+  // --- Search history (localStorage) ---
+  const HISTORY_KEY = "wimg_search_history";
+  const MAX_HISTORY = 5;
+
+  function getRecentSearches(): string[] {
+    try {
+      return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  }
+
+  function saveRecentSearch(q: string) {
+    const history = getRecentSearches().filter((h) => h !== q);
+    history.unshift(q);
+    localStorage.setItem(
+      HISTORY_KEY,
+      JSON.stringify(history.slice(0, MAX_HISTORY)),
+    );
+  }
+
+  // Derive open from shallow routing state or URL param (survives reload)
+  let showPalette = $derived(
+    page.state.sheet === "command-palette" || page.url.searchParams.has("cmd"),
+  );
 
   // Auto-focus input when sheet opens
   $effect(() => {
@@ -40,7 +59,7 @@
   // Filter actions by query
   const filteredActions = $derived.by(() => {
     const q = query.toLowerCase().trim();
-    const available = ACTIONS.filter((a) => !a.enabled || a.enabled());
+    const available = getActions().filter((a) => !a.enabled || a.enabled());
     const showDanger =
       q.includes("reset") || q.includes("danger") || q.includes("löschen");
     return available.filter((a) => {
@@ -53,14 +72,14 @@
     });
   });
 
-  // Fuzzy transaction search
+  // SQL LIKE transaction search
   const fuzzyTxResults = $derived.by(() => {
-    const q = query.toLowerCase().trim();
+    const q = query.trim();
     if (!q || q.length < 2) return [];
     try {
-      return getTransactions()
-        .filter((t) => t.description.toLowerCase().includes(q))
-        .slice(0, 8);
+      const num = parseFloat(q.replace(",", "."));
+      const cents = !isNaN(num) ? Math.round(Math.abs(num) * 100) : undefined;
+      return searchTransactions(q, 10, cents);
     } catch {
       return [];
     }
@@ -68,7 +87,7 @@
 
   // Flat result list with section headers
   interface ResultItem {
-    type: "header" | "action" | "transaction";
+    type: "header" | "action" | "transaction" | "recent";
     action?: PaletteAction;
     transaction?: Transaction;
     label: string;
@@ -78,6 +97,16 @@
     const items: ResultItem[] = [];
 
     if (!query.trim()) {
+      // Recent searches
+      const recentSearches = getRecentSearches();
+      if (recentSearches.length > 0) {
+        items.push({ type: "header", label: "Letzte Suchen" });
+        for (const q of recentSearches) {
+          items.push({ type: "recent", label: q });
+        }
+      }
+
+      // Grouped actions
       const groupOrder: string[] = [];
       const grouped: Record<string, PaletteAction[]> = {};
       for (const a of filteredActions) {
@@ -159,6 +188,12 @@
   }
 
   function executeItem(item: ResultItem) {
+    if (item.type === "recent") {
+      query = item.label;
+      selectedIndex = 0;
+      return;
+    }
+    if (query.trim().length >= 2) saveRecentSearch(query.trim());
     if (item.type === "action" && item.action) {
       executeAction(item.action);
     } else if (item.type === "transaction" && item.transaction) {
@@ -174,31 +209,24 @@
     paletteStore.hide();
   }
 
-  function executeAction(action: PaletteAction) {
+  async function executeAction(action: PaletteAction) {
     if (action.danger && !confirmingAction) {
       confirmingAction = action;
       return;
     }
     confirmingAction = null;
-    closePalette();
     try {
-      action.handler();
+      await action.handler();
     } catch (err) {
       toastStore.show(`Fehler: ${err}`);
     }
+    // Close palette only if handler didn't navigate away (e.g. goto)
+    if (showPalette) closePalette();
   }
 
   function openTransaction(id: string) {
-    closePalette();
-    sessionStorage.setItem("wimg_open_txn", id);
-    if (page.url.pathname === "/transactions") {
-      // Already on transactions page — dispatch event so it opens the sheet
-      window.dispatchEvent(
-        new CustomEvent("wimg:open-txn", { detail: { id } }),
-      );
-    } else {
-      goto("/transactions");
-    }
+    // Navigate to transactions with ?txn=id — replaces palette history entry
+    goto(`/transactions?txn=${id}`, { replaceState: true });
   }
 
   function onInput(e: Event) {
@@ -217,6 +245,7 @@
 
   function getItemKey(item: ResultItem): string {
     if (item.type === "header") return `h-${item.label}`;
+    if (item.type === "recent") return `recent-${item.label}`;
     return `${item.type}-${item.action?.id ?? item.transaction?.id}`;
   }
 </script>
@@ -311,7 +340,11 @@
     {/if}
 
     <!-- Results (scrollable) -->
-    <div {@attach content} bind:this={resultsEl} class="palette-scroll p-2">
+    <div
+      {@attach content}
+      bind:this={resultsEl}
+      class="palette-scroll p-2 pb-40"
+    >
       {#if flatResults.length === 0 && query}
         <div class="px-4 py-10 text-center">
           <p class="text-gray-400 text-sm">Keine Ergebnisse für „{query}"</p>
@@ -331,7 +364,37 @@
           {:else}
             {@const selIdx = selectableItems.indexOf(item)}
 
-            {#if item.type === "action" && item.action}
+            {#if item.type === "recent"}
+              <button
+                data-idx={selIdx}
+                class="group w-full flex items-center px-4 py-3 rounded-xl text-left transition-all
+                  {selIdx === selectedIndex
+                  ? 'bg-amber-50/80 border-l-[3px] border-amber-400 pl-[13px]'
+                  : 'hover:bg-gray-50 border-l-[3px] border-transparent pl-[13px]'}"
+                onclick={() => executeItem(item)}
+                onpointerenter={() => (selectedIndex = selIdx)}
+              >
+                <span class="mr-3 text-lg shrink-0 text-gray-400">
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </span>
+                <span class="flex-1 text-sm font-medium truncate text-gray-700"
+                  >{item.label}</span
+                >
+                <span class="text-[11px] text-gray-400 shrink-0">Suche</span>
+              </button>
+            {:else if item.type === "action" && item.action}
               <button
                 data-idx={selIdx}
                 class="group w-full flex items-center px-4 py-3 rounded-xl text-left transition-all
