@@ -34,27 +34,30 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Tooling
 
-- **Package manager:** bun (always, never npm)
-- **Formatter:** oxfmt (`.oxfmtrc.json`)
-- **Linter:** oxlint (`.oxlintrc.json`) — correctness/error, suspicious/warn, perf/warn
-- **Pre-commit:** lefthook (zig fmt, oxfmt, oxlint)
-- **Release:** `scripts/release.sh` — bump versions, changelog, commit, tag
+- **Toolchain:** Vite+ (`vite-plus`) — `vp dev`, `vp build`, `vp fmt`, `vp lint`, `vp install`
+- **Formatter:** `vp fmt` (config in `vite.config.ts` `fmt` block)
+- **Linter:** `vp lint` (config in `vite.config.ts` `lint` block) — correctness/error, suspicious/warn, perf/warn
+- **Pre-commit:** lefthook (`zig fmt`, `vp fmt`, `vp lint`, commit-msg validation)
+- **Commit format:** conventional commits (`feat:`, `fix:`, `refactor:`, etc.) — enforced by lefthook
+- **Release:** `scripts/release.sh` — bump versions, changelog (filters chore/ci/build), commit, tag, `--push`
 - **Build WASM:** `scripts/build-wasm.sh` — two variants (web 209MB + compact 53MB)
 - **Build iOS:** `scripts/build-ios.sh` — XCFramework
-- **CI:** `.github/workflows/release.yml` — check → build → GitHub release
+- **CI:** `.github/workflows/release.yml` — `setup-vp` → check → build → GitHub release
 
 ---
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.8, 5.9, 5.10 all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.8, 5.9, 5.10, 5.11 all **done**.
 
 Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules +
 auto-learn), summaries, debts, recurring detection, multi-account, undo/redo,
 real-time sync with E2E encryption, MCP server (20 tools), data export,
 monthly snapshots, PWA with offline support, DevTools panel (5 tabs), Command
 Palette with SQL LIKE search + search history + transaction deep-links,
-advanced search with date range, amount range slider, and category filters.
+advanced search with date range, amount range slider, and category filters,
+in-app changelog (`/changelog`) fetching GitHub Releases API with localStorage
+cache.
 
 Embeddings were built (Phase 5.5) then removed (Phase 5.9) — 4,400 lines
 deleted. Keyword rules cover ~80% of categorization, MCP + Claude handles
@@ -67,6 +70,10 @@ No chat UI — Claude Desktop + MCP replaces it.
 BottomNav has 3 tabs (Home, Umsätze, Mehr). Analyse moved to More page.
 Landing page (`+page.svelte`) is German. Import and About pages redesigned
 with card-based layouts, border styling, and project design tokens.
+
+Vite+ (`vite-plus`) replaces standalone oxfmt/oxlint — config consolidated
+in `vite.config.ts`, all commands via `vp`. CI uses `setup-vp` action.
+Conventional commits enforced by lefthook `commit-msg` hook.
 
 Next: Command Palette Refinement (5.7b), Annual Renewals (5.4),
 Phase 6 (Annual Review, Net Worth, Tax, Savings Goals).
@@ -134,3 +141,4 @@ Split into `.claude/rules/` for context efficiency:
 - `feature-parity.md` — iOS vs web parity table
 - `file-structure.md` — complete file tree
 - `decisions.md` — decision log (all architectural choices)
+- `release.md` — release process, commit format, CI pipeline

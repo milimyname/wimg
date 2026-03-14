@@ -21,6 +21,7 @@ export const SYNC_API_URL = (() => {
 
 // --- GitHub ---
 export const RELEASES_URL = "https://github.com/milimyname/wimg/releases";
+export const GITHUB_RELEASES_API = "https://api.github.com/repos/milimyname/wimg/releases";
 
 // --- LocalStorage keys ---
 export const LS_SYNC_KEY = "wimg_sync_key";
@@ -30,6 +31,7 @@ export const LS_ONBOARDING_COMPLETED = "wimg_onboarding_completed";
 export const LS_DEMO_LOADED = "wimg_demo_loaded";
 export const LS_FEATURES = "wimg_features";
 export const LS_LAST_SNAPSHOT_MONTH = "wimg_last_snapshot_month";
+export const LS_CHANGELOG = "wimg_changelog";
 
 // --- Feature Flags (default: all ON for existing users) ---
 export const DEFAULT_FEATURES: Record<string, boolean> = {

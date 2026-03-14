@@ -17,6 +17,7 @@
 - **Phase 5.9** — Remove Embeddings (Done): Deleted Zig inference engine (~4,400 lines), web workers, model download. Keyword rules + MCP suffice.
 - **Phase 5.7** — Command Palette + Search (Done): SQL LIKE search via `searchTransactions()`, search history (localStorage), transaction deep-links with URL params (`?txn=`, `?filter`, `?cmd`), class-based Svelte stores.
 - **Phase 5.10** — Auto-learn Rules (Done): `extractKeyword()` strips German banking prefixes, `learnRule()` in `db.zig` inserts low-priority (1) rules on every manual `setCategory()`. No new C ABI, no UI changes. ~50 lines Zig.
+- **Phase 5.11** — In-App Changelog (Done): Standalone `/changelog` page (outside `(app)` layout) fetching GitHub Releases API. Card-based UI with version pills, German dates, warm fintech design. localStorage cache (1hr TTL) for offline access. "Was ist neu?" links in UpdateBanner, About footer, and landing page footer point to `/changelog`. Conventional commits enforced by lefthook `commit-msg` hook. `release.sh` filters chore/ci/build commits from changelog.
 
 ## In Progress / Future
 
@@ -26,12 +27,6 @@
   - Exclude/include transaction from search results
   - Add debt from palette (needs input fields)
   - Dark mode / theme toggle
-- **Phase 5.11** — In-App Changelog (Linear-style)
-  - `/changelog` page fetching GitHub Releases API (public, no auth)
-  - Timeline UI with version badges, dates, commit descriptions
-  - UpdateBanner shows inline changelog (diff between current and new version)
-  - "Was ist neu?" links to `/changelog` instead of GitHub
-  - localStorage cache for offline access after first fetch
 - **Phase 5.2** — Notifications (deferred, TBD)
 - **Phase 5.4** — Annual Renewals Calendar
 - **Phase 6.1** — Annual Review ("Geld-Wrapped")

@@ -9,6 +9,7 @@
     { href: "/review", label: "Rückblick", icon: "review", color: "bg-violet-100 text-violet-600", feature: "review" },
     { href: "/settings", label: "Einstellungen", icon: "settings", color: "bg-amber-100 text-amber-600", feature: null },
     { href: "/about", label: "Über wimg", icon: "info", color: "bg-gray-100 text-gray-600", feature: null },
+    { href: "/changelog", label: "Changelog", icon: "changelog", color: "bg-violet-100 text-violet-600", feature: null },
   ];
 
   const items = $derived(
@@ -54,6 +55,10 @@
           {:else if item.icon === "info"}
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          {:else if item.icon === "changelog"}
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
           {/if}
         </div>

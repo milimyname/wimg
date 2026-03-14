@@ -18,7 +18,7 @@
   };
 
   const moreSubRoutes = $derived(
-    ["/more", "/analysis", "/debts", "/recurring", "/import", "/review", "/settings", "/about"].filter(
+    ["/more", "/analysis", "/debts", "/recurring", "/import", "/review", "/settings", "/about", "/changelog"].filter(
       (r) => !featureRoutes[r] || featureStore.isEnabled(featureRoutes[r]),
     ),
   );
