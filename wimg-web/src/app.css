@@ -113,6 +113,14 @@
   box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.4) !important;
 }
 /* Toast dark mode handled in Toast.svelte scoped styles */
+
+/* Accent buttons: always dark text on yellow bg regardless of theme */
+.dark .bg-\(--color-accent\) {
+  color: #1a1a1a !important;
+}
+.dark .bg-\(--color-accent\) .border-\(--color-text\) {
+  border-color: #1a1a1a !important;
+}
 /* Inputs and interactive elements */
 .dark input,
 .dark textarea {
