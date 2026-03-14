@@ -1,14 +1,15 @@
 <script lang="ts">
   import { updateStore } from "$lib/update.svelte";
   import { changelogStore } from "$lib/changelog.svelte";
+  import { APP_VERSION } from "$lib/version";
   import BottomSheet from "./BottomSheet.svelte";
 
   let updating = $state(false);
 
-  const latestRelease = $derived(changelogStore.releases[0]);
-  const releaseItems = $derived.by(() => {
-    if (!latestRelease?.body) return [];
-    return latestRelease.body
+  const missedReleases = $derived(changelogStore.releasesSince(APP_VERSION));
+
+  function parseItems(body: string): string[] {
+    return body
       .split("\n")
       .map((l) => l.trim())
       .filter((l) => l.length > 0)
@@ -16,7 +17,7 @@
       .filter((l) => !l.match(/^#{1,3}\s/))
       .map((l) => l.replace(/^[-*]\s*/, "").trim())
       .filter((l) => l.length > 0);
-  });
+  }
 
   $effect(() => {
     if (updateStore.sheetOpen) changelogStore.load();
@@ -72,42 +73,50 @@
       </div>
 
       <!-- Inline changelog -->
-      {#if changelogStore.loading && releaseItems.length === 0}
+      {#if changelogStore.loading && missedReleases.length === 0}
         <div class="space-y-2 animate-pulse">
           <div class="w-full h-3.5 bg-gray-100 rounded"></div>
           <div class="w-3/4 h-3.5 bg-gray-100 rounded"></div>
         </div>
-      {:else if releaseItems.length > 0}
-        <div class="bg-(--color-bg) rounded-2xl p-4">
-          <p
-            class="text-xs font-bold text-(--color-text-secondary) uppercase tracking-wider mb-3"
-          >
-            Was ist neu?
-          </p>
-          <div class="space-y-2">
-            {#each releaseItems as item}
-              <div class="flex gap-2.5">
-                <span class="text-(--color-text-secondary)/40 shrink-0 mt-0.5">
-                  <svg
-                    class="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </span>
-                <p class="text-sm text-(--color-text) leading-relaxed">
-                  {item}
-                </p>
+      {:else if missedReleases.length > 0}
+        <div class="bg-(--color-bg) rounded-2xl p-4 max-h-64 overflow-y-auto">
+          {#each missedReleases as release, i}
+            {@const items = parseItems(release.body)}
+            {#if items.length > 0}
+              {#if i > 0}
+                <hr class="my-3 border-(--color-text-secondary)/10" />
+              {/if}
+              <p
+                class="text-xs font-bold text-(--color-text-secondary) uppercase tracking-wider mb-2"
+              >
+                {release.tag}
+              </p>
+              <div class="space-y-1.5">
+                {#each items as item}
+                  <div class="flex gap-2.5">
+                    <span class="text-(--color-text-secondary)/40 shrink-0 mt-0.5">
+                      <svg
+                        class="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </span>
+                    <p class="text-sm text-(--color-text) leading-relaxed">
+                      {item}
+                    </p>
+                  </div>
+                {/each}
               </div>
-            {/each}
-          </div>
+            {/if}
+          {/each}
           <a
             href="/changelog"
             onclick={() => (updateStore.sheetOpen = false)}

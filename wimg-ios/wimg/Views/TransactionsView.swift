@@ -110,157 +110,186 @@ struct TransactionsView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Segmented filter
-                Picker("Filter", selection: $filter) {
-                    ForEach(TxFilter.allCases, id: \.self) { f in
-                        Text(f.rawValue).tag(f)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.vertical, 12)
-
-                // Quick category filter (top 5)
-                HStack {
-                    ForEach(quickCategories) { cat in
-                        let active = selectedCategory == cat.rawValue
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                selectedCategory = active ? nil : cat.rawValue
-                            }
-                        } label: {
-                            VStack(spacing: 6) {
-                                ZStack {
-                                    Circle()
-                                        .fill(cat.color.opacity(0.12))
-                                        .frame(width: 52, height: 52)
-                                    if active {
-                                        Circle()
-                                            .stroke(cat.color, lineWidth: 2.5)
-                                            .frame(width: 52, height: 52)
-                                    }
-                                    Image(systemName: cat.icon)
-                                        .font(.system(size: 18))
-                                        .foregroundStyle(cat.color)
-                                }
-                                Text(cat.name)
-                                    .font(.system(size: 10, design: .rounded, weight: active ? .bold : .medium))
-                                    .foregroundStyle(active ? WimgTheme.text : WimgTheme.textSecondary)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.bottom, 12)
-
-                if let loadError {
-                    VStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.largeTitle)
-                            .foregroundStyle(.red)
-                        Text(loadError)
-                            .font(.system(.subheadline, design: .rounded, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(32)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if grouped.isEmpty {
-                    ContentUnavailableView(
-                        "Keine Umsätze",
-                        systemImage: "tray",
-                        description: Text("Importiere eine CSV-Datei um loszulegen.")
-                    )
-                } else {
-                    List {
-                        ForEach(grouped, id: \.0) { date, txs in
-                            Section {
-                                ForEach(txs) { tx in
-                                    TransactionCard(transaction: tx) {
-                                        selectedTransaction = tx
-                                    }
-                                    .listRowInsets(EdgeInsets())
-                                    .opacity(tx.isExcluded ? 0.4 : 1.0)
-                                    .swipeActions(edge: .trailing) {
-                                        Button {
-                                            toggleExcluded(tx)
-                                        } label: {
-                                            Label(
-                                                tx.isExcluded ? "Einblenden" : "Ausblenden",
-                                                systemImage: tx.isExcluded ? "eye" : "eye.slash"
-                                            )
-                                        }
-                                        .tint(tx.isExcluded ? .blue : .orange)
-                                    }
-                                }
-                            } header: {
-                                Text(formatDateHeader(date))
-                                    .font(.system(size: 11, design: .rounded, weight: .bold))
-                                    .foregroundStyle(WimgTheme.textSecondary)
-                                    .textCase(.uppercase)
-                                    .tracking(0.8)
-                            }
-                        }
-                    }
-                    .listStyle(.insetGrouped)
-                    .scrollContentBackground(.hidden)
-                }
-            }
-            .background(WimgTheme.bg)
-            .navigationTitle("Umsätze")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showFilterSheet = true
-                    } label: {
-                        ZStack(alignment: .topTrailing) {
-                            Image(systemName: "line.3.horizontal.decrease")
-                                .foregroundStyle(activeFilterCount > 0 ? WimgTheme.text : WimgTheme.textSecondary)
-                            if activeFilterCount > 0 {
-                                Circle()
-                                    .fill(WimgTheme.accent)
-                                    .frame(width: 8, height: 8)
-                                    .offset(x: 2, y: -2)
-                            }
-                        }
-                    }
-                }
-            }
-            .searchable(text: $searchText, prompt: "Suchen...")
-            .onChange(of: selectedAccount) { reload() }
-            .onAppear { reload() }
-            .refreshable { reload() }
-            .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
-                reload()
-            }
-            .sheet(item: $selectedTransaction) { tx in
-                CategoryEditorSheet(transaction: tx) {
+            mainContent
+                .background(WimgTheme.bg)
+                .navigationTitle("Umsätze")
+                .toolbar { filterToolbar }
+                .searchable(text: $searchText, prompt: "Suchen...")
+                .onChange(of: selectedAccount) { reload() }
+                .onAppear { reload() }
+                .refreshable { reload() }
+                .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
                     reload()
-                    showUndo("Kategorie geändert")
+                }
+                .sheet(item: $selectedTransaction) { tx in
+                    CategoryEditorSheet(transaction: tx) {
+                        reload()
+                        showUndo("Kategorie geändert")
+                    }
+                }
+                .sheet(isPresented: $showFilterSheet) {
+                    AdvancedFilterSheet(
+                        searchText: $searchText,
+                        dateQuick: $dateQuick,
+                        amountQuick: $amountQuick,
+                        filterCategorySet: $filterCategorySet,
+                        showExcluded: $showExcluded,
+                        allCategories: allFilterCategories
+                    )
+                }
+                .overlay(alignment: .bottom) {
+                    if let msg = undoMessage {
+                        UndoToast(message: msg) {
+                            performUndo()
+                        }
+                        .padding(.bottom, 8)
+                    }
+                }
+        }
+    }
+
+    // MARK: - Extracted Subviews
+
+    @ViewBuilder
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            segmentedFilter
+            quickCategoryBar
+
+            if let loadError {
+                errorView(loadError)
+            } else if grouped.isEmpty {
+                ContentUnavailableView(
+                    "Keine Umsätze",
+                    systemImage: "tray",
+                    description: Text("Importiere eine CSV-Datei um loszulegen.")
+                )
+            } else {
+                transactionList
+            }
+        }
+    }
+
+    private var segmentedFilter: some View {
+        Picker("Filter", selection: $filter) {
+            ForEach(TxFilter.allCases, id: \.self) { f in
+                Text(f.rawValue).tag(f)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal)
+        .padding(.vertical, 12)
+    }
+
+    private var quickCategoryBar: some View {
+        HStack {
+            ForEach(quickCategories) { cat in
+                let active = selectedCategory == cat.rawValue
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedCategory = active ? nil : cat.rawValue
+                    }
+                } label: {
+                    VStack(spacing: 6) {
+                        ZStack {
+                            Circle()
+                                .fill(cat.color.opacity(0.12))
+                                .frame(width: 52, height: 52)
+                            if active {
+                                Circle()
+                                    .stroke(cat.color, lineWidth: 2.5)
+                                    .frame(width: 52, height: 52)
+                            }
+                            Image(systemName: cat.icon)
+                                .font(.system(size: 18))
+                                .foregroundStyle(cat.color)
+                        }
+                        Text(cat.name)
+                            .font(.system(size: 10, design: .rounded, weight: active ? .bold : .medium))
+                            .foregroundStyle(active ? WimgTheme.text : WimgTheme.textSecondary)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.bottom, 12)
+    }
+
+    private func errorView(_ message: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.largeTitle)
+                .foregroundStyle(.red)
+            Text(message)
+                .font(.system(.subheadline, design: .rounded, weight: .medium))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var transactionList: some View {
+        List {
+            ForEach(grouped, id: \.0) { date, txs in
+                Section {
+                    ForEach(txs) { tx in
+                        transactionRow(tx)
+                    }
+                } header: {
+                    Text(formatDateHeader(date))
+                        .font(.system(size: 11, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                        .textCase(.uppercase)
+                        .tracking(0.8)
                 }
             }
-            .sheet(isPresented: $showFilterSheet) {
-                AdvancedFilterSheet(
-                    searchText: $searchText,
-                    dateQuick: $dateQuick,
-                    amountQuick: $amountQuick,
-                    filterCategorySet: $filterCategorySet,
-                    showExcluded: $showExcluded,
-                    allCategories: allFilterCategories
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+    }
+
+    private func transactionRow(_ tx: Transaction) -> some View {
+        TransactionCard(transaction: tx) {
+            selectedTransaction = tx
+        }
+        .listRowInsets(EdgeInsets())
+        .opacity(tx.isExcluded ? 0.4 : 1.0)
+        .swipeActions(edge: .trailing) {
+            Button {
+                toggleExcluded(tx)
+            } label: {
+                Label(
+                    tx.isExcluded ? "Einblenden" : "Ausblenden",
+                    systemImage: tx.isExcluded ? "eye" : "eye.slash"
                 )
             }
-            .overlay(alignment: .bottom) {
-                if let msg = undoMessage {
-                    UndoToast(message: msg) {
-                        performUndo()
+            .tint(tx.isExcluded ? .blue : .orange)
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var filterToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                showFilterSheet = true
+            } label: {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "line.3.horizontal.decrease")
+                        .foregroundStyle(activeFilterCount > 0 ? WimgTheme.text : WimgTheme.textSecondary)
+                    if activeFilterCount > 0 {
+                        Circle()
+                            .fill(WimgTheme.accent)
+                            .frame(width: 8, height: 8)
+                            .offset(x: 2, y: -2)
                     }
-                    .padding(.bottom, 8)
                 }
             }
         }
     }
+
+    // MARK: - Actions
 
     private func reload() {
         do {
@@ -330,45 +359,8 @@ struct CategoryEditorSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    // Transaction info header
-                    VStack(spacing: 8) {
-                        Text(transaction.description)
-                            .font(.system(.headline, design: .rounded, weight: .bold))
-                            .lineLimit(2)
-                            .multilineTextAlignment(.center)
-                        Text(formatAmount(transaction.amount))
-                            .font(.system(.title2, design: .rounded, weight: .black))
-                            .foregroundStyle(transaction.isIncome ? .green : WimgTheme.text)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(24)
-                    .wimgHero()
-                    .padding(.horizontal)
-
-                    // Category grid
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Kategorie wählen")
-                            .font(.system(.subheadline, design: .rounded, weight: .bold))
-                            .foregroundStyle(WimgTheme.textSecondary)
-                            .textCase(.uppercase)
-                            .tracking(0.5)
-                            .padding(.horizontal, 20)
-
-                        VStack(spacing: 0) {
-                            if transaction.isIncome {
-                                categoryRow(.income)
-                                Divider().padding(.leading, 60)
-                            }
-                            ForEach(expenseCategories) { cat in
-                                categoryRow(cat)
-                                if cat.id != expenseCategories.last?.id {
-                                    Divider().padding(.leading, 60)
-                                }
-                            }
-                        }
-                        .wimgCard(radius: WimgTheme.radiusMedium)
-                        .padding(.horizontal)
-                    }
+                    transactionHeader
+                    categoryList
                 }
                 .padding(.top, 16)
                 .padding(.bottom, 24)
@@ -383,6 +375,48 @@ struct CategoryEditorSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    private var transactionHeader: some View {
+        VStack(spacing: 8) {
+            Text(transaction.description)
+                .font(.system(.headline, design: .rounded, weight: .bold))
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+            Text(formatAmount(transaction.amount))
+                .font(.system(.title2, design: .rounded, weight: .black))
+                .foregroundStyle(transaction.isIncome ? .green : WimgTheme.text)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(24)
+        .wimgHero()
+        .padding(.horizontal)
+    }
+
+    private var categoryList: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Kategorie wählen")
+                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.textSecondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+                .padding(.horizontal, 20)
+
+            VStack(spacing: 0) {
+                if transaction.isIncome {
+                    categoryRow(.income)
+                    Divider().padding(.leading, 60)
+                }
+                ForEach(expenseCategories) { cat in
+                    categoryRow(cat)
+                    if cat.id != expenseCategories.last?.id {
+                        Divider().padding(.leading, 60)
+                    }
+                }
+            }
+            .wimgCard(radius: WimgTheme.radiusMedium)
+            .padding(.horizontal)
+        }
     }
 
     private func categoryRow(_ cat: WimgCategory) -> some View {
@@ -437,103 +471,7 @@ struct AdvancedFilterSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 28) {
-                    // Search
-                    HStack(spacing: 10) {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundStyle(WimgTheme.textSecondary)
-                        TextField("Suchen nach...", text: $searchText)
-                            .font(.system(.body, design: .rounded))
-                    }
-                    .padding(14)
-                    .background(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                    // Date Range
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Zeitraum")
-                            .font(.system(.headline, design: .rounded, weight: .bold))
-
-                        HStack(spacing: 8) {
-                            dateChip("30d", label: "Letzte 30 Tage")
-                            dateChip("month", label: "Aktueller Monat")
-                            dateChip("quarter", label: "Letztes Quartal")
-                        }
-                    }
-
-                    // Categories
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Text("Kategorien")
-                                .font(.system(.headline, design: .rounded, weight: .bold))
-                            Spacer()
-                            if !filterCategorySet.isEmpty {
-                                Button("Zurücksetzen") {
-                                    filterCategorySet.removeAll()
-                                }
-                                .font(.system(.caption, design: .rounded, weight: .bold))
-                                .foregroundStyle(WimgTheme.textSecondary)
-                            }
-                        }
-
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 4), spacing: 16) {
-                            ForEach(allCategories) { cat in
-                                let active = filterCategorySet.contains(cat.rawValue)
-                                Button {
-                                    withAnimation(.easeInOut(duration: 0.15)) {
-                                        if active {
-                                            filterCategorySet.remove(cat.rawValue)
-                                        } else {
-                                            filterCategorySet.insert(cat.rawValue)
-                                        }
-                                    }
-                                } label: {
-                                    VStack(spacing: 6) {
-                                        ZStack {
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .fill(cat.color.opacity(0.12))
-                                                .frame(width: 48, height: 48)
-                                            if active {
-                                                RoundedRectangle(cornerRadius: 12)
-                                                    .stroke(cat.color, lineWidth: 2.5)
-                                                    .frame(width: 48, height: 48)
-                                            }
-                                            Image(systemName: cat.icon)
-                                                .font(.system(size: 18))
-                                                .foregroundStyle(cat.color)
-                                        }
-                                        Text(cat.name)
-                                            .font(.system(size: 10, design: .rounded, weight: active ? .bold : .medium))
-                                            .foregroundStyle(active ? WimgTheme.text : WimgTheme.textSecondary)
-                                            .lineLimit(1)
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Amount
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Betrag")
-                            .font(.system(.headline, design: .rounded, weight: .bold))
-
-                        HStack(spacing: 8) {
-                            amountChip("lt50", label: "< 50\u{20AC}")
-                            amountChip("50-200", label: "50 – 200\u{20AC}")
-                            amountChip("gt200", label: "> 200\u{20AC}")
-                        }
-                    }
-
-                    // Show excluded toggle
-                    Toggle(isOn: $showExcluded) {
-                        Text("Ausgeblendete anzeigen")
-                            .font(.system(.subheadline, design: .rounded, weight: .medium))
-                            .foregroundStyle(WimgTheme.textSecondary)
-                    }
-                    .tint(WimgTheme.accent)
-                }
-                .padding()
-                .padding(.bottom, 80)
+                filterContent
             }
             .background(WimgTheme.bg)
             .navigationTitle("Erweiterte Suche")
@@ -544,40 +482,165 @@ struct AdvancedFilterSheet: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                VStack(spacing: 10) {
-                    if hasActiveFilters {
-                        Button {
-                            searchText = ""
-                            dateQuick = nil
-                            amountQuick = nil
-                            filterCategorySet.removeAll()
-                        } label: {
-                            Text("Zurücksetzen")
-                                .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundStyle(WimgTheme.textSecondary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
-                        }
-                    }
-                    Button {
-                        dismiss()
-                    } label: {
-                        Text("Ergebnisse anzeigen")
-                            .font(.system(.headline, design: .rounded, weight: .bold))
-                            .foregroundStyle(WimgTheme.text)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(WimgTheme.accent)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                    }
-                }
-                .padding()
-                .background(.ultraThinMaterial)
+                filterFooter
             }
         }
         .presentationDetents([.large])
+    }
+
+    // MARK: - Extracted Subviews
+
+    private var filterContent: some View {
+        VStack(spacing: 28) {
+            searchField
+            dateSection
+            categorySection
+            amountSection
+            excludedToggle
+        }
+        .padding()
+        .padding(.bottom, 80)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(WimgTheme.textSecondary)
+            TextField("Suchen nach...", text: $searchText)
+                .font(.system(.body, design: .rounded))
+        }
+        .padding(14)
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var dateSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Zeitraum")
+                .font(.system(.headline, design: .rounded, weight: .bold))
+
+            HStack(spacing: 8) {
+                dateChip("30d", label: "Letzte 30 Tage")
+                dateChip("month", label: "Aktueller Monat")
+                dateChip("quarter", label: "Letztes Quartal")
+            }
+        }
+    }
+
+    private var categorySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Kategorien")
+                    .font(.system(.headline, design: .rounded, weight: .bold))
+                Spacer()
+                if !filterCategorySet.isEmpty {
+                    Button("Zurücksetzen") {
+                        filterCategorySet.removeAll()
+                    }
+                    .font(.system(.caption, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.textSecondary)
+                }
+            }
+
+            categoryGrid
+        }
+    }
+
+    private var categoryGrid: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 4), spacing: 16) {
+            ForEach(allCategories) { cat in
+                categoryButton(cat)
+            }
+        }
+    }
+
+    private func categoryButton(_ cat: WimgCategory) -> some View {
+        let active = filterCategorySet.contains(cat.rawValue)
+        return Button {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                if active {
+                    filterCategorySet.remove(cat.rawValue)
+                } else {
+                    filterCategorySet.insert(cat.rawValue)
+                }
+            }
+        } label: {
+            VStack(spacing: 6) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(cat.color.opacity(0.12))
+                        .frame(width: 48, height: 48)
+                    if active {
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(cat.color, lineWidth: 2.5)
+                            .frame(width: 48, height: 48)
+                    }
+                    Image(systemName: cat.icon)
+                        .font(.system(size: 18))
+                        .foregroundStyle(cat.color)
+                }
+                Text(cat.name)
+                    .font(.system(size: 10, design: .rounded, weight: active ? .bold : .medium))
+                    .foregroundStyle(active ? WimgTheme.text : WimgTheme.textSecondary)
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    private var amountSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Betrag")
+                .font(.system(.headline, design: .rounded, weight: .bold))
+
+            HStack(spacing: 8) {
+                amountChip("lt50", label: "< 50\u{20AC}")
+                amountChip("50-200", label: "50 – 200\u{20AC}")
+                amountChip("gt200", label: "> 200\u{20AC}")
+            }
+        }
+    }
+
+    private var excludedToggle: some View {
+        Toggle(isOn: $showExcluded) {
+            Text("Ausgeblendete anzeigen")
+                .font(.system(.subheadline, design: .rounded, weight: .medium))
+                .foregroundStyle(WimgTheme.textSecondary)
+        }
+        .tint(WimgTheme.accent)
+    }
+
+    private var filterFooter: some View {
+        VStack(spacing: 10) {
+            if hasActiveFilters {
+                Button {
+                    searchText = ""
+                    dateQuick = nil
+                    amountQuick = nil
+                    filterCategorySet.removeAll()
+                } label: {
+                    Text("Zurücksetzen")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+            }
+            Button {
+                dismiss()
+            } label: {
+                Text("Ergebnisse anzeigen")
+                    .font(.system(.headline, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(WimgTheme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+        }
+        .padding()
+        .background(.ultraThinMaterial)
     }
 
     private func dateChip(_ id: String, label: String) -> some View {

@@ -24,3 +24,6 @@ Settings, More page, About page, Data Export, Monthly Snapshots, Undo toast.
 | OPFS persistence                     | Web only | iOS uses file on disk          |
 | MCP server (AI agent access)         | Remote   | CF Worker DO, any MCP client   |
 | DevTools panel                       | Web only | iOS uses Xcode Instruments     |
+| Command Palette + Search             | Web only | iOS uses native search          |
+| In-app Changelog                     | Web only | iOS uses App Store notes        |
+| Auto-learn rules                     | Both     | Runs in libwimg (Zig)           |

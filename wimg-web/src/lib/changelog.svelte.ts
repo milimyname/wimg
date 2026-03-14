@@ -45,6 +45,16 @@ class ChangelogStore {
     return this.#error;
   }
 
+  /** Returns all releases newer than the given version (e.g. "0.5.10") */
+  releasesSince(version: string): Release[] {
+    const tag = version.startsWith("v") ? version : `v${version}`;
+    const idx = this.#releases.findIndex((r) => r.tag === tag);
+    // If current version not found, return all releases (user is very old)
+    if (idx === -1) return this.#releases;
+    // Return everything before the current version (releases are newest-first)
+    return this.#releases.slice(0, idx);
+  }
+
   async load() {
     const cache = loadCache();
 
