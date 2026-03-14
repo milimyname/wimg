@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from "svelte";
-  import { goto, pushState } from "$app/navigation";
+  import { goto, pushState, afterNavigate } from "$app/navigation";
   import { page } from "$app/state";
   import { init, takeSnapshot } from "$lib/wasm";
   import { accountStore } from "$lib/account.svelte";
@@ -126,6 +126,13 @@
 
   onDestroy(() => {
     disconnectSync();
+  });
+
+  // Scroll to top on page navigation (skip for shallow routing like sheets)
+  afterNavigate(({ from, to }) => {
+    if (from?.url.pathname !== to?.url.pathname) {
+      window.scrollTo(0, 0);
+    }
   });
 
   function openPalette() {
