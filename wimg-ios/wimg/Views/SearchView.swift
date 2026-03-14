@@ -1,0 +1,401 @@
+import SwiftUI
+
+struct SearchView: View {
+    @Binding var selectedAccount: String?
+    @State private var searchText = ""
+    @State private var transactions: [Transaction] = []
+    @State private var selectedTransaction: Transaction?
+    @State private var undoMessage: String?
+    @State private var dateFrom: Date?
+    @State private var dateTo: Date?
+    @State private var amountMin: Double = 0
+    @State private var amountMax: Double = 1000
+    @State private var filterCategories: Set<Int> = []
+
+    private let allCategories: [WimgCategory] = [
+        .groceries, .dining, .transport, .housing, .utilities,
+        .entertainment, .shopping, .health, .insurance, .subscriptions,
+        .travel, .education, .cash, .transfer, .income, .other,
+    ]
+
+    private var filtered: [Transaction] {
+        var result = transactions
+
+        if !searchText.isEmpty {
+            result = result.filter {
+                $0.description.localizedCaseInsensitiveContains(searchText)
+            }
+        }
+
+        if !filterCategories.isEmpty {
+            result = result.filter { filterCategories.contains($0.category) }
+        }
+
+        if let dateFrom {
+            let fmt = DateFormatter()
+            fmt.dateFormat = "yyyy-MM-dd"
+            let fromStr = fmt.string(from: dateFrom)
+            result = result.filter { $0.date >= fromStr }
+        }
+        if let dateTo {
+            let fmt = DateFormatter()
+            fmt.dateFormat = "yyyy-MM-dd"
+            let toStr = fmt.string(from: dateTo)
+            result = result.filter { $0.date <= toStr }
+        }
+
+        if amountMin > 0 || amountMax < 1000 {
+            result = result.filter {
+                let abs = Swift.abs($0.amount)
+                return abs >= amountMin && (amountMax >= 1000 || abs <= amountMax)
+            }
+        }
+
+        return result
+    }
+
+    private var grouped: [(String, [Transaction])] {
+        Dictionary(grouping: filtered) { $0.date }
+            .sorted { $0.key > $1.key }
+    }
+
+    private var hasActiveFilters: Bool {
+        dateFrom != nil || dateTo != nil || amountMin > 0 || amountMax < 1000 || !filterCategories.isEmpty
+    }
+
+    private var isSearching: Bool {
+        !searchText.isEmpty || hasActiveFilters
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Active filter chips
+                if hasActiveFilters {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            if dateFrom != nil || dateTo != nil {
+                                filterChip("Zeitraum") {
+                                    dateFrom = nil
+                                    dateTo = nil
+                                }
+                            }
+                            if amountMin > 0 || amountMax < 1000 {
+                                filterChip("\(Int(amountMin))–\(amountMax >= 1000 ? "∞" : String(Int(amountMax))) €") {
+                                    amountMin = 0
+                                    amountMax = 1000
+                                }
+                            }
+                            if !filterCategories.isEmpty {
+                                filterChip("\(filterCategories.count) Kategorien") {
+                                    filterCategories.removeAll()
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                    }
+                }
+
+                if isSearching {
+                    // Search results
+                    if filtered.isEmpty {
+                        ContentUnavailableView.search(text: searchText)
+                    } else {
+                        List {
+                            ForEach(grouped, id: \.0) { date, txs in
+                                Section {
+                                    ForEach(txs) { tx in
+                                        TransactionCard(transaction: tx) {
+                                            selectedTransaction = tx
+                                        }
+                                        .listRowInsets(EdgeInsets())
+                                        .opacity(tx.isExcluded ? 0.4 : 1.0)
+                                    }
+                                } header: {
+                                    Text(date)
+                                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                                        .foregroundStyle(WimgTheme.textSecondary)
+                                        .textCase(.uppercase)
+                                        .tracking(0.8)
+                                }
+                            }
+                        }
+                        .listStyle(.insetGrouped)
+                        .scrollContentBackground(.hidden)
+                    }
+                } else {
+                    // Quick actions when not searching
+                    quickActionsView
+                }
+            }
+            .background(WimgTheme.bg)
+            .navigationTitle("Suche")
+            .searchable(text: $searchText, prompt: "Transaktionen suchen...")
+            .toolbar { filterToolbar }
+            .onAppear { reload() }
+            .onChange(of: selectedAccount) { reload() }
+            .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
+                reload()
+            }
+            .sheet(item: $selectedTransaction) { tx in
+                CategoryEditorSheet(transaction: tx) {
+                    reload()
+                    showUndo("Kategorie geändert")
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if let msg = undoMessage {
+                    UndoToast(message: msg) {
+                        if LibWimg.undo() != nil {
+                            reload()
+                            NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+                        }
+                        withAnimation { undoMessage = nil }
+                    }
+                    .padding(.bottom, 8)
+                }
+            }
+        }
+    }
+
+    // MARK: - Quick Actions
+
+    private var quickActionsView: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Categorization
+                actionSection("Kategorisierung") {
+                    actionButton("Auto-Kategorisieren", icon: "tag", color: .orange) {
+                        let n = LibWimg.autoCategorize()
+                        showUndo(n > 0 ? "\(n) kategorisiert" : "Keine neuen Kategorien")
+                    }
+                    actionButton("Wiederkehrende erkennen", icon: "arrow.triangle.2.circlepath", color: .green) {
+                        let n = LibWimg.detectRecurring()
+                        showUndo(n > 0 ? "\(n) Muster erkannt" : "Keine neuen Muster")
+                    }
+                }
+
+                // Data
+                actionSection("Daten") {
+                    actionButton("Snapshot erstellen", icon: "camera", color: .blue) {
+                        let now = Date()
+                        let cal = Calendar.current
+                        try? LibWimg.takeSnapshot(
+                            year: cal.component(.year, from: now),
+                            month: cal.component(.month, from: now)
+                        )
+                        showUndo("Snapshot erstellt")
+                    }
+                    actionButton("CSV exportieren", icon: "square.and.arrow.up", color: .indigo) {
+                        exportCsv()
+                    }
+                    actionButton("Datenbank exportieren", icon: "externaldrive", color: .purple) {
+                        exportDb()
+                    }
+                }
+
+                // Undo/Redo
+                actionSection("Bearbeiten") {
+                    actionButton("Rückgängig", icon: "arrow.uturn.backward", color: .gray) {
+                        if let result = LibWimg.undo() {
+                            reload()
+                            NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+                            showUndo("Rückgängig: \(result)")
+                        }
+                    }
+                    actionButton("Wiederherstellen", icon: "arrow.uturn.forward", color: .gray) {
+                        if let result = LibWimg.redo() {
+                            reload()
+                            NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+                            showUndo("Wiederhergestellt: \(result)")
+                        }
+                    }
+                }
+            }
+            .padding(20)
+            .padding(.bottom, 24)
+        }
+    }
+
+    private func actionSection(_ title: String, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(.caption, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.textSecondary)
+                .textCase(.uppercase)
+                .tracking(0.8)
+                .padding(.leading, 4)
+
+            VStack(spacing: 0) {
+                content()
+            }
+            .wimgCard()
+        }
+    }
+
+    private func actionButton(_ label: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(color.opacity(0.12))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: icon)
+                        .font(.system(size: 15))
+                        .foregroundStyle(color)
+                }
+
+                Text(label)
+                    .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    .foregroundStyle(WimgTheme.text)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(WimgTheme.textSecondary.opacity(0.4))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Filter Toolbar
+
+    @ToolbarContentBuilder
+    private var filterToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Menu("Zeitraum") {
+                    Button("Letzte 30 Tage") {
+                        dateFrom = Calendar.current.date(byAdding: .day, value: -30, to: Date())
+                        dateTo = nil
+                    }
+                    Button("Aktueller Monat") {
+                        dateFrom = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date()))
+                        dateTo = nil
+                    }
+                    Button("Letztes Quartal") {
+                        dateFrom = Calendar.current.date(byAdding: .month, value: -3, to: Date())
+                        dateTo = nil
+                    }
+                    if dateFrom != nil {
+                        Divider()
+                        Button("Zurücksetzen", role: .destructive) {
+                            dateFrom = nil
+                            dateTo = nil
+                        }
+                    }
+                }
+
+                Menu("Betrag") {
+                    Button("< 50 €") { amountMin = 0; amountMax = 50 }
+                    Button("50 – 200 €") { amountMin = 50; amountMax = 200 }
+                    Button("> 200 €") { amountMin = 200; amountMax = 1000 }
+                    if amountMin > 0 || amountMax < 1000 {
+                        Divider()
+                        Button("Zurücksetzen", role: .destructive) { amountMin = 0; amountMax = 1000 }
+                    }
+                }
+
+                Menu("Kategorien") {
+                    ForEach(allCategories) { cat in
+                        Button {
+                            if filterCategories.contains(cat.rawValue) {
+                                filterCategories.remove(cat.rawValue)
+                            } else {
+                                filterCategories.insert(cat.rawValue)
+                            }
+                        } label: {
+                            Label(cat.name, systemImage: filterCategories.contains(cat.rawValue) ? "checkmark.circle.fill" : "circle")
+                        }
+                    }
+                    if !filterCategories.isEmpty {
+                        Divider()
+                        Button("Zurücksetzen", role: .destructive) { filterCategories.removeAll() }
+                    }
+                }
+
+                if hasActiveFilters {
+                    Divider()
+                    Button("Alle Filter zurücksetzen", role: .destructive) {
+                        dateFrom = nil
+                        dateTo = nil
+                        amountMin = 0
+                        amountMax = 1000
+                        filterCategories.removeAll()
+                    }
+                }
+            } label: {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "line.3.horizontal.decrease")
+                        .foregroundStyle(hasActiveFilters ? WimgTheme.text : WimgTheme.textSecondary)
+                    if hasActiveFilters {
+                        Circle()
+                            .fill(WimgTheme.accent)
+                            .frame(width: 8, height: 8)
+                            .offset(x: 2, y: -2)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func filterChip(_ label: String, onRemove: @escaping () -> Void) -> some View {
+        HStack(spacing: 4) {
+            Text(label)
+                .font(.system(.caption, design: .rounded, weight: .bold))
+            Button {
+                withAnimation { onRemove() }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+            }
+        }
+        .foregroundStyle(WimgTheme.text)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(WimgTheme.accent)
+        .clipShape(Capsule())
+    }
+
+    private func reload() {
+        transactions = ((try? LibWimg.getTransactionsFiltered(account: selectedAccount)) ?? [])
+            .sorted { $0.date > $1.date }
+    }
+
+    private func showUndo(_ message: String) {
+        withAnimation { undoMessage = message }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            withAnimation { if undoMessage == message { undoMessage = nil } }
+        }
+    }
+
+    private func exportCsv() {
+        guard let csv = try? LibWimg.exportCsv() else { return }
+        shareText(csv, filename: "wimg-export.csv")
+    }
+
+    private func exportDb() {
+        guard let json = try? LibWimg.exportDb() else { return }
+        let date = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
+            .replacingOccurrences(of: "/", with: "-")
+        shareText(json, filename: "wimg-backup-\(date).json")
+    }
+
+    private func shareText(_ content: String, filename: String) {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+        try? content.write(to: url, atomically: true, encoding: .utf8)
+        let av = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let root = scene.windows.first?.rootViewController {
+            root.present(av, animated: true)
+        }
+    }
+}

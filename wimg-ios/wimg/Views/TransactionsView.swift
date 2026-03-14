@@ -13,7 +13,10 @@ struct TransactionsView: View {
     @State private var showFilterSheet = false
     @State private var filterCategorySet: Set<Int> = []
     @State private var dateQuick: String?
-    @State private var amountQuick: String?
+    @State private var dateFrom: Date?
+    @State private var dateTo: Date?
+    @State private var amountMin: Double = 0
+    @State private var amountMax: Double = 1000
 
     private let quickCategories: [WimgCategory] = [
         .groceries, .dining, .transport, .shopping, .entertainment,
@@ -32,8 +35,8 @@ struct TransactionsView: View {
     }
 
     private var activeFilterCount: Int {
-        (dateQuick != nil ? 1 : 0)
-            + (amountQuick != nil ? 1 : 0)
+        (dateQuick != nil || dateFrom != nil || dateTo != nil ? 1 : 0)
+            + (amountMin > 0 || amountMax < 1000 ? 1 : 0)
             + (!filterCategorySet.isEmpty ? 1 : 0)
             + (!searchText.isEmpty ? 1 : 0)
     }
@@ -65,6 +68,8 @@ struct TransactionsView: View {
         }
 
         // Date range filter
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
         if let dateQuick {
             let today = Date()
             let calendar = Calendar.current
@@ -80,23 +85,25 @@ struct TransactionsView: View {
                 fromDate = nil
             }
             if let fromDate {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy-MM-dd"
-                let fromStr = formatter.string(from: fromDate)
+                let fromStr = fmt.string(from: fromDate)
                 result = result.filter { $0.date >= fromStr }
+            }
+        } else {
+            if let dateFrom {
+                let fromStr = fmt.string(from: dateFrom)
+                result = result.filter { $0.date >= fromStr }
+            }
+            if let dateTo {
+                let toStr = fmt.string(from: dateTo)
+                result = result.filter { $0.date <= toStr }
             }
         }
 
         // Amount range filter
-        if let amountQuick {
-            switch amountQuick {
-            case "lt50":
-                result = result.filter { abs($0.amount) < 50 }
-            case "50-200":
-                result = result.filter { abs($0.amount) >= 50 && abs($0.amount) <= 200 }
-            case "gt200":
-                result = result.filter { abs($0.amount) > 200 }
-            default: break
+        if amountMin > 0 || amountMax < 1000 {
+            result = result.filter {
+                let abs = Swift.abs($0.amount)
+                return abs >= amountMin && (amountMax >= 1000 || abs <= amountMax)
             }
         }
 
@@ -131,7 +138,10 @@ struct TransactionsView: View {
                     AdvancedFilterSheet(
                         searchText: $searchText,
                         dateQuick: $dateQuick,
-                        amountQuick: $amountQuick,
+                        dateFrom: $dateFrom,
+                        dateTo: $dateTo,
+                        amountMin: $amountMin,
+                        amountMax: $amountMax,
                         filterCategorySet: $filterCategorySet,
                         showExcluded: $showExcluded,
                         allCategories: allFilterCategories
@@ -457,7 +467,10 @@ struct CategoryEditorSheet: View {
 struct AdvancedFilterSheet: View {
     @Binding var searchText: String
     @Binding var dateQuick: String?
-    @Binding var amountQuick: String?
+    @Binding var dateFrom: Date?
+    @Binding var dateTo: Date?
+    @Binding var amountMin: Double
+    @Binding var amountMax: Double
     @Binding var filterCategorySet: Set<Int>
     @Binding var showExcluded: Bool
     let allCategories: [WimgCategory]
@@ -465,7 +478,7 @@ struct AdvancedFilterSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     private var hasActiveFilters: Bool {
-        dateQuick != nil || amountQuick != nil || !filterCategorySet.isEmpty || !searchText.isEmpty
+        dateQuick != nil || dateFrom != nil || dateTo != nil || amountMin > 0 || amountMax < 1000 || !filterCategorySet.isEmpty || !searchText.isEmpty
     }
 
     var body: some View {
@@ -523,6 +536,44 @@ struct AdvancedFilterSheet: View {
                 dateChip("30d", label: "Letzte 30 Tage")
                 dateChip("month", label: "Aktueller Monat")
                 dateChip("quarter", label: "Letztes Quartal")
+            }
+
+            // Custom date range
+            if dateQuick == nil {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Von")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                            .textCase(.uppercase)
+                        DatePicker("", selection: Binding(
+                            get: { dateFrom ?? Calendar.current.date(byAdding: .year, value: -1, to: Date())! },
+                            set: { dateFrom = $0 }
+                        ), displayedComponents: .date)
+                        .labelsHidden()
+                        .datePickerStyle(.compact)
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Bis")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                            .textCase(.uppercase)
+                        DatePicker("", selection: Binding(
+                            get: { dateTo ?? Date() },
+                            set: { dateTo = $0 }
+                        ), displayedComponents: .date)
+                        .labelsHidden()
+                        .datePickerStyle(.compact)
+                    }
+                }
+                if dateFrom != nil || dateTo != nil {
+                    Button("Datum zurücksetzen") {
+                        dateFrom = nil
+                        dateTo = nil
+                    }
+                    .font(.system(.caption, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.textSecondary)
+                }
             }
         }
     }
@@ -589,14 +640,40 @@ struct AdvancedFilterSheet: View {
 
     private var amountSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Betrag")
-                .font(.system(.headline, design: .rounded, weight: .bold))
-
-            HStack(spacing: 8) {
-                amountChip("lt50", label: "< 50\u{20AC}")
-                amountChip("50-200", label: "50 – 200\u{20AC}")
-                amountChip("gt200", label: "> 200\u{20AC}")
+            HStack {
+                Text("Betrag")
+                    .font(.system(.headline, design: .rounded, weight: .bold))
+                Spacer()
+                Text("\(Int(amountMin)) – \(amountMax >= 1000 ? "∞" : String(Int(amountMax))) €")
+                    .font(.system(.caption, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.textSecondary)
             }
+
+            VStack(spacing: 8) {
+                HStack {
+                    Text("Min")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                    Slider(value: $amountMin, in: 0...500, step: 10)
+                        .tint(WimgTheme.accent)
+                    Text("\(Int(amountMin)) €")
+                        .font(.system(.caption, design: .rounded, weight: .bold))
+                        .frame(width: 50, alignment: .trailing)
+                }
+                HStack {
+                    Text("Max")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                    Slider(value: $amountMax, in: 50...1000, step: 50)
+                        .tint(WimgTheme.accent)
+                    Text(amountMax >= 1000 ? "∞" : "\(Int(amountMax)) €")
+                        .font(.system(.caption, design: .rounded, weight: .bold))
+                        .frame(width: 50, alignment: .trailing)
+                }
+            }
+            .padding(14)
+            .background(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
         }
     }
 
@@ -615,7 +692,10 @@ struct AdvancedFilterSheet: View {
                 Button {
                     searchText = ""
                     dateQuick = nil
-                    amountQuick = nil
+                    dateFrom = nil
+                    dateTo = nil
+                    amountMin = 0
+                    amountMax = 1000
                     filterCategorySet.removeAll()
                 } label: {
                     Text("Zurücksetzen")
@@ -648,6 +728,8 @@ struct AdvancedFilterSheet: View {
         return Button {
             withAnimation(.easeInOut(duration: 0.15)) {
                 dateQuick = active ? nil : id
+                dateFrom = nil
+                dateTo = nil
             }
         } label: {
             Text(label)
@@ -658,27 +740,6 @@ struct AdvancedFilterSheet: View {
                 .clipShape(Capsule())
                 .overlay(
                     Capsule()
-                        .stroke(active ? Color.clear : Color.gray.opacity(0.2), lineWidth: 1)
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func amountChip(_ id: String, label: String) -> some View {
-        let active = amountQuick == id
-        return Button {
-            withAnimation(.easeInOut(duration: 0.15)) {
-                amountQuick = active ? nil : id
-            }
-        } label: {
-            Text(label)
-                .font(.system(.subheadline, design: .rounded, weight: .bold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(active ? WimgTheme.accent : .white)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
                         .stroke(active ? Color.clear : Color.gray.opacity(0.2), lineWidth: 1)
                 )
         }

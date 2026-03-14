@@ -1,37 +1,43 @@
 import SwiftUI
 
 struct AboutView: View {
-    @State private var expandedFAQ: String?
-
     private let faqs: [(q: String, a: String)] = [
-        (
-            "Sind meine Daten sicher?",
-            "Ja. Alle Finanzdaten werden lokal in einer SQLite-Datenbank auf deinem Gerät gespeichert. Sync ist Ende-zu-Ende verschlüsselt — der Server sieht nur Chiffretext."
-        ),
-        (
-            "Welche Banken werden unterstützt?",
-            "CSV-Import von Comdirect, Trade Republic und Scalable Capital. Da wimg Open-Source ist, können weitere Formate jederzeit hinzugefügt werden."
-        ),
-        (
-            "Wie funktioniert der Import?",
-            "Lade deinen Kontoauszug im CSV-Format hoch. wimg erkennt das Format automatisch, analysiert die Transaktionen lokal und kategorisiert sie mit intelligenten Regeln."
-        ),
-        (
-            "Ist wimg wirklich kostenlos?",
-            "Ja. wimg ist ein Leidenschaftsprojekt unter Open-Source-Lizenz. Keine Abonnements, keine versteckten Kosten, kein Verkauf deiner Daten."
-        ),
-        (
-            "Wo werden die Daten gespeichert?",
-            "Im Browser: OPFS (Origin Private File System). Auf iOS: lokale SQLite-Datei. Deine Daten verlassen dein Gerät nur bei aktivierter Sync — dann Ende-zu-Ende verschlüsselt."
-        ),
-        (
-            "Was ist der MCP-Server?",
-            "Mit aktivierter Synchronisierung wird dein Sync-Schlüssel zum MCP-Zugang. Claude.ai oder andere KI-Tools können Ausgaben abfragen, Kategorien setzen und Schulden verwalten — Ende-zu-Ende verschlüsselt, in Echtzeit synchronisiert."
-        ),
-        (
-            "Wie kann ich beitragen?",
-            "Besuche das GitHub-Repository. Code, Übersetzungen, Feedback und Bug-Reports sind willkommen."
-        ),
+        ("Sind meine Daten sicher?",
+         "Ja. Alle Finanzdaten werden lokal in einer SQLite-Datenbank auf deinem Gerät gespeichert. Sync ist Ende-zu-Ende verschlüsselt — der Server sieht nur Chiffretext."),
+        ("Welche Banken werden unterstützt?",
+         "CSV-Import von Comdirect, Trade Republic und Scalable Capital. Da wimg Open-Source ist, können weitere Formate jederzeit hinzugefügt werden."),
+        ("Wie funktioniert der Import?",
+         "Lade deinen Kontoauszug im CSV-Format hoch. wimg erkennt das Format automatisch, analysiert die Transaktionen lokal und kategorisiert sie mit intelligenten Regeln."),
+        ("Wie funktioniert die Kategorisierung?",
+         "wimg nutzt ein Regel-System mit Schlüsselwörtern. Bekannte Händler (REWE, LIDL, etc.) werden automatisch erkannt. Wenn du eine Transaktion manuell kategorisierst, lernt wimg das Muster und wendet es zukünftig automatisch an. Für den Rest hilft Claude per MCP."),
+        ("Ist wimg wirklich kostenlos?",
+         "Ja. wimg ist ein Leidenschaftsprojekt unter Open-Source-Lizenz. Keine Abonnements, keine versteckten Kosten, kein Verkauf deiner Daten."),
+        ("Wo werden die Daten gespeichert?",
+         "Im Browser: OPFS (Origin Private File System). Auf iOS: lokale SQLite-Datei. Deine Daten verlassen dein Gerät nur bei aktivierter Sync — dann Ende-zu-Ende verschlüsselt."),
+        ("Was ist der MCP-Server?",
+         "Mit aktivierter Synchronisierung wird dein Sync-Schlüssel zum MCP-Zugang. Claude.ai oder andere KI-Tools können Ausgaben abfragen, Kategorien setzen und Schulden verwalten — Ende-zu-Ende verschlüsselt, in Echtzeit synchronisiert."),
+        ("Wie funktioniert Auto-Learn?",
+         "Wenn du eine Transaktion manuell kategorisierst, lernt wimg automatisch das Schlüsselwort (z.B. \"REWE\" → Lebensmittel). Beim nächsten Import oder Auto-Kategorisieren werden ähnliche Transaktionen automatisch zugeordnet. Alle gelernten Regeln findest du unter Einstellungen → Regeln."),
+        ("Was zeigt das Vermögens-Diagramm?",
+         "Das Vermögens-Diagramm auf der Analyse-Seite zeigt dein kumulatives Nettovermögen über die Zeit — basierend auf monatlichen Snapshots (Einnahmen minus Ausgaben). Du brauchst mindestens 2 Snapshots. Snapshots werden automatisch jeden Monat erstellt."),
+        ("Wie synchronisiere ich zwischen Geräten?",
+         "Gehe zu Einstellungen → Sync aktivieren. Dadurch wird ein einzigartiger Sync-Schlüssel erstellt. Kopiere diesen Schlüssel und füge ihn auf dem zweiten Gerät ein. Änderungen werden in Echtzeit per WebSocket synchronisiert — Ende-zu-Ende verschlüsselt."),
+        ("Wie funktionieren Sparziele?",
+         "Unter Mehr → Sparziele kannst du Sparziele mit Name, Icon, Zielbetrag und optionaler Deadline erstellen. Über den \"Einzahlen\"-Button trägst du Beträge ein und siehst deinen Fortschritt als Prozentbalken."),
+        ("Wie erkennt wimg Abos und wiederkehrende Zahlungen?",
+         "wimg analysiert deine Transaktionen automatisch und erkennt regelmäßige Muster (monatlich, vierteljährlich, jährlich). Unter Mehr → Wiederkehrend siehst du alle erkannten Abos mit Betrag, Intervall und dem nächsten Fälligkeitsdatum."),
+        ("Funktioniert wimg offline?",
+         "Ja, vollständig. Alle Daten liegen lokal in SQLite. Du brauchst kein Internet für Import, Kategorisierung, Analyse oder irgendeine Kernfunktion. Sync ist optional und funktioniert nur bei Internetverbindung."),
+        ("Kann ich mehrere Konten verwalten?",
+         "Ja. Über den Konto-Switcher oben rechts kannst du zwischen Konten wechseln oder alle anzeigen. Neue Konten werden beim CSV-Import automatisch erstellt oder können manuell in den Einstellungen angelegt werden."),
+        ("Kann ich Änderungen rückgängig machen?",
+         "Ja. Nach jeder Aktion erscheint ein Undo-Toast am unteren Bildschirmrand. wimg speichert bis zu 50 Undo-Schritte."),
+        ("Was kann die Steuern-Seite?",
+         "Die Steuern-Seite hilft dir, absetzbare Ausgaben für deine Steuererklärung zu finden. Sie berechnet Pendlerpauschale (§9 EStG) und Homeoffice-Pauschale (§4 Abs. 5 Nr. 6c EStG) und scannt Transaktionen nach steuerrelevanten Schlüsselwörtern. Alles kann als CSV exportiert werden."),
+        ("Wie lösche ich meine Daten?",
+         "Unter Einstellungen → Danger Zone kannst du die Datenbank zurücksetzen. Diese Aktion kann nicht rückgängig gemacht werden."),
+        ("Wie kann ich beitragen?",
+         "Besuche das GitHub-Repository. Code, Übersetzungen, Feedback und Bug-Reports sind willkommen."),
     ]
 
     private var appVersion: String {
@@ -211,36 +217,18 @@ struct AboutView: View {
 
                     VStack(spacing: 8) {
                         ForEach(faqs, id: \.q) { faq in
-                            VStack(spacing: 0) {
-                                Button {
-                                    withAnimation(.easeInOut(duration: 0.25)) {
-                                        expandedFAQ = expandedFAQ == faq.q ? nil : faq.q
-                                    }
-                                } label: {
-                                    HStack {
-                                        Text(faq.q)
-                                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                                            .foregroundStyle(WimgTheme.text)
-                                            .multilineTextAlignment(.leading)
-                                        Spacer()
-                                        Image(systemName: "chevron.down")
-                                            .font(.caption)
-                                            .foregroundStyle(WimgTheme.textSecondary)
-                                            .rotationEffect(.degrees(expandedFAQ == faq.q ? 180 : 0))
-                                    }
-                                    .padding(16)
-                                }
-                                .buttonStyle(.plain)
-
-                                if expandedFAQ == faq.q {
-                                    Text(faq.a)
-                                        .font(.subheadline)
-                                        .foregroundStyle(WimgTheme.textSecondary)
-                                        .padding(.horizontal, 16)
-                                        .padding(.bottom, 16)
-                                        .transition(.opacity.combined(with: .move(edge: .top)))
-                                }
+                            DisclosureGroup {
+                                Text(faq.a)
+                                    .font(.subheadline)
+                                    .foregroundStyle(WimgTheme.textSecondary)
+                                    .padding(.bottom, 4)
+                            } label: {
+                                Text(faq.q)
+                                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                    .foregroundStyle(WimgTheme.text)
+                                    .multilineTextAlignment(.leading)
                             }
+                            .padding(16)
                             .wimgCard()
                         }
                     }

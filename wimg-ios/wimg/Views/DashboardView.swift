@@ -199,16 +199,30 @@ struct DashboardView: View {
                 .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal, 20)
 
-            Chart(categories) { cat in
-                SectorMark(
-                    angle: .value("Betrag", cat.amount),
-                    innerRadius: .ratio(0.6),
-                    angularInset: 1.5
-                )
-                .foregroundStyle(WimgCategory.from(cat.id).color)
-                .cornerRadius(4)
+            ZStack {
+                Chart(categories) { cat in
+                    SectorMark(
+                        angle: .value("Betrag", cat.amount),
+                        innerRadius: .ratio(0.6),
+                        angularInset: 1.5
+                    )
+                    .foregroundStyle(WimgCategory.from(cat.id).color)
+                    .cornerRadius(4)
+                }
+                .frame(height: 220)
+
+                // Center total overlay
+                VStack(spacing: 2) {
+                    Text("Total")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
+                    Text(formatAmountShort(categories.reduce(0) { $0 + $1.amount }))
+                        .font(.system(.headline, design: .rounded, weight: .black))
+                        .foregroundStyle(WimgTheme.text)
+                }
             }
-            .frame(height: 220)
             .padding(.horizontal, 20)
 
             // Legend

@@ -45,6 +45,11 @@ struct ContentView: View {
 
     var body: some View {
         TabView {
+            SearchView(selectedAccount: $selectedAccount)
+                .tabItem {
+                    Label("Suche", systemImage: "magnifyingglass")
+                }
+
             DashboardView(selectedAccount: $selectedAccount, accounts: $accounts)
                 .tabItem {
                     Label("Home", systemImage: "house")
