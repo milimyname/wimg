@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.3 (2026-03-14)
+
+- feat: add savings goals MCP tools + expand FAQ to 19 entries
+
 ## v0.6.2 (2026-03-14)
 
 - feat: expand FAQ to 19 entries with palette deep-links
