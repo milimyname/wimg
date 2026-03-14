@@ -6,7 +6,7 @@
   import { paletteStore } from "$lib/commandPalette.svelte";
 
   const tabs = [
-    { href: "/dashboard", label: "Home", icon: "home" },
+    { href: "/home", label: "Home", icon: "home" },
     { href: "/transactions", label: "Umsätze", icon: "list" },
     { href: "/more", label: "Mehr", icon: "more" },
   ];

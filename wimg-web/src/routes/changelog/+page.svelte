@@ -39,7 +39,7 @@
           Was ist neu?
         </h1>
         <a
-          href="/dashboard"
+          href="/home"
           class="text-sm font-bold text-(--color-text-secondary) hover:text-(--color-text) transition-colors"
         >
           Zur App &rarr;
@@ -143,7 +143,7 @@
       <!-- Footer -->
       <footer class="flex flex-col items-center gap-4 mt-4">
         <a
-          href="/dashboard"
+          href="/home"
           class="w-full bg-(--color-accent) hover:bg-(--color-accent-hover) text-(--color-text) font-display font-extrabold py-4 rounded-2xl transition-colors shadow-[var(--shadow-card)] text-center"
         >
           Verstanden!

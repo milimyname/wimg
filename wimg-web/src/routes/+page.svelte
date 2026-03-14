@@ -5,7 +5,7 @@
     >wimg</span
   >
   <a
-    href="/dashboard"
+    href="/home"
     class="text-sm font-bold text-(--color-text) bg-(--color-accent) px-5 py-2 rounded-full hover:bg-(--color-accent-hover) transition-colors"
   >
     App starten &rarr;
@@ -97,7 +97,7 @@
   <!-- CTA -->
   <section class="text-center pb-24">
     <a
-      href="/dashboard"
+      href="/home"
       class="inline-block bg-(--color-accent) text-(--color-text) font-display font-extrabold text-lg px-10 py-4 rounded-full hover:bg-(--color-accent-hover) transition-colors shadow-[0_8px_20px_rgba(255,233,125,0.3)]"
     >
       wimg ausprobieren

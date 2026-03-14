@@ -101,7 +101,7 @@ const STATIC_ACTIONS: PaletteAction[] = [
     group: "Navigation",
     icon: "🏠",
     keywords: ["home", "start", "übersicht"],
-    handler: () => goto("/dashboard"),
+    handler: () => goto("/home"),
   },
   {
     id: "nav-transactions",

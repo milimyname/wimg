@@ -2,6 +2,7 @@
   import type { Snippet } from "svelte";
   import type { Attachment } from "svelte/attachments";
   import { Spring } from "svelte/motion";
+  import { onDestroy } from "svelte";
 
   interface Props {
     open: boolean;
@@ -92,25 +93,36 @@
   });
 
   // Lock body scroll when visible (iOS PWA needs position:fixed to truly prevent scroll)
+  let savedScrollY = 0;
+
+  function lockScroll() {
+    savedScrollY = window.scrollY;
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${savedScrollY}px`;
+    document.body.style.width = "100%";
+  }
+
+  function unlockScroll() {
+    document.body.style.overflow = "";
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.width = "";
+    window.scrollTo(0, savedScrollY);
+  }
+
   $effect(() => {
     if (isVisible) {
-      const scrollY = window.scrollY;
-      const origOverflow = document.body.style.overflow;
-      const origPosition = document.body.style.position;
-      const origTop = document.body.style.top;
-      const origWidth = document.body.style.width;
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = "100%";
+      lockScroll();
+      return () => unlockScroll();
+    }
+  });
 
-      return () => {
-        document.body.style.overflow = origOverflow;
-        document.body.style.position = origPosition;
-        document.body.style.top = origTop;
-        document.body.style.width = origWidth;
-        window.scrollTo(0, scrollY);
-      };
+  // Safety: if component is destroyed while sheet is visible (e.g. navigation),
+  // ensure body scroll is restored
+  onDestroy(() => {
+    if (document.body.style.position === "fixed") {
+      unlockScroll();
     }
   });
 
