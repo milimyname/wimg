@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.5.21 (2026-03-14)
+
+- fix: scroll to top on page navigation
+- fix: scroll lock on navigation, rename dashboard to home
+- fix: recurring cards overflow on mobile
+- fix: anomaly cards visible in dark mode
+- fix: dashboard avatar circle visible in dark mode
+- fix: debts header row-wrap on narrow screens
+- fix: compact format for large amounts, overflow prevention
+- fix: about page hero icon visible in dark mode
+- fix: link device input overflow on mobile
+- fix: avatar circle stays dark, emerald privacy card dark mode
+- fix: primary buttons (bg-text + text-white) invert in dark mode
+- fix: accent buttons always show dark text in dark mode
+- fix: accent hero cards readable in dark mode
+- fix: donut chart center text overflow with compact format
+- fix: Toast countdown ring visibility in dark mode
+- fix: dark mode hover and selection states
+- fix: unify checkbox toggle style across filter sheet and settings
+- fix: dark mode for transaction pills, segmented control, filter sheet
+- fix: dark mode checkbox toggle contrast, update docs for Phase 5.7b
+- fix: dark mode for BottomSheet, Toast, CommandPalette, alerts
+- fix: premium dark mode theme matching fintech design
+- feat: Phase 5.7b — command palette refinement
+
 ## v0.5.20 (2026-03-14)
 
 - fix: Swift argument order and remove unnecessary await
