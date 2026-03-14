@@ -214,6 +214,21 @@
 .dark .shadow-lg {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
+/* Segmented control dark */
+.dark .segment-track {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+.dark .segment-track .bg-white {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  border: none;
+}
+.dark .segment-track .text-gray-500 {
+  color: #9ca3af;
+}
+/* Category pill unselected in dark */
+.dark .bg-gray-200\/60 {
+  background-color: rgba(255, 255, 255, 0.08);
+}
 /* LayerChart dark mode surfaces */
 .dark .lc-root-container {
   --color-surface-100: #1c1c1e;

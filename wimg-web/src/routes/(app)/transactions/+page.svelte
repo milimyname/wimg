@@ -292,7 +292,7 @@
 
 <!-- Segmented Control -->
 <div class="mb-5">
-  <div class="relative flex bg-gray-200/60 p-1.5 rounded-full">
+  <div class="relative flex bg-gray-200/60 p-1.5 rounded-full segment-track">
     <!-- Sliding indicator -->
     <div
       class="absolute top-1.5 bottom-1.5 rounded-full bg-white shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)]"
@@ -754,7 +754,7 @@
                 class="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer border"
                 style="background-color: {Number(catId) === txn.category
                   ? cat.color + '20'
-                  : '#f5f3ef'}; border-color: {Number(catId) === txn.category
+                  : 'var(--color-primary-light)'}; border-color: {Number(catId) === txn.category
                   ? cat.color + '40'
                   : 'transparent'}"
                 onclick={() => handleCategoryChange(Number(catId))}
