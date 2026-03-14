@@ -26,6 +26,12 @@
   - Exclude/include transaction from search results
   - Add debt from palette (needs input fields)
   - Dark mode / theme toggle
+- **Phase 5.11** — In-App Changelog (Linear-style)
+  - `/changelog` page fetching GitHub Releases API (public, no auth)
+  - Timeline UI with version badges, dates, commit descriptions
+  - UpdateBanner shows inline changelog (diff between current and new version)
+  - "Was ist neu?" links to `/changelog` instead of GitHub
+  - localStorage cache for offline access after first fetch
 - **Phase 5.2** — Notifications (deferred, TBD)
 - **Phase 5.4** — Annual Renewals Calendar
 - **Phase 6.1** — Annual Review ("Geld-Wrapped")

@@ -113,11 +113,7 @@ class UpdateStore {
 
   async clearData() {
     const root = await navigator.storage.getDirectory();
-    try {
-      await root.removeEntry("wimg.db");
-    } catch {
-      // File may not exist
-    }
+    await Promise.allSettled(["wimg.db", "e5-small-q8-v7.gguf"].map((n) => root.removeEntry(n)));
   }
 
   async clearDataAndUpdate() {

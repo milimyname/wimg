@@ -245,11 +245,9 @@
     resetting = true;
     try {
       const root = await navigator.storage.getDirectory();
-      try {
-        await root.removeEntry("wimg.db");
-      } catch {
-        // File may not exist
-      }
+      await Promise.allSettled(
+        ["wimg.db", "e5-small-q8-v7.gguf"].map((n) => root.removeEntry(n)),
+      );
       clearSyncKey();
       localStorage.removeItem("wimg_sync_last_ts");
       clearDemoFlag();
@@ -995,7 +993,7 @@
         <div>
           <h3 class="font-bold text-red-700">Daten zurücksetzen</h3>
           <p class="text-xs text-(--color-text-secondary)">
-            Lokale Datenbank & Sync-Daten löschen
+            Lokale Datenbank, Sync-Daten & alte Modelle löschen
           </p>
         </div>
       </div>

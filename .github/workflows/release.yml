@@ -12,7 +12,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: mlugg/setup-zig@v2
         with:
@@ -64,7 +64,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: mlugg/setup-zig@v2
         with:
@@ -84,7 +84,7 @@ jobs:
         run: ./scripts/build-wasm.sh
 
       - name: Upload WASM artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: libwimg-wasm
           path: |
@@ -110,7 +110,7 @@ jobs:
     needs: check
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: mlugg/setup-zig@v2
         with:
@@ -138,7 +138,7 @@ jobs:
         run: zip -r libwimg.xcframework.zip libwimg.xcframework
 
       - name: Upload iOS artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: libwimg-ios
           path: libwimg/build-ios/libwimg.xcframework.zip
@@ -147,12 +147,12 @@ jobs:
     needs: [check, build-and-deploy-web]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: oven-sh/setup-bun@v2
 
       - name: Download WASM artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: libwimg-wasm
           path: .
@@ -172,12 +172,12 @@ jobs:
     needs: [build-and-deploy-web, build-ios]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
