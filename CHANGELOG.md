@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.1 (2026-03-14)
+
+- refactor: remove layerchart, improve changelog and palette UX
+- feat: add FAQ and MCP help actions to Command Palette
+
 ## v0.6.0 (2026-03-14)
 
 - fix: use toSorted() instead of spread+sort in NetWorthChart
