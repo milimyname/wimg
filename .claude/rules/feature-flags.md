@@ -16,14 +16,14 @@ Dashboard, Transactions, Analysis, Import, Settings, About, Sync
 | `review`    | Rückblick     | Monthly review                 | Implemented |
 | `goals`     | Sparziele     | Savings goals (Phase 6.4)      | Implemented |
 | `net_worth` | Vermögen      | Net worth tracking (Phase 6.2) | Implemented |
-| `tax`       | Steuern       | Anlage N assistant (Phase 6.3) | Future      |
+| `tax`       | Steuern       | Anlage N assistant (Phase 6.3) | Implemented |
 | `ai_chat`   | KI-Chat       | Removed — Claude Desktop + MCP | Removed     |
 
 ## Storage
 
 - **Web:** `localStorage` key `wimg_features` → JSON object (`features.svelte.ts`)
 - **iOS:** `UserDefaults` key `wimg_features` → JSON (`FeatureFlags.swift`)
-- Defaults: `{ debts: true, recurring: true, review: true, goals: true }`
+- Defaults: `{ debts: true, recurring: true, review: true, goals: true, tax: true }`
 
 ## How it works
 

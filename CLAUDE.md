@@ -47,7 +47,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.4 all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4 all **done**.
 
 Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules +
 auto-learn), summaries, debts, recurring detection, multi-account, undo/redo,
@@ -59,7 +59,9 @@ in-app changelog (`/changelog`) fetching GitHub Releases API with localStorage
 cache, dark mode (light/dark/system with flash prevention), shared month/year
 navigation across dashboard/analysis/review via `dateNav` store, savings goals
 (CRUD with icon picker, progress tracking, feature-flagged), net worth over
-time chart (SVG area chart in analysis page, cumulative from snapshots).
+time chart (SVG area chart in analysis page, cumulative from snapshots),
+tax helper (Pendlerpauschale + Homeoffice calculators, auto-tagged
+tax-relevant transactions, CSV export).
 
 Embeddings were built (Phase 5.5) then removed (Phase 5.9) — 4,400 lines
 deleted. Keyword rules cover ~80% of categorization, MCP + Claude handles
@@ -77,13 +79,15 @@ Conventional commits enforced by lefthook `commit-msg` hook.
 
 LayerChart removed — all charts are pure SVG (DonutChart, NetWorthChart).
 Changelog page shows commit type badges (feat/fix/refactor/perf) with grid
-layout. About page has 19 FAQ entries with hash-anchor deep-links from
+layout. About page has 20 FAQ entries with hash-anchor deep-links from
 Command Palette (`afterNavigate` + `noScroll` goto for reliable scrolling
 past BottomSheet body lock). UpdateBanner changelog fallback for unreleased
 versions.
 
-Next: Phase 6.3 (Anlage N / Tax Estimation).
+All Phase 6 features complete except 6.1 (Annual Review).
+MCP server has 24 tools (11 read + 13 write) including savings goals.
 
+Deferred: Phase 5.2 (Notifications) — TBD.
 Deferred: Phase 6.1 (Annual Review / "Geld-Wrapped") — planned for end of year.
 
 Deferred: Notifications (5.2) — to be defined later.

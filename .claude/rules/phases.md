@@ -26,7 +26,7 @@
 - **Phase 5.4** — Annual Renewals Calendar
 - **Phase 6.1** — Annual Review ("Geld-Wrapped")
 - **Phase 6.2** — Net Worth Over Time (Done): SVG area chart in analysis page showing cumulative net worth from snapshots. Smooth bezier curves, gradient fill, dot markers, month labels, stats grid (highest/lowest/average), year-over-year growth badge. NetWorthChart component. Requires 2+ snapshots.
-- **Phase 6.3** — Anlage N Assistant (Tax Estimation)
+- **Phase 6.3** — Anlage N Assistant (Done): Tax helper page (`/tax`) with Pendlerpauschale calculator (0.30€/km first 20km + 0.38€/km beyond), Homeoffice-Pauschale (6€/day, max 210 days), auto-tagged tax-relevant transactions (5 categories: Arbeitsmittel, Fortbildung, Fachliteratur, Fahrtkosten, Versicherungen), include/exclude toggles, year picker, summary grid, CSV export. Config persisted in localStorage. Feature-flagged (`tax: true`).
 - **Phase 6.4** — Savings Goals (Done): `savings_goals` table (schema v14), full CRUD with sync support. C ABI: `wimg_get_goals`, `wimg_add_goal`, `wimg_contribute_goal`, `wimg_delete_goal`. Web: goals page with hero card, icon picker (12 icons), inline contribute input, progress bars, undo support. Feature-flagged (`goals: true`).
 
 ## FinTS Product Registration (Done)
