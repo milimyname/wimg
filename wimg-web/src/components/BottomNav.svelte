@@ -16,10 +16,11 @@
     "/recurring": "recurring",
     "/review": "review",
     "/goals": "goals",
+    "/tax": "tax",
   };
 
   const moreSubRoutes = $derived(
-    ["/more", "/analysis", "/debts", "/recurring", "/import", "/review", "/goals", "/settings", "/about", "/changelog"].filter(
+    ["/more", "/analysis", "/debts", "/recurring", "/import", "/review", "/goals", "/tax", "/settings", "/about", "/changelog"].filter(
       (r) => !featureRoutes[r] || featureStore.isEnabled(featureRoutes[r]),
     ),
   );

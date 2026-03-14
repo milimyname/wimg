@@ -39,4 +39,5 @@ export const DEFAULT_FEATURES: Record<string, boolean> = {
   recurring: true,
   review: true,
   goals: true,
+  tax: true,
 };

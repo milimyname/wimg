@@ -71,6 +71,11 @@
       label: "Sparziele",
       description: "Sparziele setzen und Fortschritt verfolgen",
     },
+    {
+      key: "tax",
+      label: "Steuern",
+      description: "Steuerlich absetzbare Ausgaben erkennen",
+    },
   ];
 
   // Rules state

@@ -138,6 +138,15 @@ const STATIC_ACTIONS: PaletteAction[] = [
     enabled: () => featureStore.isEnabled("debts"),
   },
   {
+    id: "nav-tax",
+    label: "Steuern",
+    group: "Navigation",
+    icon: "🧾",
+    keywords: ["steuern", "tax", "anlage", "werbungskosten", "pendler"],
+    handler: () => goto("/tax"),
+    enabled: () => featureStore.isEnabled("tax"),
+  },
+  {
     id: "nav-goals",
     label: "Sparziele",
     group: "Navigation",
@@ -551,6 +560,17 @@ const STATIC_ACTIONS: PaletteAction[] = [
     handler: () => {
       featureStore.toggle("recurring");
       toastStore.show(`Wiederkehrend: ${featureStore.isEnabled("recurring") ? "Ein" : "Aus"}`);
+    },
+  },
+  {
+    id: "toggle-tax",
+    label: "Steuern ein/aus",
+    group: "Features",
+    icon: "🧾",
+    keywords: ["feature", "tax", "steuern", "toggle"],
+    handler: () => {
+      featureStore.toggle("tax");
+      toastStore.show(`Steuern: ${featureStore.isEnabled("tax") ? "Ein" : "Aus"}`);
     },
   },
   {
