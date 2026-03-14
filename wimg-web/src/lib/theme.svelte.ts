@@ -55,7 +55,7 @@ class ThemeStore {
     document.documentElement.classList.toggle("dark", dark);
     // Update theme-color meta for mobile browsers
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", dark ? "#1a1a1a" : "#faf9f6");
+    if (meta) meta.setAttribute("content", dark ? "#111114" : "#faf9f6");
   }
 }
 
