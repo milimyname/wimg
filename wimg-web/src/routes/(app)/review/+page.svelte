@@ -134,15 +134,15 @@
   <div class="bg-(--color-accent) rounded-[2rem] shadow-[var(--shadow-soft)] overflow-hidden relative mb-6">
     <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/20 rounded-full blur-2xl pointer-events-none"></div>
 
-    <div class="flex w-full flex-col items-center gap-2 py-8 px-6 relative z-10 text-center">
-      <p class="text-(--color-text)/80 text-sm font-bold uppercase tracking-widest mb-2">
+    <div class="flex w-full flex-col items-center gap-2 py-8 px-6 relative z-10 text-center" style="color: #1a1a1a">
+      <p class="text-sm font-bold uppercase tracking-widest mb-2" style="opacity: 0.8">
         {saved >= 0 ? "Gespart" : "Defizit"}
       </p>
-      <p class="text-(--color-text) text-5xl font-display font-black tracking-tighter">
+      <p class="text-5xl font-display font-black tracking-tighter">
         {formatEur(Math.abs(saved))}
       </p>
       {#if savingsDelta !== null}
-        <div class="mt-4 inline-flex items-center justify-center bg-(--color-text) text-white px-3 py-1.5 rounded-full text-xs font-bold gap-1 shadow-md">
+        <div class="mt-4 inline-flex items-center justify-center px-3 py-1.5 rounded-full text-xs font-bold gap-1 shadow-md" style="background: #1a1a1a; color: white">
           {#if savingsDelta >= 0}
             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
               <path d="M10 5l5 5H5l5-5z" />
@@ -155,19 +155,19 @@
           <span>{savingsDelta >= 0 ? "+" : ""}{savingsDelta}% vs. {monthNames[dateNav.month === 1 ? 11 : dateNav.month - 2]}</span>
         </div>
       {/if}
-      <p class="text-(--color-text)/80 text-sm mt-4 font-medium leading-relaxed max-w-[280px]">
+      <p class="text-sm mt-4 font-medium leading-relaxed max-w-[280px]" style="opacity: 0.8">
         {savingsMessage()}
       </p>
     </div>
 
     <div class="px-6 pb-6 pt-2 grid grid-cols-2 gap-4 relative z-10">
-      <div class="bg-white/40 p-4 rounded-2xl flex flex-col items-center backdrop-blur-sm">
-        <p class="text-(--color-text)/70 text-xs font-bold uppercase tracking-wider mb-1">Einnahmen</p>
-        <p class="text-(--color-text) font-extrabold text-lg">{formatEur(summary.income)}</p>
+      <div class="p-4 rounded-2xl flex flex-col items-center backdrop-blur-sm" style="background: rgba(255,255,255,0.4)">
+        <p class="text-xs font-bold uppercase tracking-wider mb-1" style="color: rgba(26,26,26,0.7)">Einnahmen</p>
+        <p class="font-extrabold text-lg" style="color: #1a1a1a">{formatEur(summary.income)}</p>
       </div>
-      <div class="bg-white/40 p-4 rounded-2xl flex flex-col items-center backdrop-blur-sm">
-        <p class="text-(--color-text)/70 text-xs font-bold uppercase tracking-wider mb-1">Ausgaben</p>
-        <p class="text-(--color-text) font-extrabold text-lg">{formatEur(Math.abs(summary.expenses))}</p>
+      <div class="p-4 rounded-2xl flex flex-col items-center backdrop-blur-sm" style="background: rgba(255,255,255,0.4)">
+        <p class="text-xs font-bold uppercase tracking-wider mb-1" style="color: rgba(26,26,26,0.7)">Ausgaben</p>
+        <p class="font-extrabold text-lg" style="color: #1a1a1a">{formatEur(Math.abs(summary.expenses))}</p>
       </div>
     </div>
   </div>

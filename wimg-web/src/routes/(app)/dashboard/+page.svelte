@@ -105,23 +105,23 @@
 <MonthPicker bind:year={dateNav.year} bind:month={dateNav.month} />
 
 <!-- Hero: Verfügbares Einkommen -->
-<div class="bg-(--color-accent) rounded-[2rem] p-7 mb-5 shadow-[var(--shadow-soft)] relative overflow-hidden">
+<div class="bg-(--color-accent) rounded-[2rem] p-7 mb-5 shadow-[var(--shadow-soft)] relative overflow-hidden" style="color: #1a1a1a">
   <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/25 rounded-full blur-2xl pointer-events-none"></div>
   <div class="flex justify-between items-start mb-3 relative z-10">
     <div class="flex items-center gap-2">
-      <svg class="w-5 h-5 text-(--color-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
       </svg>
-      <p class="text-(--color-text)/80 text-sm font-bold uppercase tracking-wide">Verfügbares Einkommen</p>
+      <p class="text-sm font-bold uppercase tracking-wide" style="opacity: 0.8">Verfügbares Einkommen</p>
     </div>
   </div>
-  <p class="text-[2.75rem] font-display font-black tracking-tight leading-tight text-(--color-text) relative z-10 mb-4">
+  <p class="text-[2.75rem] font-display font-black tracking-tight leading-tight relative z-10 mb-4">
     {formatEur(summary.available)}
   </p>
   {#if delta !== null}
     <div class="relative z-10">
       <span
-        class="inline-flex items-center rounded-full bg-white/50 backdrop-blur-sm px-3 py-1.5 text-xs font-bold text-(--color-text) shadow-sm"
+        class="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold shadow-sm" style="background: rgba(255,255,255,0.5); color: #1a1a1a"
       >
         {#if delta >= 0}
           <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
