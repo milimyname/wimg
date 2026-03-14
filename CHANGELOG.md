@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.22 (2026-03-14)
+
+- fix: replace afterNavigate with reactive scroll-to-top
+
 ## v0.5.21 (2026-03-14)
 
 - fix: scroll to top on page navigation
