@@ -49,8 +49,8 @@ class ChangelogStore {
   releasesSince(version: string): Release[] {
     const tag = version.startsWith("v") ? version : `v${version}`;
     const idx = this.#releases.findIndex((r) => r.tag === tag);
-    // If current version not found, return all releases (user is very old)
-    if (idx === -1) return this.#releases;
+    // If current version not found, user is on unreleased version — nothing to show
+    if (idx === -1) return [];
     // Return everything before the current version (releases are newest-first)
     return this.#releases.slice(0, idx);
   }

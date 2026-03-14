@@ -288,7 +288,7 @@
           oninput={onInput}
           onkeydown={handleKeydown}
           placeholder="Suche oder frage etwas..."
-          class="w-full bg-gray-50 border-none rounded-2xl py-3 pl-12 pr-10 text-gray-800 placeholder:text-gray-400 focus:ring-2 focus:ring-amber-400/60 outline-none transition-all text-[15px]"
+          class="w-full bg-(--color-bg) border-none rounded-2xl py-3 pl-12 pr-10 text-(--color-text) placeholder:text-(--color-text-secondary) focus:ring-2 focus:ring-amber-400/60 outline-none transition-all text-[15px]"
         />
         {#if query}
           <button
@@ -346,7 +346,7 @@
 
     <!-- Inline category picker -->
     {#if editingTxn}
-      <div class="px-4 py-3 border-b border-gray-100">
+      <div class="px-4 py-3 border-b border-(--color-border)">
         <button
           onclick={() => (editingTxn = null)}
           class="text-sm text-gray-500 hover:text-gray-700 font-medium mb-2 flex items-center gap-1"
@@ -356,7 +356,7 @@
           </svg>
           Zurück
         </button>
-        <p class="text-sm font-bold text-gray-900 truncate mb-3">{editingTxn.description}</p>
+        <p class="text-sm font-bold text-(--color-text) truncate mb-3">{editingTxn.description}</p>
         <div class="flex flex-wrap gap-2">
           {#each Object.entries(CATEGORIES) as [catId, cat]}
             <button
@@ -477,7 +477,7 @@
                     >{getCategoryIcon(item.transaction.category)}</span
                   >
                   <div class="min-w-0">
-                    <p class="text-sm font-semibold text-gray-900 truncate" class:opacity-40={item.transaction.excluded}>
+                    <p class="text-sm font-semibold text-(--color-text) truncate" class:opacity-40={item.transaction.excluded}>
                       {item.transaction.description}
                     </p>
                     <p class="text-[11px] text-gray-400">
@@ -522,7 +522,7 @@
                     <p
                       class="text-sm font-bold tabular-nums"
                       class:text-emerald-600={item.transaction.amount > 0}
-                      class:text-gray-900={item.transaction.amount <= 0}
+                      class:text-(--color-text)={item.transaction.amount <= 0}
                     >
                       {formatAmountSigned(item.transaction.amount)}
                     </p>
@@ -541,7 +541,7 @@
     <!-- Footer -->
     <div
       {@attach footer}
-      class="p-3 bg-gray-50/80 text-center border-t border-gray-100"
+      class="p-3 bg-(--color-bg)/80 text-center border-t border-(--color-border)"
     >
       <p
         class="text-[10px] text-gray-400 font-medium flex items-center justify-center gap-3"

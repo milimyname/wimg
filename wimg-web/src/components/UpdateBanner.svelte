@@ -79,7 +79,7 @@
           <div class="w-3/4 h-3.5 bg-gray-100 rounded"></div>
         </div>
       {:else if missedReleases.length > 0}
-        <div class="bg-(--color-bg) rounded-2xl p-4 max-h-64 overflow-y-auto">
+        <div class="bg-(--color-bg) rounded-2xl p-4">
           {#each missedReleases as release, i}
             {@const items = parseItems(release.body)}
             {#if items.length > 0}

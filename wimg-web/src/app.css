@@ -107,6 +107,107 @@
 .dark .text-\(--color-text\) {
   color: var(--color-text);
 }
+/* BottomSheet dark */
+.dark .sheet-root {
+  background-color: #1c1c1e !important;
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.4) !important;
+}
+/* Toast: invert for dark (light bg on dark) */
+.dark .bg-\(--color-text\) {
+  background-color: #f5f5f5 !important;
+  color: #111114 !important;
+}
+.dark .bg-\(--color-text\) .text-\(--color-accent\) {
+  color: #b8960a !important;
+}
+/* Inputs and interactive elements */
+.dark input,
+.dark textarea {
+  color: #ffffff;
+}
+.dark input::placeholder {
+  color: #6b7280;
+}
+/* Checkbox toggle dark */
+.dark .bg-gray-200 {
+  background-color: #3a3a3c;
+}
+/* Colored background cards (alerts, banners) */
+.dark .bg-emerald-100 {
+  background-color: rgba(52, 211, 153, 0.15);
+}
+.dark .bg-amber-100 {
+  background-color: rgba(251, 191, 36, 0.15);
+}
+.dark .bg-indigo-100 {
+  background-color: rgba(129, 140, 248, 0.15);
+}
+.dark .bg-violet-100 {
+  background-color: rgba(139, 92, 246, 0.15);
+}
+.dark .bg-red-100 {
+  background-color: rgba(251, 113, 133, 0.15);
+}
+.dark .bg-green-100 {
+  background-color: rgba(52, 211, 153, 0.15);
+}
+.dark .bg-blue-100 {
+  background-color: rgba(96, 165, 250, 0.15);
+}
+.dark .bg-purple-50 {
+  background-color: rgba(139, 92, 246, 0.1);
+}
+.dark .bg-violet-50 {
+  background-color: rgba(139, 92, 246, 0.1);
+}
+.dark .bg-blue-50 {
+  background-color: rgba(96, 165, 250, 0.1);
+}
+/* Alert text colors in dark */
+.dark .text-emerald-800,
+.dark .text-emerald-900 {
+  color: #6ee7b7;
+}
+.dark .text-emerald-700 {
+  color: #34d399;
+}
+.dark .text-amber-800,
+.dark .text-amber-900 {
+  color: #fcd34d;
+}
+.dark .text-amber-700 {
+  color: #fbbf24;
+}
+.dark .text-red-700 {
+  color: #fca5a5;
+}
+.dark .text-red-600 {
+  color: #fb7185;
+}
+/* Border colors for alerts */
+.dark .border-emerald-100,
+.dark .border-emerald-200 {
+  border-color: rgba(52, 211, 153, 0.2);
+}
+.dark .border-amber-200,
+.dark .border-amber-300 {
+  border-color: rgba(251, 191, 36, 0.2);
+}
+.dark .border-red-100,
+.dark .border-red-200 {
+  border-color: rgba(251, 113, 133, 0.2);
+}
+/* Dashed borders */
+.dark .border-dashed {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+/* Shadow adjustments */
+.dark .shadow-sm {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.dark .shadow-lg {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
 /* LayerChart dark mode surfaces */
 .dark .lc-root-container {
   --color-surface-100: #1c1c1e;
