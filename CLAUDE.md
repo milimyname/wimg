@@ -82,7 +82,9 @@ Command Palette (`afterNavigate` + `noScroll` goto for reliable scrolling
 past BottomSheet body lock). UpdateBanner changelog fallback for unreleased
 versions.
 
-Next: Phase 6 (Annual Review, Tax).
+Next: Phase 6.3 (Anlage N / Tax Estimation).
+
+Deferred: Phase 6.1 (Annual Review / "Geld-Wrapped") — planned for end of year.
 
 Deferred: Notifications (5.2) — to be defined later.
 
