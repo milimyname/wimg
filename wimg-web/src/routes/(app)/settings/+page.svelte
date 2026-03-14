@@ -843,49 +843,6 @@
     {/if}
   </div>
 
-  <!-- About Section -->
-  <a
-    href="/about"
-    class="bg-white rounded-3xl p-5 shadow-sm flex items-center gap-3 group active:scale-[0.98] transition-transform"
-  >
-    <div
-      class="w-10 h-10 rounded-2xl bg-gray-100 flex items-center justify-center"
-    >
-      <svg
-        class="w-5 h-5 text-gray-600"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.5"
-          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-        />
-      </svg>
-    </div>
-    <div class="flex-1">
-      <h3 class="font-bold text-(--color-text)">Über wimg</h3>
-      <p class="text-xs text-(--color-text-secondary)">
-        Version {APP_VERSION} &middot; FAQ &middot; GitHub
-      </p>
-    </div>
-    <svg
-      class="w-4 h-4 text-(--color-text-secondary)"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="1.5"
-        d="M9 5l7 7-7 7"
-      />
-    </svg>
-  </a>
-
   <!-- Export Section -->
   <button
     id="export"

@@ -75,6 +75,13 @@ with card-based layouts, border styling, and project design tokens.
 
 Conventional commits enforced by lefthook `commit-msg` hook.
 
+LayerChart removed — all charts are pure SVG (DonutChart, NetWorthChart).
+Changelog page shows commit type badges (feat/fix/refactor/perf) with grid
+layout. About page has 19 FAQ entries with hash-anchor deep-links from
+Command Palette (`afterNavigate` + `noScroll` goto for reliable scrolling
+past BottomSheet body lock). UpdateBanner changelog fallback for unreleased
+versions.
+
 Next: Phase 6 (Annual Review, Tax).
 
 Deferred: Notifications (5.2) — to be defined later.

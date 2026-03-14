@@ -67,6 +67,56 @@
       a: "Ja! Im Dev-Modus oder mit ?devtools in der URL kannst du mit Ctrl+Shift+D ein DevTools-Panel öffnen. Es zeigt WASM-Performance, Speicherverbrauch, Sync-Status, SQL-Abfragen, localStorage und mehr — inspiriert von TanStack DevTools.",
     },
     {
+      id: "faq-autolearn",
+      q: "Wie funktioniert Auto-Learn?",
+      a: "Wenn du eine Transaktion manuell kategorisierst, lernt wimg automatisch das Schlüsselwort (z.B. \"REWE\" → Lebensmittel). Beim nächsten Import oder Auto-Kategorisieren werden ähnliche Transaktionen automatisch zugeordnet. Alle gelernten Regeln findest du unter Einstellungen → Regeln, wo du sie auch einzeln löschen kannst.",
+    },
+    {
+      id: "faq-vermoegen",
+      q: "Was zeigt das Vermögens-Diagramm?",
+      a: "Das Vermögens-Diagramm auf der Analyse-Seite zeigt dein kumulatives Nettovermögen über die Zeit — basierend auf monatlichen Snapshots (Einnahmen minus Ausgaben). Du brauchst mindestens 2 Snapshots. Snapshots werden automatisch jeden Monat erstellt, oder manuell über die Command Palette (\"Snapshot erstellen\").",
+    },
+    {
+      id: "faq-sync",
+      q: "Wie synchronisiere ich zwischen Geräten?",
+      a: "Gehe zu Einstellungen → Sync aktivieren. Dadurch wird ein einzigartiger Sync-Schlüssel erstellt. Kopiere diesen Schlüssel und füge ihn auf dem zweiten Gerät ein (Einstellungen → Gerät verknüpfen). Änderungen werden in Echtzeit per WebSocket synchronisiert — Ende-zu-Ende verschlüsselt. Ohne Sync funktioniert alles lokal weiter.",
+    },
+    {
+      id: "faq-sparziele",
+      q: "Wie funktionieren Sparziele?",
+      a: "Unter Mehr → Sparziele kannst du Sparziele mit Name, Icon, Zielbetrag und optionaler Deadline erstellen. Über den \"Einzahlen\"-Button trägst du Beträge ein und siehst deinen Fortschritt als Prozentbalken. Sparziele werden über Sync zwischen Geräten synchronisiert.",
+    },
+    {
+      id: "faq-recurring",
+      q: "Wie erkennt wimg Abos und wiederkehrende Zahlungen?",
+      a: "wimg analysiert deine Transaktionen automatisch und erkennt regelmäßige Muster (monatlich, vierteljährlich, jährlich). Unter Mehr → Wiederkehrend siehst du alle erkannten Abos mit Betrag, Intervall und dem nächsten Fälligkeitsdatum. Preisänderungen werden ebenfalls erkannt.",
+    },
+    {
+      id: "faq-offline",
+      q: "Funktioniert wimg offline?",
+      a: "Ja, vollständig. wimg ist eine PWA (Progressive Web App) und kann über den Browser installiert werden. Alle Daten liegen lokal in SQLite (OPFS). Du brauchst kein Internet für Import, Kategorisierung, Analyse oder irgendeine Kernfunktion. Sync ist optional und funktioniert nur bei Internetverbindung.",
+    },
+    {
+      id: "faq-darkmode",
+      q: "Gibt es einen Dark Mode?",
+      a: "Ja! Über die Command Palette (Cmd+K → \"Design wechseln\") kannst du zwischen Hell, Dunkel und System wählen. Der Dark Mode hat ein Premium-Design mit dunklem Hintergrund und dezenten Akzenten. Die Einstellung wird gespeichert und beim nächsten Start automatisch angewendet.",
+    },
+    {
+      id: "faq-multiaccounts",
+      q: "Kann ich mehrere Konten verwalten?",
+      a: "Ja. Über den Konto-Switcher oben rechts kannst du zwischen Konten wechseln oder alle anzeigen. Neue Konten werden beim CSV-Import automatisch erstellt oder können manuell in den Einstellungen angelegt werden. Dashboard, Transaktionen und Analyse filtern automatisch nach dem gewählten Konto.",
+    },
+    {
+      id: "faq-undo",
+      q: "Kann ich Änderungen rückgängig machen?",
+      a: "Ja. Nach jeder Aktion (Kategorisierung, Schuld hinzufügen, Sparziel löschen etc.) erscheint ein Undo-Toast am unteren Bildschirmrand. Auch über die Command Palette (Cmd+K → \"Rückgängig\") oder Cmd+Z kannst du die letzte Aktion rückgängig machen. wimg speichert bis zu 50 Undo-Schritte.",
+    },
+    {
+      id: "faq-datenloeschen",
+      q: "Wie lösche ich meine Daten?",
+      a: "Unter Einstellungen → Danger Zone kannst du die Datenbank zurücksetzen. Über die Command Palette findest du auch \"Datenbank löschen\" (löscht nur die SQLite-Datei) und \"Vollständiger Reset\" (löscht Datenbank, Sync-Schlüssel und alle Einstellungen). Diese Aktionen können nicht rückgängig gemacht werden.",
+    },
+    {
       id: "faq-beitragen",
       q: "Wie kann ich beitragen?",
       a: "Besuche das GitHub-Repository. Code, Übersetzungen, Feedback und Bug-Reports sind willkommen.",
