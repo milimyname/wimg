@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.6 (2026-03-14)
+
+- feat: add vitest tests, custom tax keywords, and extract tax logic
+- docs: update CLAUDE.md and rules for Phase 6.3 completion
+
 ## v0.6.5 (2026-03-14)
 
 - feat: add Steuern FAQ entry with palette deep-link
