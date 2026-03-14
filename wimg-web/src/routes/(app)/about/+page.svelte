@@ -119,7 +119,7 @@
     {
       id: "faq-steuern",
       q: "Was kann die Steuern-Seite?",
-      a: "Die Steuern-Seite hilft dir, absetzbare Ausgaben für deine Steuererklärung zu finden. Sie scannt Transaktionen nach steuerrelevanten Schlüsselwörtern (Arbeitsmittel, Fortbildung, Fahrtkosten etc.) und berechnet Pendlerpauschale und Homeoffice-Pauschale. Du kannst einzelne Transaktionen ein-/ausblenden und alles als CSV für ELSTER oder WISO exportieren. Keine Steuerberatung — nur eine Übersicht deiner Zahlen.",
+      a: "Die Steuern-Seite hilft dir, absetzbare Ausgaben für deine Steuererklärung zu finden. Transaktionen werden nach Schlüsselwörtern gescannt (Arbeitsmittel, Fortbildung, Fahrtkosten etc.) — du kannst eigene Schlüsselwörter ergänzen. Die Pendlerpauschale berechnet sich nach §9 EStG: 0,30 €/km für die ersten 20 km, 0,38 €/km ab dem 21. km. Die Homeoffice-Pauschale beträgt 6 €/Tag (max. 210 Tage, §4 Abs. 5 Nr. 6c EStG). Einzelne Transaktionen lassen sich ein-/ausblenden, und alles kann als CSV für ELSTER oder WISO exportiert werden. Keine Steuerberatung — nur eine Übersicht deiner Zahlen.",
     },
     {
       id: "faq-beitragen",

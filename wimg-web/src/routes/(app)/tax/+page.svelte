@@ -1,76 +1,26 @@
 <script lang="ts">
   import { data } from "$lib/data.svelte";
   import { formatEur } from "$lib/format";
+  import {
+    TAX_CATEGORIES,
+    DEFAULT_TAX_CONFIG,
+    calcPendlerpauschale,
+    calcHomeofficePauschale,
+    matchTaxCategory,
+    getCategoryKeywords,
+    type TaxConfig,
+    type TaxCategory,
+  } from "$lib/tax";
   import EmptyState from "../../../components/EmptyState.svelte";
 
   const LS_TAX_KEY = "wimg_tax";
 
-  interface TaxConfig {
-    year: number;
-    km: number;
-    workDays: number;
-    homeofficeDays: number;
-    excluded: string[]; // transaction IDs excluded from tax
-  }
-
-  interface TaxCategory {
-    id: string;
-    label: string;
-    icon: string;
-    color: string;
-    textColor: string;
-    keywords: string[];
-  }
-
-  const TAX_CATEGORIES: TaxCategory[] = [
-    {
-      id: "arbeitsmittel",
-      label: "Arbeitsmittel",
-      icon: "💻",
-      color: "bg-blue-100",
-      textColor: "text-blue-700",
-      keywords: ["apple", "mediamarkt", "saturn", "büro", "computer", "laptop", "monitor", "tastatur", "logitech", "dell", "lenovo", "thinkpad", "macbook", "ipad"],
-    },
-    {
-      id: "fortbildung",
-      label: "Fortbildung",
-      icon: "📚",
-      color: "bg-emerald-100",
-      textColor: "text-emerald-700",
-      keywords: ["udemy", "coursera", "kurs", "seminar", "weiterbildung", "fortbildung", "schulung", "linkedin learning", "pluralsight"],
-    },
-    {
-      id: "fachliteratur",
-      label: "Fachliteratur",
-      icon: "📖",
-      color: "bg-violet-100",
-      textColor: "text-violet-700",
-      keywords: ["fachbuch", "o'reilly", "manning", "apress", "springer", "thalia fach"],
-    },
-    {
-      id: "fahrtkosten",
-      label: "Fahrtkosten",
-      icon: "🚆",
-      color: "bg-amber-100",
-      textColor: "text-amber-700",
-      keywords: ["deutsche bahn", "db fernverkehr", "db regio", "flixbus", "flixtrain", "bvg", "mvv", "hvv", "rheinbahn", "kvb"],
-    },
-    {
-      id: "versicherung",
-      label: "Versicherungen",
-      icon: "🛡️",
-      color: "bg-rose-100",
-      textColor: "text-rose-700",
-      keywords: ["berufshaftpflicht", "rechtsschutz", "berufsunfähigkeit"],
-    },
-  ];
-
   function loadConfig(): TaxConfig {
     try {
       const stored = localStorage.getItem(LS_TAX_KEY);
-      if (stored) return JSON.parse(stored);
+      if (stored) return { ...DEFAULT_TAX_CONFIG, ...JSON.parse(stored) };
     } catch { /* ignore */ }
-    return { year: new Date().getFullYear(), km: 0, workDays: 220, homeofficeDays: 0, excluded: [] };
+    return { ...DEFAULT_TAX_CONFIG };
   }
 
   function saveConfig() {
@@ -79,10 +29,12 @@
 
   let config = $state(loadConfig());
   let activeFilter = $state<string | null>(null);
+  let showKeywords = $state(false);
+  let newKeyword = $state("");
+  let newKeywordCat = $state(TAX_CATEGORIES[0].id);
 
   let hasAnyData = $derived(data.hasAnyData());
 
-  // Scan transactions for tax-relevant keywords
   interface TaggedTx {
     id: string;
     description: string;
@@ -99,21 +51,18 @@
 
     for (const tx of txs) {
       if (!tx.date.startsWith(yearStr)) continue;
-      if (tx.amount >= 0) continue; // only expenses
+      if (tx.amount >= 0) continue;
 
-      const descLower = tx.description.toLowerCase();
-      for (const cat of TAX_CATEGORIES) {
-        if (cat.keywords.some((kw) => descLower.includes(kw))) {
-          results.push({
-            id: tx.id,
-            description: tx.description,
-            amount: Math.abs(tx.amount),
-            date: tx.date,
-            taxCategory: cat,
-            included: !config.excluded.includes(tx.id),
-          });
-          break; // first match wins
-        }
+      const cat = matchTaxCategory(tx.description, TAX_CATEGORIES, config.customKeywords);
+      if (cat) {
+        results.push({
+          id: tx.id,
+          description: tx.description,
+          amount: Math.abs(tx.amount),
+          date: tx.date,
+          taxCategory: cat,
+          included: !config.excluded.includes(tx.id),
+        });
       }
     }
 
@@ -128,13 +77,7 @@
 
   let includedTransactions = $derived(taggedTransactions.filter((t) => t.included));
 
-  // Pendlerpauschale calculation
-  let pendlerpauschale = $derived.by(() => {
-    if (config.km <= 0 || config.workDays <= 0) return 0;
-    const first20 = Math.min(config.km, 20) * 0.30;
-    const beyond20 = Math.max(config.km - 20, 0) * 0.38;
-    return (first20 + beyond20) * config.workDays;
-  });
+  let pendlerpauschale = $derived(calcPendlerpauschale(config.km, config.workDays));
 
   let pendlerFormula = $derived.by(() => {
     if (config.km <= 0 || config.workDays <= 0) return "";
@@ -144,15 +87,12 @@
     return `20km × 0,30€ + ${config.km - 20}km × 0,38€ × ${config.workDays} Tage`;
   });
 
-  // Homeoffice calculation
-  let homeofficePauschale = $derived(Math.min(config.homeofficeDays, 210) * 6);
+  let homeofficePauschale = $derived(calcHomeofficePauschale(config.homeofficeDays));
 
-  // Totals
   let werbungskosten = $derived(includedTransactions.reduce((sum, t) => sum + t.amount, 0));
   let pauschalen = $derived(pendlerpauschale + homeofficePauschale);
   let gesamtabzug = $derived(werbungskosten + pauschalen);
 
-  // Previous year comparison
   let prevYearTotal = $derived.by(() => {
     const txs = data.allTransactions();
     const prevYear = String(config.year - 1);
@@ -160,12 +100,8 @@
     for (const tx of txs) {
       if (!tx.date.startsWith(prevYear)) continue;
       if (tx.amount >= 0) continue;
-      const descLower = tx.description.toLowerCase();
-      for (const cat of TAX_CATEGORIES) {
-        if (cat.keywords.some((kw) => descLower.includes(kw))) {
-          total += Math.abs(tx.amount);
-          break;
-        }
+      if (matchTaxCategory(tx.description, TAX_CATEGORIES, config.customKeywords)) {
+        total += Math.abs(tx.amount);
       }
     }
     return total;
@@ -185,6 +121,40 @@
   function handleConfigChange() {
     saveConfig();
   }
+
+  function addCustomKeyword() {
+    const kw = newKeyword.trim().toLowerCase();
+    if (!kw) return;
+    if (!config.customKeywords[newKeywordCat]) {
+      config.customKeywords[newKeywordCat] = [];
+    }
+    if (!config.customKeywords[newKeywordCat].includes(kw)) {
+      config.customKeywords = {
+        ...config.customKeywords,
+        [newKeywordCat]: [...config.customKeywords[newKeywordCat], kw],
+      };
+      saveConfig();
+    }
+    newKeyword = "";
+  }
+
+  function removeCustomKeyword(catId: string, keyword: string) {
+    config.customKeywords = {
+      ...config.customKeywords,
+      [catId]: (config.customKeywords[catId] ?? []).filter((k) => k !== keyword),
+    };
+    saveConfig();
+  }
+
+  let allCustomKeywords = $derived.by(() => {
+    const items: { catId: string; catLabel: string; keyword: string }[] = [];
+    for (const cat of TAX_CATEGORIES) {
+      for (const kw of config.customKeywords[cat.id] ?? []) {
+        items.push({ catId: cat.id, catLabel: cat.label, keyword: kw });
+      }
+    }
+    return items;
+  });
 
   function exportCsv() {
     const lines = ["Datum;Beschreibung;Betrag;Kategorie"];
@@ -208,7 +178,6 @@
     URL.revokeObjectURL(url);
   }
 
-  // Available years from transactions
   let availableYears = $derived.by(() => {
     const txs = data.allTransactions();
     const years = new Set<number>();
@@ -386,6 +355,84 @@
   </div>
 </div>
 
+<!-- Custom Keywords -->
+<div class="bg-white rounded-[2rem] p-6 shadow-[var(--shadow-soft)] mb-5">
+  <button
+    onclick={() => (showKeywords = !showKeywords)}
+    class="flex items-center justify-between w-full cursor-pointer"
+  >
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+        </svg>
+      </div>
+      <div class="text-left">
+        <h3 class="font-display font-extrabold text-lg">Eigene Schlüsselwörter</h3>
+        <p class="text-xs text-(--color-text-secondary)">Zusätzliche Begriffe für die Erkennung</p>
+      </div>
+    </div>
+    <svg
+      class="w-4 h-4 text-(--color-text-secondary) transition-transform {showKeywords ? 'rotate-180' : ''}"
+      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+    >
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+    </svg>
+  </button>
+
+  {#if showKeywords}
+    <div class="mt-5 space-y-4">
+      <!-- Add form -->
+      <div class="flex gap-2">
+        <input
+          type="text"
+          placeholder="z.B. amazon, bücher.de"
+          bind:value={newKeyword}
+          onkeydown={(e) => e.key === "Enter" && addCustomKeyword()}
+          class="flex-1 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-(--color-accent) text-sm py-2.5 px-4"
+        />
+        <select
+          bind:value={newKeywordCat}
+          class="appearance-none bg-gray-50 border-none rounded-xl text-xs font-bold py-2.5 px-3 pr-7 focus:ring-2 focus:ring-(--color-accent)"
+        >
+          {#each TAX_CATEGORIES as cat}
+            <option value={cat.id}>{cat.icon} {cat.label}</option>
+          {/each}
+        </select>
+        <button
+          onclick={addCustomKeyword}
+          class="px-4 py-2.5 bg-(--color-accent) rounded-xl text-sm font-bold cursor-pointer hover:bg-(--color-accent-hover) transition-colors"
+          aria-label="Schlüsselwort hinzufügen"
+        >
+          +
+        </button>
+      </div>
+
+      <!-- Existing custom keywords -->
+      {#if allCustomKeywords.length > 0}
+        <div class="flex flex-wrap gap-2">
+          {#each allCustomKeywords as { catId, catLabel, keyword }}
+            <span class="inline-flex items-center gap-1.5 bg-gray-50 rounded-full pl-3 pr-1.5 py-1.5 text-xs font-medium">
+              <span class="text-(--color-text-secondary)">{catLabel}:</span>
+              <span class="font-bold">{keyword}</span>
+              <button
+                onclick={() => removeCustomKeyword(catId, keyword)}
+                class="w-5 h-5 flex items-center justify-center rounded-full hover:bg-gray-200 text-gray-400 hover:text-rose-500 transition-colors cursor-pointer"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </span>
+          {/each}
+        </div>
+      {:else}
+        <p class="text-xs text-(--color-text-secondary) italic">Noch keine eigenen Schlüsselwörter. Füge Begriffe hinzu, die in deinen Transaktionsbeschreibungen vorkommen.</p>
+      {/if}
+    </div>
+  {/if}
+</div>
+
 <!-- Tagged Transactions -->
 {#if taggedTransactions.length > 0}
   <div class="pt-2 mb-5">
@@ -450,6 +497,24 @@
     </div>
   </div>
 {/if}
+
+<!-- Info links -->
+<div class="flex flex-col items-center gap-1.5 mb-4">
+  <a
+    href="/about#faq-steuern"
+    class="text-xs font-medium text-(--color-text-secondary) hover:text-(--color-text) transition-colors underline underline-offset-2"
+  >
+    Woher kommen die Berechnungen?
+  </a>
+  <a
+    href="https://www.gesetze-im-internet.de/estg/__9.html"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="text-[10px] font-medium text-(--color-text-secondary)/50 hover:text-(--color-text-secondary) transition-colors"
+  >
+    §9 EStG — Werbungskosten (gesetze-im-internet.de)
+  </a>
+</div>
 
 <!-- Export Button -->
 <button

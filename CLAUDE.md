@@ -86,6 +86,10 @@ versions.
 
 All Phase 6 features complete except 6.1 (Annual Review).
 MCP server has 24 tools (11 read + 13 write) including savings goals.
+Tax page has custom keyword settings (user-defined keywords per category,
+persisted in localStorage). Tax logic extracted to `src/lib/tax.ts` (pure
+functions, testable). Vitest set up with 36 tests covering tax calculations,
+format utils, and changelog logic.
 
 Deferred: Phase 5.2 (Notifications) — TBD.
 Deferred: Phase 6.1 (Annual Review / "Geld-Wrapped") — planned for end of year.
