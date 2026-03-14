@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.2 (2026-03-14)
+
+- feat: expand FAQ to 19 entries with palette deep-links
+
 ## v0.6.1 (2026-03-14)
 
 - refactor: remove layerchart, improve changelog and palette UX
