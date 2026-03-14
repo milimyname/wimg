@@ -21,12 +21,7 @@
 
 ## In Progress / Future
 
-- **Phase 5.7b** — Command Palette Refinement
-  - Change month/year from palette (context-aware)
-  - Quick categorize transaction from search results (inline picker)
-  - Exclude/include transaction from search results
-  - Add debt from palette (needs input fields)
-  - Dark mode / theme toggle
+- **Phase 5.7b** — Command Palette Refinement (Done): Shared `dateNav` store for month/year across dashboard/analysis/review. Palette actions: prev/next/current month. Quick categorize from search results (inline category picker). Exclude/include toggle on search results. Dark mode (light/dark/system) with CSS variable overrides, flash prevention, premium dark theme (#111114 bg, #1c1c1e cards, white/5 borders). Theme toggle action in palette.
 - **Phase 5.2** — Notifications (deferred, TBD)
 - **Phase 5.4** — Annual Renewals Calendar
 - **Phase 6.1** — Annual Review ("Geld-Wrapped")

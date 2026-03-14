@@ -132,6 +132,12 @@
 .dark .bg-gray-200 {
   background-color: #3a3a3c;
 }
+.dark input[type="checkbox"].bg-gray-200 {
+  background-color: #48484a;
+}
+.dark input[type="checkbox"].checked\:bg-amber-500:checked {
+  background-color: #fdd535;
+}
 /* Colored background cards (alerts, banners) */
 .dark .bg-emerald-100 {
   background-color: rgba(52, 211, 153, 0.15);

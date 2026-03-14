@@ -47,7 +47,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.8, 5.9, 5.10, 5.11 all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11 all **done**.
 
 Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules +
 auto-learn), summaries, debts, recurring detection, multi-account, undo/redo,
@@ -56,7 +56,8 @@ monthly snapshots, PWA with offline support, DevTools panel (5 tabs), Command
 Palette with SQL LIKE search + search history + transaction deep-links,
 advanced search with date range, amount range slider, and category filters,
 in-app changelog (`/changelog`) fetching GitHub Releases API with localStorage
-cache.
+cache, dark mode (light/dark/system with flash prevention), shared month/year
+navigation across dashboard/analysis/review via `dateNav` store.
 
 Embeddings were built (Phase 5.5) then removed (Phase 5.9) — 4,400 lines
 deleted. Keyword rules cover ~80% of categorization, MCP + Claude handles
@@ -70,11 +71,9 @@ BottomNav has 3 tabs (Home, Umsätze, Mehr). Analyse moved to More page.
 Landing page (`+page.svelte`) is German. Import and About pages redesigned
 with card-based layouts, border styling, and project design tokens.
 
-Vite+ (`vite-plus`) replaces standalone oxfmt/oxlint — config consolidated
-in `vite.config.ts`, all commands via `vp`. CI uses `setup-vp` action.
 Conventional commits enforced by lefthook `commit-msg` hook.
 
-Next: Command Palette Refinement (5.7b), Annual Renewals (5.4),
+Next: Annual Renewals (5.4),
 Phase 6 (Annual Review, Net Worth, Tax, Savings Goals).
 
 Deferred: Notifications (5.2) — to be defined later.
