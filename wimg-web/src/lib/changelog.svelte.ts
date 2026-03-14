@@ -45,7 +45,7 @@ class ChangelogStore {
     return this.#error;
   }
 
-  /** Returns all releases newer than the given version (e.g. "0.5.10") */
+  /** Returns all releases newer than (or equal to) the given version (e.g. "0.5.10") */
   releasesSince(version: string): Release[] {
     const tag = version.startsWith("v") ? version : `v${version}`;
     const idx = this.#releases.findIndex((r) => r.tag === tag);
@@ -62,8 +62,9 @@ class ChangelogStore {
       // No reference point — show latest 3 releases as context
       return this.#releases.slice(0, 3);
     }
-    // Return everything before the current version (releases are newest-first)
-    return this.#releases.slice(0, idx);
+    // Return releases newer than current version.
+    // If current is the latest (idx 0), include it so the banner isn't empty.
+    return this.#releases.slice(0, Math.max(idx, 1));
   }
 
   async load() {
