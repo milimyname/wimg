@@ -6,6 +6,7 @@ import { goto } from "$app/navigation";
 import {
   autoCategorize,
   detectRecurring,
+  opfsSave,
   exportCsv,
   exportDb,
   takeSnapshot,
@@ -198,8 +199,9 @@ const STATIC_ACTIONS: PaletteAction[] = [
     group: "Kategorisierung",
     icon: "🔍",
     keywords: ["recurring", "detect", "erkennen", "abo", "muster"],
-    handler: () => {
+    handler: async () => {
       const n = detectRecurring();
+      await opfsSave();
       data.bump();
       toastStore.show(n > 0 ? `${n} Muster erkannt` : "Keine neuen Muster");
     },

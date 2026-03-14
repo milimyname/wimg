@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     detectRecurring,
+    opfsSave,
     CATEGORIES,
     type RecurringPattern,
   } from "$lib/wasm";
@@ -41,10 +42,11 @@
     annual: "Jährlich",
   };
 
-  function handleDetect() {
+  async function handleDetect() {
     detecting = true;
     try {
       detectRecurring();
+      await opfsSave();
       data.bump();
       hasDetected = true;
     } finally {

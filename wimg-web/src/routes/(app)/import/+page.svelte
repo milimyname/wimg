@@ -4,6 +4,7 @@
     importCsv,
     setCategory,
     getTransactions,
+    detectRecurring,
     CATEGORIES,
     type ImportResult,
     type ParseResult,
@@ -133,6 +134,8 @@
       importing = false;
       accountStore.reload();
       previewTransactions = getTransactions();
+      // Auto-detect recurring patterns after import
+      detectRecurring();
     } catch (e) {
       importError = e instanceof Error ? e.message : "Import fehlgeschlagen";
       importing = false;
