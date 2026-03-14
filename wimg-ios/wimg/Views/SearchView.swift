@@ -184,6 +184,9 @@ struct SearchView: View {
                     navLink("Rückblick", icon: "calendar", color: .purple, feature: "review") {
                         ReviewView(selectedAccount: $selectedAccount)
                     }
+                    navLink("Bankverbindung", icon: "building.columns", color: .teal) {
+                        FinTSView()
+                    }
                     navLink("Import", icon: "square.and.arrow.down", color: .blue) {
                         ImportView()
                     }

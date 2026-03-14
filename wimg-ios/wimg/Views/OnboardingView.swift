@@ -20,9 +20,16 @@ struct OnboardingView: View {
             Color.blue.opacity(0.12)
         ),
         (
-            "Synchronisiere zwischen Geräten",
-            "Optional: Verbinde Handy und Computer. Ende-zu-Ende verschlüsselt.",
-            "arrow.triangle.2.circlepath",
+            "Sparziele & Vermögen",
+            "Setze Sparziele, verfolge deinen Fortschritt und sieh dein Nettovermögen über die Zeit.",
+            "star.fill",
+            .teal,
+            Color.teal.opacity(0.12)
+        ),
+        (
+            "Steuern & Sync",
+            "Finde absetzbare Ausgaben für deine Steuererklärung. Synchronisiere optional zwischen Geräten — Ende-zu-Ende verschlüsselt.",
+            "doc.text.fill",
             .orange,
             Color.orange.opacity(0.12)
         ),

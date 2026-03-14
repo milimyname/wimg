@@ -21,12 +21,20 @@
       icon: `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>`,
     },
     {
-      title: "Synchronisiere zwischen Ger\u00e4ten",
+      title: "Sparziele & Verm\u00f6gen",
       subtitle:
-        "Optional: Verbinde Handy und Computer. Ende-zu-Ende verschl\u00fcsselt.",
+        "Setze Sparziele, verfolge deinen Fortschritt und sieh dein Nettoverm\u00f6gen \u00fcber die Zeit.",
+      iconBg: "bg-teal-100",
+      iconColor: "text-teal-600",
+      icon: `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>`,
+    },
+    {
+      title: "Steuern & Sync",
+      subtitle:
+        "Finde absetzbare Ausgaben f\u00fcr deine Steuererkl\u00e4rung. Synchronisiere optional zwischen Ger\u00e4ten \u2014 Ende-zu-Ende verschl\u00fcsselt.",
       iconBg: "bg-amber-100",
       iconColor: "text-amber-600",
-      icon: `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>`,
+      icon: `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" /></svg>`,
     },
   ];
 
