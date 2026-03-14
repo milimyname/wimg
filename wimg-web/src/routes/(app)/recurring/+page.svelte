@@ -4,7 +4,7 @@
     CATEGORIES,
     type RecurringPattern,
   } from "$lib/wasm";
-  import { formatEur } from "$lib/format";
+  import { formatEur, formatEurCompact } from "$lib/format";
   import { data } from "$lib/data.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
 
@@ -96,7 +96,7 @@
         Monatliche Fixkosten
       </p>
       <p class="text-4xl font-display font-black tracking-tight text-white mt-1">
-        {formatEur(monthlyTotal)}
+        {Math.abs(monthlyTotal) >= 10000 ? formatEurCompact(monthlyTotal) : formatEur(monthlyTotal)}
       </p>
       <p class="text-white/70 font-medium text-sm mt-1">
         {activePatterns.length} erkannte Muster
@@ -213,10 +213,10 @@
       </h4>
       <div class="flex flex-col gap-3">
         {#each items as pattern}
-          <div class="bg-white p-5 rounded-3xl shadow-[var(--shadow-card)] flex items-center gap-4">
+          <div class="bg-white p-4 rounded-3xl shadow-[var(--shadow-card)] flex items-center gap-3">
             <!-- Category icon -->
             <div
-              class="w-11 h-11 rounded-2xl flex items-center justify-center text-lg shrink-0"
+              class="w-10 h-10 rounded-2xl flex items-center justify-center text-lg shrink-0"
               style="background-color: {getCategoryColor(pattern.category)}20"
             >
               {getCategoryIcon(pattern.category)}
@@ -224,26 +224,22 @@
 
             <!-- Info -->
             <div class="flex-1 min-w-0">
-              <p class="font-extrabold text-base truncate">{pattern.merchant}</p>
-              <div class="flex items-center gap-2 mt-0.5">
+              <p class="font-extrabold text-sm truncate">{pattern.merchant}</p>
+              <p class="text-xs font-medium text-(--color-text-secondary) mt-0.5 truncate">
                 {#if pattern.next_due}
-                  <span class="text-xs font-medium text-(--color-text-secondary)">
-                    {formatNextDue(pattern.next_due)}
-                  </span>
+                  {formatNextDue(pattern.next_due)} ·
                 {/if}
-                <span class="text-xs font-medium text-(--color-text-secondary)">
-                  · Zuletzt: {new Date(pattern.last_seen + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "short" })}
-                </span>
-              </div>
+                Zuletzt: {new Date(pattern.last_seen + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "short" })}
+              </p>
             </div>
 
             <!-- Amount -->
             <div class="text-right shrink-0">
-              <p class="font-extrabold text-base">{formatEur(Math.abs(pattern.amount))}</p>
+              <p class="font-extrabold text-sm">{formatEurCompact(Math.abs(pattern.amount))}</p>
               {#if pattern.price_change && Math.abs(pattern.price_change) > 0}
                 {@const isUp = pattern.price_change > 0}
-                <p class="text-xs font-bold" style="color: {isUp ? '#DC2626' : '#16A34A'}">
-                  {isUp ? "+" : ""}{formatEur(pattern.price_change)}
+                <p class="text-[11px] font-bold" style="color: {isUp ? '#DC2626' : '#16A34A'}">
+                  {isUp ? "+" : ""}{formatEurCompact(pattern.price_change)}
                 </p>
               {/if}
             </div>
