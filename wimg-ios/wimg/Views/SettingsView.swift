@@ -193,6 +193,41 @@ struct SettingsView: View {
                 .padding(20)
                 .wimgCard()
 
+                // MARK: - Theme Section
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 12) {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.purple.opacity(0.15))
+                            .frame(width: 40, height: 40)
+                            .overlay {
+                                Image(systemName: "moon.circle")
+                                    .foregroundStyle(.purple)
+                            }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Design")
+                                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.text)
+                            Text("Hell, Dunkel oder System")
+                                .font(.caption2)
+                                .foregroundStyle(WimgTheme.textSecondary)
+                        }
+                    }
+
+                    Picker("Design", selection: Binding(
+                        get: { ThemeManager.shared.mode },
+                        set: { ThemeManager.shared.mode = $0 }
+                    )) {
+                        ForEach(ThemeMode.allCases, id: \.self) { mode in
+                            Text(mode.label).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                .padding(20)
+                .wimgCard(radius: WimgTheme.radiusMedium)
+                .padding(.horizontal)
+
                 // MARK: - Features Section
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(spacing: 12) {

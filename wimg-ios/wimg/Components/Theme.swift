@@ -1,16 +1,98 @@
 import SwiftUI
 
+// MARK: - Theme Mode
+
+enum ThemeMode: String, CaseIterable {
+    case system
+    case light
+    case dark
+
+    var label: String {
+        switch self {
+        case .system: "System"
+        case .light: "Hell"
+        case .dark: "Dunkel"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
+
+@Observable
+class ThemeManager {
+    static let shared = ThemeManager()
+    private let key = "wimg_theme_mode"
+
+    var mode: ThemeMode {
+        didSet { UserDefaults.standard.set(mode.rawValue, forKey: key) }
+    }
+
+    private init() {
+        let stored = UserDefaults.standard.string(forKey: key) ?? "system"
+        mode = ThemeMode(rawValue: stored) ?? .system
+    }
+
+    func cycle() {
+        switch mode {
+        case .system: mode = .light
+        case .light: mode = .dark
+        case .dark: mode = .system
+        }
+    }
+}
+
 // MARK: - Friendly Finance Design System
 
 enum WimgTheme {
-    // Colors
+    // Colors — adaptive for light/dark
     static let accent = Color(red: 1.0, green: 0.914, blue: 0.49)        // #FFE97D
     static let accentHover = Color(red: 1.0, green: 0.878, blue: 0.322)  // #FFE052
-    static let bg = Color(red: 0.98, green: 0.976, blue: 0.965)          // #FAF9F6
-    static let text = Color(red: 0.102, green: 0.102, blue: 0.102)       // #1A1A1A
-    static let textSecondary = Color(red: 0.557, green: 0.557, blue: 0.576) // #8E8E93
-    static let border = Color(red: 0.941, green: 0.925, blue: 0.902)     // #f0ece6
-    static let cardBg = Color.white
+
+    static var bg: Color {
+        Color(UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.067, green: 0.067, blue: 0.078, alpha: 1) // #111114
+                : UIColor(red: 0.98, green: 0.976, blue: 0.965, alpha: 1) // #FAF9F6
+        })
+    }
+
+    static var text: Color {
+        Color(UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor.white
+                : UIColor(red: 0.102, green: 0.102, blue: 0.102, alpha: 1) // #1A1A1A
+        })
+    }
+
+    static var textSecondary: Color {
+        Color(UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.6, green: 0.6, blue: 0.62, alpha: 1)
+                : UIColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1) // #8E8E93
+        })
+    }
+
+    static var border: Color {
+        Color(UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 1, green: 1, blue: 1, alpha: 0.05)
+                : UIColor(red: 0.941, green: 0.925, blue: 0.902, alpha: 1) // #f0ece6
+        })
+    }
+
+    static var cardBg: Color {
+        Color(UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1) // #1c1c1e
+                : UIColor.white
+        })
+    }
 
     // Corner Radii
     static let radiusSmall: CGFloat = 20

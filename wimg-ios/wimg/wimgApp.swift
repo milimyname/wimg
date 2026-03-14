@@ -42,6 +42,7 @@ struct ContentView: View {
     @State private var selectedAccount: String?
     @State private var accounts: [Account] = []
     @AppStorage("wimg_onboarding_completed") private var onboardingCompleted = false
+    private var themeManager = ThemeManager.shared
 
     var body: some View {
         TabView {
@@ -66,6 +67,7 @@ struct ContentView: View {
                 }
         }
         .tint(WimgTheme.text)
+        .preferredColorScheme(themeManager.mode.colorScheme)
         .onAppear {
             accounts = LibWimg.getAccounts()
             // Connect real-time sync WebSocket + initial pull
