@@ -3,38 +3,47 @@
 
   const faqs = [
     {
+      id: "faq-sicherheit",
       q: "Sind meine Daten sicher?",
       a: "Ja. Alle Finanzdaten werden lokal in einer SQLite-Datenbank auf deinem Gerät gespeichert. Sync ist Ende-zu-Ende verschlüsselt — der Server sieht nur Chiffretext.",
     },
     {
+      id: "faq-banken",
       q: "Welche Banken werden unterstützt?",
       a: "CSV-Import von Comdirect, Trade Republic und Scalable Capital. Da wimg Open-Source ist, können weitere Formate jederzeit hinzugefügt werden.",
     },
     {
+      id: "faq-import",
       q: "Wie funktioniert der Import?",
       a: "Lade deinen Kontoauszug im CSV-Format hoch. wimg erkennt das Format automatisch, analysiert die Transaktionen lokal und kategorisiert sie mit intelligenten Regeln.",
     },
     {
+      id: "faq-kategorisierung",
       q: "Wie funktioniert die Kategorisierung?",
       a: "wimg nutzt ein Regel-System mit Schlüsselwörtern. Bekannte Händler (REWE, LIDL, etc.) werden automatisch erkannt. Wenn du eine Transaktion manuell kategorisierst, lernt wimg das Muster und wendet es zukünftig automatisch an. Für den Rest hilft Claude per MCP.",
     },
     {
+      id: "faq-kostenlos",
       q: "Ist wimg wirklich kostenlos?",
       a: "Ja. wimg ist ein Leidenschaftsprojekt unter Open-Source-Lizenz. Keine Abonnements, keine versteckten Kosten, kein Verkauf deiner Daten.",
     },
     {
+      id: "faq-speicherung",
       q: "Wo werden die Daten gespeichert?",
       a: "Im Browser: OPFS (Origin Private File System). Auf iOS: lokale SQLite-Datei. Deine Daten verlassen dein Gerät nur bei aktivierter Sync — dann Ende-zu-Ende verschlüsselt.",
     },
     {
+      id: "faq-mcp",
       q: "Was ist der MCP-Server?",
       a: "Mit aktivierter Synchronisierung wird dein Sync-Schlüssel zum MCP-Zugang. Claude.ai oder andere KI-Tools können Ausgaben abfragen, Kategorien setzen und Schulden verwalten — Ende-zu-Ende verschlüsselt, in Echtzeit synchronisiert.",
     },
     {
+      id: "faq-devtools",
       q: "Gibt es Entwickler-Tools?",
       a: "Ja! Im Dev-Modus oder mit ?devtools in der URL kannst du mit Ctrl+Shift+D ein DevTools-Panel öffnen. Es zeigt WASM-Performance, Speicherverbrauch, Sync-Status, SQL-Abfragen, localStorage und mehr — inspiriert von TanStack DevTools.",
     },
     {
+      id: "faq-beitragen",
       q: "Wie kann ich beitragen?",
       a: "Besuche das GitHub-Repository. Code, Übersetzungen, Feedback und Bug-Reports sind willkommen.",
     },
@@ -423,6 +432,8 @@
     <div class="space-y-2">
       {#each faqs as faq}
         <details
+          id={faq.id}
+          open={typeof window !== "undefined" && window.location.hash === `#${faq.id}`}
           class="group bg-white rounded-2xl border border-gray-100 overflow-hidden"
         >
           <summary
