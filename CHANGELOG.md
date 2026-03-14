@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.5.23 (2026-03-14)
+
+- feat: Phase 6.4 — savings goals
+- refactor: remove standalone renewals page
+- fix: recurring patterns persist to OPFS, auto-detect on import
+- feat: Phase 5.4 — annual renewals calendar
+
 ## v0.5.22 (2026-03-14)
 
 - fix: replace afterNavigate with reactive scroll-to-top
