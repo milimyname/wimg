@@ -202,7 +202,7 @@ struct DashboardView: View {
             ZStack {
                 Chart(categories) { cat in
                     SectorMark(
-                        angle: .value("Betrag", cat.amount),
+                        angle: .value("Betrag", abs(cat.amount)),
                         innerRadius: .ratio(0.6),
                         angularInset: 1.5
                     )
