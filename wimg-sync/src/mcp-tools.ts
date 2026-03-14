@@ -1,6 +1,6 @@
 /**
  * MCP tool definitions for remote wimg server.
- * 10 read tools + 10 write tools = 20 total.
+ * 11 read tools + 13 write tools = 24 total.
  */
 
 import { z } from "zod/v4";
@@ -515,6 +515,40 @@ export function getToolDefinitions(): ToolDef[] {
       },
     },
 
+    {
+      name: "get_savings_goals",
+      description: "Get all savings goals with progress (target, current, remaining, percentage, deadline)",
+      schema: {},
+      handler: (_args, wasm) => {
+        const goals = wasm.getGoals();
+        const formatted = goals.map((g) => ({
+          id: g.id,
+          name: g.name,
+          icon: g.icon,
+          target: formatAmount(g.target),
+          current: formatAmount(g.current),
+          remaining: formatAmount(g.target - g.current),
+          progress_pct: g.target > 0 ? Math.round((g.current / g.target) * 100) : 0,
+          deadline: g.deadline,
+        }));
+        const totalTarget = goals.reduce((s, g) => s + g.target, 0);
+        const totalSaved = goals.reduce((s, g) => s + g.current, 0);
+        return {
+          text: JSON.stringify(
+            {
+              count: goals.length,
+              total_target: formatAmount(totalTarget),
+              total_saved: formatAmount(totalSaved),
+              total_remaining: formatAmount(totalTarget - totalSaved),
+              goals: formatted,
+            },
+            null,
+            2,
+          ),
+        };
+      },
+    },
+
     // ===== WRITE TOOLS =====
 
     {
@@ -774,6 +808,60 @@ export function getToolDefinitions(): ToolDef[] {
     },
 
     {
+      name: "add_savings_goal",
+      description: "Add a new savings goal to track (e.g. vacation, car, emergency fund)",
+      schema: {
+        name: z.string().describe("Name of the goal (e.g. 'Urlaub 2027', 'Notgroschen')"),
+        icon: z.string().default("🎯").describe("Emoji icon (default: 🎯)"),
+        target: z.number().positive().describe("Target amount in euros (e.g. 5000.00)"),
+        deadline: z.string().optional().describe("Target date ISO format (e.g. '2027-06-01', optional)"),
+      },
+      handler: (args, wasm) => {
+        const targetCents = Math.round((args.target as number) * 100);
+        const id = wasm.addGoal(
+          args.name as string,
+          (args.icon as string) || "🎯",
+          targetCents,
+          (args.deadline as string) || null,
+        );
+        return {
+          text: JSON.stringify({ success: true, id, name: args.name, target: args.target }),
+        };
+      },
+    },
+
+    {
+      name: "contribute_to_goal",
+      description:
+        "Record a contribution towards a savings goal. Use get_savings_goals first to find the goal ID.",
+      schema: {
+        goal_id: z.string().describe("Savings goal ID"),
+        amount: z.number().positive().describe("Contribution amount in euros (e.g. 200.00)"),
+      },
+      handler: (args, wasm) => {
+        const amountCents = Math.round((args.amount as number) * 100);
+        wasm.contributeGoal(args.goal_id as string, amountCents);
+        return {
+          text: JSON.stringify({ success: true, goal_id: args.goal_id, amount_contributed: args.amount }),
+        };
+      },
+    },
+
+    {
+      name: "delete_savings_goal",
+      description: "Delete a savings goal. Use get_savings_goals first to find the goal ID.",
+      schema: {
+        goal_id: z.string().describe("Savings goal ID to delete"),
+      },
+      handler: (args, wasm) => {
+        wasm.deleteGoal(args.goal_id as string);
+        return {
+          text: JSON.stringify({ success: true, goal_id: args.goal_id }),
+        };
+      },
+    },
+
+    {
       name: "add_account",
       description: "Add a new bank account for tracking",
       schema: {
@@ -841,6 +929,9 @@ export const WRITE_TOOL_NAMES = new Set([
   "set_excluded",
   "add_debt",
   "mark_debt_paid",
+  "add_savings_goal",
+  "contribute_to_goal",
+  "delete_savings_goal",
   "add_account",
   "update_account",
   "undo",

@@ -52,6 +52,15 @@ export interface Debt {
   monthly: number;
 }
 
+export interface Goal {
+  id: string;
+  name: string;
+  icon: string;
+  target: number;
+  current: number;
+  deadline: string | null;
+}
+
 export interface CategoryInfo {
   id: number;
   name: string;
@@ -103,6 +112,7 @@ interface WasmExports {
     acct_len: number,
   ) => number;
   wimg_get_debts: () => number;
+  wimg_get_goals: () => number;
   wimg_get_accounts: () => number;
   wimg_get_categories: () => number;
   wimg_get_recurring: () => number;
@@ -114,6 +124,9 @@ interface WasmExports {
   wimg_set_excluded: (id: number, id_len: number, excluded: number) => number;
   wimg_add_debt: (data: number, len: number) => number;
   wimg_mark_debt_paid: (id: number, id_len: number, amount_cents: bigint) => number;
+  wimg_add_goal: (data: number, len: number) => number;
+  wimg_contribute_goal: (id: number, id_len: number, amount_cents: bigint) => number;
+  wimg_delete_goal: (id: number, id_len: number) => number;
   wimg_add_account: (data: number, len: number) => number;
   wimg_update_account: (data: number, len: number) => number;
   wimg_undo: () => number;
@@ -301,6 +314,14 @@ export class WasmInstance {
     return JSON.parse(json) as RecurringPattern[];
   }
 
+  getGoals(): Goal[] {
+    const ptr = this.wasm.wimg_get_goals();
+    if (ptr === 0) return [];
+    const json = this.readLengthPrefixedString(ptr);
+    this.wasm.wimg_free(ptr, 0);
+    return JSON.parse(json) as Goal[];
+  }
+
   // --- Write API ---
 
   setCategory(id: string, category: number): void {
@@ -329,6 +350,28 @@ export class WasmInstance {
     const idPtr = this.writeString(id);
     const rc = this.wasm.wimg_mark_debt_paid(idPtr, id.length, BigInt(amountCents));
     if (rc !== 0) throw new Error(this.getLastError("Failed to mark debt paid"));
+  }
+
+  addGoal(name: string, icon: string, targetCents: number, deadline: string | null): string {
+    const id = crypto.randomUUID().replace(/-/g, "").slice(0, 32);
+    const json = JSON.stringify({ id, name, icon, target: targetCents, deadline });
+    const encoded = new TextEncoder().encode(json);
+    const ptr = this.writeBytes(encoded);
+    const rc = this.wasm.wimg_add_goal(ptr, encoded.length);
+    if (rc !== 0) throw new Error(this.getLastError("Failed to add goal"));
+    return id;
+  }
+
+  contributeGoal(id: string, amountCents: number): void {
+    const idPtr = this.writeString(id);
+    const rc = this.wasm.wimg_contribute_goal(idPtr, id.length, BigInt(amountCents));
+    if (rc !== 0) throw new Error(this.getLastError("Failed to contribute to goal"));
+  }
+
+  deleteGoal(id: string): void {
+    const idPtr = this.writeString(id);
+    const rc = this.wasm.wimg_delete_goal(idPtr, id.length);
+    if (rc !== 0) throw new Error(this.getLastError("Failed to delete goal"));
   }
 
   addAccount(id: string, name: string, color?: string): void {
