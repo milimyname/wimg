@@ -5,6 +5,7 @@
     { href: "/analysis", label: "Analyse", icon: "chart", color: "bg-indigo-100 text-indigo-600", feature: null },
     { href: "/debts", label: "Schulden", icon: "creditcard", color: "bg-rose-100 text-rose-600", feature: "debts" },
     { href: "/recurring", label: "Wiederkehrend", icon: "recurring", color: "bg-emerald-100 text-emerald-600", feature: "recurring" },
+    { href: "/renewals", label: "Jährliche Zahlungen", icon: "calendar", color: "bg-amber-100 text-amber-600", feature: "recurring" },
     { href: "/import", label: "Import", icon: "upload", color: "bg-blue-100 text-blue-600", feature: null },
     { href: "/review", label: "Rückblick", icon: "review", color: "bg-violet-100 text-violet-600", feature: "review" },
     { href: "/settings", label: "Einstellungen", icon: "settings", color: "bg-amber-100 text-amber-600", feature: null },
@@ -55,6 +56,10 @@
           {:else if item.icon === "info"}
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          {:else if item.icon === "calendar"}
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           {:else if item.icon === "changelog"}
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

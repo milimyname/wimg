@@ -146,6 +146,15 @@ const STATIC_ACTIONS: PaletteAction[] = [
     enabled: () => featureStore.isEnabled("recurring"),
   },
   {
+    id: "nav-renewals",
+    label: "Jährliche Zahlungen",
+    group: "Navigation",
+    icon: "📅",
+    keywords: ["annual", "renewals", "jährlich", "versicherung", "verlängerung"],
+    handler: () => goto("/renewals"),
+    enabled: () => featureStore.isEnabled("recurring"),
+  },
+  {
     id: "nav-review",
     label: "Rückblick",
     group: "Navigation",
