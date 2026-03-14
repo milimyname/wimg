@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.0 (2026-03-14)
+
+- fix: use toSorted() instead of spread+sort in NetWorthChart
+- feat: Phase 6.2 — net worth over time chart in analysis page
+
 ## v0.5.23 (2026-03-14)
 
 - feat: Phase 6.4 — savings goals
