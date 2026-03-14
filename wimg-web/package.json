@@ -4,17 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vp dev",
-    "build": "vp build",
-    "preview": "vp preview",
-    "deploy": "vp run build && wrangler pages deploy .svelte-kit/cloudflare --project-name wimg-web",
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler pages deploy .svelte-kit/cloudflare --project-name wimg-web",
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "fmt": "vp fmt",
-    "fmt:check": "vp fmt --check",
-    "lint": "vp lint",
-    "lint:fix": "vp lint --fix"
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix"
   },
   "dependencies": {
     "layerchart": "^2.0.0-next.46",
@@ -26,19 +26,13 @@
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@tailwindcss/vite": "^4.2.1",
     "@types/node": "^25.5.0",
+    "oxfmt": "^0.40.0",
+    "oxlint": "^1.55.0",
     "svelte": "^5.53.11",
     "svelte-check": "^4.4.5",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
-    "vite": "npm:@voidzero-dev/vite-plus-core@latest",
-    "vite-plus": "latest",
+    "vite": "^8.0.0",
     "wrangler": "^4.72.0"
-  },
-  "packageManager": "pnpm@10.32.1",
-  "pnpm": {
-    "overrides": {
-      "vite": "npm:@voidzero-dev/vite-plus-core@latest",
-      "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
-    }
   }
 }

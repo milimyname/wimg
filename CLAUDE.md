@@ -34,15 +34,14 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Tooling
 
-- **Toolchain:** Vite+ (`vite-plus`) — `vp dev`, `vp build`, `vp fmt`, `vp lint`, `vp install`
-- **Formatter:** `vp fmt` (config in `vite.config.ts` `fmt` block)
-- **Linter:** `vp lint` (config in `vite.config.ts` `lint` block) — correctness/error, suspicious/warn, perf/warn
-- **Pre-commit:** lefthook (`zig fmt`, `vp fmt`, `vp lint`, commit-msg validation)
+- **Formatter:** oxfmt (`.oxfmtrc.json`)
+- **Linter:** oxlint (`.oxlintrc.json`) — correctness/error, suspicious/warn, perf/warn
+- **Pre-commit:** lefthook (`zig fmt`, `oxfmt`, `oxlint`, commit-msg validation)
 - **Commit format:** conventional commits (`feat:`, `fix:`, `refactor:`, etc.) — enforced by lefthook
 - **Release:** `scripts/release.sh` — bump versions, changelog (filters chore/ci/build), commit, tag, `--push`
 - **Build WASM:** `scripts/build-wasm.sh` — two variants (web 209MB + compact 53MB)
 - **Build iOS:** `scripts/build-ios.sh` — XCFramework
-- **CI:** `.github/workflows/release.yml` — `setup-vp` → check → build → GitHub release
+- **CI:** `.github/workflows/release.yml` — check → build → GitHub release
 
 ---
 

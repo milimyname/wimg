@@ -18,9 +18,7 @@ jobs:
         with:
           version: 0.15.2
 
-      - uses: voidzero-dev/setup-vp@v1
-        with:
-          cache: true
+      - uses: oven-sh/setup-bun@v2
 
       - name: Download SQLite amalgamation
         working-directory: libwimg/vendor
@@ -40,21 +38,19 @@ jobs:
 
       - name: Install web dependencies
         working-directory: wimg-web
-        run: vp install
+        run: bun install --frozen-lockfile
 
-      - name: Format check
+      - name: oxfmt check
         working-directory: wimg-web
-        run: vp fmt --check
+        run: bunx oxfmt --check
 
-      - name: Lint
+      - name: oxlint
         working-directory: wimg-web
-        run: vp lint
+        run: bunx oxlint
 
       - name: svelte-check
         working-directory: wimg-web
-        run: svelte-kit sync && svelte-check --tsconfig ./tsconfig.json
-
-      - uses: oven-sh/setup-bun@v2
+        run: bun run check
 
       - name: Install sync dependencies
         working-directory: wimg-sync
@@ -74,9 +70,7 @@ jobs:
         with:
           version: 0.15.2
 
-      - uses: voidzero-dev/setup-vp@v1
-        with:
-          cache: true
+      - uses: oven-sh/setup-bun@v2
 
       - name: Download SQLite amalgamation
         working-directory: libwimg/vendor
@@ -99,15 +93,15 @@ jobs:
 
       - name: Install web dependencies
         working-directory: wimg-web
-        run: vp install
+        run: bun install --frozen-lockfile
 
       - name: Build web
         working-directory: wimg-web
-        run: vp build
+        run: bun run build
 
       - name: Deploy to Cloudflare Pages
         working-directory: wimg-web
-        run: npx wrangler pages deploy .svelte-kit/cloudflare --project-name wimg-web --branch main
+        run: bunx wrangler pages deploy .svelte-kit/cloudflare --project-name wimg-web --branch main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -155,17 +149,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: voidzero-dev/setup-vp@v1
-        with:
-          cache: true
+      - uses: oven-sh/setup-bun@v2
 
       - name: Download WASM artifacts
         uses: actions/download-artifact@v8
         with:
           name: libwimg-wasm
           path: .
-
-      - uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
         working-directory: wimg-sync

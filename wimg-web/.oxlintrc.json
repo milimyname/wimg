@@ -1,0 +1,16 @@
+{
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "rules": {
+    "unicorn/require-module-specifiers": "off",
+    "no-map-spread": "off"
+  },
+  "env": {
+    "builtin": true,
+    "browser": true
+  },
+  "ignorePatterns": ["build/", ".svelte-kit/", "node_modules/", "static/"]
+}

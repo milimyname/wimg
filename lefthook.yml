@@ -9,12 +9,12 @@ pre-commit:
     web-fmt:
       root: wimg-web/
       glob: "*.{ts,svelte,js,css,html}"
-      run: bun fmt:check
+      run: bunx oxfmt --check
 
     web-lint:
       root: wimg-web/
       glob: "*.{ts,svelte,js}"
-      run: bun lint
+      run: bunx oxlint
 
 commit-msg:
   commands:

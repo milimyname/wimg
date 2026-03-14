@@ -61,7 +61,7 @@ changelog entry. `feat: add monthly spending chart` reads better than
 Triggered on tag push (`v*`):
 
 ```
-check        → zig fmt, zig test, vp fmt, vp lint, svelte-check, tsc
+check        → zig fmt, zig test, oxfmt, oxlint, svelte-check, tsc
   ↓
 build-web    → WASM build, SvelteKit build, deploy to CF Pages
 build-ios    → XCFramework build
