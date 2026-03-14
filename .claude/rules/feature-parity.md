@@ -28,7 +28,8 @@ Snapshots, Undo toast.
 | OPFS persistence                     | Web only | iOS uses file on disk          |
 | MCP server (AI agent access)         | Remote   | CF Worker DO, any MCP client   |
 | DevTools panel                       | Web only | iOS uses Xcode Instruments     |
-| Command Palette + Search             | Web only | iOS uses native search         |
+| Command Palette                      | Web only | iOS uses native navigation     |
+| Transaction search + advanced filter | Both     | Web: Command Palette, iOS: .searchable + filter sheet |
 | In-app Changelog                     | Web only | iOS uses App Store notes       |
 | Auto-learn rules                     | Both     | Runs in libwimg (Zig)          |
 | Custom tax keywords                  | Web only | localStorage, not synced       |
