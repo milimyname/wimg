@@ -117,6 +117,11 @@
       a: "Unter Einstellungen → Danger Zone kannst du die Datenbank zurücksetzen. Über die Command Palette findest du auch \"Datenbank löschen\" (löscht nur die SQLite-Datei) und \"Vollständiger Reset\" (löscht Datenbank, Sync-Schlüssel und alle Einstellungen). Diese Aktionen können nicht rückgängig gemacht werden.",
     },
     {
+      id: "faq-steuern",
+      q: "Was kann die Steuern-Seite?",
+      a: "Die Steuern-Seite hilft dir, absetzbare Ausgaben für deine Steuererklärung zu finden. Sie scannt Transaktionen nach steuerrelevanten Schlüsselwörtern (Arbeitsmittel, Fortbildung, Fahrtkosten etc.) und berechnet Pendlerpauschale und Homeoffice-Pauschale. Du kannst einzelne Transaktionen ein-/ausblenden und alles als CSV für ELSTER oder WISO exportieren. Keine Steuerberatung — nur eine Übersicht deiner Zahlen.",
+    },
+    {
       id: "faq-beitragen",
       q: "Wie kann ich beitragen?",
       a: "Besuche das GitHub-Repository. Code, Übersetzungen, Feedback und Bug-Reports sind willkommen.",

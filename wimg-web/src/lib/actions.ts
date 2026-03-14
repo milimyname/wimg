@@ -352,6 +352,14 @@ const STATIC_ACTIONS: PaletteAction[] = [
     handler: () => gotoHash("/about#faq-datenloeschen"),
   },
   {
+    id: "faq-steuern",
+    label: "Was kann die Steuern-Seite?",
+    group: "Hilfe",
+    icon: "❓",
+    keywords: ["faq", "steuern", "tax", "anlage", "pendler", "homeoffice", "absetzbar"],
+    handler: () => gotoHash("/about#faq-steuern"),
+  },
+  {
     id: "faq-beitragen",
     label: "Wie kann ich beitragen?",
     group: "Hilfe",
