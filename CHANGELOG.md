@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.20 (2026-03-14)
+
+- fix: Swift argument order and remove unnecessary await
+- fix: UpdateBanner shows all missed releases, analysis back icon, Swift type-check
+
 ## v0.5.19 (2026-03-14)
 
 - fix: revert Vite+ migration, restore bun + oxfmt/oxlint
