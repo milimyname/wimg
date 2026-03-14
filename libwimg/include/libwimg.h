@@ -78,6 +78,20 @@ int32_t wimg_mark_debt_paid(const uint8_t *id, uint32_t id_len, int64_t amount_c
 // Delete a debt by ID.
 int32_t wimg_delete_debt(const uint8_t *id, uint32_t id_len);
 
+// --- Savings Goals ---
+
+// Get all savings goals as a length-prefixed JSON array.
+const uint8_t *wimg_get_goals(void);
+
+// Add a savings goal. Input is JSON: {"id":"...","name":"...","icon":"...","target":N,"deadline":"YYYY-MM-DD"}
+int32_t wimg_add_goal(const uint8_t *data, uint32_t len);
+
+// Contribute to a savings goal. amount_cents is in cents.
+int32_t wimg_contribute_goal(const uint8_t *id, uint32_t id_len, int64_t amount_cents);
+
+// Delete a savings goal by ID.
+int32_t wimg_delete_goal(const uint8_t *id, uint32_t id_len);
+
 // --- Accounts ---
 
 // Get all accounts as a length-prefixed JSON array.

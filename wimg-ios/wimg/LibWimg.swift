@@ -187,6 +187,54 @@ final class LibWimg {
         }
     }
 
+    // MARK: - Savings Goals
+
+    static func getGoals() -> [Goal] {
+        guard isInitialized else { return [] }
+        guard let ptr = wimg_get_goals() else { return [] }
+        defer { wimg_free(ptr, 0) }
+        return (try? decodeLengthPrefixed(ptr)) ?? []
+    }
+
+    static func addGoal(name: String, icon: String, target: Double, deadline: String?) throws {
+        try ensureInit()
+        let id = UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(32)
+        let targetCents = Int(target * 100)
+        let deadlineJson = deadline.map { "\"\($0)\"" } ?? "null"
+        let json = """
+        {"id":"\(id)","name":"\(name)","icon":"\(icon)","target":\(targetCents),"deadline":\(deadlineJson)}
+        """
+        let data = Array(json.utf8)
+        let rc = data.withUnsafeBufferPointer { buf in
+            wimg_add_goal(buf.baseAddress!, UInt32(buf.count))
+        }
+        if rc != 0 {
+            throw WimgError.operationFailed("addGoal", lastError())
+        }
+    }
+
+    static func contributeGoal(id: String, amountCents: Int) throws {
+        try ensureInit()
+        let idData = Array(id.utf8)
+        let rc = idData.withUnsafeBufferPointer { buf in
+            wimg_contribute_goal(buf.baseAddress!, UInt32(buf.count), Int64(amountCents))
+        }
+        if rc != 0 {
+            throw WimgError.operationFailed("contributeGoal", lastError())
+        }
+    }
+
+    static func deleteGoal(id: String) throws {
+        try ensureInit()
+        let idData = Array(id.utf8)
+        let rc = idData.withUnsafeBufferPointer { buf in
+            wimg_delete_goal(buf.baseAddress!, UInt32(buf.count))
+        }
+        if rc != 0 {
+            throw WimgError.operationFailed("deleteGoal", lastError())
+        }
+    }
+
     // MARK: - Accounts
 
     static func getAccounts() -> [Account] {

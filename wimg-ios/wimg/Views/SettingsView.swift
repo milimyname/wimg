@@ -14,6 +14,8 @@ struct SettingsView: View {
         ("debts", "Schulden", "Schulden verfolgen und abzahlen"),
         ("recurring", "Wiederkehrend", "Abos und regelmäßige Zahlungen erkennen"),
         ("review", "Rückblick", "Monatliche Zusammenfassung und Analyse"),
+        ("goals", "Sparziele", "Sparziele setzen und Fortschritt verfolgen"),
+        ("tax", "Steuern", "Steuerlich absetzbare Ausgaben erkennen"),
     ]
 
     // Export

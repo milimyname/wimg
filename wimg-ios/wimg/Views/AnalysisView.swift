@@ -86,6 +86,9 @@ struct AnalysisView: View {
                         .wimgCard(radius: WimgTheme.radiusLarge)
                         .padding(.horizontal)
 
+                        // Net Worth chart
+                        NetWorthCard()
+
                         // Category breakdown
                         VStack(spacing: 0) {
                             ForEach(cats) { cat in

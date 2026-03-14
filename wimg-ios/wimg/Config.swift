@@ -26,5 +26,7 @@ enum WimgConfig {
         "debts": true,
         "recurring": true,
         "review": true,
+        "goals": true,
+        "tax": true,
     ]
 }

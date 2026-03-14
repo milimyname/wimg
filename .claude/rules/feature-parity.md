@@ -5,15 +5,19 @@ FinTS is intentionally iOS-only (browsers can't do FinTS due to CORS).
 
 ## At Parity
 
-Dashboard, Transactions, Analysis, Debts, Monthly Review, CSV Import,
-Auto-categorization, Claude AI, Account Switcher, Account Management,
-Sync (enable/link/manual/copy key), Real-time WebSocket, E2E Encryption,
-Settings, More page, About page, Data Export, Monthly Snapshots, Undo toast.
+Dashboard, Transactions, Analysis (+ Net Worth chart), Debts, Savings Goals,
+Tax Helper (Pendlerpauschale, Homeoffice, auto-tagged transactions),
+Monthly Review, CSV Import, Auto-categorization, Claude AI, Account Switcher,
+Account Management, Sync (enable/link/manual/copy key), Real-time WebSocket,
+E2E Encryption, Settings, More page, About page, Data Export, Monthly
+Snapshots, Undo toast.
 
 ## iOS Missing
 
 - Settings: sync key mask/reveal toggle (Low priority)
 - Settings: sync QR code display (Low priority)
+- FAQ deep-links from search (Low priority)
+- Custom tax keywords UI (Web uses localStorage)
 
 ## Platform-Specific (intentional)
 
@@ -24,6 +28,7 @@ Settings, More page, About page, Data Export, Monthly Snapshots, Undo toast.
 | OPFS persistence                     | Web only | iOS uses file on disk          |
 | MCP server (AI agent access)         | Remote   | CF Worker DO, any MCP client   |
 | DevTools panel                       | Web only | iOS uses Xcode Instruments     |
-| Command Palette + Search             | Web only | iOS uses native search          |
-| In-app Changelog                     | Web only | iOS uses App Store notes        |
-| Auto-learn rules                     | Both     | Runs in libwimg (Zig)           |
+| Command Palette + Search             | Web only | iOS uses native search         |
+| In-app Changelog                     | Web only | iOS uses App Store notes       |
+| Auto-learn rules                     | Both     | Runs in libwimg (Zig)          |
+| Custom tax keywords                  | Web only | localStorage, not synced       |
