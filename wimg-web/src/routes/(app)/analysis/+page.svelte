@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { CATEGORIES, type Transaction } from "$lib/wasm";
+  import { CATEGORIES, getSnapshots, type Transaction } from "$lib/wasm";
   import { formatEur, formatEurCompact } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
   import { data } from "$lib/data.svelte";
@@ -7,6 +7,7 @@
   import MonthPicker from "../../../components/MonthPicker.svelte";
   import DonutChart from "../../../components/DonutChart.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
+  import NetWorthChart from "../../../components/NetWorthChart.svelte";
 
   let expandedCategory = $state<number | null>(null);
 
@@ -55,6 +56,12 @@
   }
 
   let hasAnyData = $derived(data.hasAnyData());
+
+  // Snapshots for net worth chart
+  let snapshots = $derived.by(() => {
+    data.hasAnyData(); // reactive dependency
+    return getSnapshots();
+  });
 </script>
 
 <div class="flex items-center gap-3 mb-5">
@@ -143,6 +150,11 @@
       </div>
     </div>
   </div>
+
+  <!-- Net Worth Over Time -->
+  {#if snapshots.length >= 2}
+    <NetWorthChart {snapshots} />
+  {/if}
 
   <!-- Categories Header -->
   <div id="categories" class="flex items-center justify-between px-1 mb-4">

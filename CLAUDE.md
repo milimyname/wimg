@@ -47,7 +47,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11 all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.4 all **done**.
 
 Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules +
 auto-learn), summaries, debts, recurring detection, multi-account, undo/redo,
@@ -57,7 +57,9 @@ Palette with SQL LIKE search + search history + transaction deep-links,
 advanced search with date range, amount range slider, and category filters,
 in-app changelog (`/changelog`) fetching GitHub Releases API with localStorage
 cache, dark mode (light/dark/system with flash prevention), shared month/year
-navigation across dashboard/analysis/review via `dateNav` store.
+navigation across dashboard/analysis/review via `dateNav` store, savings goals
+(CRUD with icon picker, progress tracking, feature-flagged), net worth over
+time chart (SVG area chart in analysis page, cumulative from snapshots).
 
 Embeddings were built (Phase 5.5) then removed (Phase 5.9) — 4,400 lines
 deleted. Keyword rules cover ~80% of categorization, MCP + Claude handles
@@ -73,8 +75,7 @@ with card-based layouts, border styling, and project design tokens.
 
 Conventional commits enforced by lefthook `commit-msg` hook.
 
-Next: Annual Renewals (5.4),
-Phase 6 (Annual Review, Net Worth, Tax, Savings Goals).
+Next: Phase 6 (Annual Review, Tax).
 
 Deferred: Notifications (5.2) — to be defined later.
 

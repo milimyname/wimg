@@ -60,8 +60,9 @@ wimg/
 │       │   ├── +page.svelte     redirect → /dashboard
 │       │   ├── dashboard/       Verfügbares Einkommen hero, donut, overview
 │       │   ├── transactions/    segmented filter, bottom sheet editor
-│       │   ├── analysis/        spending breakdown, category drill-down
+│       │   ├── analysis/        spending breakdown, category drill-down, net worth chart
 │       │   ├── debts/           progress bars, mark paid
+│       │   ├── goals/           savings goals CRUD, icon picker, progress tracking
 │       │   ├── import/          file drop, CSV preview, Claude categorization
 │       │   ├── review/          monthly review, anomalies, checklist
 │       │   ├── settings/        sync config, Claude AI key, embeddings, data reset
@@ -70,6 +71,7 @@ wimg/
 │           ├── BottomSheet.svelte   iOS-style sheet (vaul-inspired scale effect)
 │           ├── DevTools.svelte      Developer panel (5 tabs: WASM, Memory, Sync, Data, SQL)
 │           ├── DonutChart.svelte    LayerChart PieChart wrapper
+│           ├── NetWorthChart.svelte SVG area chart for cumulative net worth
 │           ├── MonthPicker.svelte   month/year selector
 │           ├── Toast.svelte         undo snackbar
 │           └── UpdateBanner.svelte  PWA update notification banner
