@@ -180,6 +180,14 @@ const STATIC_ACTIONS: PaletteAction[] = [
     keywords: ["about", "info", "version"],
     handler: () => goto("/about"),
   },
+  {
+    id: "nav-changelog",
+    label: "Changelog",
+    group: "Navigation",
+    icon: "📝",
+    keywords: ["changelog", "updates", "neu", "version", "release"],
+    handler: () => goto("/changelog"),
+  },
 
   // --- Hilfe & FAQ ---
   {
@@ -188,7 +196,7 @@ const STATIC_ACTIONS: PaletteAction[] = [
     group: "Hilfe",
     icon: "🔗",
     keywords: ["mcp", "claude", "ai", "verbindung", "server", "anleitung"],
-    handler: () => goto("/about#mcp"),
+    handler: () => gotoHash("/about#mcp"),
   },
   {
     id: "faq-sicherheit",
@@ -196,7 +204,7 @@ const STATIC_ACTIONS: PaletteAction[] = [
     group: "Hilfe",
     icon: "❓",
     keywords: ["faq", "sicherheit", "daten", "verschlüsselung", "privat"],
-    handler: () => goto("/about#faq-sicherheit"),
+    handler: () => gotoHash("/about#faq-sicherheit"),
   },
   {
     id: "faq-banken",
@@ -204,7 +212,7 @@ const STATIC_ACTIONS: PaletteAction[] = [
     group: "Hilfe",
     icon: "❓",
     keywords: ["faq", "banken", "comdirect", "trade republic", "scalable"],
-    handler: () => goto("/about#faq-banken"),
+    handler: () => gotoHash("/about#faq-banken"),
   },
   {
     id: "faq-import",
@@ -212,7 +220,7 @@ const STATIC_ACTIONS: PaletteAction[] = [
     group: "Hilfe",
     icon: "❓",
     keywords: ["faq", "import", "csv", "hochladen", "anleitung"],
-    handler: () => goto("/about#faq-import"),
+    handler: () => gotoHash("/about#faq-import"),
   },
   {
     id: "faq-kategorisierung",
@@ -220,7 +228,7 @@ const STATIC_ACTIONS: PaletteAction[] = [
     group: "Hilfe",
     icon: "❓",
     keywords: ["faq", "kategorie", "regeln", "automatisch", "lernen"],
-    handler: () => goto("/about#faq-kategorisierung"),
+    handler: () => gotoHash("/about#faq-kategorisierung"),
   },
   {
     id: "faq-kostenlos",
@@ -228,7 +236,7 @@ const STATIC_ACTIONS: PaletteAction[] = [
     group: "Hilfe",
     icon: "❓",
     keywords: ["faq", "kostenlos", "preis", "gratis", "open source"],
-    handler: () => goto("/about#faq-kostenlos"),
+    handler: () => gotoHash("/about#faq-kostenlos"),
   },
   {
     id: "faq-speicherung",
@@ -236,7 +244,7 @@ const STATIC_ACTIONS: PaletteAction[] = [
     group: "Hilfe",
     icon: "❓",
     keywords: ["faq", "speicher", "opfs", "lokal", "browser", "ios"],
-    handler: () => goto("/about#faq-speicherung"),
+    handler: () => gotoHash("/about#faq-speicherung"),
   },
   {
     id: "faq-mcp",
@@ -244,7 +252,7 @@ const STATIC_ACTIONS: PaletteAction[] = [
     group: "Hilfe",
     icon: "❓",
     keywords: ["faq", "mcp", "server", "claude", "ki", "ai"],
-    handler: () => goto("/about#faq-mcp"),
+    handler: () => gotoHash("/about#faq-mcp"),
   },
   {
     id: "faq-devtools",
@@ -252,7 +260,7 @@ const STATIC_ACTIONS: PaletteAction[] = [
     group: "Hilfe",
     icon: "❓",
     keywords: ["faq", "devtools", "entwickler", "debug", "panel"],
-    handler: () => goto("/about#faq-devtools"),
+    handler: () => gotoHash("/about#faq-devtools"),
   },
   {
     id: "faq-beitragen",
@@ -260,7 +268,7 @@ const STATIC_ACTIONS: PaletteAction[] = [
     group: "Hilfe",
     icon: "❓",
     keywords: ["faq", "beitragen", "github", "contribute", "helfen"],
-    handler: () => goto("/about#faq-beitragen"),
+    handler: () => gotoHash("/about#faq-beitragen"),
   },
 
   // --- Categorization ---
@@ -626,6 +634,10 @@ const STATIC_ACTIONS: PaletteAction[] = [
 ];
 
 // --- Helpers ---
+
+function gotoHash(path: string) {
+  return goto(path, { noScroll: true });
+}
 
 function downloadText(content: string, filename: string, mime: string) {
   const blob = new Blob([content], { type: mime });

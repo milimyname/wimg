@@ -16,7 +16,22 @@
     });
   }
 
-  function parseItems(body: string, tag: string): string[] {
+  interface ChangeItem {
+    type: string;
+    text: string;
+  }
+
+  const TYPE_BADGES: Record<string, { label: string; class: string }> = {
+    feat: { label: "Feature", class: "bg-emerald-100 text-emerald-700" },
+    fix: { label: "Fix", class: "bg-rose-100 text-rose-600" },
+    refactor: { label: "Refactor", class: "bg-sky-100 text-sky-700" },
+    perf: { label: "Perf", class: "bg-amber-100 text-amber-700" },
+    docs: { label: "Docs", class: "bg-slate-100 text-slate-600" },
+    style: { label: "Style", class: "bg-purple-100 text-purple-600" },
+    test: { label: "Test", class: "bg-indigo-100 text-indigo-600" },
+  };
+
+  function parseItems(body: string): ChangeItem[] {
     return body
       .split("\n")
       .map((l) => l.trim())
@@ -24,7 +39,18 @@
       .filter((l) => !l.match(/^release:\s*v[\d.]+$/i))
       .filter((l) => !l.match(/^#{1,3}\s/))
       .map((l) => l.replace(/^[-*]\s*/, "").trim())
-      .filter((l) => l.length > 0);
+      .filter((l) => l.length > 0)
+      .map((l) => {
+        const match = l.match(/^(feat|fix|refactor|perf|docs|style|test)(?:\(.+?\))?:\s*(.+)$/i);
+        if (match) {
+          return { type: match[1].toLowerCase(), text: match[2].trim() };
+        }
+        return { type: "", text: l };
+      });
+  }
+
+  function getBadge(type: string) {
+    return TYPE_BADGES[type] ?? null;
   }
 </script>
 
@@ -73,7 +99,7 @@
       <section class="flex flex-col gap-4">
         {#each changelogStore.releases as release, i}
           {@const isCurrent = release.tag === `v${APP_VERSION}`}
-          {@const items = parseItems(release.body, release.tag)}
+          {@const items = parseItems(release.body)}
 
           <article
             class="bg-white p-6 rounded-3xl shadow-[var(--shadow-card)] border border-(--color-border) flex flex-col gap-4 {i >
@@ -103,32 +129,25 @@
 
             <!-- Feature list -->
             {#if items.length > 0}
-              <div class="space-y-2.5">
+              <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 items-baseline">
                 {#each items as item}
-                  <div class="flex gap-3">
+                  {@const badge = getBadge(item.type)}
+                  {#if badge}
                     <span
-                      class="shrink-0 text-(--color-text-secondary)/40 mt-0.5"
+                      class="text-[10px] font-bold px-2 py-0.5 rounded-md text-center min-w-[4rem] {badge.class}"
                     >
-                      <svg
-                        class="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
+                      {badge.label}
                     </span>
-                    <p
-                      class="text-sm font-medium text-(--color-text) leading-relaxed"
-                    >
-                      {item}
-                    </p>
-                  </div>
+                  {:else}
+                    <span class="flex items-center justify-center min-w-[4rem]">
+                      <span class="w-1.5 h-1.5 rounded-full bg-(--color-text-secondary)/30"></span>
+                    </span>
+                  {/if}
+                  <p
+                    class="text-sm font-medium text-(--color-text) leading-relaxed"
+                  >
+                    {item.text}
+                  </p>
                 {/each}
               </div>
             {:else}

@@ -49,8 +49,19 @@ class ChangelogStore {
   releasesSince(version: string): Release[] {
     const tag = version.startsWith("v") ? version : `v${version}`;
     const idx = this.#releases.findIndex((r) => r.tag === tag);
-    // If current version not found, user is on unreleased version — nothing to show
-    if (idx === -1) return [];
+    if (idx === -1) {
+      // Current version not in GitHub releases yet (unreleased build).
+      // Fall back to last known version from localStorage.
+      const lastTag = localStorage.getItem("wimg-last-version");
+      if (lastTag) {
+        const lastIdx = this.#releases.findIndex(
+          (r) => r.tag === `v${lastTag}` || r.tag === lastTag,
+        );
+        if (lastIdx !== -1) return this.#releases.slice(0, lastIdx);
+      }
+      // No reference point — show latest 3 releases as context
+      return this.#releases.slice(0, 3);
+    }
     // Return everything before the current version (releases are newest-first)
     return this.#releases.slice(0, idx);
   }

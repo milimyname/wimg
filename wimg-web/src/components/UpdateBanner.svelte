@@ -8,7 +8,19 @@
 
   const missedReleases = $derived(changelogStore.releasesSince(APP_VERSION));
 
-  function parseItems(body: string): string[] {
+  interface ChangeItem {
+    type: string;
+    text: string;
+  }
+
+  const TYPE_BADGES: Record<string, { label: string; cls: string }> = {
+    feat: { label: "Feature", cls: "bg-emerald-100 text-emerald-700" },
+    fix: { label: "Fix", cls: "bg-rose-100 text-rose-600" },
+    refactor: { label: "Refactor", cls: "bg-sky-100 text-sky-700" },
+    perf: { label: "Perf", cls: "bg-amber-100 text-amber-700" },
+  };
+
+  function parseItems(body: string): ChangeItem[] {
     return body
       .split("\n")
       .map((l) => l.trim())
@@ -16,7 +28,12 @@
       .filter((l) => !l.match(/^release:\s*v[\d.]+$/i))
       .filter((l) => !l.match(/^#{1,3}\s/))
       .map((l) => l.replace(/^[-*]\s*/, "").trim())
-      .filter((l) => l.length > 0);
+      .filter((l) => l.length > 0)
+      .map((l) => {
+        const match = l.match(/^(feat|fix|refactor|perf|docs|style|test)(?:\(.+?\))?:\s*(.+)$/i);
+        if (match) return { type: match[1].toLowerCase(), text: match[2].trim() };
+        return { type: "", text: l };
+      });
   }
 
   $effect(() => {
@@ -93,24 +110,17 @@
               </p>
               <div class="space-y-1.5">
                 {#each items as item}
-                  <div class="flex gap-2.5">
-                    <span class="text-(--color-text-secondary)/40 shrink-0 mt-0.5">
-                      <svg
-                        class="w-3.5 h-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </span>
+                  {@const badge = TYPE_BADGES[item.type]}
+                  <div class="flex gap-2.5 items-start">
+                    {#if badge}
+                      <span class="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded mt-0.5 {badge.cls}">
+                        {badge.label}
+                      </span>
+                    {:else}
+                      <span class="shrink-0 w-1.5 h-1.5 rounded-full bg-(--color-text-secondary)/30 mt-2"></span>
+                    {/if}
                     <p class="text-sm text-(--color-text) leading-relaxed">
-                      {item}
+                      {item.text}
                     </p>
                   </div>
                 {/each}

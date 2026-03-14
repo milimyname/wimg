@@ -1,5 +1,29 @@
 <script lang="ts">
+  import { afterNavigate } from "$app/navigation";
   import { APP_VERSION, RELEASES_URL } from "$lib/version";
+
+  // Scroll to hash anchor and auto-open <details> after navigation completes.
+  // When navigating from the Command Palette, the BottomSheet locks body scroll
+  // with position:fixed — scrollIntoView won't work until the sheet closes and
+  // unlocks the body. We poll until the body is unlocked, then scroll.
+  afterNavigate(() => {
+    const hash = window.location.hash;
+    if (!hash) return;
+    const id = hash.slice(1);
+
+    function scrollToAnchor() {
+      // Wait for BottomSheet to unlock body scroll
+      if (document.body.style.position === "fixed") {
+        requestAnimationFrame(scrollToAnchor);
+        return;
+      }
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (el.tagName === "DETAILS") (el as HTMLDetailsElement).open = true;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    scrollToAnchor();
+  });
 
   const faqs = [
     {
@@ -433,7 +457,6 @@
       {#each faqs as faq}
         <details
           id={faq.id}
-          open={typeof window !== "undefined" && window.location.hash === `#${faq.id}`}
           class="group bg-white rounded-2xl border border-gray-100 overflow-hidden"
         >
           <summary
