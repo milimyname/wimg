@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.4 (2026-03-14)
+
+- fix: show current release notes when version is latest
+- docs: defer Phase 6.1 Annual Review to end of year
+
 ## v0.6.3 (2026-03-14)
 
 - feat: add savings goals MCP tools + expand FAQ to 19 entries
