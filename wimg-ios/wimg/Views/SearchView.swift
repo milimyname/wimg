@@ -125,7 +125,7 @@ struct SearchView: View {
                         .scrollContentBackground(.hidden)
                     }
                 } else {
-                    // Quick actions when not searching
+                    // Navigation + Quick actions when not searching
                     quickActionsView
                 }
             }
@@ -164,6 +164,59 @@ struct SearchView: View {
     private var quickActionsView: some View {
         ScrollView {
             VStack(spacing: 24) {
+                // Navigation
+                actionSection("Navigation") {
+                    navLink("Analyse", icon: "chart.bar", color: .indigo) {
+                        AnalysisView(selectedAccount: $selectedAccount)
+                    }
+                    navLink("Schulden", icon: "creditcard", color: .pink, feature: "debts") {
+                        DebtsView()
+                    }
+                    navLink("Sparziele", icon: "target", color: .yellow, feature: "goals") {
+                        GoalsView()
+                    }
+                    navLink("Wiederkehrend", icon: "arrow.triangle.2.circlepath", color: .green, feature: "recurring") {
+                        RecurringView()
+                    }
+                    navLink("Steuern", icon: "doc.text", color: .orange, feature: "tax") {
+                        TaxView()
+                    }
+                    navLink("Rückblick", icon: "calendar", color: .purple, feature: "review") {
+                        ReviewView(selectedAccount: $selectedAccount)
+                    }
+                    navLink("Import", icon: "square.and.arrow.down", color: .blue) {
+                        ImportView()
+                    }
+                    navLink("Einstellungen", icon: "gearshape", color: .gray) {
+                        SettingsView()
+                    }
+                    navLink("Über wimg", icon: "info.circle", color: .gray) {
+                        AboutView()
+                    }
+                }
+
+                // Help / FAQ
+                actionSection("Hilfe") {
+                    navLink("Sind meine Daten sicher?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Sind meine Daten sicher?")
+                    }
+                    navLink("Wie funktioniert der Import?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Wie funktioniert der Import?")
+                    }
+                    navLink("Wie funktioniert Auto-Learn?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Wie funktioniert Auto-Learn?")
+                    }
+                    navLink("Wie synchronisiere ich?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Wie synchronisiere ich zwischen Geräten?")
+                    }
+                    navLink("Was kann die Steuern-Seite?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Was kann die Steuern-Seite?")
+                    }
+                    navLink("MCP-Verbindung einrichten", icon: "link", color: .purple) {
+                        AboutView()
+                    }
+                }
+
                 // Categorization
                 actionSection("Kategorisierung") {
                     actionButton("Auto-Kategorisieren", icon: "tag", color: .orange) {
@@ -231,6 +284,41 @@ struct SearchView: View {
                 content()
             }
             .wimgCard()
+        }
+    }
+
+    @ViewBuilder
+    private func navLink<V: View>(_ label: String, icon: String, color: Color, feature: String? = nil, @ViewBuilder destination: @escaping () -> V) -> some View {
+        if let feature, !FeatureFlags.shared.isEnabled(feature) {
+            EmptyView()
+        } else {
+            NavigationLink {
+                destination()
+            } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(color.opacity(0.12))
+                            .frame(width: 36, height: 36)
+                        Image(systemName: icon)
+                            .font(.system(size: 15))
+                            .foregroundStyle(color)
+                    }
+
+                    Text(label)
+                        .font(.system(.subheadline, design: .rounded, weight: .medium))
+                        .foregroundStyle(WimgTheme.text)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(WimgTheme.textSecondary.opacity(0.4))
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -378,12 +466,12 @@ struct SearchView: View {
     }
 
     private func exportCsv() {
-        guard let csv = try? LibWimg.exportCsv() else { return }
+        guard let csv = LibWimg.exportCsv() else { return }
         shareText(csv, filename: "wimg-export.csv")
     }
 
     private func exportDb() {
-        guard let json = try? LibWimg.exportDb() else { return }
+        guard let json = LibWimg.exportDb() else { return }
         let date = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .none)
             .replacingOccurrences(of: "/", with: "-")
         shareText(json, filename: "wimg-backup-\(date).json")

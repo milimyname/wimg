@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct AboutView: View {
+    var scrollToFAQ: String?
+
     private let faqs: [(q: String, a: String)] = [
         ("Sind meine Daten sicher?",
          "Ja. Alle Finanzdaten werden lokal in einer SQLite-Datenbank auf deinem Gerät gespeichert. Sync ist Ende-zu-Ende verschlüsselt — der Server sieht nur Chiffretext."),
@@ -44,8 +46,11 @@ struct AboutView: View {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
     }
 
+    @State private var expandedFAQ: String?
+
     var body: some View {
-        ScrollView {
+        ScrollViewReader { proxy in
+            ScrollView {
             VStack(spacing: 24) {
                 // MARK: - Hero
                 VStack(spacing: 16) {
@@ -217,7 +222,12 @@ struct AboutView: View {
 
                     VStack(spacing: 8) {
                         ForEach(faqs, id: \.q) { faq in
-                            DisclosureGroup {
+                            DisclosureGroup(
+                                isExpanded: Binding(
+                                    get: { expandedFAQ == faq.q },
+                                    set: { expandedFAQ = $0 ? faq.q : nil }
+                                )
+                            ) {
                                 Text(faq.a)
                                     .font(.subheadline)
                                     .foregroundStyle(WimgTheme.textSecondary)
@@ -230,6 +240,7 @@ struct AboutView: View {
                             }
                             .padding(16)
                             .wimgCard()
+                            .id(faq.q)
                         }
                     }
                 }
@@ -247,7 +258,16 @@ struct AboutView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 24)
             }
-            .padding(.horizontal, 20)
+                .padding(.horizontal, 20)
+            }
+            .onAppear {
+                if let scrollToFAQ {
+                    expandedFAQ = scrollToFAQ
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation { proxy.scrollTo(scrollToFAQ, anchor: .top) }
+                    }
+                }
+            }
         }
         .background(WimgTheme.bg)
         .navigationTitle("Über wimg")
