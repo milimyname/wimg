@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.17 (2026-03-14)
+
+- Enhance categorization and UI components
+
 ## v0.5.16 (2026-03-14)
 
 - Enhance categorization and UI components
