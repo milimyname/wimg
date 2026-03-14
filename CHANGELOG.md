@@ -2,7 +2,11 @@
 
 ## v0.5.17 (2026-03-14)
 
-- Enhance categorization and UI components
+- Added Phase 5.11: In-App Changelog with a new `/changelog` page that fetches data from the GitHub Releases API, featuring a timeline UI with version badges and commit descriptions.
+- Updated UpdateBanner to show inline changelog and modified "Was ist neu?" links to direct to the new `/changelog`.
+- Enhanced localStorage caching for offline access after the first fetch.
+- Upgraded GitHub Actions from v4 to v6 for checkout and from v4 to v7/v8 for artifact upload/download, improving workflow stability and performance.
+- Refactored data clearing functions to remove both "wimg.db" and "e5-small-q8-v7.gguf" files, ensuring a more comprehensive cleanup.
 
 ## v0.5.16 (2026-03-14)
 
