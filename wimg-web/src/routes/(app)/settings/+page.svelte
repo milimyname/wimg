@@ -598,12 +598,12 @@
               autocomplete="off"
               data-1p-ignore
               placeholder="Sync-Schlüssel einfügen"
-              class="flex-1 bg-(--color-bg) rounded-xl px-3 py-2.5 text-sm text-(--color-text) placeholder:text-(--color-text-secondary)/50 outline-none"
+              class="flex-1 min-w-0 bg-(--color-bg) rounded-xl px-3 py-2.5 text-sm text-(--color-text) placeholder:text-(--color-text-secondary)/50 outline-none"
             />
             <button
               onclick={handleLink}
               disabled={syncing || !linkInput.trim()}
-              class="px-4 rounded-xl bg-amber-500 text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50"
+              class="shrink-0 px-4 rounded-xl bg-amber-500 text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50"
             >
               Verknüpfen
             </button>
