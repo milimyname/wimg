@@ -638,6 +638,111 @@ export fn wimg_delete_debt(id: [*]const u8, id_len: u32) i32 {
     return 0;
 }
 
+// --- Savings Goals ---
+
+export fn wimg_get_goals() ?[*]const u8 {
+    var database = global_db orelse {
+        setError("wimg_get_goals: database not initialized", .{});
+        return null;
+    };
+
+    const buf_size: usize = 32 * 1024; // 32 KB
+    const buf = fba.allocator().alloc(u8, buf_size + 4) catch {
+        setError("wimg_get_goals: failed to allocate buffer", .{});
+        return null;
+    };
+
+    const json_len = database.getGoalsJson(buf.ptr + 4, buf_size) catch |err| {
+        setError("wimg_get_goals: query failed: {s}", .{@errorName(err)});
+        fba.allocator().free(buf);
+        return null;
+    } orelse {
+        setError("wimg_get_goals: buffer too small", .{});
+        fba.allocator().free(buf);
+        return null;
+    };
+
+    const len_bytes: [4]u8 = @bitCast(@as(u32, @intCast(json_len)));
+    buf[0] = len_bytes[0];
+    buf[1] = len_bytes[1];
+    buf[2] = len_bytes[2];
+    buf[3] = len_bytes[3];
+
+    return buf.ptr;
+}
+
+/// Add a savings goal. JSON input: {"id":"...","name":"...","icon":"...","target":1234,"deadline":"2026-12-31"}
+export fn wimg_add_goal(data: [*]const u8, len: u32) i32 {
+    var database = global_db orelse {
+        setError("wimg_add_goal: database not initialized", .{});
+        return -1;
+    };
+
+    const json = data[0..len];
+
+    const id = jsonExtractString(json, "\"id\"") orelse {
+        setError("wimg_add_goal: missing id field", .{});
+        return -1;
+    };
+    const name_val = jsonExtractString(json, "\"name\"") orelse {
+        setError("wimg_add_goal: missing name field", .{});
+        return -1;
+    };
+    const icon_val = jsonExtractString(json, "\"icon\"") orelse "🎯";
+    const target = jsonExtractNumber(json, "\"target\"") orelse {
+        setError("wimg_add_goal: missing target field", .{});
+        return -1;
+    };
+    const deadline_val = jsonExtractString(json, "\"deadline\"");
+
+    database.insertGoal(
+        id.ptr,
+        @intCast(id.len),
+        name_val.ptr,
+        @intCast(name_val.len),
+        icon_val.ptr,
+        @intCast(icon_val.len),
+        target,
+        if (deadline_val) |dl| dl.ptr else null,
+        if (deadline_val) |dl| @intCast(dl.len) else 0,
+    ) catch |err| {
+        setError("wimg_add_goal: insert failed: {s}", .{@errorName(err)});
+        return -1;
+    };
+
+    return 0;
+}
+
+/// Contribute to a savings goal.
+export fn wimg_contribute_goal(id: [*]const u8, id_len: u32, amount_cents: i64) i32 {
+    var database = global_db orelse {
+        setError("wimg_contribute_goal: database not initialized", .{});
+        return -1;
+    };
+
+    database.contributeGoal(id, id_len, amount_cents) catch |err| {
+        setError("wimg_contribute_goal: failed: {s}", .{@errorName(err)});
+        return -1;
+    };
+
+    return 0;
+}
+
+/// Delete a savings goal.
+export fn wimg_delete_goal(id: [*]const u8, id_len: u32) i32 {
+    var database = global_db orelse {
+        setError("wimg_delete_goal: database not initialized", .{});
+        return -1;
+    };
+
+    database.deleteGoal(id, id_len) catch |err| {
+        setError("wimg_delete_goal: failed: {s}", .{@errorName(err)});
+        return -1;
+    };
+
+    return 0;
+}
+
 /// Undo the last action. Returns pointer to length-prefixed JSON, or null if nothing to undo.
 export fn wimg_undo() ?[*]const u8 {
     var database = global_db orelse {

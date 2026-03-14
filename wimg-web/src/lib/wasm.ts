@@ -82,6 +82,15 @@ export interface Debt {
   monthly: number;
 }
 
+export interface Goal {
+  id: string;
+  name: string;
+  icon: string;
+  target: number;
+  current: number;
+  deadline: string | null;
+}
+
 export interface UndoResult {
   op: string;
   table: string;
@@ -147,6 +156,10 @@ interface WasmExports {
   wimg_add_debt: (data: number, len: number) => number;
   wimg_mark_debt_paid: (id: number, id_len: number, amount_cents: bigint) => number;
   wimg_delete_debt: (id: number, id_len: number) => number;
+  wimg_get_goals: () => number;
+  wimg_add_goal: (data: number, len: number) => number;
+  wimg_contribute_goal: (id: number, id_len: number, amount_cents: bigint) => number;
+  wimg_delete_goal: (id: number, id_len: number) => number;
   wimg_auto_categorize: () => number;
   wimg_get_accounts: () => number;
   wimg_add_account: (data: number, len: number) => number;
@@ -651,6 +664,79 @@ export async function deleteDebt(id: string): Promise<void> {
     await opfsSave();
     onMutate?.();
     logAction("deleteDebt", `${id.slice(0, 8)}...`);
+  });
+}
+
+// --- Savings Goals ---
+
+export function getGoals(): Goal[] {
+  return timed("getGoals", () => {
+    ensureInit();
+
+    const ptr = wasm!.wimg_get_goals();
+    if (ptr === 0) return [];
+
+    const json = readLengthPrefixedString(ptr);
+    wasm!.wimg_free(ptr, 0);
+
+    return JSON.parse(json) as Goal[];
+  });
+}
+
+export async function addGoal(
+  name: string,
+  icon: string,
+  target: number,
+  deadline: string | null,
+): Promise<void> {
+  return timedAsync("addGoal", async () => {
+    ensureInit();
+
+    const id = generateUUID().replace(/-/g, "").slice(0, 32);
+    const json = JSON.stringify({ id, name, icon, target, deadline });
+    const encoded = new TextEncoder().encode(json);
+    const ptr = writeBytes(encoded);
+
+    const rc = wasm!.wimg_add_goal(ptr, encoded.length);
+    if (rc !== 0) {
+      throw new Error(getLastError("Failed to add goal"));
+    }
+
+    await opfsSave();
+    onMutate?.();
+    logAction("addGoal", `"${name}" ${(target / 100).toFixed(2)}€`);
+  });
+}
+
+export async function contributeGoal(id: string, amountCents: number): Promise<void> {
+  return timedAsync("contributeGoal", async () => {
+    ensureInit();
+
+    const idPtr = writeString(id);
+    const rc = wasm!.wimg_contribute_goal(idPtr, id.length, BigInt(amountCents));
+    if (rc !== 0) {
+      throw new Error(getLastError("Failed to contribute to goal"));
+    }
+
+    await opfsSave();
+    onMutate?.();
+    logAction("contributeGoal", `${id.slice(0, 8)}... +${(amountCents / 100).toFixed(2)}€`);
+  });
+}
+
+export async function deleteGoal(id: string): Promise<void> {
+  return timedAsync("deleteGoal", async () => {
+    ensureInit();
+
+    const idPtr = writeString(id);
+    const rc = wasm!.wimg_delete_goal(idPtr, id.length);
+    if (rc !== 0) {
+      throw new Error(getLastError("Failed to delete goal"));
+    }
+
+    await opfsSave();
+    onMutate?.();
+    logAction("deleteGoal", `${id.slice(0, 8)}...`);
   });
 }
 

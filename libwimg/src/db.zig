@@ -29,7 +29,7 @@ pub const DbError = error{
     StepFailed,
 };
 
-const CURRENT_SCHEMA_VERSION = 13;
+const CURRENT_SCHEMA_VERSION = 14;
 const MAX_UNDO_ENTRIES = 50;
 
 pub const Db = struct {
@@ -109,6 +109,16 @@ pub const Db = struct {
         \\  expenses INTEGER NOT NULL DEFAULT 0,
         \\  tx_count INTEGER NOT NULL DEFAULT 0,
         \\  breakdown TEXT NOT NULL DEFAULT '[]',
+        \\  updated_at INTEGER NOT NULL DEFAULT 0
+        \\);
+        \\CREATE TABLE IF NOT EXISTS savings_goals (
+        \\  id TEXT PRIMARY KEY,
+        \\  name TEXT NOT NULL,
+        \\  icon TEXT NOT NULL DEFAULT '🎯',
+        \\  target INTEGER NOT NULL,
+        \\  current INTEGER NOT NULL DEFAULT 0,
+        \\  deadline TEXT,
+        \\  deleted INTEGER NOT NULL DEFAULT 0,
         \\  updated_at INTEGER NOT NULL DEFAULT 0
         \\);
     ;
@@ -248,9 +258,25 @@ pub const Db = struct {
             self.exec("DROP TABLE IF EXISTS embeddings;") catch {};
         }
 
+        if (version < 14) {
+            // v14: savings goals (Phase 6.4)
+            self.exec(
+                \\CREATE TABLE IF NOT EXISTS savings_goals (
+                \\  id TEXT PRIMARY KEY,
+                \\  name TEXT NOT NULL,
+                \\  icon TEXT NOT NULL DEFAULT '🎯',
+                \\  target INTEGER NOT NULL,
+                \\  current INTEGER NOT NULL DEFAULT 0,
+                \\  deadline TEXT,
+                \\  deleted INTEGER NOT NULL DEFAULT 0,
+                \\  updated_at INTEGER NOT NULL DEFAULT 0
+                \\);
+            ) catch {};
+        }
+
         // Store current version
         if (version < CURRENT_SCHEMA_VERSION) {
-            self.setMeta("schema_version", "13") catch {};
+            self.setMeta("schema_version", "14") catch {};
         }
     }
 
@@ -729,6 +755,86 @@ pub const Db = struct {
         }
     }
 
+    // --- Savings Goals ---
+
+    pub fn insertGoal(self: *Db, id: [*]const u8, id_len: u32, name: [*]const u8, name_len: u32, icon: [*]const u8, icon_len: u32, target: i64, deadline: ?[*]const u8, deadline_len: u32) DbError!void {
+        const sql = "INSERT OR REPLACE INTO savings_goals (id, name, icon, target, current, deadline, updated_at) VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6);";
+
+        var stmt: ?*c.sqlite3_stmt = null;
+        const rc0 = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
+        if (rc0 != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+
+        const s = stmt.?;
+        if (c.sqlite3_bind_text(s, 1, id, @intCast(id_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 2, name, @intCast(name_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 3, icon, @intCast(icon_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 4, target) != c.SQLITE_OK) return DbError.BindFailed;
+        if (deadline) |dl| {
+            if (c.sqlite3_bind_text(s, 5, dl, @intCast(deadline_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        } else {
+            if (c.sqlite3_bind_null(s, 5) != c.SQLITE_OK) return DbError.BindFailed;
+        }
+        if (c.sqlite3_bind_int64(s, 6, nowMs()) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+
+        // Record history: INSERT on savings_goals
+        var val_buf: [512]u8 = undefined;
+        const val_len = self.formatGoalJson(&val_buf, id[0..id_len], name[0..name_len], icon[0..icon_len], target, 0, if (deadline) |dl| dl[0..deadline_len] else null) orelse return;
+        self.recordHistory(2, "savings_goals", id[0..id_len], null, null, val_buf[0..val_len]) catch {};
+    }
+
+    pub fn contributeGoal(self: *Db, id: [*]const u8, id_len: u32, amount: i64) DbError!void {
+        // Capture old current value for undo history
+        const old_current = self.queryInt64("SELECT current FROM savings_goals WHERE id = ?1;", id, id_len);
+
+        const sql = "UPDATE savings_goals SET current = MIN(current + ?1, target), updated_at = ?3 WHERE id = ?2;";
+
+        var stmt: ?*c.sqlite3_stmt = null;
+        const rc0 = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
+        if (rc0 != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+
+        const s = stmt.?;
+        if (c.sqlite3_bind_int64(s, 1, amount) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 2, id, @intCast(id_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 3, nowMs()) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+
+        // Record history: UPDATE on savings_goals.current
+        if (old_current) |old| {
+            const new_current = self.queryInt64("SELECT current FROM savings_goals WHERE id = ?1;", id, id_len) orelse return;
+            var old_buf: [20]u8 = undefined;
+            const old_len = formatSignedInt(&old_buf, old) orelse return;
+            var new_buf: [20]u8 = undefined;
+            const new_len = formatSignedInt(&new_buf, new_current) orelse return;
+            self.recordHistory(1, "savings_goals", id[0..id_len], "current", old_buf[0..old_len], new_buf[0..new_len]) catch {};
+        }
+    }
+
+    pub fn deleteGoal(self: *Db, id: [*]const u8, id_len: u32) DbError!void {
+        // Capture full goal row for undo history before soft-deleting
+        var old_buf: [512]u8 = undefined;
+        const old_len = self.queryGoalJson(&old_buf, id, id_len);
+
+        const sql = "UPDATE savings_goals SET deleted = 1, updated_at = ?2 WHERE id = ?1;";
+
+        var stmt: ?*c.sqlite3_stmt = null;
+        const rc0 = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
+        if (rc0 != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+
+        const s = stmt.?;
+        if (c.sqlite3_bind_text(s, 1, id, @intCast(id_len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 2, nowMs()) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+
+        // Record history: DELETE on savings_goals, old_val = full goal JSON
+        if (old_len) |ol| {
+            self.recordHistory(3, "savings_goals", id[0..id_len], null, old_buf[0..ol], null) catch {};
+        }
+    }
+
     // --- Recurring Patterns ---
 
     pub fn insertOrUpdateRecurring(
@@ -1016,6 +1122,101 @@ pub const Db = struct {
         pos += p5.len;
 
         pos += formatSignedInt(buf[pos..], monthly) orelse return null;
+
+        if (pos >= buf.len) return null;
+        buf[pos] = '}';
+        pos += 1;
+
+        return pos;
+    }
+
+    fn queryGoalJson(self: *Db, buf: *[512]u8, id: [*]const u8, id_len: u32) ?usize {
+        const sql = "SELECT id, name, icon, target, current, deadline FROM savings_goals WHERE id = ?1;";
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return null;
+        defer _ = c.sqlite3_finalize(stmt.?);
+        const s = stmt.?;
+        if (c.sqlite3_bind_text(s, 1, @ptrCast(id), @intCast(id_len), c.SQLITE_STATIC) != c.SQLITE_OK) return null;
+        if (c.sqlite3_step(s) != c.SQLITE_ROW) return null;
+
+        const gid_ptr = c.sqlite3_column_text(s, 0) orelse return null;
+        const gid_len: usize = @intCast(c.sqlite3_column_bytes(s, 0));
+        const name_ptr = c.sqlite3_column_text(s, 1) orelse return null;
+        const name_len: usize = @intCast(c.sqlite3_column_bytes(s, 1));
+        const icon_ptr = c.sqlite3_column_text(s, 2) orelse return null;
+        const icon_len: usize = @intCast(c.sqlite3_column_bytes(s, 2));
+        const target = c.sqlite3_column_int64(s, 3);
+        const current = c.sqlite3_column_int64(s, 4);
+        const dl_type = c.sqlite3_column_type(s, 5);
+        var deadline: ?[]const u8 = null;
+        if (dl_type != c.SQLITE_NULL) {
+            const dl_ptr = c.sqlite3_column_text(s, 5) orelse null;
+            if (dl_ptr) |dp| {
+                const dl_len: usize = @intCast(c.sqlite3_column_bytes(s, 5));
+                deadline = dp[0..dl_len];
+            }
+        }
+
+        return self.formatGoalJson(buf, gid_ptr[0..gid_len], name_ptr[0..name_len], icon_ptr[0..icon_len], target, current, deadline);
+    }
+
+    fn formatGoalJson(_: *Db, buf: *[512]u8, id: []const u8, name: []const u8, icon: []const u8, target: i64, current: i64, deadline: ?[]const u8) ?usize {
+        var pos: usize = 0;
+
+        const p1 = "{\"id\":\"";
+        if (pos + p1.len > buf.len) return null;
+        @memcpy(buf[pos .. pos + p1.len], p1);
+        pos += p1.len;
+
+        pos += jsonEscapeString(buf[pos..], id) orelse return null;
+
+        const p2 = "\",\"name\":\"";
+        if (pos + p2.len > buf.len) return null;
+        @memcpy(buf[pos .. pos + p2.len], p2);
+        pos += p2.len;
+
+        pos += jsonEscapeString(buf[pos..], name) orelse return null;
+
+        const p3 = "\",\"icon\":\"";
+        if (pos + p3.len > buf.len) return null;
+        @memcpy(buf[pos .. pos + p3.len], p3);
+        pos += p3.len;
+
+        pos += jsonEscapeString(buf[pos..], icon) orelse return null;
+
+        const p4 = "\",\"target\":";
+        if (pos + p4.len > buf.len) return null;
+        @memcpy(buf[pos .. pos + p4.len], p4);
+        pos += p4.len;
+
+        pos += formatSignedInt(buf[pos..], target) orelse return null;
+
+        const p5 = ",\"current\":";
+        if (pos + p5.len > buf.len) return null;
+        @memcpy(buf[pos .. pos + p5.len], p5);
+        pos += p5.len;
+
+        pos += formatSignedInt(buf[pos..], current) orelse return null;
+
+        const p6 = ",\"deadline\":";
+        if (pos + p6.len > buf.len) return null;
+        @memcpy(buf[pos .. pos + p6.len], p6);
+        pos += p6.len;
+
+        if (deadline) |dl| {
+            if (pos >= buf.len) return null;
+            buf[pos] = '"';
+            pos += 1;
+            pos += jsonEscapeString(buf[pos..], dl) orelse return null;
+            if (pos >= buf.len) return null;
+            buf[pos] = '"';
+            pos += 1;
+        } else {
+            const null_str = "null";
+            if (pos + null_str.len > buf.len) return null;
+            @memcpy(buf[pos .. pos + null_str.len], null_str);
+            pos += null_str.len;
+        }
 
         if (pos >= buf.len) return null;
         buf[pos] = '}';
@@ -1392,6 +1593,118 @@ pub const Db = struct {
             pos += p5.len;
 
             pos += formatAmount(buf[pos..buf_len], monthly) orelse return null;
+
+            if (pos >= buf_len) return null;
+            buf[pos] = '}';
+            pos += 1;
+
+            first = false;
+        }
+
+        if (pos >= buf_len) return null;
+        buf[pos] = ']';
+        pos += 1;
+
+        return pos;
+    }
+
+    pub fn getGoalsJson(self: *Db, buf: [*]u8, buf_len: usize) DbError!?usize {
+        const sql = "SELECT id, name, icon, target, current, deadline FROM savings_goals WHERE deleted = 0 ORDER BY name;";
+
+        var stmt: ?*c.sqlite3_stmt = null;
+        const rc = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
+        if (rc != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+
+        const s = stmt.?;
+        var pos: usize = 0;
+
+        if (pos >= buf_len) return null;
+        buf[pos] = '[';
+        pos += 1;
+
+        var first = true;
+        while (c.sqlite3_step(s) == c.SQLITE_ROW) {
+            const id_ptr = c.sqlite3_column_text(s, 0) orelse continue;
+            const id_len: usize = @intCast(c.sqlite3_column_bytes(s, 0));
+            const name_ptr = c.sqlite3_column_text(s, 1) orelse continue;
+            const name_len: usize = @intCast(c.sqlite3_column_bytes(s, 1));
+            const icon_ptr = c.sqlite3_column_text(s, 2) orelse continue;
+            const icon_len: usize = @intCast(c.sqlite3_column_bytes(s, 2));
+            const target = c.sqlite3_column_int64(s, 3);
+            const current = c.sqlite3_column_int64(s, 4);
+            const dl_type = c.sqlite3_column_type(s, 5);
+
+            if (!first) {
+                if (pos >= buf_len) return null;
+                buf[pos] = ',';
+                pos += 1;
+            }
+
+            // {"id":"...","name":"...","icon":"...","target":...,"current":...,"deadline":...}
+            const p1 = "{\"id\":\"";
+            if (pos + p1.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p1.len], p1);
+            pos += p1.len;
+
+            pos += jsonEscapeString(buf[pos..buf_len], id_ptr[0..id_len]) orelse return null;
+
+            const p2 = "\",\"name\":\"";
+            if (pos + p2.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p2.len], p2);
+            pos += p2.len;
+
+            pos += jsonEscapeString(buf[pos..buf_len], name_ptr[0..name_len]) orelse return null;
+
+            const p3 = "\",\"icon\":\"";
+            if (pos + p3.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p3.len], p3);
+            pos += p3.len;
+
+            pos += jsonEscapeString(buf[pos..buf_len], icon_ptr[0..icon_len]) orelse return null;
+
+            const p4 = "\",\"target\":";
+            if (pos + p4.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p4.len], p4);
+            pos += p4.len;
+
+            pos += formatAmount(buf[pos..buf_len], target) orelse return null;
+
+            const p5 = ",\"current\":";
+            if (pos + p5.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p5.len], p5);
+            pos += p5.len;
+
+            pos += formatAmount(buf[pos..buf_len], current) orelse return null;
+
+            const p6 = ",\"deadline\":";
+            if (pos + p6.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p6.len], p6);
+            pos += p6.len;
+
+            if (dl_type != c.SQLITE_NULL) {
+                const dl_ptr = c.sqlite3_column_text(s, 5);
+                if (dl_ptr) |dp| {
+                    const dl_len: usize = @intCast(c.sqlite3_column_bytes(s, 5));
+                    if (pos >= buf_len) return null;
+                    buf[pos] = '"';
+                    pos += 1;
+                    pos += jsonEscapeString(buf[pos..buf_len], dp[0..dl_len]) orelse return null;
+                    if (pos >= buf_len) return null;
+                    buf[pos] = '"';
+                    pos += 1;
+                } else {
+                    const null_str = "null";
+                    if (pos + null_str.len > buf_len) return null;
+                    @memcpy(buf[pos .. pos + null_str.len], null_str);
+                    pos += null_str.len;
+                }
+            } else {
+                const null_str = "null";
+                if (pos + null_str.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + null_str.len], null_str);
+                pos += null_str.len;
+            }
 
             if (pos >= buf_len) return null;
             buf[pos] = '}';
@@ -1960,6 +2273,14 @@ pub const Db = struct {
         const rules_len = try self.getRulesJson(buf + pos, buf_len - pos) orelse return null;
         pos += rules_len;
 
+        // ,"savings_goals":
+        const p8 = ",\"savings_goals\":";
+        if (pos + p8.len > buf_len) return null;
+        @memcpy(buf[pos .. pos + p8.len], p8);
+        pos += p8.len;
+        const goals_len = try self.getGoalsJson(buf + pos, buf_len - pos) orelse return null;
+        pos += goals_len;
+
         // Close object
         if (pos >= buf_len) return null;
         buf[pos] = '}';
@@ -2515,6 +2836,112 @@ pub const Db = struct {
             }
         }
 
+        // --- savings_goals ---
+        {
+            const sql = "SELECT id, name, icon, target, current, deadline, deleted, updated_at FROM savings_goals WHERE updated_at >= ?1;";
+            var stmt: ?*c.sqlite3_stmt = null;
+            if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+            defer _ = c.sqlite3_finalize(stmt.?);
+            const s = stmt.?;
+            if (c.sqlite3_bind_int64(s, 1, since_ts) != c.SQLITE_OK) return DbError.BindFailed;
+
+            while (c.sqlite3_step(s) == c.SQLITE_ROW) {
+                if (!first) {
+                    if (pos >= buf_len) return null;
+                    buf[pos] = ',';
+                    pos += 1;
+                }
+
+                const id_ptr = c.sqlite3_column_text(s, 0) orelse continue;
+                const id_len: usize = @intCast(c.sqlite3_column_bytes(s, 0));
+                const name_ptr = c.sqlite3_column_text(s, 1) orelse continue;
+                const name_len: usize = @intCast(c.sqlite3_column_bytes(s, 1));
+                const icon_ptr = c.sqlite3_column_text(s, 2) orelse continue;
+                const icon_len: usize = @intCast(c.sqlite3_column_bytes(s, 2));
+                const target = c.sqlite3_column_int64(s, 3);
+                const current = c.sqlite3_column_int64(s, 4);
+                const dl_type = c.sqlite3_column_type(s, 5);
+                const deleted = c.sqlite3_column_int(s, 6);
+                const updated = c.sqlite3_column_int64(s, 7);
+
+                const p1 = "{\"table\":\"savings_goals\",\"id\":\"";
+                if (pos + p1.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p1.len], p1);
+                pos += p1.len;
+                pos += jsonEscapeString(buf[pos..buf_len], id_ptr[0..id_len]) orelse return null;
+
+                const p2 = "\",\"data\":{\"name\":\"";
+                if (pos + p2.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p2.len], p2);
+                pos += p2.len;
+                pos += jsonEscapeString(buf[pos..buf_len], name_ptr[0..name_len]) orelse return null;
+
+                const p3 = "\",\"icon\":\"";
+                if (pos + p3.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p3.len], p3);
+                pos += p3.len;
+                pos += jsonEscapeString(buf[pos..buf_len], icon_ptr[0..icon_len]) orelse return null;
+
+                const p4 = "\",\"target\":";
+                if (pos + p4.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p4.len], p4);
+                pos += p4.len;
+                pos += formatSignedInt(buf[pos..buf_len], target) orelse return null;
+
+                const p5 = ",\"current\":";
+                if (pos + p5.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p5.len], p5);
+                pos += p5.len;
+                pos += formatSignedInt(buf[pos..buf_len], current) orelse return null;
+
+                // deadline
+                const p_dl = ",\"deadline\":";
+                if (pos + p_dl.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p_dl.len], p_dl);
+                pos += p_dl.len;
+                if (dl_type != c.SQLITE_NULL) {
+                    const dl_ptr = c.sqlite3_column_text(s, 5);
+                    if (dl_ptr) |dp| {
+                        const dl_len: usize = @intCast(c.sqlite3_column_bytes(s, 5));
+                        if (pos >= buf_len) return null;
+                        buf[pos] = '"';
+                        pos += 1;
+                        pos += jsonEscapeString(buf[pos..buf_len], dp[0..dl_len]) orelse return null;
+                        if (pos >= buf_len) return null;
+                        buf[pos] = '"';
+                        pos += 1;
+                    } else {
+                        const ns = "null";
+                        if (pos + ns.len > buf_len) return null;
+                        @memcpy(buf[pos .. pos + ns.len], ns);
+                        pos += ns.len;
+                    }
+                } else {
+                    const ns = "null";
+                    if (pos + ns.len > buf_len) return null;
+                    @memcpy(buf[pos .. pos + ns.len], ns);
+                    pos += ns.len;
+                }
+
+                const p_del = ",\"deleted\":";
+                if (pos + p_del.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p_del.len], p_del);
+                pos += p_del.len;
+                pos += formatSignedInt(buf[pos..buf_len], @as(i64, deleted)) orelse return null;
+
+                const p_close = "},\"updated_at\":";
+                if (pos + p_close.len > buf_len) return null;
+                @memcpy(buf[pos .. pos + p_close.len], p_close);
+                pos += p_close.len;
+                pos += formatSignedInt(buf[pos..buf_len], updated) orelse return null;
+
+                if (pos >= buf_len) return null;
+                buf[pos] = '}';
+                pos += 1;
+                first = false;
+            }
+        }
+
         // Close: ]}
         const footer = "]}";
         if (pos + footer.len > buf_len) return null;
@@ -2619,6 +3046,17 @@ pub const Db = struct {
                 const data_str = self.extractDataObject(obj) orelse continue;
                 self.applySnapshotChange(row_id, data_str, updated_at) catch continue;
                 applied += 1;
+            } else if (std.mem.eql(u8, table, "savings_goals")) {
+                const local_ts = self.getRowUpdatedAt("savings_goals", row_id);
+                if (updated_at <= local_ts) continue;
+                const data_str = self.extractDataObject(obj) orelse continue;
+                const is_deleted = jsonExtractI64FromSlice(data_str, "\"deleted\"");
+                if (is_deleted != 0) {
+                    self.applySoftDelete("savings_goals", row_id, updated_at) catch continue;
+                } else {
+                    self.applyGoalChange(row_id, data_str, updated_at) catch continue;
+                }
+                applied += 1;
             }
         }
 
@@ -2638,6 +3076,8 @@ pub const Db = struct {
             "SELECT updated_at FROM recurring_patterns WHERE id = ?1;"
         else if (std.mem.eql(u8, table, "snapshots"))
             "SELECT updated_at FROM snapshots WHERE id = ?1;"
+        else if (std.mem.eql(u8, table, "savings_goals"))
+            "SELECT updated_at FROM savings_goals WHERE id = ?1;"
         else
             return 0;
 
@@ -2867,12 +3307,55 @@ pub const Db = struct {
         if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
     }
 
+    fn applyGoalChange(self: *Db, row_id: []const u8, data_slice: []const u8, updated_at: i64) DbError!void {
+        const name_escaped = jsonExtractStringFromSlice(data_slice, "\"name\"") orelse return DbError.ExecFailed;
+        const icon_escaped = jsonExtractStringFromSlice(data_slice, "\"icon\"") orelse "🎯";
+        const target = jsonExtractI64FromSlice(data_slice, "\"target\"");
+        const current = jsonExtractI64FromSlice(data_slice, "\"current\"");
+        const deadline_escaped = jsonExtractStringFromSlice(data_slice, "\"deadline\"");
+
+        var name_buf: [512]u8 = undefined;
+        const name_len = jsonUnescapeString(&name_buf, name_escaped) orelse return DbError.ExecFailed;
+        const name = name_buf[0..name_len];
+
+        var icon_buf: [32]u8 = undefined;
+        const icon_len = jsonUnescapeString(&icon_buf, icon_escaped) orelse return DbError.ExecFailed;
+        const icon = icon_buf[0..icon_len];
+
+        var dl_buf: [32]u8 = undefined;
+        var dl_slice: ?[]const u8 = null;
+        if (deadline_escaped) |dle| {
+            const dl_len = jsonUnescapeString(&dl_buf, dle) orelse return DbError.ExecFailed;
+            dl_slice = dl_buf[0..dl_len];
+        }
+
+        const sql = "INSERT OR REPLACE INTO savings_goals (id, name, icon, target, current, deadline, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7);";
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+        const s = stmt.?;
+        if (c.sqlite3_bind_text(s, 1, @ptrCast(row_id.ptr), @intCast(row_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 2, @ptrCast(name.ptr), @intCast(name.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 3, @ptrCast(icon.ptr), @intCast(icon.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 4, target) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 5, current) != c.SQLITE_OK) return DbError.BindFailed;
+        if (dl_slice) |dl| {
+            if (c.sqlite3_bind_text(s, 6, @ptrCast(dl.ptr), @intCast(dl.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        } else {
+            if (c.sqlite3_bind_null(s, 6) != c.SQLITE_OK) return DbError.BindFailed;
+        }
+        if (c.sqlite3_bind_int64(s, 7, updated_at) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+    }
+
     /// Apply a soft-delete from sync: mark the row as deleted locally.
     fn applySoftDelete(self: *Db, table: []const u8, row_id: []const u8, updated_at: i64) DbError!void {
         const sql: [*:0]const u8 = if (std.mem.eql(u8, table, "debts"))
             "UPDATE debts SET deleted = 1, updated_at = ?2 WHERE id = ?1;"
         else if (std.mem.eql(u8, table, "accounts"))
             "UPDATE accounts SET deleted = 1, updated_at = ?2 WHERE id = ?1;"
+        else if (std.mem.eql(u8, table, "savings_goals"))
+            "UPDATE savings_goals SET deleted = 1, updated_at = ?2 WHERE id = ?1;"
         else
             return;
 

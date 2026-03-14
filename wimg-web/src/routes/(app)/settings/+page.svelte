@@ -66,6 +66,11 @@
       label: "Rückblick",
       description: "Monatliche Zusammenfassung und Analyse",
     },
+    {
+      key: "goals",
+      label: "Sparziele",
+      description: "Sparziele setzen und Fortschritt verfolgen",
+    },
   ];
 
   // Rules state

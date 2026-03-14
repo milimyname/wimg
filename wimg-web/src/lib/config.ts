@@ -38,4 +38,5 @@ export const DEFAULT_FEATURES: Record<string, boolean> = {
   debts: true,
   recurring: true,
   review: true,
+  goals: true,
 };

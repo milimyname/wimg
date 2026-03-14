@@ -138,6 +138,15 @@ const STATIC_ACTIONS: PaletteAction[] = [
     enabled: () => featureStore.isEnabled("debts"),
   },
   {
+    id: "nav-goals",
+    label: "Sparziele",
+    group: "Navigation",
+    icon: "🎯",
+    keywords: ["goals", "sparziel", "sparen", "savings"],
+    handler: () => goto("/goals"),
+    enabled: () => featureStore.isEnabled("goals"),
+  },
+  {
     id: "nav-recurring",
     label: "Wiederkehrend",
     group: "Navigation",
@@ -372,6 +381,17 @@ const STATIC_ACTIONS: PaletteAction[] = [
     handler: () => {
       featureStore.toggle("recurring");
       toastStore.show(`Wiederkehrend: ${featureStore.isEnabled("recurring") ? "Ein" : "Aus"}`);
+    },
+  },
+  {
+    id: "toggle-goals",
+    label: "Sparziele ein/aus",
+    group: "Features",
+    icon: "🎯",
+    keywords: ["feature", "goals", "sparziele", "toggle"],
+    handler: () => {
+      featureStore.toggle("goals");
+      toastStore.show(`Sparziele: ${featureStore.isEnabled("goals") ? "Ein" : "Aus"}`);
     },
   },
   {
