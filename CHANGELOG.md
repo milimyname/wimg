@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.8 (2026-03-14)
+
+- feat: updated onboarding cards + bank nav link in search
+- fix: NaN in iOS donut charts from negative expense amounts
+- feat: FinTS HTTP callback + deadlock fix + error messages
+- feat: iOS dark mode with theme picker
+
 ## v0.6.7 (2026-03-14)
 
 - feat: iOS search nav links + FAQ deep-link scroll
