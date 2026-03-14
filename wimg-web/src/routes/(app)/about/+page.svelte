@@ -73,7 +73,7 @@
     class="border border-gray-100 rounded-3xl p-6 flex flex-col items-center text-center"
   >
     <div
-      class="w-16 h-16 rounded-2xl bg-(--color-text) flex items-center justify-center mb-4"
+      class="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style="background: #1a1a1a"
     >
       <svg
         class="w-8 h-8 text-white"
