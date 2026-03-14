@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.5 (2026-03-14)
+
+- feat: add Steuern FAQ entry with palette deep-link
+- feat: Phase 6.3 — Anlage N tax helper page
+
 ## v0.6.4 (2026-03-14)
 
 - fix: show current release notes when version is latest
