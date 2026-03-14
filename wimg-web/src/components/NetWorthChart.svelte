@@ -9,7 +9,7 @@
 
   // Sort chronologically and compute cumulative net worth
   let chartData = $derived.by(() => {
-    const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
+    const sorted = snapshots.toSorted((a, b) => a.date.localeCompare(b.date));
     let cumulative = 0;
     return sorted.map((s) => {
       cumulative += s.net_worth;
