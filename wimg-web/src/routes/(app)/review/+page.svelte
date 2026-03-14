@@ -254,10 +254,10 @@
           {@const pct = Math.round(
             (anomaly.increase / anomaly.previousAmount) * 100,
           )}
-          <div class="p-5 bg-(--color-text) rounded-[2rem] shadow-[var(--shadow-soft)] text-white relative overflow-hidden">
+          <div class="p-5 rounded-[2rem] shadow-[var(--shadow-soft)] text-white relative overflow-hidden" style="background: #1a1a1a">
             <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl -mr-10 -mt-10"></div>
             <div class="flex gap-4 relative z-10">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style="background: rgba(255,255,255,0.1)">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
