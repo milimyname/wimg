@@ -4,6 +4,7 @@ struct MoreView: View {
     @Binding var selectedAccount: String?
 
     private let allItems: [(title: String, icon: String, color: Color, destination: Destination)] = [
+        ("Analyse", "chart.bar", .indigo, .analysis),
         ("Schulden", "creditcard", .pink, .debts),
         ("Wiederkehrend", "arrow.triangle.2.circlepath", .green, .recurring),
         ("Sparziele", "target", .yellow, .goals),
@@ -29,7 +30,7 @@ struct MoreView: View {
     }
 
     enum Destination {
-        case debts, recurring, goals, tax, import_, fints, review, settings, about
+        case analysis, debts, recurring, goals, tax, import_, fints, review, settings, about
     }
 
     var body: some View {
@@ -81,6 +82,8 @@ struct MoreView: View {
     @ViewBuilder
     private func destinationView(for destination: Destination) -> some View {
         switch destination {
+        case .analysis:
+            AnalysisView(selectedAccount: $selectedAccount)
         case .debts:
             DebtsView()
         case .recurring:

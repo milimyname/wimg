@@ -55,11 +55,6 @@ struct ContentView: View {
                     Label("Umsätze", systemImage: "list.bullet")
                 }
 
-            AnalysisView(selectedAccount: $selectedAccount)
-                .tabItem {
-                    Label("Analyse", systemImage: "chart.bar")
-                }
-
             MoreView(selectedAccount: $selectedAccount)
                 .tabItem {
                     Label("Mehr", systemImage: "square.grid.2x2")
