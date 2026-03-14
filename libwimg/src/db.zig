@@ -1301,7 +1301,7 @@ pub const Db = struct {
                 // DELETE → re-INSERT from old_val JSON
                 if (old_ptr == null) return null;
                 const old_val = old_ptr.?[0..old_len];
-                try self.applyInsertDebt(old_val);
+                try self.applyReinsert(tbl, old_val);
             },
             else => return null,
         }
@@ -1351,7 +1351,7 @@ pub const Db = struct {
                 // INSERT → re-INSERT from new_val
                 if (new_ptr == null) return null;
                 const new_val = new_ptr.?[0..new_len];
-                try self.applyInsertDebt(new_val);
+                try self.applyReinsert(tbl, new_val);
             },
             3 => {
                 // DELETE → DELETE the row
@@ -1415,6 +1415,17 @@ pub const Db = struct {
             if (c.sqlite3_bind_text(s, 2, @ptrCast(row_id.ptr), @intCast(row_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
             if (c.sqlite3_bind_int64(s, 3, now) != c.SQLITE_OK) return DbError.BindFailed;
             if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+        } else if (std.mem.eql(u8, tbl, "savings_goals") and std.mem.eql(u8, col, "current")) {
+            const int_val = parseI64(val);
+            const sql = "UPDATE savings_goals SET current = ?1, updated_at = ?3 WHERE id = ?2;";
+            var stmt: ?*c.sqlite3_stmt = null;
+            if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+            defer _ = c.sqlite3_finalize(stmt.?);
+            const s = stmt.?;
+            if (c.sqlite3_bind_int64(s, 1, int_val) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_text(s, 2, @ptrCast(row_id.ptr), @intCast(row_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_int64(s, 3, now) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
         }
         // Unknown table/col combos are silently ignored (safe)
     }
@@ -1424,6 +1435,8 @@ pub const Db = struct {
             "UPDATE debts SET deleted = 1, updated_at = ?2 WHERE id = ?1;"
         else if (std.mem.eql(u8, tbl, "accounts"))
             "UPDATE accounts SET deleted = 1, updated_at = ?2 WHERE id = ?1;"
+        else if (std.mem.eql(u8, tbl, "savings_goals"))
+            "UPDATE savings_goals SET deleted = 1, updated_at = ?2 WHERE id = ?1;"
         else
             return;
 
@@ -1436,27 +1449,52 @@ pub const Db = struct {
         if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
     }
 
-    fn applyInsertDebt(self: *Db, json: []const u8) DbError!void {
-        // Parse debt JSON: {"id":"...","name":"...","total":N,"paid":N,"monthly":N}
-        const id = jsonExtractStringFromSlice(json, "\"id\"") orelse return DbError.ExecFailed;
-        const name = jsonExtractStringFromSlice(json, "\"name\"") orelse return DbError.ExecFailed;
-        const total = jsonExtractI64FromSlice(json, "\"total\"");
-        const paid = jsonExtractI64FromSlice(json, "\"paid\"");
-        const monthly = jsonExtractI64FromSlice(json, "\"monthly\"");
+    fn applyReinsert(self: *Db, tbl: []const u8, json: []const u8) DbError!void {
+        if (std.mem.eql(u8, tbl, "debts")) {
+            const id = jsonExtractStringFromSlice(json, "\"id\"") orelse return DbError.ExecFailed;
+            const name = jsonExtractStringFromSlice(json, "\"name\"") orelse return DbError.ExecFailed;
+            const total = jsonExtractI64FromSlice(json, "\"total\"");
+            const paid = jsonExtractI64FromSlice(json, "\"paid\"");
+            const monthly = jsonExtractI64FromSlice(json, "\"monthly\"");
 
-        const sql = "INSERT OR REPLACE INTO debts (id, name, total, paid, monthly, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6);";
-        var stmt: ?*c.sqlite3_stmt = null;
-        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
-        defer _ = c.sqlite3_finalize(stmt.?);
+            const sql = "INSERT OR REPLACE INTO debts (id, name, total, paid, monthly, deleted, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, 0, ?6);";
+            var stmt: ?*c.sqlite3_stmt = null;
+            if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+            defer _ = c.sqlite3_finalize(stmt.?);
+            const s = stmt.?;
+            if (c.sqlite3_bind_text(s, 1, @ptrCast(id.ptr), @intCast(id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_text(s, 2, @ptrCast(name.ptr), @intCast(name.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_int64(s, 3, total) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_int64(s, 4, paid) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_int64(s, 5, monthly) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_int64(s, 6, nowMs()) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+        } else if (std.mem.eql(u8, tbl, "savings_goals")) {
+            const id = jsonExtractStringFromSlice(json, "\"id\"") orelse return DbError.ExecFailed;
+            const name = jsonExtractStringFromSlice(json, "\"name\"") orelse return DbError.ExecFailed;
+            const icon = jsonExtractStringFromSlice(json, "\"icon\"") orelse "🎯";
+            const target = jsonExtractI64FromSlice(json, "\"target\"");
+            const current = jsonExtractI64FromSlice(json, "\"current\"");
+            const deadline = jsonExtractStringFromSlice(json, "\"deadline\"");
 
-        const s = stmt.?;
-        if (c.sqlite3_bind_text(s, 1, @ptrCast(id.ptr), @intCast(id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
-        if (c.sqlite3_bind_text(s, 2, @ptrCast(name.ptr), @intCast(name.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
-        if (c.sqlite3_bind_int64(s, 3, total) != c.SQLITE_OK) return DbError.BindFailed;
-        if (c.sqlite3_bind_int64(s, 4, paid) != c.SQLITE_OK) return DbError.BindFailed;
-        if (c.sqlite3_bind_int64(s, 5, monthly) != c.SQLITE_OK) return DbError.BindFailed;
-        if (c.sqlite3_bind_int64(s, 6, nowMs()) != c.SQLITE_OK) return DbError.BindFailed;
-        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+            const sql = "INSERT OR REPLACE INTO savings_goals (id, name, icon, target, current, deadline, deleted, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7);";
+            var stmt: ?*c.sqlite3_stmt = null;
+            if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+            defer _ = c.sqlite3_finalize(stmt.?);
+            const s = stmt.?;
+            if (c.sqlite3_bind_text(s, 1, @ptrCast(id.ptr), @intCast(id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_text(s, 2, @ptrCast(name.ptr), @intCast(name.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_text(s, 3, @ptrCast(icon.ptr), @intCast(icon.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_int64(s, 4, target) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_int64(s, 5, current) != c.SQLITE_OK) return DbError.BindFailed;
+            if (deadline) |dl| {
+                if (c.sqlite3_bind_text(s, 6, @ptrCast(dl.ptr), @intCast(dl.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+            } else {
+                if (c.sqlite3_bind_null(s, 6) != c.SQLITE_OK) return DbError.BindFailed;
+            }
+            if (c.sqlite3_bind_int64(s, 7, nowMs()) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+        }
     }
 
     fn markUndone(self: *Db, seq: i64, val: u8) DbError!void {

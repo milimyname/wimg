@@ -7,7 +7,7 @@ struct TaxView: View {
     @State private var homeofficeDays: Double = 0
 
     private var transactions: [Transaction] {
-        LibWimg.getTransactions()
+        (try? LibWimg.getTransactions()) ?? []
     }
 
     init() {

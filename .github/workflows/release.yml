@@ -48,6 +48,10 @@ jobs:
         working-directory: wimg-web
         run: bunx oxlint
 
+      - name: vitest
+        working-directory: wimg-web
+        run: bun run test
+
       - name: svelte-check
         working-directory: wimg-web
         run: bun run check
