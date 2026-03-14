@@ -143,9 +143,9 @@
 {/if}
 
 <!-- Section Title + Add Button -->
-<div class="flex items-center justify-between mb-4 px-1">
-  <h3 class="text-2xl font-display font-extrabold">Deine Schulden</h3>
-  <div class="flex items-center gap-2">
+<div class="flex items-center justify-between gap-3 mb-4 px-1">
+  <h3 class="text-xl font-display font-extrabold">Deine Schulden</h3>
+  <div class="flex items-center gap-2 shrink-0">
     {#if debts.length > 0}
       <span class="text-sm font-bold text-(--color-text) bg-(--color-accent) px-4 py-1.5 rounded-full shadow-sm">
         {activeCount} Aktiv
