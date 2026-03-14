@@ -205,7 +205,7 @@ struct TransactionsView: View {
                                 .foregroundStyle(cat.color)
                         }
                         Text(cat.name)
-                            .font(.system(size: 10, design: .rounded, weight: active ? .bold : .medium))
+                            .font(.system(size: 10, weight: active ? .bold : .medium, design: .rounded))
                             .foregroundStyle(active ? WimgTheme.text : WimgTheme.textSecondary)
                     }
                 }
@@ -239,7 +239,7 @@ struct TransactionsView: View {
                     }
                 } header: {
                     Text(formatDateHeader(date))
-                        .font(.system(size: 11, design: .rounded, weight: .bold))
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundStyle(WimgTheme.textSecondary)
                         .textCase(.uppercase)
                         .tracking(0.8)
@@ -580,7 +580,7 @@ struct AdvancedFilterSheet: View {
                         .foregroundStyle(cat.color)
                 }
                 Text(cat.name)
-                    .font(.system(size: 10, design: .rounded, weight: active ? .bold : .medium))
+                    .font(.system(size: 10, weight: active ? .bold : .medium, design: .rounded))
                     .foregroundStyle(active ? WimgTheme.text : WimgTheme.textSecondary)
                     .lineLimit(1)
             }

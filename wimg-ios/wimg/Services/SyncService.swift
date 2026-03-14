@@ -234,7 +234,7 @@ actor SyncService {
 
             Task {
                 try? await Task.sleep(for: .seconds(delay))
-                await doConnect(key: key)
+                doConnect(key: key)
             }
         }
     }
