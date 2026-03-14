@@ -645,28 +645,19 @@
 
       <!-- Show excluded toggle -->
       <section class="mb-4">
-        <div class="flex items-center justify-between py-3">
+        <label class="flex items-center justify-between py-3 cursor-pointer">
           <span class="text-sm font-medium text-(--color-text-secondary)"
             >Ausgeblendete anzeigen</span
           >
-          <button
-            onclick={() => (showExcluded = !showExcluded)}
-            class="cursor-pointer"
-            aria-label="Ausgeblendete anzeigen"
-          >
-            <div
-              class="w-10 h-6 rounded-full transition-colors relative"
-              class:bg-(--color-accent)={showExcluded}
-              class:bg-gray-300={!showExcluded}
-            >
-              <div
-                class="absolute top-[3px] w-[18px] h-[18px] rounded-full bg-white shadow-sm transition-transform"
-                class:translate-x-[19px]={showExcluded}
-                class:translate-x-[3px]={!showExcluded}
-              ></div>
-            </div>
-          </button>
-        </div>
+          <input
+            type="checkbox"
+            checked={showExcluded}
+            onchange={() => (showExcluded = !showExcluded)}
+            class="w-10 h-6 rounded-full appearance-none bg-gray-200 checked:bg-amber-500 relative cursor-pointer transition-colors
+              before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-5 before:h-5 before:rounded-full before:bg-white before:shadow before:transition-transform
+              checked:before:translate-x-4"
+          />
+        </label>
       </section>
     </div>
 
