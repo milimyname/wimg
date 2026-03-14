@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.18 (2026-03-14)
+
+- feat: add in-app changelog and migrate to Vite+
+- fix changelog
+
 ## v0.5.17 (2026-03-14)
 
 - Added Phase 5.11: In-App Changelog with a new `/changelog` page that fetches data from the GitHub Releases API, featuring a timeline UI with version badges and commit descriptions.
