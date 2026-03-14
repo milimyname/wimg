@@ -11,14 +11,14 @@
     class="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-lg"
   >
     <div
-      class="bg-(--color-text) text-white rounded-2xl px-5 py-3.5 shadow-[var(--shadow-soft)] flex items-center justify-between gap-3"
+      class="toast-bar rounded-2xl px-5 py-3.5 shadow-[var(--shadow-soft)] flex items-center justify-between gap-3"
     >
       <span class="text-sm font-bold truncate">{toastStore.message}</span>
       <div class="flex items-center gap-2 shrink-0">
         {#if toastStore.hasUndo}
           <button
             onclick={() => toastStore.triggerUndo()}
-            class="text-sm font-bold cursor-pointer hover:opacity-80 transition-opacity text-(--color-accent)"
+            class="text-sm font-bold cursor-pointer hover:opacity-80 transition-opacity toast-undo"
           >
             Rückgängig
           </button>
@@ -35,7 +35,7 @@
                 cy="11"
                 r={R}
                 fill="none"
-                stroke="rgba(255,255,255,0.15)"
+                class="ring-track"
                 stroke-width="2"
               />
               <circle
@@ -43,18 +43,17 @@
                 cy="11"
                 r={R}
                 fill="none"
-                stroke="rgba(255,255,255,0.5)"
+                class="countdown-ring ring-progress"
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-dasharray={C}
                 stroke-dashoffset="0"
-                class="countdown-ring"
                 style="--c: {C}; --d: {DURATION}s"
               />
             </svg>
           {/key}
           <svg
-            class="relative w-3 h-3 text-gray-400 group-hover:text-white transition-colors"
+            class="relative w-3 h-3 toast-close-icon transition-colors"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -73,6 +72,46 @@
 {/if}
 
 <style>
+  .toast-bar {
+    background-color: var(--color-text);
+    color: white;
+  }
+  .toast-undo {
+    color: var(--color-accent);
+  }
+  .ring-track {
+    stroke: rgba(255, 255, 255, 0.15);
+  }
+  .ring-progress {
+    stroke: rgba(255, 255, 255, 0.5);
+  }
+  .toast-close-icon {
+    color: rgba(255, 255, 255, 0.4);
+  }
+  .toast-close-icon:hover {
+    color: white;
+  }
+
+  :global(html.dark) .toast-bar {
+    background-color: #f5f5f5;
+    color: #111114;
+  }
+  :global(html.dark) .toast-undo {
+    color: #b8960a;
+  }
+  :global(html.dark) .ring-track {
+    stroke: rgba(0, 0, 0, 0.1);
+  }
+  :global(html.dark) .ring-progress {
+    stroke: rgba(0, 0, 0, 0.35);
+  }
+  :global(html.dark) .toast-close-icon {
+    color: rgba(0, 0, 0, 0.3);
+  }
+  :global(html.dark) .toast-close-icon:hover {
+    color: #111114;
+  }
+
   .countdown-ring {
     animation: countdown var(--d) linear forwards;
   }
