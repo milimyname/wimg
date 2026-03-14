@@ -60,7 +60,7 @@
 <!-- Greeting -->
 <div class="flex items-center gap-3.5 mb-6">
   <div
-    class="w-12 h-12 rounded-full flex items-center justify-center text-white font-display font-extrabold text-base shadow-[var(--shadow-card)] bg-(--color-text)"
+    class="w-12 h-12 rounded-full flex items-center justify-center text-white font-display font-extrabold text-base shadow-[var(--shadow-card)]" style="background: #1a1a1a"
   >
     K
   </div>
