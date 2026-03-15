@@ -34,6 +34,19 @@
       .slice(0, 3),
   );
 
+  // expenses comes as positive from Zig (negated for display)
+  let sparquote = $derived(
+    summary.income > 0
+      ? Math.round(((summary.income - summary.expenses) / summary.income) * 100)
+      : 0,
+  );
+
+  let prevSparquote = $derived(
+    prevSummary.income > 0
+      ? Math.round(((prevSummary.income - prevSummary.expenses) / prevSummary.income) * 100)
+      : 0,
+  );
+
   let expenseCategories = $derived(
     summary.by_category.filter((c) => c.id !== 10 && c.id !== 11),
   );
@@ -163,6 +176,43 @@
     </div>
   </div>
 </div>
+
+<!-- Sparquote -->
+{#if summary.income > 0}
+  <div class="bg-white rounded-[1.75rem] p-5 mb-5 shadow-[var(--shadow-card)] flex items-center gap-5">
+    <div class="relative w-16 h-16 shrink-0">
+      <svg viewBox="0 0 36 36" class="w-full h-full -rotate-90">
+        <circle cx="18" cy="18" r="15.5" fill="none" stroke="currentColor" stroke-width="3" class="text-gray-100" />
+        <circle
+          cx="18" cy="18" r="15.5" fill="none" stroke-width="3"
+          stroke-dasharray="{Math.max(0, Math.min(sparquote, 100)) * 97.4 / 100} 97.4"
+          stroke-linecap="round"
+          class={sparquote >= 20 ? "text-emerald-500" : sparquote >= 0 ? "text-amber-500" : "text-rose-500"}
+          stroke="currentColor"
+        />
+      </svg>
+      <div class="absolute inset-0 flex items-center justify-center">
+        <span class="text-sm font-display font-black">{sparquote}%</span>
+      </div>
+    </div>
+    <div class="flex-1 min-w-0">
+      <p class="text-sm font-bold text-(--color-text)">Sparquote</p>
+      <p class="text-xs text-(--color-text-secondary) mt-0.5">
+        Du sparst {formatEur(summary.available)} von {formatEur(summary.income)}
+      </p>
+      {#if prevSparquote > 0}
+        {@const sqDelta = sparquote - prevSparquote}
+        <p
+          class="text-xs font-bold mt-1"
+          class:text-emerald-600={sqDelta >= 0}
+          class:text-rose-500={sqDelta < 0}
+        >
+          {sqDelta >= 0 ? "+" : ""}{sqDelta}pp vs. Vormonat
+        </p>
+      {/if}
+    </div>
+  </div>
+{/if}
 
 <!-- Budget Übersicht: Donut Chart -->
 {#if expenseCategories.length > 0}

@@ -137,36 +137,82 @@ struct DashboardView: View {
 
     // MARK: - Cards
 
+    // expenses comes as positive from Zig (negated for display)
+    private var sparquote: Int {
+        let income = summary?.income ?? 0
+        guard income > 0 else { return 0 }
+        return Int(((income - (summary?.expenses ?? 0)) / income) * 100)
+    }
+
     private var availableCard: some View {
-        ZStack(alignment: .topTrailing) {
-            // Decorative blur circle
-            Circle()
-                .fill(.white.opacity(0.25))
-                .frame(width: 140, height: 140)
-                .blur(radius: 30)
-                .offset(x: 40, y: -40)
+        VStack(spacing: 12) {
+            // Hero: Verfügbar
+            ZStack(alignment: .topTrailing) {
+                Circle()
+                    .fill(.white.opacity(0.25))
+                    .frame(width: 140, height: 140)
+                    .blur(radius: 30)
+                    .offset(x: 40, y: -40)
 
-            VStack(spacing: 6) {
-                Text("Verfügbar")
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .foregroundStyle(WimgTheme.text.opacity(0.7))
-                    .textCase(.uppercase)
-                    .tracking(1)
+                VStack(spacing: 6) {
+                    Text("Verfügbar")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.text.opacity(0.7))
+                        .textCase(.uppercase)
+                        .tracking(1)
 
-                Text(formatAmountShort(summary?.available ?? 0))
-                    .font(.system(size: 40, weight: .black, design: .rounded))
-                    .foregroundStyle(WimgTheme.text)
-                    .tracking(-1)
+                    Text(formatAmountShort(summary?.available ?? 0))
+                        .font(.system(size: 40, weight: .black, design: .rounded))
+                        .foregroundStyle(WimgTheme.text)
+                        .tracking(-1)
 
-                Text("\(summary?.tx_count ?? 0) Transaktionen")
-                    .font(.system(.caption, design: .rounded, weight: .medium))
-                    .foregroundStyle(WimgTheme.text.opacity(0.6))
+                    Text("\(summary?.tx_count ?? 0) Transaktionen")
+                        .font(.system(.caption, design: .rounded, weight: .medium))
+                        .foregroundStyle(WimgTheme.text.opacity(0.6))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 28)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 28)
+            .wimgHero()
+            .padding(.horizontal)
+
+            // Sparquote card
+            if (summary?.income ?? 0) > 0 {
+                HStack(spacing: 16) {
+                    // Ring
+                    ZStack {
+                        Circle()
+                            .stroke(Color(.systemGray5), lineWidth: 4)
+                            .frame(width: 52, height: 52)
+                        Circle()
+                            .trim(from: 0, to: min(max(Double(sparquote), 0), 100) / 100)
+                            .stroke(
+                                sparquote >= 20 ? Color.green : sparquote >= 0 ? Color.orange : Color.red,
+                                style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                            )
+                            .frame(width: 52, height: 52)
+                            .rotationEffect(.degrees(-90))
+                        Text("\(sparquote)%")
+                            .font(.system(size: 13, weight: .black, design: .rounded))
+                            .foregroundStyle(WimgTheme.text)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Sparquote")
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.text)
+                        Text("Du sparst \(formatAmountShort(summary?.available ?? 0)) von \(formatAmountShort(summary?.income ?? 0))")
+                            .font(.system(.caption, design: .rounded, weight: .medium))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                    }
+
+                    Spacer()
+                }
+                .padding(16)
+                .wimgCard(radius: WimgTheme.radiusMedium)
+                .padding(.horizontal)
+            }
         }
-        .wimgHero()
-        .padding(.horizontal)
     }
 
     private func summaryCard(title: String, amount: Double, icon: String, iconColor: Color) -> some View {
