@@ -8,6 +8,7 @@
   import DonutChart from "../../../components/DonutChart.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
   import NetWorthChart from "../../../components/NetWorthChart.svelte";
+  import SpendingHeatmap from "../../../components/SpendingHeatmap.svelte";
 
   let expandedCategory = $state<number | null>(null);
 
@@ -154,6 +155,7 @@
   <!-- Net Worth Over Time -->
   {#if snapshots.length >= 2}
     <NetWorthChart {snapshots} />
+    <SpendingHeatmap {snapshots} />
   {/if}
 
   <!-- Categories Header -->

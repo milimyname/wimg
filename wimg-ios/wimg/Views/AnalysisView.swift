@@ -89,6 +89,9 @@ struct AnalysisView: View {
                         // Net Worth chart
                         NetWorthCard()
 
+                        // Spending Heatmap
+                        SpendingHeatmap()
+
                         // Category breakdown
                         VStack(spacing: 0) {
                             ForEach(cats) { cat in
