@@ -5,12 +5,13 @@ FinTS is intentionally iOS-only (browsers can't do FinTS due to CORS).
 
 ## At Parity
 
-Dashboard, Transactions, Analysis (+ Net Worth chart), Debts, Savings Goals,
-Tax Helper (Pendlerpauschale, Homeoffice, auto-tagged transactions),
-Monthly Review, CSV Import, Auto-categorization, Claude AI, Account Switcher,
-Account Management, Sync (enable/link/manual/copy key), Real-time WebSocket,
-E2E Encryption, Settings, More page, About page, Data Export, Monthly
-Snapshots, Undo toast.
+Dashboard (+ Sparquote savings rate), Transactions, Analysis (+ Net Worth
+chart + Spending Heatmap), Debts, Savings Goals, Tax Helper
+(Pendlerpauschale, Homeoffice, auto-tagged transactions), Monthly Review,
+CSV Import, Auto-categorization, Claude AI, Account Switcher, Account
+Management, Sync (enable/link/manual/copy key), Real-time WebSocket, E2E
+Encryption, Settings (+ dark mode picker), More page, About page, Data
+Export, Monthly Snapshots, Undo toast, Onboarding (4 cards).
 
 ## iOS Missing
 

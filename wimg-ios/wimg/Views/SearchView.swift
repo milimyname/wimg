@@ -215,6 +215,12 @@ struct SearchView: View {
                     navLink("Was kann die Steuern-Seite?", icon: "questionmark.circle", color: .orange) {
                         AboutView(scrollToFAQ: "Was kann die Steuern-Seite?")
                     }
+                    navLink("Was ist die Sparquote?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Was ist die Sparquote?")
+                    }
+                    navLink("Was zeigt die Ausgaben-Heatmap?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Was zeigt die Ausgaben-Heatmap?")
+                    }
                     navLink("MCP-Verbindung einrichten", icon: "link", color: .purple) {
                         AboutView()
                     }

@@ -367,6 +367,22 @@ const STATIC_ACTIONS: PaletteAction[] = [
     keywords: ["faq", "beitragen", "github", "contribute", "helfen"],
     handler: () => gotoHash("/about#faq-beitragen"),
   },
+  {
+    id: "faq-sparquote",
+    label: "Was ist die Sparquote?",
+    group: "Hilfe",
+    icon: "❓",
+    keywords: ["faq", "sparquote", "savings", "rate", "sparen", "prozent"],
+    handler: () => gotoHash("/about#faq-sparquote"),
+  },
+  {
+    id: "faq-heatmap",
+    label: "Was zeigt die Ausgaben-Heatmap?",
+    group: "Hilfe",
+    icon: "❓",
+    keywords: ["faq", "heatmap", "ausgaben", "grid", "muster", "saisonal"],
+    handler: () => gotoHash("/about#faq-heatmap"),
+  },
 
   // --- Categorization ---
   {

@@ -72,6 +72,7 @@ wimg/
 │           ├── DevTools.svelte      Developer panel (5 tabs: WASM, Memory, Sync, Data, SQL)
 │           ├── DonutChart.svelte    LayerChart PieChart wrapper
 │           ├── NetWorthChart.svelte SVG area chart for cumulative net worth
+│           ├── SpendingHeatmap.svelte GitHub-style grid heatmap for monthly expenses
 │           ├── MonthPicker.svelte   month/year selector
 │           ├── Toast.svelte         undo snackbar
 │           └── UpdateBanner.svelte  PWA update notification banner
@@ -109,6 +110,7 @@ wimg/
 │           ├── MonthPicker.swift
 │           ├── TransactionCard.swift  + formatAmountShort()
 │           ├── CategoryBadge.swift
+│           ├── SpendingHeatmap.swift GitHub-style spending heatmap
 │           └── UndoToast.swift
 │
 └── wimg-sync/                  Phase 4B — Cloudflare Worker + DO + MCP

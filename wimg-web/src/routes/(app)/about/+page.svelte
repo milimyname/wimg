@@ -122,6 +122,16 @@
       a: "Die Steuern-Seite hilft dir, absetzbare Ausgaben für deine Steuererklärung zu finden. Transaktionen werden nach Schlüsselwörtern gescannt (Arbeitsmittel, Fortbildung, Fahrtkosten etc.) — du kannst eigene Schlüsselwörter ergänzen. Die Pendlerpauschale berechnet sich nach §9 EStG: 0,30 €/km für die ersten 20 km, 0,38 €/km ab dem 21. km. Die Homeoffice-Pauschale beträgt 6 €/Tag (max. 210 Tage, §4 Abs. 5 Nr. 6c EStG). Einzelne Transaktionen lassen sich ein-/ausblenden, und alles kann als CSV für ELSTER oder WISO exportiert werden. Keine Steuerberatung — nur eine Übersicht deiner Zahlen.",
     },
     {
+      id: "faq-sparquote",
+      q: "Was ist die Sparquote?",
+      a: "Die Sparquote zeigt, wie viel Prozent deines Einkommens du sparst: (Einnahmen \u2212 Ausgaben) \u00f7 Einnahmen \u00d7 100. Sie erscheint auf dem Dashboard neben dem verfügbaren Einkommen. Eine höhere Sparquote bedeutet schnelleren Vermögensaufbau. Die Änderung zum Vormonat wird in Prozentpunkten (pp) angezeigt.",
+    },
+    {
+      id: "faq-heatmap",
+      q: "Was zeigt die Ausgaben-Heatmap?",
+      a: "Die Heatmap auf der Analyse-Seite zeigt deine monatlichen Ausgaben als Farbgitter \u2014 inspiriert vom GitHub Contribution Graph. Jede Zelle ist ein Monat, dunklere Farben bedeuten höhere Ausgaben. So erkennst du auf einen Blick saisonale Muster (z.B. Dezember-Spitzen, günstige Sommermonate). Die Daten kommen aus deinen monatlichen Snapshots.",
+    },
+    {
       id: "faq-beitragen",
       q: "Wie kann ich beitragen?",
       a: "Besuche das GitHub-Repository. Code, Übersetzungen, Feedback und Bug-Reports sind willkommen.",
