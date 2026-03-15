@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.9 (2026-03-16)
+
+- docs: add Sparquote + Heatmap FAQ entries, update project docs
+- feat: spending heatmap on analysis page
+- feat: Sparquote savings rate card on dashboard
+
 ## v0.6.8 (2026-03-14)
 
 - feat: updated onboarding cards + bank nav link in search
