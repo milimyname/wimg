@@ -184,7 +184,7 @@
     }
   }
 
-  /* Smooth fade-out when BottomSheet opens */
+  /* Smooth fade-out when Drawer opens */
   .nav-bar {
     transition: opacity 0.25s ease, transform 0.25s ease;
   }

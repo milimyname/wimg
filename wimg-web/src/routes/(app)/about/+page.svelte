@@ -3,7 +3,7 @@
   import { APP_VERSION, RELEASES_URL } from "$lib/version";
 
   // Scroll to hash anchor and auto-open <details> after navigation completes.
-  // When navigating from the Command Palette, the BottomSheet locks body scroll
+  // When navigating from the Command Palette, the Drawer locks body scroll
   // with position:fixed — scrollIntoView won't work until the sheet closes and
   // unlocks the body. We poll until the body is unlocked, then scroll.
   afterNavigate(() => {
@@ -12,7 +12,7 @@
     const id = hash.slice(1);
 
     function scrollToAnchor() {
-      // Wait for BottomSheet to unlock body scroll
+      // Wait for Drawer to unlock body scroll
       if (document.body.style.position === "fixed") {
         requestAnimationFrame(scrollToAnchor);
         return;

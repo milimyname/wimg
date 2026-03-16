@@ -2,7 +2,8 @@
   import type { Snippet } from "svelte";
   import type { Attachment } from "svelte/attachments";
   import { Spring } from "svelte/motion";
-  import { onDestroy } from "svelte";
+  import { onDestroy, untrack } from "svelte";
+  import { drawerStore } from "$lib/drawer.svelte";
 
   interface Props {
     open: boolean;
@@ -21,6 +22,18 @@
   }
 
   let { open, onclose, snaps, children }: Props = $props();
+
+  // --- Drawer store registration ---
+  const id = typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  drawerStore.register(id);
+  onDestroy(() => drawerStore.unregister(id));
+
+  let nested = $derived(drawerStore.nestedAbove(id));
+  let hasNested = $derived(nested > 0);
+  let stackDepth = $derived(Math.max(0, drawerStore.depth(id)));
+  let baseZ = $derived(50 + stackDepth * 10);
 
   // Snap points as fractions of viewport height
   const getSnaps = () => {
@@ -45,7 +58,7 @@
   let velocity = 0;
   let isDraggingSheet = false;
 
-  // Wheel state: mirrors mobile touch — continuous drag + snap on stop
+  // Wheel state
   let wheelSnapTimer: ReturnType<typeof setTimeout> | undefined;
   let lastWheelTime = 0;
   let wheelVelocity = 0;
@@ -56,7 +69,29 @@
     const s = getSnaps();
     return height.current >= (s[s.length - 1] ?? 600) - 5;
   });
-  // Lock content scroll: only scrollable when expanded and not being dragged
+
+  // Register open state with drawer store
+  $effect(() => {
+    if (isVisible) {
+      untrack(() => drawerStore.setOpen(id, true));
+      return () => untrack(() => drawerStore.setOpen(id, false));
+    }
+  });
+
+  // Keep element ref in store
+  $effect(() => {
+    const el = sheetRef;
+    if (el) untrack(() => drawerStore.setEl(id, el));
+  });
+
+  // Portal: move to document.body so position:fixed isn't broken by transform
+  const portal: Attachment = (node) => {
+    const el = node as HTMLElement;
+    document.body.appendChild(el);
+    return () => el.remove();
+  };
+
+  // Lock content scroll
   $effect(() => {
     if (contentRef) {
       contentRef.style.overflowY =
@@ -76,7 +111,9 @@
     if (open) {
       document.documentElement.classList.add("sheet-active");
       return () => {
-        document.documentElement.classList.remove("sheet-active");
+        if (drawerStore.openCount === 0) {
+          document.documentElement.classList.remove("sheet-active");
+        }
       };
     }
   });
@@ -92,10 +129,11 @@
     }
   });
 
-  // Lock body scroll when visible (iOS PWA needs position:fixed to truly prevent scroll)
+  // Lock body scroll
   let savedScrollY = 0;
 
   function lockScroll() {
+    if (document.body.style.position === "fixed") return;
     savedScrollY = window.scrollY;
     document.body.style.overflow = "hidden";
     document.body.style.position = "fixed";
@@ -104,6 +142,7 @@
   }
 
   function unlockScroll() {
+    if (drawerStore.openCount > 0) return;
     document.body.style.overflow = "";
     document.body.style.position = "";
     document.body.style.top = "";
@@ -118,16 +157,17 @@
     }
   });
 
-  // Safety: if component is destroyed while sheet is visible (e.g. navigation),
-  // ensure body scroll is restored
   onDestroy(() => {
-    if (document.body.style.position === "fixed") {
-      unlockScroll();
+    if (document.body.style.position === "fixed" && drawerStore.openCount <= 1) {
+      document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      window.scrollTo(0, savedScrollY);
     }
   });
 
-  // Close when spring settles near 0 (works for both swipe-down AND programmatic close)
-  // Guard: skip if `open` is already false (back button already popped history)
+  // Close when spring settles near 0
   $effect(() => {
     if (wasOpen && height.current < 15 && !isDragging && height.target === 0) {
       wasOpen = false;
@@ -135,9 +175,12 @@
     }
   });
 
-  // Escape key
+  // --- Stacking indent effect (CSS-driven) ---
+  let dimOpacity = $derived(nested > 0 ? Math.min(nested * 0.06, 0.15) : 0);
+
+  // Escape key — only frontmost
   function onKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape" && open) {
+    if (e.key === "Escape" && open && !hasNested) {
       height.target = 0;
     }
   }
@@ -164,17 +207,14 @@
     contentRef = el;
     el.style.flex = "1";
     el.style.minHeight = "0";
-    el.style.overflowY = "hidden"; // Reactive effect controls this
+    el.style.overflowY = "hidden";
     el.style.overscrollBehavior = "contain";
     el.style.touchAction = "pan-y";
-    return () => {
-      contentRef = undefined;
-    };
+    return () => { contentRef = undefined; };
   };
 
-  // Click-to-snap: toggle between medium and max snap (desktop-friendly)
   function onHandleClick() {
-    if (isDragging) return; // Ignore if it was a drag, not a click
+    if (isDragging || hasNested) return;
     const s = getSnaps();
     const medium = s[1];
     const max = s[s.length - 1];
@@ -200,12 +240,10 @@
     footerRef = el;
     el.style.flexShrink = "0";
     el.style.transition = "opacity 0.3s ease, transform 0.3s ease";
-    return () => {
-      footerRef = undefined;
-    };
+    return () => { footerRef = undefined; };
   };
 
-  // Animate footer in/out based on sheet height
+  // Animate footer in/out
   $effect(() => {
     if (footerRef) {
       if (footerReady) {
@@ -218,10 +256,9 @@
     }
   });
 
-  // Wheel: mirrors mobile touch — continuous height tracking + snap on stop.
-  // Not expanded → all wheel events move the sheet (like mobile: touching content moves sheet).
-  // Expanded → content scrolls normally, overscroll at top chains to shrink.
+  // Wheel handler
   function onWheel(e: WheelEvent) {
+    if (hasNested) return;
     const hitHandle = handleRef?.contains(e.target as Node);
     const hitContent = contentRef?.contains(e.target as Node);
 
@@ -229,13 +266,11 @@
 
     if (hitContent && !hitHandle) {
       if (isExpanded) {
-        // Expanded: hand off to content scroll, chain at top when pulling down
         if (isWheeling) {
           clearTimeout(wheelSnapTimer);
           isWheeling = false;
           isDragging = false;
           wheelVelocity = 0;
-          // Snap to max so sheet settles cleanly
           const s = getSnaps();
           height.target = s[s.length - 1];
         }
@@ -246,10 +281,8 @@
           applyWheelDelta(e.deltaY);
           return;
         }
-        // Normal content scroll
         return;
       }
-      // Not expanded: wheel moves the sheet directly (same as mobile touch)
     }
 
     e.preventDefault();
@@ -260,7 +293,6 @@
     isWheeling = true;
     isDragging = true;
 
-    // Track velocity for snap (same units as touch: px/ms)
     const now = Date.now();
     const dt = now - lastWheelTime;
     if (dt > 0 && dt < 200) {
@@ -270,20 +302,13 @@
 
     const s = getSnaps();
     const maxSnap = s[s.length - 1];
-
-    // deltaY > 0 → expand (trackpad: finger swipe up with natural scrolling)
-    // deltaY < 0 → shrink
     let newHeight = height.target + deltaY;
-
-    // Rubber-band past max snap (iOS-style resistance)
     if (newHeight > maxSnap) {
       const overflow = newHeight - maxSnap;
       newHeight = maxSnap + overflow * 0.15;
     }
-
     height.target = Math.max(0, newHeight);
 
-    // Snap when wheel stops (like touchEnd)
     clearTimeout(wheelSnapTimer);
     wheelSnapTimer = setTimeout(() => {
       velocity = wheelVelocity;
@@ -296,6 +321,7 @@
 
   // Touch handlers
   function onTouchStart(e: TouchEvent) {
+    if (hasNested) return;
     startY = e.touches[0].clientY;
     lastY = startY;
     lastTime = Date.now();
@@ -312,17 +338,16 @@
     } else if (!isContent) {
       isDraggingSheet = true;
     }
-    // Content touches: let native scroll happen, onTouchMove hands off at boundaries
   }
 
   function takeOverDrag(currentY: number) {
     isDraggingSheet = true;
-    // Reset origin to handoff point so the sheet doesn't jump
     startY = currentY;
     startHeight = height.current;
   }
 
   function onTouchMove(e: TouchEvent) {
+    if (hasNested) return;
     const currentY = e.touches[0].clientY;
     const currentTime = Date.now();
 
@@ -333,16 +358,13 @@
     lastY = currentY;
     lastTime = currentTime;
 
-    // Hand off from content scroll → sheet drag at boundaries
     if (!isDraggingSheet && contentRef) {
       if (isExpanded) {
-        // When expanded: only take over if at top and pulling down
         const isAtTop = contentRef.scrollTop <= 1;
         if (isAtTop && velocity < -0.05) {
           takeOverDrag(currentY);
         }
       } else {
-        // When not expanded: any touch on content moves the sheet
         takeOverDrag(currentY);
       }
     }
@@ -353,13 +375,10 @@
       const s = getSnaps();
       const maxSnap = s[s.length - 1];
       let newHeight = startHeight + deltaY;
-
-      // Rubber-band past max snap (iOS-style resistance)
       if (newHeight > maxSnap) {
         const overflow = newHeight - maxSnap;
         newHeight = maxSnap + overflow * 0.15;
       }
-
       height.target = Math.max(-20, newHeight);
     }
   }
@@ -401,20 +420,31 @@
 <svelte:window on:keydown={onKeydown} />
 
 {#if open || isVisible}
-  <!-- Backdrop -->
+  <!-- Backdrop — portaled to body -->
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
     class="sheet-backdrop"
-    onclick={() => (height.target = 0)}
+    onclick={() => { if (!hasNested) height.target = 0; }}
     style:opacity={Math.min(1, height.current / 300) * 0.5}
+    style:z-index={baseZ}
+    {@attach portal}
   ></div>
 
-  <!-- Sheet -->
+  <!-- Sheet — portaled to body -->
   <div
     class="sheet-root"
+    class:indented={nested > 0}
     style:height="{Math.max(0, height.current)}px"
     style:visibility={isVisible ? "visible" : "hidden"}
+    style:z-index={baseZ + 1}
+    style:--indent-scale={1 - nested * 0.04}
+    style:--indent-y="{nested * -8}px"
+    style:--nested-drawers={nested}
+    data-open={open ? "" : undefined}
+    data-swiping={isDragging ? "" : undefined}
+    data-nested-drawer-open={hasNested ? "" : undefined}
     {@attach onSheet}
+    {@attach portal}
     role="dialog"
     aria-modal="true"
   >
@@ -424,6 +454,9 @@
       footer: onFooter,
       height: height.current,
     })}
+    {#if dimOpacity > 0}
+      <div class="sheet-nested-dim" style:opacity={dimOpacity}></div>
+    {/if}
   </div>
 {/if}
 
@@ -432,7 +465,6 @@
     position: fixed;
     inset: 0;
     background: black;
-    z-index: 39;
   }
 
   .sheet-root {
@@ -447,8 +479,24 @@
     box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.08);
     display: flex;
     flex-direction: column;
-    will-change: height;
-    z-index: 40;
+    will-change: height, transform;
     overflow: hidden;
+    transform-origin: center bottom;
+    transform: scale(var(--indent-scale, 1)) translateY(var(--indent-y, 0px));
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .sheet-root.indented {
+    pointer-events: none;
+  }
+
+  .sheet-nested-dim {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: black;
+    pointer-events: none;
+    z-index: 999;
+    transition: opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1);
   }
 </style>

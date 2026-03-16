@@ -12,7 +12,7 @@
   } from "$lib/wasm";
   import { LS_DEMO_LOADED, LS_ONBOARDING_COMPLETED } from "$lib/config";
   import { featureStore } from "$lib/features.svelte";
-  import BottomSheet from "../../../components/BottomSheet.svelte";
+  import Drawer from "../../../components/Drawer.svelte";
   import { pushState, replaceState } from "$app/navigation";
   import { page } from "$app/state";
   import {
@@ -976,7 +976,7 @@
 </section>
 
 <!-- Sync Info / Confirmation Sheet -->
-<BottomSheet open={showSyncInfo} onclose={() => history.back()}>
+<Drawer open={showSyncInfo} onclose={() => history.back()}>
   {#snippet children({ handle, content, footer })}
     <div {@attach handle} class="flex justify-center pt-3 pb-2">
       <div class="w-10 h-1 rounded-full bg-gray-200"></div>
@@ -1158,10 +1158,10 @@
       </button>
     </div>
   {/snippet}
-</BottomSheet>
+</Drawer>
 
 <!-- QR Code Sheet -->
-<BottomSheet open={showQR} onclose={() => history.back()}>
+<Drawer open={showQR} onclose={() => history.back()}>
   {#snippet children({ handle, content, footer })}
     <div {@attach handle} class="flex justify-center pt-3 pb-2">
       <div class="w-10 h-1 rounded-full bg-gray-200"></div>
@@ -1197,10 +1197,10 @@
       </button>
     </div>
   {/snippet}
-</BottomSheet>
+</Drawer>
 
 <!-- QR Link Confirmation Sheet -->
-<BottomSheet
+<Drawer
   open={showLinkConfirm}
   onclose={() => {
     pendingSyncKey = "";
@@ -1261,10 +1261,10 @@
       </button>
     </div>
   {/snippet}
-</BottomSheet>
+</Drawer>
 
 <!-- Delete Confirmation Sheet -->
-<BottomSheet open={confirmReset} onclose={() => history.back()} snaps={[0.48]}>
+<Drawer open={confirmReset} onclose={() => history.back()} snaps={[0.48]}>
   {#snippet children({ handle, content, footer })}
     <div {@attach handle} class="flex justify-center pt-3 pb-2">
       <div class="w-10 h-1 rounded-full bg-gray-200"></div>
@@ -1315,10 +1315,10 @@
       </button>
     </div>
   {/snippet}
-</BottomSheet>
+</Drawer>
 
 <!-- Export Sheet -->
-<BottomSheet
+<Drawer
   open={showExportSheet}
   onclose={() => history.back()}
   snaps={[0.58]}
@@ -1453,4 +1453,4 @@
       </button>
     </div>
   {/snippet}
-</BottomSheet>
+</Drawer>

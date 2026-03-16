@@ -13,7 +13,7 @@
   import { formatEur, formatDate } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
   import { dropStore } from "$lib/drop.svelte";
-  import BottomSheet from "../../../components/BottomSheet.svelte";
+  import Drawer from "../../../components/Drawer.svelte";
 
   type ImportStage = "idle" | "preview" | "imported";
 
@@ -669,7 +669,7 @@
 
 <!-- ═══════════════════ CATEGORY SHEET ═══════════════════ -->
 {#if showCategorySheet}
-  <BottomSheet
+  <Drawer
     open={showCategorySheet}
     onclose={() => { showCategorySheet = false; editingTxn = null; }}
     snaps={[0.55]}
@@ -725,5 +725,5 @@
         </div>
       </div>
     {/snippet}
-  </BottomSheet>
+  </Drawer>
 {/if}

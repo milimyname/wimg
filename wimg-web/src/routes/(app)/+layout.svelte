@@ -8,6 +8,7 @@
   import { dropStore } from "$lib/drop.svelte";
   import { isSyncEnabled, connectSync, disconnectSync } from "$lib/sync";
   import { paletteStore } from "$lib/commandPalette.svelte";
+  import { feedbackStore } from "$lib/feedback.svelte";
   import { themeStore } from "$lib/theme.svelte";
   import { LS_ONBOARDING_COMPLETED, LS_LAST_SNAPSHOT_MONTH } from "$lib/config";
   import BottomNav from "../../components/BottomNav.svelte";
@@ -16,6 +17,7 @@
   import AccountSwitcher from "../../components/AccountSwitcher.svelte";
   import GlobalDropOverlay from "../../components/GlobalDropOverlay.svelte";
   import OnboardingOverlay from "../../components/OnboardingOverlay.svelte";
+  import DrawerIndent from "../../components/DrawerIndent.svelte";
 
   let { children } = $props();
   let loading = $state(true);
@@ -145,8 +147,9 @@
   }
 </script>
 
+<DrawerIndent>
 <div
-  class="min-h-screen bg-(--color-bg) page-shell"
+  class="min-h-screen bg-(--color-bg)"
   style="padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px))"
 >
   <header
@@ -195,6 +198,7 @@
   {/if}
   <BottomNav />
 </div>
+</DrawerIndent>
 
 <Toast />
 
@@ -207,6 +211,12 @@
 {#if paletteStore.open}
   {#await import("../../components/CommandPalette.svelte") then Palette}
     <Palette.default />
+  {/await}
+{/if}
+
+{#if feedbackStore.open}
+  {#await import("../../components/FeedbackSheet.svelte") then FeedbackSheet}
+    <FeedbackSheet.default />
   {/await}
 {/if}
 

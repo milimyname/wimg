@@ -12,7 +12,7 @@
   import { accountStore } from "$lib/account.svelte";
   import { data } from "$lib/data.svelte";
   import { toastStore } from "$lib/toast.svelte";
-  import BottomSheet from "../../../components/BottomSheet.svelte";
+  import Drawer from "../../../components/Drawer.svelte";
   import { pushState, replaceState } from "$app/navigation";
   import { page } from "$app/state";
 
@@ -433,7 +433,7 @@
 {/if}
 
 <!-- Advanced Search Bottom Sheet -->
-<BottomSheet
+<Drawer
   open={showAdvancedSearch}
   onclose={() => history.back()}
   snaps={[0.92]}
@@ -681,12 +681,12 @@
       </div>
     </div>
   {/snippet}
-</BottomSheet>
+</Drawer>
 
 <!-- Bottom Sheet -->
 {#if selectedTxn}
   {@const txn = selectedTxn}
-  <BottomSheet open={showSheet} onclose={onSheetClosed} snaps={[0.88]}>
+  <Drawer open={showSheet} onclose={onSheetClosed} snaps={[0.88]}>
     {#snippet children({ handle, content, footer })}
       <!-- Handle -->
       <div class="pt-3 pb-2 flex justify-center shrink-0" {@attach handle}>
@@ -784,7 +784,7 @@
         </button>
       </div>
     {/snippet}
-  </BottomSheet>
+  </Drawer>
 {/if}
 
 <style>

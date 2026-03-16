@@ -2,7 +2,7 @@
   import { updateStore } from "$lib/update.svelte";
   import { changelogStore } from "$lib/changelog.svelte";
   import { APP_VERSION } from "$lib/version";
-  import BottomSheet from "./BottomSheet.svelte";
+  import Drawer from "./Drawer.svelte";
 
   let updating = $state(false);
 
@@ -51,7 +51,7 @@
   }
 </script>
 
-<BottomSheet
+<Drawer
   open={updateStore.sheetOpen}
   onclose={() => (updateStore.sheetOpen = false)}
 >
@@ -198,4 +198,4 @@
       </div>
     </div>
   {/snippet}
-</BottomSheet>
+</Drawer>
