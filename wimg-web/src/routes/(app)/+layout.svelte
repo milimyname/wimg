@@ -17,7 +17,6 @@
   import AccountSwitcher from "../../components/AccountSwitcher.svelte";
   import GlobalDropOverlay from "../../components/GlobalDropOverlay.svelte";
   import OnboardingOverlay from "../../components/OnboardingOverlay.svelte";
-  import DrawerIndent from "../../components/DrawerIndent.svelte";
 
   let { children } = $props();
   let loading = $state(true);
@@ -147,7 +146,6 @@
   }
 </script>
 
-<DrawerIndent>
 <div
   class="min-h-screen bg-(--color-bg)"
   style="padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px))"
@@ -198,7 +196,6 @@
   {/if}
   <BottomNav />
 </div>
-</DrawerIndent>
 
 <Toast />
 
