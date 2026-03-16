@@ -1,0 +1,44 @@
+name: Feedback Triage
+
+on:
+  issues:
+    types: [opened, labeled]
+
+concurrency:
+  group: feedback-triage
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    # Only run on issues created by the feedback system
+    if: contains(github.event.issue.labels.*.name, 'user-feedback')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Triage with Claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          trigger_phrase: ""
+          direct_prompt: |
+            This is a user feedback issue submitted via the wimg in-app feedback form.
+
+            Please:
+            1. Read the issue title and body
+            2. Determine if this is a bug report, feature request, or general feedback
+            3. Check the codebase to see if this is a known issue or already implemented
+            4. Add a helpful comment:
+               - For bugs: acknowledge the issue, identify the relevant file(s) if possible, suggest severity (low/medium/high)
+               - For features: assess feasibility, estimate complexity (small/medium/large), reference similar existing features
+               - For feedback: acknowledge and tag as "noted"
+            5. Add appropriate labels (e.g., "good first issue", "needs-investigation", "duplicate")
+
+            Be concise and friendly. Write in the same language as the issue (German or English).
+
+            The project is a local-first personal finance app (Zig core + Svelte 5 web + SwiftUI iOS).
+            See CLAUDE.md for full project context.
