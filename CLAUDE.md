@@ -38,10 +38,12 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 - **Linter:** oxlint (`.oxlintrc.json`) — correctness/error, suspicious/warn, perf/warn
 - **Pre-commit:** lefthook (`zig fmt`, `oxfmt`, `oxlint`, commit-msg validation)
 - **Commit format:** conventional commits (`feat:`, `fix:`, `refactor:`, etc.) — enforced by lefthook
+- **Tests:** `bun test` — 36 tests covering tax calculations, format utils, changelog logic
 - **Release:** `scripts/release.sh` — bump versions, changelog (filters chore/ci/build), commit, tag, `--push`
 - **Build WASM:** `scripts/build-wasm.sh` — two variants (web 209MB + compact 53MB)
 - **Build iOS:** `scripts/build-ios.sh` — XCFramework
 - **CI:** `.github/workflows/release.yml` — check → build → GitHub release
+- **Feedback CI:** `.github/workflows/feedback-triage.yml` — Claude Code Action triages user-feedback issues
 
 ---
 
@@ -80,17 +82,31 @@ Conventional commits enforced by lefthook `commit-msg` hook.
 
 LayerChart removed — all charts are pure SVG (DonutChart, NetWorthChart,
 SpendingHeatmap). Changelog page shows commit type badges
-(feat/fix/refactor/perf) with grid layout. About page has 20 FAQ entries
+(feat/fix/refactor/perf) with grid layout. About page has 22 FAQ entries
 with hash-anchor deep-links from Command Palette (`afterNavigate` +
-`noScroll` goto for reliable scrolling past BottomSheet body lock).
+`noScroll` goto for reliable scrolling past Drawer body lock).
 UpdateBanner changelog fallback for unreleased versions.
+
+Drawer component (renamed from BottomSheet) with Base UI-inspired stacking:
+global `drawerStore` tracks open drawers, portal to `document.body`, dynamic
+z-index from stack depth, CSS-driven indent when nested (custom properties
+`--indent-scale`/`--indent-y`), input isolation, dim overlay, data attributes
+(`data-open`, `data-swiping`, `data-nested-drawer-open`). `DrawerIndent`
+wraps page content for scale-down effect when any drawer opens. Sonner-style
+stacked toasts (multiple simultaneous, hover-to-pause, swipe-to-dismiss).
+
+In-app feedback system: `POST /feedback` on wimg-sync creates GitHub Issues
+with `user-feedback` label. Rate limited (5/hour per IP). FeedbackSheet
+stacks on top of Command Palette. Feedback history persisted in
+localStorage (web) / UserDefaults (iOS). Claude Code Action auto-triages
+feedback issues.
 
 All Phase 6 features complete except 6.1 (Annual Review).
 MCP server has 24 tools (11 read + 13 write) including savings goals.
 Tax page has custom keyword settings (user-defined keywords per category,
 persisted in localStorage). Tax logic extracted to `src/lib/tax.ts` (pure
-functions, testable). Vitest set up with 36 tests covering tax calculations,
-format utils, and changelog logic.
+functions, testable). Bun test runner with 36 tests covering tax
+calculations, format utils, and changelog logic (migrated from vitest).
 
 iOS dark mode support (ThemeManager with light/dark/system, adaptive colors
 in WimgTheme, settings picker). FinTS HTTP via C ABI callback (URLSession
