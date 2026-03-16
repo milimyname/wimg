@@ -184,14 +184,16 @@
     }
   }
 
-  /* Smooth fade-out when Drawer opens */
+  /* Smooth fade when Drawer opens/closes */
   .nav-bar {
-    transition: opacity 0.25s ease, transform 0.25s ease;
+    transition: opacity 0.3s ease 0.05s, transform 0.3s cubic-bezier(0.32, 0.72, 0, 1) 0.05s;
   }
 
   :global(html.sheet-active) .nav-bar {
     opacity: 0;
     transform: translateY(100%);
     pointer-events: none;
+    /* Hide instantly, reappear with delay */
+    transition: opacity 0.2s ease, transform 0.2s ease;
   }
 </style>

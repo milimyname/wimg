@@ -107,13 +107,13 @@
   });
 
   // Toggle sheet-active class on <html> (used by BottomNav to hide)
+  // Each open drawer adds it; cleanup always removes it.
+  // If another drawer is still open, its own $effect re-adds it.
   $effect(() => {
     if (open) {
       document.documentElement.classList.add("sheet-active");
       return () => {
-        if (drawerStore.openCount === 0) {
-          document.documentElement.classList.remove("sheet-active");
-        }
+        document.documentElement.classList.remove("sheet-active");
       };
     }
   });
