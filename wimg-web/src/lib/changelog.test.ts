@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "bun:test";
 
 // Mock localStorage
 const storage: Record<string, string> = {};
-vi.stubGlobal("localStorage", {
+globalThis.localStorage = {
   getItem: (key: string) => storage[key] ?? null,
   setItem: (key: string, value: string) => {
     storage[key] = value;
@@ -10,7 +10,14 @@ vi.stubGlobal("localStorage", {
   removeItem: (key: string) => {
     delete storage[key];
   },
-});
+  clear: () => {
+    for (const k of Object.keys(storage)) delete storage[k];
+  },
+  get length() {
+    return Object.keys(storage).length;
+  },
+  key: (i: number) => Object.keys(storage)[i] ?? null,
+} as Storage;
 
 // We can't import the Svelte store directly (uses $state rune),
 // so we test the pure logic by reimplementing releasesSince.

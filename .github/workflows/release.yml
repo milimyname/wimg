@@ -48,9 +48,9 @@ jobs:
         working-directory: wimg-web
         run: bunx oxlint
 
-      - name: vitest
+      - name: bun test
         working-directory: wimg-web
-        run: bun run test
+        run: bun test
 
       - name: svelte-check
         working-directory: wimg-web
