@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.6.11 (2026-03-17)
+
+- fix: feedback verbose errors, full-height snap, selected icon swap
+- docs: update CLAUDE.md with Drawer, feedback, bun test, stacked toasts
+- fix: feedback triage OIDC permissions and token rename
+- refactor: migrate tests from vitest to bun test
+- fix: sheet-active class cleanup and BottomNav fly-in transition
+- feat: Sonner-style stacked toasts with hover-to-pause and swipe
+
 ## v0.6.10 (2026-03-17)
 
 - feat: drawer test page for stacking validation
