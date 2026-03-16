@@ -2,7 +2,7 @@ name: Feedback Triage
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [opened]
 
 concurrency:
   group: feedback-triage
@@ -16,6 +16,8 @@ jobs:
     permissions:
       contents: read
       issues: write
+      id-token: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4

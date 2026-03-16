@@ -8,7 +8,7 @@ type Bindings = {
   BUCKET: R2Bucket;
   SYNC_ROOM: DurableObjectNamespace;
   MCP_SESSION: DurableObjectNamespace;
-  GITHUB_TOKEN: string;
+  FEEDBACK_GITHUB_TOKEN: string;
 };
 
 const ALLOWED_ORIGINS = [
@@ -224,7 +224,7 @@ app.post("/feedback", async (c) => {
   const res = await fetch("https://api.github.com/repos/milimyname/wimg/issues", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${c.env.GITHUB_TOKEN}`,
+      Authorization: `Bearer ${c.env.FEEDBACK_GITHUB_TOKEN}`,
       "Content-Type": "application/json",
       "User-Agent": "wimg-sync",
       Accept: "application/vnd.github+json",
