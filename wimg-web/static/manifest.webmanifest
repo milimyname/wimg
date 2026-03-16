@@ -4,8 +4,8 @@
   "description": "Local-first personal finance tracker. Import bank CSVs, categorize spending, track debts.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8f9fa",
-  "theme_color": "#4361ee",
+  "background_color": "#FAF9F6",
+  "theme_color": "#FAF9F6",
   "orientation": "portrait",
   "icons": [
     {
