@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.6.10 (2026-03-17)
+
+- feat: drawer test page for stacking validation
+- fix: theme-color from blue to app background
+- feat: in-app feedback → GitHub Issue with rate limiting
+- feat: Drawer component with stacking, indent, and portal support
+
 ## v0.6.9 (2026-03-16)
 
 - docs: add Sparquote + Heatmap FAQ entries, update project docs
