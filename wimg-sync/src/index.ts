@@ -239,7 +239,11 @@ app.post("/feedback", async (c) => {
   if (!res.ok) {
     const err = await res.text();
     console.error("GitHub API error:", res.status, err);
-    return c.json({ error: "Failed to create issue" }, 502);
+    return c.json({
+      error: "Failed to create issue",
+      status: res.status,
+      detail: err,
+    }, 502);
   }
 
   const issue = (await res.json()) as { html_url: string; number: number };

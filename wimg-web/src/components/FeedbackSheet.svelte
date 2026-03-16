@@ -94,7 +94,7 @@
   ];
 </script>
 
-<Drawer open={feedbackStore.open} onclose={onClose} snaps={[0.55]}>
+<Drawer open={feedbackStore.open} onclose={onClose} snaps={[0.55, 0.92]}>
   {#snippet children({ handle, content })}
     <div class="pt-3 pb-2 shrink-0" {@attach handle}>
       <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
@@ -141,7 +141,16 @@
               class:text-gray-500={fbType !== opt.value}
               onclick={() => (fbType = opt.value)}
             >
-              {opt.icon} {opt.label}
+              {#if fbType === opt.value}
+                <span class="inline-block w-4 h-4 align-middle mr-0.5">
+                  <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+              {:else}
+                {opt.icon}
+              {/if}
+              {opt.label}
             </button>
           {/each}
         </div>

@@ -76,4 +76,6 @@ npm-debug.log*
 
 .wrangler/
 
-docs/wimg-full.md.dev.vars
+docs/wimg-full.md
+
+wimg-sync/.dev.vars
