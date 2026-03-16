@@ -1,47 +1,128 @@
 /**
- * Reactive toast store for undo snackbar.
+ * Sonner-style stacked toast store.
+ * Supports multiple simultaneous toasts with auto-dismiss,
+ * undo callbacks, hover-to-pause, and swipe-to-dismiss.
  */
 
+export interface Toast {
+  id: string;
+  message: string;
+  onUndo?: (() => Promise<void>) | null;
+  createdAt: number;
+  duration: number; // ms
+  paused: boolean;
+  remaining: number; // ms remaining when paused
+}
+
+const MAX_VISIBLE = 3;
+const DEFAULT_DURATION = 5000;
+
 class ToastStore {
-  #visible = $state(false);
-  #message = $state("");
-  #undoCallback: (() => Promise<void>) | null = $state(null);
-  #timer: ReturnType<typeof setTimeout> | null = null;
+  #toasts = $state<Toast[]>([]);
+  #timers = new Map<string, ReturnType<typeof setTimeout>>();
 
-  get visible() {
-    return this.#visible;
+  get toasts(): Toast[] {
+    return this.#toasts;
   }
 
-  get message() {
-    return this.#message;
+  get visible(): boolean {
+    return this.#toasts.length > 0;
   }
 
-  get hasUndo() {
-    return this.#undoCallback !== null;
+  // Backwards compat
+  get message(): string {
+    return this.#toasts[this.#toasts.length - 1]?.message ?? "";
   }
 
-  show(msg: string, onUndo?: () => Promise<void>) {
-    if (this.#timer) clearTimeout(this.#timer);
-    this.#message = msg;
-    this.#undoCallback = onUndo ?? null;
-    this.#visible = true;
-    this.#timer = setTimeout(() => {
-      this.dismiss();
-    }, 5000);
+  get hasUndo(): boolean {
+    return this.#toasts.some((t) => t.onUndo != null);
   }
 
-  dismiss() {
-    if (this.#timer) clearTimeout(this.#timer);
-    this.#timer = null;
-    this.#visible = false;
-    this.#undoCallback = null;
+  show(msg: string, onUndo?: () => Promise<void>, duration = DEFAULT_DURATION) {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const toast: Toast = {
+      id,
+      message: msg,
+      onUndo: onUndo ?? null,
+      createdAt: Date.now(),
+      duration,
+      paused: false,
+      remaining: duration,
+    };
+
+    // Add to front (newest first in the array, rendered bottom-up)
+    this.#toasts = [...this.#toasts, toast];
+
+    // Trim old toasts beyond max
+    if (this.#toasts.length > MAX_VISIBLE + 2) {
+      const removed = this.#toasts[0];
+      this.#clearTimer(removed.id);
+      this.#toasts = this.#toasts.slice(1);
+    }
+
+    this.#startTimer(id, duration);
+    return id;
   }
 
-  async triggerUndo() {
-    if (!this.#undoCallback) return;
-    const cb = this.#undoCallback;
-    this.dismiss();
+  dismiss(id?: string) {
+    if (!id) {
+      // Dismiss newest (backwards compat)
+      const last = this.#toasts[this.#toasts.length - 1];
+      if (last) this.dismiss(last.id);
+      return;
+    }
+    this.#clearTimer(id);
+    this.#toasts = this.#toasts.filter((t) => t.id !== id);
+  }
+
+  async triggerUndo(id?: string) {
+    const toast = id
+      ? this.#toasts.find((t) => t.id === id)
+      : this.#toasts.findLast((t) => t.onUndo != null);
+    if (!toast?.onUndo) return;
+    const cb = toast.onUndo;
+    this.dismiss(toast.id);
     await cb();
+  }
+
+  pauseAll() {
+    for (const toast of this.#toasts) {
+      if (!toast.paused) {
+        toast.paused = true;
+        toast.remaining = Math.max(0, toast.remaining - (Date.now() - toast.createdAt));
+        this.#clearTimer(toast.id);
+      }
+    }
+    this.#toasts = [...this.#toasts]; // trigger reactivity
+  }
+
+  resumeAll() {
+    for (const toast of this.#toasts) {
+      if (toast.paused) {
+        toast.paused = false;
+        toast.createdAt = Date.now();
+        this.#startTimer(toast.id, toast.remaining);
+      }
+    }
+    this.#toasts = [...this.#toasts];
+  }
+
+  #startTimer(id: string, ms: number) {
+    this.#clearTimer(id);
+    this.#timers.set(
+      id,
+      setTimeout(() => {
+        this.dismiss(id);
+      }, ms),
+    );
+  }
+
+  #clearTimer(id: string) {
+    const timer = this.#timers.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      this.#timers.delete(id);
+    }
   }
 }
 
