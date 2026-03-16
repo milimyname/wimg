@@ -10,6 +10,7 @@ import {
   exportCsv,
   exportDb,
   takeSnapshot,
+  getTransactions,
   undo,
   redo,
   close,
@@ -29,6 +30,7 @@ import { toastStore } from "$lib/toast.svelte";
 import { data } from "$lib/data.svelte";
 import { dateNav } from "$lib/dateNav.svelte";
 import { themeStore } from "$lib/theme.svelte";
+import { feedbackStore } from "$lib/feedback.svelte";
 
 export interface PaletteAction {
   id: string;
@@ -188,6 +190,14 @@ const STATIC_ACTIONS: PaletteAction[] = [
     icon: "ℹ️",
     keywords: ["about", "info", "version"],
     handler: () => goto("/about"),
+  },
+  {
+    id: "nav-feedback",
+    label: "Feedback senden",
+    group: "Navigation",
+    icon: "💬",
+    keywords: ["feedback", "bug", "wunsch", "issue", "melden"],
+    handler: () => feedbackStore.show(),
   },
   {
     id: "nav-changelog",
@@ -455,6 +465,31 @@ const STATIC_ACTIONS: PaletteAction[] = [
       const now = new Date();
       takeSnapshot(now.getFullYear(), now.getMonth() + 1);
       toastStore.show("Snapshot erstellt");
+    },
+  },
+  {
+    id: "snapshot-all",
+    label: "Snapshots für alle Monate erstellen",
+    group: "Daten",
+    icon: "📸",
+    keywords: ["snapshot", "alle", "historisch", "monate", "backfill"],
+    handler: () => {
+      const txns = getTransactions();
+      if (txns.length === 0) {
+        toastStore.show("Keine Transaktionen vorhanden");
+        return;
+      }
+      const months = new Set<string>();
+      for (const tx of txns) {
+        months.add(tx.date.slice(0, 7)); // "2025-03"
+      }
+      let count = 0;
+      for (const m of months) {
+        const [y, mo] = m.split("-").map(Number);
+        takeSnapshot(y, mo);
+        count++;
+      }
+      toastStore.show(`${count} Snapshots erstellt`);
     },
   },
 

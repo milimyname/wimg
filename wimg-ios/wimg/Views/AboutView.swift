@@ -48,6 +48,9 @@ struct AboutView: View {
 
     @State private var expandedFAQ: String?
 
+    // Feedback sheet
+    @State private var showFeedback = false
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -207,6 +210,28 @@ struct AboutView: View {
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .stroke(Color.orange.opacity(0.2), lineWidth: 1)
                     }
+                }
+
+                // MARK: - Feedback Button
+                Button {
+                    showFeedback = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "bubble.left.and.bubble.right")
+                            .font(.subheadline)
+                        Text("Feedback senden")
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                    }
+                    .foregroundStyle(.indigo)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.indigo.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .sheet(isPresented: $showFeedback) {
+                    FeedbackSheetView()
+                        .presentationDetents([.medium])
+                        .presentationDragIndicator(.visible)
                 }
 
                 // MARK: - FAQ

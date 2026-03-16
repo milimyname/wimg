@@ -20,6 +20,9 @@ new_sqlite_classes = ["SyncRoom"]
 tag = "v2"
 new_sqlite_classes = ["McpSession"]
 
+# GITHUB_TOKEN — set via `wrangler secret put GITHUB_TOKEN`
+# Used by POST /feedback to create GitHub Issues
+
 # Bundle WASM binary with the Worker
 [[rules]]
 type = "CompiledWasm"

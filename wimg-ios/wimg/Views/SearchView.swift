@@ -6,6 +6,7 @@ struct SearchView: View {
     @State private var transactions: [Transaction] = []
     @State private var selectedTransaction: Transaction?
     @State private var undoMessage: String?
+    @State private var showFeedback = false
     @State private var dateFrom: Date?
     @State private var dateTo: Date?
     @State private var amountMin: Double = 0
@@ -144,6 +145,11 @@ struct SearchView: View {
                     showUndo("Kategorie geändert")
                 }
             }
+            .sheet(isPresented: $showFeedback) {
+                FeedbackSheetView()
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
+            }
             .overlay(alignment: .bottom) {
                 if let msg = undoMessage {
                     UndoToast(message: msg) {
@@ -195,6 +201,9 @@ struct SearchView: View {
                     }
                     navLink("Über wimg", icon: "info.circle", color: .gray) {
                         AboutView()
+                    }
+                    actionButton("Feedback senden", icon: "bubble.left.and.bubble.right", color: .indigo) {
+                        showFeedback = true
                     }
                 }
 

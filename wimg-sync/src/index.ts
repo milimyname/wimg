@@ -8,6 +8,7 @@ type Bindings = {
   BUCKET: R2Bucket;
   SYNC_ROOM: DurableObjectNamespace;
   MCP_SESSION: DurableObjectNamespace;
+  GITHUB_TOKEN: string;
 };
 
 const ALLOWED_ORIGINS = [
@@ -165,6 +166,84 @@ app.delete("/mcp", async (c) => {
       headers,
     }),
   );
+});
+
+// --- Feedback → GitHub Issue (rate limited: 5/hour per IP) ---
+
+const feedbackRateLimit = new Map<string, number[]>();
+
+function checkRateLimit(ip: string, maxPerHour = 5): boolean {
+  const now = Date.now();
+  const hourAgo = now - 3600_000;
+  const timestamps = (feedbackRateLimit.get(ip) ?? []).filter((t) => t > hourAgo);
+  if (timestamps.length >= maxPerHour) return false;
+  timestamps.push(now);
+  feedbackRateLimit.set(ip, timestamps);
+  return true;
+}
+
+app.post("/feedback", async (c) => {
+  // Rate limit by IP
+  const ip = c.req.header("cf-connecting-ip") ?? c.req.header("x-forwarded-for") ?? "unknown";
+  if (!checkRateLimit(ip)) {
+    return c.json({ error: "Rate limit exceeded. Max 5 feedback per hour." }, 429);
+  }
+
+  const { type, message, platform } = await c.req.json<{
+    type: "bug" | "feature" | "feedback";
+    message: string;
+    platform?: string;
+  }>();
+
+  if (!message || message.trim().length < 3) {
+    return c.json({ error: "Message too short" }, 400);
+  }
+  if (!type || !["bug", "feature", "feedback"].includes(type)) {
+    return c.json({ error: "Invalid type" }, 400);
+  }
+
+  const labels: Record<string, string> = {
+    bug: "bug",
+    feature: "enhancement",
+    feedback: "feedback",
+  };
+  const icons: Record<string, string> = {
+    bug: "🐛",
+    feature: "✨",
+    feedback: "💬",
+  };
+
+  const title = `${icons[type]} [${type}] ${message.trim().slice(0, 60)}`;
+  const body = [
+    message.trim(),
+    "",
+    "---",
+    `*Submitted via wimg in-app feedback${platform ? ` (${platform})` : ""}*`,
+  ].join("\n");
+
+  const res = await fetch("https://api.github.com/repos/milimyname/wimg/issues", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${c.env.GITHUB_TOKEN}`,
+      "Content-Type": "application/json",
+      "User-Agent": "wimg-sync",
+      Accept: "application/vnd.github+json",
+    },
+    body: JSON.stringify({
+      title,
+      body,
+      labels: [labels[type], "user-feedback"],
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error("GitHub API error:", res.status, err);
+    return c.json({ error: "Failed to create issue" }, 502);
+  }
+
+  const issue = (await res.json()) as { html_url: string; number: number };
+  return c.json({ url: issue.html_url, number: issue.number });
 });
 
 export default app;
