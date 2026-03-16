@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.12 (2026-03-17)
+
+- refactor: remove DrawerIndent page scale effect
+
 ## v0.6.11 (2026-03-17)
 
 - fix: feedback verbose errors, full-height snap, selected icon swap
