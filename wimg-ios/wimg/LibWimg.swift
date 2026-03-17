@@ -472,6 +472,7 @@ final class LibWimg {
 
     static func fintsConnect(blz: String, user: String, pin: String, product: String = "F7C4049477F6136957A46EC28") throws -> FintsStatusResult {
         try ensureInit()
+        print("[FinTS] fintsConnect called (lib build: 2026-03-17b)")
         let json = """
         {"blz":"\(blz)","user":"\(user)","pin":"\(pin)","product":"\(product)"}
         """
@@ -483,7 +484,9 @@ final class LibWimg {
             throw WimgError.operationFailed("fintsConnect", lastError())
         }
         defer { wimg_free(ptr, 0) }
-        return try decodeLengthPrefixed(ptr)
+        let result: FintsStatusResult = try decodeLengthPrefixed(ptr)
+        print("[FinTS] connect result: \(result)")
+        return result
     }
 
     static func fintsSendTan(tan: String) throws -> FintsStatusResult {

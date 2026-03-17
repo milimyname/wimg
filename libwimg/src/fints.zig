@@ -340,7 +340,27 @@ pub fn parseResponse(session: *FintsSession, data: []const u8, out: *ParsedRespo
 
         // Parse segment header: ID:NUM:VER
         if (startsWith(segment, "HNHBK")) {
-            // Message envelope — nothing to extract
+            // Extract dialog ID from HNHBK:1:3+SIZE+300+DIALOG_ID+MSG_NUM
+            // Fields (after segment header): [0]=size, [1]=hbci_ver, [2]=dialog_id, [3]=msg_num
+            var field_idx: u8 = 0;
+            var fpos: usize = 0;
+            // Skip segment header (up to first +)
+            while (fpos < segment.len and segment[fpos] != '+') : (fpos += 1) {}
+            fpos += 1; // skip the +
+            var field_start = fpos;
+            while (fpos <= segment.len) : (fpos += 1) {
+                if (fpos == segment.len or segment[fpos] == '+' or segment[fpos] == '\'') {
+                    if (field_idx == 2) { // dialog_id
+                        const did = segment[field_start..fpos];
+                        const dlen = @min(did.len, out.dialog_id.len);
+                        @memcpy(out.dialog_id[0..dlen], did[0..dlen]);
+                        out.dialog_id_len = @intCast(dlen);
+                        break;
+                    }
+                    field_idx += 1;
+                    field_start = fpos + 1;
+                }
+            }
         } else if (startsWith(segment, "HNVSD")) {
             // Security envelope contains inner segments
             // Extract content between @len@ markers
@@ -1008,7 +1028,7 @@ test "writeEnvelope size field is correct" {
     const len = writeEnvelope(&s, &buf, inner) orelse return error.TestUnexpectedResult;
 
     // Extract size from header (after "HNHBK:1:3+", 12 digits)
-    const size_start = 11;
+    const size_start = 10;
     const size_str = buf[size_start .. size_start + 12];
     const declared_size = std.fmt.parseInt(usize, size_str, 10) catch return error.TestUnexpectedResult;
     try std.testing.expectEqual(len, declared_size);
