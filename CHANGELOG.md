@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.6.13 (2026-03-17)
+
+- docs: add PSD2/PSD3 banking aggregators research
+- fix: FinTS dialog ID extraction from HNHBK response + envelope size test fix
+- docs: add FinTS protocol learnings to decisions log and phases
+- fix: FinTS protocol — HNHBK size patch, HKIDN DEG, segment numbering, Base64
+- fix: FinTS protocol — HNHBK size patch off-by-one, segment numbering, no envelope
+- fix: FinTS Base64 newline stripping, HKIDN DEG format, Subsembly bank
+
 ## v0.6.12 (2026-03-17)
 
 - refactor: remove DrawerIndent page scale effect
