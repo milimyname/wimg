@@ -13,6 +13,7 @@ struct BankInfo: Codable, Identifiable {
 struct FintsStatusResult: Codable {
     let status: String       // "ok", "error", "tan_required"
     let challenge: String?   // TAN challenge text (when status == "tan_required")
+    let phototan: String?    // Base64-encoded photoTAN PNG image
     let message: String?     // Error message (when status == "error")
 
     var isOk: Bool { status == "ok" }

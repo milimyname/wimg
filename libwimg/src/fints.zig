@@ -31,8 +31,10 @@ pub const FintsSession = struct {
 
     hitan_version: u8,
 
-    challenge: [256]u8,
+    challenge: [512]u8,
     challenge_len: u16,
+    challenge_hhduc: [8192]u8, // photoTAN PNG image (Base64 or binary)
+    challenge_hhduc_len: u16,
     challenge_ref: [32]u8,
     challenge_ref_len: u8,
 
@@ -49,6 +51,7 @@ pub const FintsSession = struct {
         @memset(&s.dialog_id, 0);
         @memset(&s.product_id, 0);
         @memset(&s.challenge, 0);
+        @memset(&s.challenge_hhduc, 0);
         @memset(&s.challenge_ref, 0);
 
         const blz_len = @min(blz.len, 8);
@@ -75,6 +78,7 @@ pub const FintsSession = struct {
         s.has_pending_tan = false;
         s.decoupled = false;
         s.challenge_len = 0;
+        s.challenge_hhduc_len = 0;
         s.challenge_ref_len = 0;
         s.product_id_len = 0;
 
@@ -148,8 +152,10 @@ pub const ParsedResponse = struct {
     system_id_len: u8,
     mt940_data: [32768]u8, // up to 32 KB of MT940 data
     mt940_len: u16,
-    challenge: [256]u8,
+    challenge: [512]u8,
     challenge_len: u16,
+    challenge_hhduc: [8192]u8, // photoTAN image data
+    challenge_hhduc_len: u16,
     challenge_ref: [32]u8,
     challenge_ref_len: u8,
     has_tan_request: bool,
@@ -162,6 +168,7 @@ pub const ParsedResponse = struct {
         r.system_id_len = 0;
         r.mt940_len = 0;
         r.challenge_len = 0;
+        r.challenge_hhduc_len = 0;
         r.challenge_ref_len = 0;
         r.has_tan_request = false;
         r.decoupled = false;
@@ -241,26 +248,56 @@ pub fn buildFetchStatements(session: *const FintsSession, from: []const u8, to: 
     var inner_buf: [4096]u8 = undefined;
     var inner_pos: usize = 0;
 
-    // HKKAZ — Account statements (CAMT or MT940)
-    // Version 7 uses MT940
-    inner_pos += writeSegment(&inner_buf, inner_pos, "HKKAZ", 3, 7, &.{
-        "1", // account reference (simplified)
-        "", // all accounts
-        from,
-        to,
-        "", // max entries
-        "", // start token
-    }) orelse return null;
+    // HKKAZ — Account statements MT940
+    // Version 5 (Comdirect supports v5 per BPD HIKAZS:11:5)
+    // Kontoverbindung DEG = Ktonr:Unterkonto:Laenderkennung:BLZ
+    // Note: colon inside DEG gets escaped by writeSegment, but Account2
+    // DEG colons ARE structural separators. So we build the DEG manually.
+    var acct_buf: [64]u8 = undefined;
+    var acct_pos: usize = 0;
+    const uid = session.userIdSlice();
+    @memcpy(acct_buf[acct_pos .. acct_pos + uid.len], uid);
+    acct_pos += uid.len;
+    const acct_suffix = ":0:280:";
+    @memcpy(acct_buf[acct_pos .. acct_pos + acct_suffix.len], acct_suffix);
+    acct_pos += acct_suffix.len;
+    @memcpy(acct_buf[acct_pos .. acct_pos + 8], &session.blz);
+    acct_pos += 8;
+
+    // Write HKKAZ manually (DEG colons must not be escaped)
+    var kaz_buf: [256]u8 = undefined;
+    var kaz_pos: usize = 0;
+    const kaz_header = "HKKAZ:2:5+";
+    @memcpy(kaz_buf[kaz_pos .. kaz_pos + kaz_header.len], kaz_header);
+    kaz_pos += kaz_header.len;
+    // Account DEG (colons are structural, NOT escaped)
+    @memcpy(kaz_buf[kaz_pos .. kaz_pos + acct_pos], acct_buf[0..acct_pos]);
+    kaz_pos += acct_pos;
+    // +N+ (Alle Konten = Nein)
+    @memcpy(kaz_buf[kaz_pos .. kaz_pos + 3], "+N+");
+    kaz_pos += 3;
+    // Von Datum
+    @memcpy(kaz_buf[kaz_pos .. kaz_pos + from.len], from);
+    kaz_pos += from.len;
+    kaz_buf[kaz_pos] = '+';
+    kaz_pos += 1;
+    // Bis Datum
+    @memcpy(kaz_buf[kaz_pos .. kaz_pos + to.len], to);
+    kaz_pos += to.len;
+    // ++ (max entries, start token) + terminator
+    @memcpy(kaz_buf[kaz_pos .. kaz_pos + 3], "++'");
+    kaz_pos += 3;
+
+    @memcpy(inner_buf[inner_pos .. inner_pos + kaz_pos], kaz_buf[0..kaz_pos]);
+    inner_pos += kaz_pos;
 
     // HKTAN
-    inner_pos += writeSegment(&inner_buf, inner_pos, "HKTAN", 4, session.hitan_version, &.{
+    inner_pos += writeSegment(&inner_buf, inner_pos, "HKTAN", 3, 6, &.{
         "4",
         "HKKAZ",
-        "",
-        "",
     }) orelse return null;
 
-    return writeSecurityEnvelope(session, buf, inner_buf[0..inner_pos]);
+    return writeEnvelope(session, buf, inner_buf[0..inner_pos]);
 }
 
 /// Build TAN submission message.
@@ -268,8 +305,8 @@ pub fn buildTanResponse(session: *const FintsSession, tan: []const u8, buf: []u8
     var inner_buf: [4096]u8 = undefined;
     var inner_pos: usize = 0;
 
-    // HKTAN with the TAN
-    inner_pos += writeSegment(&inner_buf, inner_pos, "HKTAN", 3, session.hitan_version, &.{
+    // HKTAN with the TAN (segment 2, no security envelope)
+    inner_pos += writeSegment(&inner_buf, inner_pos, "HKTAN", 2, 6, &.{
         "2", // process variant 2 = submit TAN
         "",
         session.challenge_ref[0..session.challenge_ref_len],
@@ -277,7 +314,7 @@ pub fn buildTanResponse(session: *const FintsSession, tan: []const u8, buf: []u8
         tan,
     }) orelse return null;
 
-    return writeSecurityEnvelope(session, buf, inner_buf[0..inner_pos]);
+    return writeEnvelope(session, buf, inner_buf[0..inner_pos]);
 }
 
 /// Build dialog end message.
@@ -285,11 +322,11 @@ pub fn buildDialogEnd(session: *const FintsSession, buf: []u8) ?usize {
     var inner_buf: [4096]u8 = undefined;
     var inner_pos: usize = 0;
 
-    inner_pos += writeSegment(&inner_buf, inner_pos, "HKEND", 3, 1, &.{
+    inner_pos += writeSegment(&inner_buf, inner_pos, "HKEND", 2, 1, &.{
         session.dialogIdSlice(),
     }) orelse return null;
 
-    return writeSecurityEnvelope(session, buf, inner_buf[0..inner_pos]);
+    return writeEnvelope(session, buf, inner_buf[0..inner_pos]);
 }
 
 /// Parse a FinTS response message, updating session state.
@@ -344,6 +381,10 @@ pub fn parseResponse(session: *FintsSession, data: []const u8, out: *ParsedRespo
         if (out.challenge_len > 0) {
             @memcpy(session.challenge[0..out.challenge_len], out.challenge[0..out.challenge_len]);
             session.challenge_len = out.challenge_len;
+        }
+        if (out.challenge_hhduc_len > 0) {
+            @memcpy(session.challenge_hhduc[0..out.challenge_hhduc_len], out.challenge_hhduc[0..out.challenge_hhduc_len]);
+            session.challenge_hhduc_len = out.challenge_hhduc_len;
         }
         if (out.challenge_ref_len > 0) {
             @memcpy(session.challenge_ref[0..out.challenge_ref_len], out.challenge_ref[0..out.challenge_ref_len]);
@@ -680,9 +721,30 @@ fn extractTanChallenge(segment: []const u8, out: *ParsedResponse) void {
             },
             4 => {
                 // Challenge text
-                const chal_len = @min(field.len, 256);
+                const chal_len = @min(field.len, 512);
                 @memcpy(out.challenge[0..chal_len], field[0..chal_len]);
                 out.challenge_len = @intCast(chal_len);
+            },
+            5 => {
+                // Challenge HHDUC — photoTAN image data
+                // May be prefixed with @len@ binary marker
+                if (std.mem.indexOf(u8, field, "@")) |at_pos| {
+                    const after = field[at_pos + 1 ..];
+                    if (std.mem.indexOf(u8, after, "@")) |end_at| {
+                        const data_start = at_pos + 1 + end_at + 1;
+                        if (data_start < field.len) {
+                            const data = field[data_start..];
+                            const copy_len = @min(data.len, 8192);
+                            @memcpy(out.challenge_hhduc[0..copy_len], data[0..copy_len]);
+                            out.challenge_hhduc_len = @intCast(copy_len);
+                        }
+                    }
+                } else if (field.len > 0) {
+                    // Raw data without @len@ prefix
+                    const copy_len = @min(field.len, 8192);
+                    @memcpy(out.challenge_hhduc[0..copy_len], field[0..copy_len]);
+                    out.challenge_hhduc_len = @intCast(copy_len);
+                }
             },
             else => {},
         }

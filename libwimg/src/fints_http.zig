@@ -48,32 +48,34 @@ pub fn sendFintsMessage(
     _ = encoder.encode(enc_buf, message);
 
     if (http_callback) |cb| {
-        // Use platform callback (Swift URLSession on iOS)
-        var resp_b64_buf: [131072]u8 = undefined; // 128KB for Base64 response
+        // Use file-level static to avoid stack overflow on iOS GCD threads
+        const S = struct {
+            var resp_b64_buf: [131072]u8 = undefined;
+            var clean_buf: [131072]u8 = undefined;
+        };
         const resp_b64_len = cb(
             url.ptr,
             @intCast(url.len),
             enc_buf.ptr,
             @intCast(enc_buf.len),
-            &resp_b64_buf,
-            @intCast(resp_b64_buf.len),
+            &S.resp_b64_buf,
+            @intCast(S.resp_b64_buf.len),
         );
 
         if (resp_b64_len <= 0) return HttpError.RequestFailed;
-        const resp_data = resp_b64_buf[0..@intCast(resp_b64_len)];
+        const resp_data = S.resp_b64_buf[0..@intCast(resp_b64_len)];
 
         // Strip whitespace/newlines from Base64 response (some banks add line breaks)
-        var clean_buf: [131072]u8 = undefined;
         var clean_len: usize = 0;
         for (resp_data) |c| {
             if (c != '\n' and c != '\r' and c != ' ' and c != '\t') {
-                clean_buf[clean_len] = c;
+                S.clean_buf[clean_len] = c;
                 clean_len += 1;
             }
         }
 
         // Base64-decode the cleaned response
-        const decoded_len = fints.base64Decode(out_buf, clean_buf[0..clean_len]) orelse return HttpError.Base64Error;
+        const decoded_len = fints.base64Decode(out_buf, S.clean_buf[0..clean_len]) orelse return HttpError.Base64Error;
         return decoded_len;
     }
 

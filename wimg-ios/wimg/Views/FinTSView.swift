@@ -23,6 +23,7 @@ struct FinTSView: View {
 
     // TAN
     @State private var challengeText = ""
+    @State private var photoTanData: Data?
     @State private var tanInput = ""
     @State private var sendingTan = false
 
@@ -297,18 +298,44 @@ struct FinTSView: View {
                     .foregroundStyle(WimgTheme.text)
             }
 
+            // photoTAN image
+            if let photoData = photoTanData, let uiImage = UIImage(data: photoData) {
+                VStack(spacing: 8) {
+                    Text("photoTAN")
+                        .font(.system(.caption, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 280, maxHeight: 280)
+                        .padding(16)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
+                    Text("Scannen Sie dieses Bild mit Ihrer photoTAN-App")
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.vertical, 8)
+            }
+
             // Challenge text
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Challenge")
-                    .font(.caption2)
-                    .foregroundStyle(WimgTheme.textSecondary)
-                Text(challengeText)
-                    .font(.system(.subheadline, design: .rounded))
-                    .foregroundStyle(WimgTheme.text)
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(WimgTheme.bg)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            if !challengeText.isEmpty && photoTanData == nil {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Challenge")
+                        .font(.caption2)
+                        .foregroundStyle(WimgTheme.textSecondary)
+                    Text(challengeText)
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundStyle(WimgTheme.text)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(WimgTheme.bg)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
             }
 
             // TAN input
@@ -539,6 +566,11 @@ struct FinTSView: View {
                     stage = .dateRange
                 } else if result.needsTan {
                     challengeText = result.challenge ?? "TAN erforderlich"
+                    if let b64 = result.phototan, let data = Data(base64Encoded: b64) {
+                        photoTanData = data
+                    } else {
+                        photoTanData = nil
+                    }
                     tanInput = ""
                     stage = .tanChallenge
                 } else {
@@ -611,7 +643,8 @@ struct FinTSView: View {
 
         do {
             let result: FintsFetchResult = try await withCheckedThrowingContinuation { continuation in
-                DispatchQueue.global(qos: .userInitiated).async {
+                // Use a Thread with 2MB stack (FinTS response parsing needs large stack buffers)
+                let thread = Thread {
                     do {
                         let r = try LibWimg.fintsFetch(from: fromStr, to: toStr)
                         continuation.resume(returning: r)
@@ -619,6 +652,9 @@ struct FinTSView: View {
                         continuation.resume(throwing: error)
                     }
                 }
+                thread.stackSize = 2 * 1024 * 1024 // 2MB
+                thread.qualityOfService = .userInitiated
+                thread.start()
             }
             await MainActor.run {
                 if result.needsTan {

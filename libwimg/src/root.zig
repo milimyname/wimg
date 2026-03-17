@@ -1558,8 +1558,25 @@ fn wimg_fints_connect(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
     }
 
     if (fints_session.has_pending_tan) {
-        var result_buf: [512]u8 = undefined;
+        var result_buf: [16384]u8 = undefined;
         const challenge = fints_session.challenge[0..fints_session.challenge_len];
+
+        // TAN exception: "nochallenge" means SCA not required — auto-skip
+        if (std.mem.eql(u8, challenge, "nochallenge") or fints_session.challenge_len == 0) {
+            fints_session.has_pending_tan = false;
+            return makeLengthPrefixed("{\"status\":\"ok\"}");
+        }
+
+        if (fints_session.challenge_hhduc_len > 0) {
+            // photoTAN: Base64-encode the image data
+            const hhduc = fints_session.challenge_hhduc[0..fints_session.challenge_hhduc_len];
+            const b64_encoder = std.base64.standard.Encoder;
+            var b64_buf: [12288]u8 = undefined;
+            const b64_data = b64_encoder.encode(&b64_buf, hhduc);
+            const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"tan_required\",\"challenge\":\"{s}\",\"phototan\":\"{s}\"}}", .{ challenge, b64_data }) catch return null;
+            return makeLengthPrefixed(result_json);
+        }
+
         const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"tan_required\",\"challenge\":\"{s}\"}}", .{challenge}) catch return null;
         return makeLengthPrefixed(result_json);
     }
@@ -1619,8 +1636,24 @@ fn wimg_fints_fetch(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
     };
 
     const json = data[0..len];
-    const from = jsonExtractString(json, "\"from\"") orelse "";
-    const to = jsonExtractString(json, "\"to\"") orelse "";
+    const from_raw = jsonExtractString(json, "\"from\"") orelse "";
+    const to_raw = jsonExtractString(json, "\"to\"") orelse "";
+
+    // Convert YYYY-MM-DD to YYYYMMDD for FinTS
+    var from_buf: [8]u8 = undefined;
+    var to_buf: [8]u8 = undefined;
+    const from = if (from_raw.len == 10 and from_raw[4] == '-') blk: {
+        @memcpy(from_buf[0..4], from_raw[0..4]);
+        @memcpy(from_buf[4..6], from_raw[5..7]);
+        @memcpy(from_buf[6..8], from_raw[8..10]);
+        break :blk from_buf[0..8];
+    } else from_raw;
+    const to = if (to_raw.len == 10 and to_raw[4] == '-') blk: {
+        @memcpy(to_buf[0..4], to_raw[0..4]);
+        @memcpy(to_buf[4..6], to_raw[5..7]);
+        @memcpy(to_buf[6..8], to_raw[8..10]);
+        break :blk to_buf[0..8];
+    } else to_raw;
 
     // Build and send HKKAZ request
     var msg_buf: [8192]u8 = undefined;
