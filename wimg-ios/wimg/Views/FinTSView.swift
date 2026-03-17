@@ -555,8 +555,12 @@ struct FinTSView: View {
 
     private func friendlyError(_ error: Error) -> String {
         let msg = error.localizedDescription
-        if msg.contains("HTTP request failed") {
-            return "Verbindung zur Bank fehlgeschlagen. Bitte prüfe deine Internetverbindung und versuche es erneut."
+        print("[FinTS] Error: \(msg)")
+        if msg.contains("HTTP request failed") || msg.contains("auth HTTP request failed") {
+            return "Verbindung zur Bank fehlgeschlagen. Bitte prüfe deine Internetverbindung und versuche es erneut.\n\n(\(msg))"
+        }
+        if msg.contains("failed to build") {
+            return "FinTS-Nachricht konnte nicht erstellt werden.\n\n(\(msg))"
         }
         if msg.contains("unknown BLZ") {
             return "Diese Bankleitzahl wird nicht unterstützt."

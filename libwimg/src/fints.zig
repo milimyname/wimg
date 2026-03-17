@@ -192,12 +192,8 @@ pub fn buildAnonInit(session: *const FintsSession, buf: []u8) ?usize {
     var inner_pos: usize = 0;
 
     // HKIDN — Identification (anonymous: user_id=0, system_id=0)
-    inner_pos += writeSegment(&inner_buf, inner_pos, "HKIDN", 3, 2, &.{
-        &session.blz,
-        "0",
-        "0",
-        "1",
-    }) orelse return null;
+    // Kreditinstitutskennung is a DEG: 280:BLZ (colon must NOT be escaped)
+    inner_pos += writeHkidn(&inner_buf, inner_pos, 3, &session.blz, "0", "0", "0") orelse return null;
 
     // HKVVB — BPD request
     inner_pos += writeSegment(&inner_buf, inner_pos, "HKVVB", 4, 3, &.{
@@ -218,12 +214,8 @@ pub fn buildAuthInit(session: *const FintsSession, buf: []u8) ?usize {
     var inner_pos: usize = 0;
 
     // HKIDN — Identification
-    inner_pos += writeSegment(&inner_buf, inner_pos, "HKIDN", 3, 2, &.{
-        &session.blz,
-        session.userIdSlice(),
-        session.systemIdSlice(),
-        "1",
-    }) orelse return null;
+    // Kreditinstitutskennung is a DEG: 280:BLZ (colon must NOT be escaped)
+    inner_pos += writeHkidn(&inner_buf, inner_pos, 3, &session.blz, session.userIdSlice(), session.systemIdSlice(), "1") orelse return null;
 
     // HKVVB — BPD request
     inner_pos += writeSegment(&inner_buf, inner_pos, "HKVVB", 4, 3, &.{
@@ -364,6 +356,43 @@ pub fn parseResponse(session: *FintsSession, data: []const u8, out: *ParsedRespo
 // ============================================================
 // Internal: Segment Writing
 // ============================================================
+
+/// Write HKIDN segment with proper DEG for Kreditinstitutskennung (280:BLZ).
+/// The colon in the DEG must NOT be escaped (it's a structural group separator).
+fn writeHkidn(buf: []u8, offset: usize, num: u16, blz: []const u8, kunden_id: []const u8, system_id: []const u8, system_status: []const u8) ?usize {
+    var pos: usize = offset;
+    if (buf.len - pos < 100) return null;
+
+    // HKIDN:num:2+280:BLZ+kunden_id+system_id+system_status'
+    const header = "HKIDN:";
+    @memcpy(buf[pos .. pos + header.len], header);
+    pos += header.len;
+    pos += writeUint(buf[pos..], num) orelse return null;
+    const ver = ":2+280:";
+    @memcpy(buf[pos .. pos + ver.len], ver);
+    pos += ver.len;
+    // BLZ (8 digits, no escaping needed)
+    const blz_len = @min(blz.len, 8);
+    @memcpy(buf[pos .. pos + blz_len], blz[0..blz_len]);
+    pos += blz_len;
+    // +kunden_id
+    buf[pos] = '+';
+    pos += 1;
+    pos += escapeFintsValue(buf[pos..], kunden_id) orelse return null;
+    // +system_id
+    buf[pos] = '+';
+    pos += 1;
+    pos += escapeFintsValue(buf[pos..], system_id) orelse return null;
+    // +system_status
+    buf[pos] = '+';
+    pos += 1;
+    pos += escapeFintsValue(buf[pos..], system_status) orelse return null;
+    // Segment terminator
+    buf[pos] = '\'';
+    pos += 1;
+
+    return pos - offset;
+}
 
 /// Write a FinTS segment: ID:NUM:VER+DE1+DE2+...+'
 fn writeSegment(buf: []u8, offset: usize, id: []const u8, num: u16, ver: u8, des: []const []const u8) ?usize {
@@ -886,7 +915,7 @@ test "base64 roundtrip" {
 
 test "writeSegment basic" {
     var buf: [256]u8 = undefined;
-    const len = writeSegment(&buf, 0, "HKIDN", 3, 2, &.{ "20041133", "testuser", "0", "1" }) orelse return error.TestUnexpectedResult;
+    const len = writeHkidn(&buf, 0, 3, "20041133", "testuser", "0", "1") orelse return error.TestUnexpectedResult;
     const seg = buf[0..len];
     try std.testing.expect(startsWith(seg, "HKIDN:3:2+"));
     try std.testing.expect(seg[seg.len - 1] == '\'');

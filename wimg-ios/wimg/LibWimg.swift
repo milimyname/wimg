@@ -54,6 +54,10 @@ final class LibWimg {
                 responseError = error
                 if let httpResponse = response as? HTTPURLResponse {
                     print("[FinTS HTTP] response: \(httpResponse.statusCode), \(data?.count ?? 0) bytes")
+                    if let data, data.count > 0, data.count < 500 {
+                        let preview = String(data: data.prefix(200), encoding: .utf8) ?? "(binary)"
+                        print("[FinTS HTTP] body preview: \(preview)")
+                    }
                 }
                 semaphore.signal()
             }.resume()

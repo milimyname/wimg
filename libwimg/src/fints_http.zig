@@ -62,8 +62,18 @@ pub fn sendFintsMessage(
         if (resp_b64_len <= 0) return HttpError.RequestFailed;
         const resp_data = resp_b64_buf[0..@intCast(resp_b64_len)];
 
-        // Base64-decode the response
-        const decoded_len = fints.base64Decode(out_buf, resp_data) orelse return HttpError.Base64Error;
+        // Strip whitespace/newlines from Base64 response (some banks add line breaks)
+        var clean_buf: [131072]u8 = undefined;
+        var clean_len: usize = 0;
+        for (resp_data) |c| {
+            if (c != '\n' and c != '\r' and c != ' ' and c != '\t') {
+                clean_buf[clean_len] = c;
+                clean_len += 1;
+            }
+        }
+
+        // Base64-decode the cleaned response
+        const decoded_len = fints.base64Decode(out_buf, clean_buf[0..clean_len]) orelse return HttpError.Base64Error;
         return decoded_len;
     }
 
@@ -124,15 +134,15 @@ test "sendFintsMessage integration with Subsembly" {
     const env = std.process.getEnvVarOwned(std.testing.allocator, "WIMG_FINTS_INTEGRATION") catch return;
     defer std.testing.allocator.free(env);
 
-    // Build a simple anonymous init message
+    // Build a simple anonymous init message against Subsembly FinTS Dummy
     var session = fints.FintsSession.init(
-        "12345678",
-        "https://banking.subsembly.com/fints",
+        "99000354",
+        "https://fints.subsembly.net/fints",
         "testuser",
         "123456",
     );
     session.product_id_len = 25;
-    @memcpy(session.product_id[0..25], "0123456789ABCDEF012345678");
+    @memcpy(session.product_id[0..25], "F7C4049477F6136957A46EC28");
 
     var msg_buf: [4096]u8 = undefined;
     const msg_len = fints.buildAnonInit(&session, &msg_buf) orelse {

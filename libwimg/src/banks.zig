@@ -1791,8 +1791,10 @@ pub const banks = blk: {
         makeBank("87095974", "GENODEF1GC1", "Volksbank-Raiffeisenbank Glauchau", "https://fints2.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("87096124", "GENODEF1MIW", "Volksbank", "https://fints2.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("87096214", "GENODEF1CH1", "Volksbank Chemnitz", "https://fints2.atruvia.de/cgi-bin/hbciservlet"),
-        // Test bank
-        makeBank("12345678", "", "Subsembly Test Bank", "https://banking.subsembly.com/fints"),
+        // Subsembly FinTS Dummy test server (BLZ 99000354, BIC SUBSDE00)
+        // Credentials: user from Subsembly, PIN 123456 (no SCA) or 654321 (SCA required)
+        // Account: Kontonummer 2000, IBAN DE86 9900 0354 0000 0020 00
+        makeBank("99000354", "SUBSDE00XXX", "Subsembly FinTS Dummy", "https://fints.subsembly.net/fints"),
     };
 };
 
@@ -1858,9 +1860,9 @@ test "findByBlz returns null for wrong length" {
 }
 
 test "findByBlz returns Subsembly test bank" {
-    const bank = findByBlz("12345678") orelse return error.TestUnexpectedResult;
-    try std.testing.expectEqualStrings("Subsembly Test Bank", bank.nameSlice());
-    try std.testing.expectEqualStrings("https://banking.subsembly.com/fints", bank.urlSlice());
+    const bank = findByBlz("99000354") orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqualStrings("Subsembly FinTS Dummy", bank.nameSlice());
+    try std.testing.expectEqualStrings("https://fints.subsembly.net/fints", bank.urlSlice());
 }
 
 test "all bank URLs start with https" {
