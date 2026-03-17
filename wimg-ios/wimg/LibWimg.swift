@@ -36,6 +36,10 @@ final class LibWimg {
             }
 
             print("[FinTS HTTP] POST \(urlStr) (\(bodyData.count) bytes)")
+            // Log the raw Base64 body being sent (for debugging)
+            if bodyData.count < 500, let bodyStr = String(data: bodyData, encoding: .utf8) {
+                print("[FinTS HTTP] request B64: \(bodyStr)")
+            }
 
             var request = URLRequest(url: requestUrl)
             request.httpMethod = "POST"

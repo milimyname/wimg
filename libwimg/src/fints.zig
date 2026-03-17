@@ -193,10 +193,11 @@ pub fn buildAnonInit(session: *const FintsSession, buf: []u8) ?usize {
 
     // HKIDN — Identification (anonymous: user_id=0, system_id=0)
     // Kreditinstitutskennung is a DEG: 280:BLZ (colon must NOT be escaped)
-    inner_pos += writeHkidn(&inner_buf, inner_pos, 3, &session.blz, "0", "0", "0") orelse return null;
+    // Segment numbers start at 2 (1 = HNHBK, no security envelope in anonymous mode)
+    inner_pos += writeHkidn(&inner_buf, inner_pos, 2, &session.blz, "0", "0", "0") orelse return null;
 
     // HKVVB — BPD request
-    inner_pos += writeSegment(&inner_buf, inner_pos, "HKVVB", 4, 3, &.{
+    inner_pos += writeSegment(&inner_buf, inner_pos, "HKVVB", 3, 3, &.{
         "0",
         "0",
         "0",
@@ -213,12 +214,12 @@ pub fn buildAuthInit(session: *const FintsSession, buf: []u8) ?usize {
     var inner_buf: [4096]u8 = undefined;
     var inner_pos: usize = 0;
 
-    // HKIDN — Identification
+    // HKIDN — Identification (segment numbers start at 2, no security envelope)
     // Kreditinstitutskennung is a DEG: 280:BLZ (colon must NOT be escaped)
-    inner_pos += writeHkidn(&inner_buf, inner_pos, 3, &session.blz, session.userIdSlice(), session.systemIdSlice(), "1") orelse return null;
+    inner_pos += writeHkidn(&inner_buf, inner_pos, 2, &session.blz, session.userIdSlice(), session.systemIdSlice(), "1") orelse return null;
 
     // HKVVB — BPD request
-    inner_pos += writeSegment(&inner_buf, inner_pos, "HKVVB", 4, 3, &.{
+    inner_pos += writeSegment(&inner_buf, inner_pos, "HKVVB", 3, 3, &.{
         "0",
         "0",
         "0",
@@ -226,15 +227,13 @@ pub fn buildAuthInit(session: *const FintsSession, buf: []u8) ?usize {
         "1.0",
     }) orelse return null;
 
-    // HKTAN — TAN process init (two-step, version 7)
-    inner_pos += writeSegment(&inner_buf, inner_pos, "HKTAN", 5, session.hitan_version, &.{
+    // HKTAN — TAN process init (two-step, version 6)
+    inner_pos += writeSegment(&inner_buf, inner_pos, "HKTAN", 4, 6, &.{
         "4", // process variant 4 = init
-        "", // segment reference
-        "", // ATC
-        "", // TAN media name
+        "HKIDN", // segment reference
     }) orelse return null;
 
-    return writeSecurityEnvelope(session, buf, inner_buf[0..inner_pos]);
+    return writeEnvelope(session, buf, inner_buf[0..inner_pos]);
 }
 
 /// Build HKKAZ (fetch bank statements) message.
@@ -478,8 +477,8 @@ fn writeEnvelope(session: *const FintsSession, buf: []u8, inner: []const u8) ?us
     // Recalculate with actual header size
     const actual_total = header_pos + inner.len + trailer_len;
     formatFixedWidth(&size_str, actual_total);
-    // Patch size in header (starts at position 11 = after "HNHBK:1:3+")
-    @memcpy(header_buf[11 .. 11 + 12], &size_str);
+    // Patch size in header (starts at position 10 = after "HNHBK:1:3+")
+    @memcpy(header_buf[10 .. 10 + 12], &size_str);
 
     // Assemble
     if (buf.len < actual_total) return null;
