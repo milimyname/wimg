@@ -186,3 +186,4 @@ Split into `.claude/rules/` for context efficiency:
 - `file-structure.md` — complete file tree
 - `decisions.md` — decision log (all architectural choices)
 - `release.md` — release process, commit format, CI pipeline
+- `banking-aggregators.md` — PSD2/PSD3 research, aggregator comparison, AISP licensing
