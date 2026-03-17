@@ -417,6 +417,7 @@
               <span class="font-bold">{keyword}</span>
               <button
                 onclick={() => removeCustomKeyword(catId, keyword)}
+                aria-label="Keyword {keyword} entfernen"
                 class="w-5 h-5 flex items-center justify-center rounded-full hover:bg-gray-200 text-gray-400 hover:text-rose-500 transition-colors cursor-pointer"
               >
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

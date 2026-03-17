@@ -13,7 +13,7 @@
       map.set(s.date.slice(0, 7), Math.abs(s.expenses));
     }
 
-    const years = [...new Set(snapshots.map((s) => parseInt(s.date.slice(0, 4))))].sort();
+    const years = [...new Set(snapshots.map((s) => parseInt(s.date.slice(0, 4))))].toSorted();
     if (years.length === 0) return { years: [] as number[], cells: [] as { year: number; month: number; amount: number }[], max: 0 };
 
     const cells: { year: number; month: number; amount: number }[] = [];

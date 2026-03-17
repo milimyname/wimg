@@ -424,6 +424,8 @@
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
     class="sheet-backdrop"
+    role="button"
+    tabindex="-1"
     onclick={() => { if (!hasNested) height.target = 0; }}
     style:opacity={Math.min(1, height.current / 300) * 0.5}
     style:z-index={baseZ}
