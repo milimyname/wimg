@@ -7,7 +7,7 @@
 - **Phase 2** — Core Features (Done): Categories, summaries, debts, undo/redo, PWA, Claude AI
 - **Phase 3** — SwiftUI iOS App (Done): XCFramework, all screens, feature parity
 - **Phase 3.5** — Multi-Account Support (Done): Account CRUD, filter all screens
-- **Phase 4A** — Pure Zig FinTS Client (Done): fints.zig, mt940.zig, iOS-only
+- **Phase 4A** — Pure Zig FinTS Client (Done): fints.zig, fints_http.zig, mt940.zig, banks.zig, iOS-only. Anonymous init, auth dialog (PIN/TAN with nochallenge detection), HKKAZ v5 statement fetch, MT940 parsing, photoTAN challenge extraction. HTTP via C ABI callback (URLSession on iOS). Tested with Comdirect — TAN flow for statement fetch pending.
 - **Phase 4B** — Real-time Sync (Done): CF Durable Objects, WebSocket, E2E encryption
 - **Phase 5.0** — UX Polish (Done): Onboarding, demo data, multi-file import
 - **Phase 5.1** — Recurring Detection (Done): Pure SQL, price alerts

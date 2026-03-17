@@ -109,11 +109,17 @@ functions, testable). Bun test runner with 36 tests covering tax
 calculations, format utils, and changelog logic (migrated from vitest).
 
 iOS dark mode support (ThemeManager with light/dark/system, adaptive colors
-in WimgTheme, settings picker). FinTS HTTP via C ABI callback (URLSession
-on iOS, Zig stdlib fallback on native). FinTS calls dispatched to GCD to
-avoid Swift cooperative thread pool deadlock. Onboarding updated (4 cards:
+in WimgTheme, settings picker). Onboarding updated (4 cards:
 privacy, import, goals/net-worth, tax/sync). SearchView has nav links to
 all features including Bankverbindung (FinTS).
+
+FinTS 3.0 protocol engine (pure Zig, ~2000 lines): anonymous init, authenticated
+dialog (PIN/TAN), HKKAZ v5 statement fetch, MT940 parsing, photoTAN challenge
+extraction. HTTP transport via C ABI callback (URLSession on iOS). Tested with
+Comdirect (BLZ 20041177) — auth init works, statement fetch needs TAN flow.
+Key protocol details: bare envelope (no HNVSK/HNVSD), HKTAN v6, contiguous
+segment numbering, YYYYMMDD dates, DEG colons not escaped. Static buffers for
+Base64 encode/decode (prevent stack overflow on iOS GCD threads).
 
 Deferred: Phase 5.2 (Notifications) — TBD.
 Deferred: Phase 6.1 (Annual Review / "Geld-Wrapped") — planned for end of year.
