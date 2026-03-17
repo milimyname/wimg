@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.14 (2026-03-17)
+
+- fix: CI svelte-check errors — exclude test files, a11y fixes, toSorted
+
 ## v0.6.13 (2026-03-17)
 
 - docs: add PSD2/PSD3 banking aggregators research
