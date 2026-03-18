@@ -37,8 +37,8 @@ pub fn parseCamt(data: []const u8, account: []const u8, out: []Transaction) Camt
 }
 
 fn parseEntry(entry: []const u8, account: []const u8, out_txn: *Transaction) bool {
-    const amount_str = extractTagText(entry, "Amt") orelse return false;
-    const amount_abs = parseIsoAmount(amount_str) orelse return false;
+    const amount = extractAmountField(entry) orelse return false;
+    const amount_abs = parseIsoAmount(amount.text) orelse return false;
 
     const cdt_dbt = extractTagText(entry, "CdtDbtInd") orelse "";
     const is_debit = std.mem.eql(u8, cdt_dbt, "DBIT");
@@ -48,20 +48,104 @@ fn parseEntry(entry: []const u8, account: []const u8, out_txn: *Transaction) boo
     const dt = extractTagText(date_block, "Dt") orelse extractTagText(date_block, "DtTm") orelse return false;
     out_txn.date = parseIsoDate(dt) orelse return false;
 
-    const desc = extractTagText(entry, "Ustrd") orelse
-        extractTagText(entry, "AddtlNtryInf") orelse
-        "CAMT Buchung";
+    var ustrd_buf: [512]u8 = undefined;
+    const ustrd = extractAllUstrd(entry, &ustrd_buf);
+    const desc = if (ustrd.len > 0)
+        ustrd
+    else
+        (extractTagText(entry, "AddtlNtryInf") orelse "CAMT Buchung");
     const desc_trimmed = std.mem.trim(u8, desc, " \t\r\n");
     const desc_effective = if (desc_trimmed.len > 0) desc_trimmed else "CAMT Buchung";
     const copy_len = @min(desc_effective.len, out_txn.description.len);
     @memcpy(out_txn.description[0..copy_len], desc_effective[0..copy_len]);
     out_txn.description_len = @intCast(copy_len);
 
-    out_txn.currency = "EUR".*;
+    setCurrency(out_txn, amount.ccy);
     out_txn.category = .uncategorized;
     parser.setAccount(out_txn, account);
     out_txn.id = parser.computeHash(out_txn.date, out_txn.descriptionSlice(), out_txn.amount_cents, account);
     return true;
+}
+
+const AmountField = struct {
+    text: []const u8,
+    ccy: ?[]const u8,
+};
+
+fn extractAmountField(entry: []const u8) ?AmountField {
+    const open_prefix = "<Amt";
+    const start = std.mem.indexOf(u8, entry, open_prefix) orelse return null;
+    var open_end = start + open_prefix.len;
+    while (open_end < entry.len and entry[open_end] != '>') : (open_end += 1) {}
+    if (open_end >= entry.len) return null;
+
+    const close = "</Amt>";
+    const content_start = open_end + 1;
+    const content_end = std.mem.indexOfPos(u8, entry, content_start, close) orelse return null;
+    const content = entry[content_start..content_end];
+    const open_tag = entry[start .. open_end + 1];
+
+    return .{
+        .text = content,
+        .ccy = extractAttributeValue(open_tag, "Ccy"),
+    };
+}
+
+fn extractAttributeValue(tag_text: []const u8, attr_name: []const u8) ?[]const u8 {
+    var pattern_buf: [32]u8 = undefined;
+    if (attr_name.len + 2 > pattern_buf.len) return null;
+    @memcpy(pattern_buf[0..attr_name.len], attr_name);
+    pattern_buf[attr_name.len] = '=';
+    pattern_buf[attr_name.len + 1] = '"';
+    const pattern = pattern_buf[0 .. attr_name.len + 2];
+
+    const start = std.mem.indexOf(u8, tag_text, pattern) orelse return null;
+    const value_start = start + pattern.len;
+    const value_end_rel = std.mem.indexOfPos(u8, tag_text, value_start, "\"") orelse return null;
+    if (value_end_rel <= value_start) return null;
+    return tag_text[value_start..value_end_rel];
+}
+
+fn setCurrency(txn: *Transaction, ccy: ?[]const u8) void {
+    const selected = ccy orelse "EUR";
+    if (selected.len == 3) {
+        @memcpy(txn.currency[0..3], selected[0..3]);
+    } else {
+        txn.currency = "EUR".*;
+    }
+}
+
+fn extractAllUstrd(entry: []const u8, out_buf: *[512]u8) []const u8 {
+    const open_prefix = "<Ustrd";
+    const close = "</Ustrd>";
+    var search_from: usize = 0;
+    var out_len: usize = 0;
+
+    while (true) {
+        const start = std.mem.indexOfPos(u8, entry, search_from, open_prefix) orelse break;
+        var open_end = start + open_prefix.len;
+        while (open_end < entry.len and entry[open_end] != '>') : (open_end += 1) {}
+        if (open_end >= entry.len) break;
+
+        const content_start = open_end + 1;
+        const content_end = std.mem.indexOfPos(u8, entry, content_start, close) orelse break;
+        const content_trimmed = std.mem.trim(u8, entry[content_start..content_end], " \t\r\n");
+
+        if (content_trimmed.len > 0) {
+            if (out_len > 0 and out_len < out_buf.len) {
+                out_buf[out_len] = ' ';
+                out_len += 1;
+            }
+            const copy_len = @min(content_trimmed.len, out_buf.len - out_len);
+            @memcpy(out_buf[out_len .. out_len + copy_len], content_trimmed[0..copy_len]);
+            out_len += copy_len;
+            if (copy_len < content_trimmed.len) break;
+        }
+
+        search_from = content_end + close.len;
+    }
+
+    return out_buf[0..out_len];
 }
 
 fn findEntryStart(data: []const u8, from: usize) ?usize {
@@ -165,6 +249,7 @@ test "parseCamt basic entry" {
     try std.testing.expectEqual(@as(u32, 0), res.errors);
     try std.testing.expectEqual(@as(i64, -1234), txns[0].amount_cents);
     try std.testing.expectEqual(@as(u16, 2026), txns[0].date.year);
+    try std.testing.expectEqualStrings("EUR", txns[0].currency[0..]);
 }
 
 test "parseCamt prefers Ustrd description" {
@@ -176,4 +261,26 @@ test "parseCamt prefers Ustrd description" {
     const res = parseCamt(xml, "Comdirect", &txns);
     try std.testing.expectEqual(@as(u32, 1), res.count);
     try std.testing.expectEqualStrings("Gehalt Maerz", txns[0].descriptionSlice());
+}
+
+test "parseCamt concatenates multiple Ustrd tags" {
+    const xml =
+        "<Document><BkToCstmrStmt><Stmt>" ++
+        "<Ntry><Amt Ccy=\"EUR\">15.00</Amt><CdtDbtInd>DBIT</CdtDbtInd><BookgDt><Dt>2026-03-19</Dt></BookgDt><RmtInf><Ustrd>Teil eins</Ustrd><Ustrd>Teil zwei</Ustrd></RmtInf></Ntry>" ++
+        "</Stmt></BkToCstmrStmt></Document>";
+    var txns: [2]Transaction = undefined;
+    const res = parseCamt(xml, "Comdirect", &txns);
+    try std.testing.expectEqual(@as(u32, 1), res.count);
+    try std.testing.expectEqualStrings("Teil eins Teil zwei", txns[0].descriptionSlice());
+}
+
+test "parseCamt reads Amt Ccy attribute" {
+    const xml =
+        "<Document><BkToCstmrStmt><Stmt>" ++
+        "<Ntry><Amt Ccy=\"USD\">1.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><BookgDt><Dt>2026-03-20</Dt></BookgDt><AddtlNtryInf>Test</AddtlNtryInf></Ntry>" ++
+        "</Stmt></BkToCstmrStmt></Document>";
+    var txns: [1]Transaction = undefined;
+    const res = parseCamt(xml, "Comdirect", &txns);
+    try std.testing.expectEqual(@as(u32, 1), res.count);
+    try std.testing.expectEqualStrings("USD", txns[0].currency[0..]);
 }
