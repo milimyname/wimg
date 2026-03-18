@@ -37,7 +37,7 @@ final class LibWimg {
 
             print("[FinTS HTTP] POST \(urlStr) (\(bodyData.count) bytes)")
             // Log the raw Base64 body being sent (for debugging)
-            if bodyData.count < 500, let bodyStr = String(data: bodyData, encoding: .utf8) {
+            if let bodyStr = String(data: bodyData, encoding: .utf8) {
                 print("[FinTS HTTP] request B64: \(bodyStr)")
             }
 
@@ -472,7 +472,7 @@ final class LibWimg {
 
     static func fintsConnect(blz: String, user: String, pin: String, product: String = "F7C4049477F6136957A46EC28") throws -> FintsStatusResult {
         try ensureInit()
-        print("[FinTS] fintsConnect called (lib build: 2026-03-17b)")
+        print("[FinTS] fintsConnect called (lib build: 2026-03-18z)")
         let json = """
         {"blz":"\(blz)","user":"\(user)","pin":"\(pin)","product":"\(product)"}
         """

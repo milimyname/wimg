@@ -7,7 +7,7 @@
 - **Phase 2** — Core Features (Done): Categories, summaries, debts, undo/redo, PWA, Claude AI
 - **Phase 3** — SwiftUI iOS App (Done): XCFramework, all screens, feature parity
 - **Phase 3.5** — Multi-Account Support (Done): Account CRUD, filter all screens
-- **Phase 4A** — Pure Zig FinTS Client (Done): fints.zig, fints_http.zig, mt940.zig, banks.zig, iOS-only. Anonymous init, auth dialog (PIN/TAN with nochallenge detection), HKKAZ v5 statement fetch, MT940 parsing, photoTAN challenge extraction. HTTP via C ABI callback (URLSession on iOS). Tested with Comdirect — TAN flow for statement fetch pending.
+- **Phase 4A** — Pure Zig FinTS Client (Done): fints.zig, fints_http.zig, mt940.zig, banks.zig, iOS-only. Anonymous init, auth dialog (PIN/TAN with nochallenge detection), HKKAZ v5 statement fetch, MT940 parsing, photoTAN challenge extraction. HTTP via C ABI callback (URLSession on iOS). Tested with Comdirect.
 - **Phase 4B** — Real-time Sync (Done): CF Durable Objects, WebSocket, E2E encryption
 - **Phase 5.0** — UX Polish (Done): Onboarding, demo data, multi-file import
 - **Phase 5.1** — Recurring Detection (Done): Pure SQL, price alerts
@@ -29,6 +29,7 @@
 - **Phase 6.3** — Anlage N Assistant (Done): Tax helper page (`/tax`) with Pendlerpauschale calculator (0.30€/km first 20km + 0.38€/km beyond), Homeoffice-Pauschale (6€/day, max 210 days), auto-tagged tax-relevant transactions (5 categories: Arbeitsmittel, Fortbildung, Fachliteratur, Fahrtkosten, Versicherungen), include/exclude toggles, year picker, summary grid, CSV export. Config persisted in localStorage. Feature-flagged (`tax: true`).
 - **Phase 6.4** — Savings Goals (Done): `savings_goals` table (schema v14), full CRUD with sync support. C ABI: `wimg_get_goals`, `wimg_add_goal`, `wimg_contribute_goal`, `wimg_delete_goal`. Web: goals page with hero card, icon picker (12 icons), inline contribute input, progress bars, undo support. Feature-flagged (`goals: true`).
 - **Phase 6.5** — Sparquote + Spending Heatmap (Done): Savings rate (`(income + expenses) / income * 100`) on dashboard hero card (web + iOS). SpendingHeatmap component (GitHub contribution graph style) — SVG grid with months as rows, years as columns, indigo color scale from snapshot expenses. Both platforms. No new schema or C ABI — reads existing `snapshots` table.
+- **Phase 6.6** — FinTS Statement Import Hardening (Done): Full Comdirect end-to-end parity for auth + fetch + TAN submit. Fixed task-reference propagation for HKTAN process-2, robust HITAN/HITANS dispatch, binary-safe `@len@` parsing, matrix/photoTAN payload normalization, HIKAZ multi-part MT940 concatenation, parser normalization (`@@ -> CRLF`, `-0000 -> +0000`, optional funds code), and touchdown pagination via 3040 continuation token. Import now persists multi-page statement history with duplicate-safe inserts.
 
 ## FinTS Product Registration (Done)
 

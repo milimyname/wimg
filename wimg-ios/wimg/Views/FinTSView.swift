@@ -24,6 +24,7 @@ struct FinTSView: View {
     // TAN
     @State private var challengeText = ""
     @State private var photoTanData: Data?
+    @State private var showInvertedPhotoTan = false
     @State private var tanInput = ""
     @State private var sendingTan = false
 
@@ -35,11 +36,16 @@ struct FinTSView: View {
     @State private var importedCount = 0
     @State private var duplicateCount = 0
 
+    private var photoTanImage: UIImage? {
+        guard let data = photoTanData else { return nil }
+        return UIImage(data: data)
+    }
+
     private var filteredBanks: [BankInfo] {
         if searchText.isEmpty { return banks }
-        let query = searchText.lowercased()
+        let query = searchText.localizedLowercase
         return banks.filter {
-            $0.name.lowercased().contains(query) || $0.blz.contains(query)
+            $0.name.localizedCaseInsensitiveContains(query) || $0.blz.contains(query)
         }
     }
 
@@ -126,9 +132,11 @@ struct FinTSView: View {
             .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
             .padding(.horizontal)
 
-            // Bank list
+            // Bank list — show max 50 results for performance
+            let displayBanks = searchText.isEmpty ? Array(banks.prefix(50)) : Array(filteredBanks.prefix(50))
+
             VStack(spacing: 0) {
-                ForEach(filteredBanks) { bank in
+                ForEach(displayBanks) { bank in
                     Button {
                         selectedBank = bank
                         errorMessage = nil
@@ -164,9 +172,14 @@ struct FinTSView: View {
                     }
                     .buttonStyle(.plain)
 
-                    if bank.id != filteredBanks.last?.id {
-                        Divider().padding(.leading, 70)
-                    }
+                    Divider().padding(.leading, 70)
+                }
+
+                if searchText.isEmpty {
+                    Text("Suche eingeben, um alle Banken zu sehen")
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                        .padding(.vertical, 12)
                 }
             }
             .wimgCard(radius: WimgTheme.radiusLarge)
@@ -299,21 +312,35 @@ struct FinTSView: View {
             }
 
             // photoTAN image
-            if let photoData = photoTanData, let uiImage = UIImage(data: photoData) {
+            if let uiImage = photoTanImage {
                 VStack(spacing: 8) {
                     Text("photoTAN")
                         .font(.system(.caption, design: .rounded, weight: .bold))
                         .foregroundStyle(WimgTheme.textSecondary)
                         .textCase(.uppercase)
                         .tracking(0.5)
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: 280, maxHeight: 280)
-                        .padding(16)
-                        .background(Color.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
+                    Group {
+                        if showInvertedPhotoTan {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFit()
+                                .colorInvert()
+                        } else {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFit()
+                        }
+                    }
+                    .frame(maxWidth: 280, maxHeight: 280)
+                    .padding(16)
+                    .background(Color.black)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
+                    Button(showInvertedPhotoTan ? "Normale Ansicht" : "Invertierte Ansicht") {
+                        showInvertedPhotoTan.toggle()
+                    }
+                    .font(.system(.caption, design: .rounded, weight: .medium))
+                    .foregroundStyle(WimgTheme.textSecondary)
                     Text("Scannen Sie dieses Bild mit Ihrer photoTAN-App")
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(WimgTheme.textSecondary)
@@ -323,7 +350,7 @@ struct FinTSView: View {
             }
 
             // Challenge text
-            if !challengeText.isEmpty && photoTanData == nil {
+            if !challengeText.isEmpty && photoTanImage == nil {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Challenge")
                         .font(.caption2)
@@ -336,6 +363,14 @@ struct FinTSView: View {
                         .background(WimgTheme.bg)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
+            }
+
+            if photoTanImage == nil && challengeText.localizedCaseInsensitiveContains("siehe grafik") {
+                Text("Diese TAN-Freigabe erwartet eine scanbare Grafik. Wenn kein Bild angezeigt wird, liefert die Bank ggf. ein nicht direkt darstellbares photoTAN-Format.")
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(WimgTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
             }
 
             // TAN input
@@ -568,8 +603,10 @@ struct FinTSView: View {
                     challengeText = result.challenge ?? "TAN erforderlich"
                     if let b64 = result.phototan, let data = Data(base64Encoded: b64) {
                         photoTanData = data
+                        showInvertedPhotoTan = false
                     } else {
                         photoTanData = nil
+                        showInvertedPhotoTan = false
                     }
                     tanInput = ""
                     stage = .tanChallenge
@@ -621,7 +658,8 @@ struct FinTSView: View {
             await MainActor.run {
                 sendingTan = false
                 if result.isOk {
-                    stage = .dateRange
+                    // TAN accepted — dialog is active, fetch statements now
+                    Task { await handleFetch() }
                 } else {
                     errorMessage = result.message ?? "TAN fehlgeschlagen"
                 }
@@ -659,6 +697,13 @@ struct FinTSView: View {
             await MainActor.run {
                 if result.needsTan {
                     challengeText = result.challenge ?? "TAN erforderlich"
+                    if let b64 = result.phototan, let data = Data(base64Encoded: b64) {
+                        photoTanData = data
+                        showInvertedPhotoTan = false
+                    } else {
+                        photoTanData = nil
+                        showInvertedPhotoTan = false
+                    }
                     tanInput = ""
                     stage = .tanChallenge
                 } else {
@@ -685,6 +730,7 @@ struct FinTSView: View {
         pin = ""
         tanInput = ""
         challengeText = ""
+        showInvertedPhotoTan = false
         errorMessage = nil
         importedCount = 0
         duplicateCount = 0

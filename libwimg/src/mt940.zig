@@ -33,8 +33,11 @@ pub fn parseMt940(data: []const u8, account: []const u8, out: []Transaction) Mt9
     var desc_len: usize = 0;
     var in_field_86 = false;
 
-    var lines = std.mem.splitScalar(u8, data, '\n');
-    while (lines.next()) |raw_line| {
+    var normalized_buf: [65536]u8 = undefined;
+    const input = normalizeMt940Input(data, &normalized_buf);
+
+    var pos: usize = 0;
+    while (nextLine(input, &pos)) |raw_line| {
         const line = trimCr(raw_line);
         if (line.len == 0) continue;
 
@@ -139,6 +142,12 @@ fn parseTxnLine(data: []const u8, txn: *Transaction) bool {
 
     // Reversal flips the direction
     if (is_reversal) is_debit = !is_debit;
+
+    // Optional funds code (1 alpha char) may appear before amount
+    // according to MT940 :61: syntax.
+    if (pos < data.len and isAlpha(data[pos])) {
+        pos += 1;
+    }
 
     // Amount: digits with comma as decimal separator, terminated by N or letter
     const amount_start = pos;
@@ -349,11 +358,53 @@ fn isDigit(c: u8) bool {
     return c >= '0' and c <= '9';
 }
 
+fn isAlpha(c: u8) bool {
+    return (c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z');
+}
+
 fn trimCr(line: []const u8) []const u8 {
     if (line.len > 0 and line[line.len - 1] == '\r') {
         return line[0 .. line.len - 1];
     }
     return line;
+}
+
+fn nextLine(data: []const u8, pos: *usize) ?[]const u8 {
+    if (pos.* >= data.len) return null;
+
+    const start = pos.*;
+    while (pos.* < data.len and data[pos.*] != '\n' and data[pos.*] != '\r') : (pos.* += 1) {}
+    const end = pos.*;
+
+    // Consume one or more newline separators (\n, \r, or \r\n)
+    while (pos.* < data.len and (data[pos.*] == '\n' or data[pos.*] == '\r')) : (pos.* += 1) {}
+
+    return data[start..end];
+}
+
+fn normalizeMt940Input(data: []const u8, buf: []u8) []const u8 {
+    if (data.len == 0) return data;
+    // python-fints parity:
+    // - "@@" acts as line break marker
+    // - "-0000" should be treated as "+0000" to avoid parser issues
+    const has_marker = std.mem.indexOf(u8, data, "@@") != null or std.mem.indexOf(u8, data, "-0000") != null;
+    if (!has_marker) return data;
+
+    const copy_len = @min(data.len, buf.len);
+    @memcpy(buf[0..copy_len], data[0..copy_len]);
+
+    var i: usize = 0;
+    while (i + 1 < copy_len) : (i += 1) {
+        if (buf[i] == '@' and buf[i + 1] == '@') {
+            buf[i] = '\r';
+            buf[i + 1] = '\n';
+            continue;
+        }
+        if (i + 4 < copy_len and buf[i] == '-' and buf[i + 1] == '0' and buf[i + 2] == '0' and buf[i + 3] == '0' and buf[i + 4] == '0') {
+            buf[i] = '+';
+        }
+    }
+    return buf[0..copy_len];
 }
 
 fn startsWith(haystack: []const u8, prefix: []const u8) bool {
@@ -536,4 +587,37 @@ test "parseMt940 debit balance" {
     const result = parseMt940(mt940_debit, "Test", &txns);
     try std.testing.expectEqual(@as(i64, -50000), result.opening_balance);
     try std.testing.expectEqual(@as(i64, -60000), result.closing_balance);
+}
+
+test "parseMt940 handles CR-only line breaks" {
+    const mt940_cr =
+        ":20:START\r:25:20041133/1234567890\r:60F:C260301EUR5000,00\r:61:2603010301D12,50NMSC\r:86:KARTENZAHLUNG\r:62F:C260305EUR4987,50\r-\r";
+    var txns: [10]Transaction = undefined;
+    const result = parseMt940(mt940_cr, "Test", &txns);
+    try std.testing.expectEqual(@as(u32, 1), result.count);
+    try std.testing.expectEqual(@as(i64, -1250), txns[0].amount_cents);
+}
+
+test "parseMt940 normalizes python-fints markers" {
+    const mt940_marked = ":20:START@@:25:20041133/123@@:60F:C260301EUR100,00@@:61:2603010301D12,50NMSC-0000@@:86:TEST@@:62F:C260305EUR87,50@@-";
+    var txns: [10]Transaction = undefined;
+    const result = parseMt940(mt940_marked, "Test", &txns);
+    try std.testing.expectEqual(@as(u32, 1), result.count);
+    try std.testing.expectEqual(@as(i64, -1250), txns[0].amount_cents);
+}
+
+test "parseMt940 supports optional funds code in :61:" {
+    const mt940_funds_code =
+        \\:20:START
+        \\:25:20041133/1234567890
+        \\:60F:C260301EUR100,00
+        \\:61:2603010301DN12,50NMSC
+        \\:86:TEST
+        \\:62F:C260305EUR87,50
+        \\-
+    ;
+    var txns: [10]Transaction = undefined;
+    const result = parseMt940(mt940_funds_code, "Test", &txns);
+    try std.testing.expectEqual(@as(u32, 1), result.count);
+    try std.testing.expectEqual(@as(i64, -1250), txns[0].amount_cents);
 }

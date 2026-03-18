@@ -49,7 +49,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5 all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6 all **done**.
 
 Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules +
 auto-learn), summaries, debts, recurring detection, multi-account, undo/redo,
@@ -116,7 +116,9 @@ all features including Bankverbindung (FinTS).
 FinTS 3.0 protocol engine (pure Zig, ~2000 lines): anonymous init, authenticated
 dialog (PIN/TAN), HKKAZ v5 statement fetch, MT940 parsing, photoTAN challenge
 extraction. HTTP transport via C ABI callback (URLSession on iOS). Tested with
-Comdirect (BLZ 20041177) — auth init works, statement fetch needs TAN flow.
+Comdirect (BLZ 20041177) — full auth/fetch/TAN flow works, including task
+reference handling, `HIKAZ` multi-part MT940 assembly, and touchdown pagination
+for >100 transactions.
 Key protocol details: bare envelope (no HNVSK/HNVSD), HKTAN v6, contiguous
 segment numbering, YYYYMMDD dates, DEG colons not escaped. Static buffers for
 Base64 encode/decode (prevent stack overflow on iOS GCD threads).

@@ -1,4 +1,6 @@
 const std = @import("std");
+const builtin = @import("builtin");
+const is_wasm = builtin.cpu.arch == .wasm32;
 
 pub const FintsError = error{
     BufferTooSmall,
@@ -17,6 +19,8 @@ pub const FintsSession = struct {
     url_len: u8,
     user_id: [64]u8,
     user_id_len: u8,
+    account_ktv: [96]u8, // Kontoverbindung (Ktonr:Unterkonto:280:BLZ) from HIUPD
+    account_ktv_len: u8,
     pin: [64]u8,
     pin_len: u8,
 
@@ -28,8 +32,20 @@ pub const FintsSession = struct {
     msg_num: u16,
     product_id: [25]u8,
     product_id_len: u8,
+    bpd_version: u16,
+    upd_version: u16,
 
     hitan_version: u8,
+    // Selected TAN security function (e.g. "902" for photoTAN, "901" for mobileTAN)
+    tan_sec_func: [4]u8,
+    tan_sec_func_len: u8,
+    tan_medium_name: [32]u8,
+    tan_medium_name_len: u8,
+    tan_description_required: u8, // 0=must_not, 1=may, 2=must
+    tan_supported_media_number: u8,
+    tan_medium_required: bool,
+    tan_response_hhd_uc_required: bool,
+    include_empty_parameter_challenge_class: bool, // python-fints v6/v7 process-4 parity
 
     challenge: [512]u8,
     challenge_len: u16,
@@ -39,6 +55,7 @@ pub const FintsSession = struct {
     challenge_ref_len: u8,
 
     has_pending_tan: bool,
+    has_active_dialog: bool, // auth dialog is open (post-TAN)
     decoupled: bool,
 
     pub fn init(blz: []const u8, url: []const u8, user_id: []const u8, pin: []const u8) FintsSession {
@@ -46,10 +63,12 @@ pub const FintsSession = struct {
         @memset(&s.blz, '0');
         @memset(&s.url, 0);
         @memset(&s.user_id, 0);
+        @memset(&s.account_ktv, 0);
         @memset(&s.pin, 0);
         @memset(&s.system_id, 0);
         @memset(&s.dialog_id, 0);
         @memset(&s.product_id, 0);
+        @memset(&s.tan_medium_name, 0);
         @memset(&s.challenge, 0);
         @memset(&s.challenge_hhduc, 0);
         @memset(&s.challenge_ref, 0);
@@ -64,6 +83,7 @@ pub const FintsSession = struct {
         const uid_len = @min(user_id.len, 64);
         @memcpy(s.user_id[0..uid_len], user_id[0..uid_len]);
         s.user_id_len = @intCast(uid_len);
+        s.account_ktv_len = 0;
 
         const pin_l = @min(pin.len, 64);
         @memcpy(s.pin[0..pin_l], pin[0..pin_l]);
@@ -74,13 +94,26 @@ pub const FintsSession = struct {
         s.dialog_id_len = 1;
         s.dialog_id[0] = '0';
         s.msg_num = 1;
-        s.hitan_version = 7;
+        // 0 = unknown; builders fall back to v6 until HITANS is parsed from BPD.
+        s.hitan_version = 0;
+        // Start in one-step mode (999). Upgrade to two-step after parsing bank capabilities.
+        @memcpy(s.tan_sec_func[0..3], "999");
+        s.tan_sec_func_len = 3;
+        s.tan_medium_name_len = 0;
+        s.tan_description_required = 0;
+        s.tan_supported_media_number = 0;
+        s.tan_medium_required = false;
+        s.tan_response_hhd_uc_required = false;
+        s.include_empty_parameter_challenge_class = false;
         s.has_pending_tan = false;
+        s.has_active_dialog = false;
         s.decoupled = false;
         s.challenge_len = 0;
         s.challenge_hhduc_len = 0;
         s.challenge_ref_len = 0;
         s.product_id_len = 0;
+        s.bpd_version = 0;
+        s.upd_version = 0;
 
         return s;
     }
@@ -97,6 +130,10 @@ pub const FintsSession = struct {
         return self.pin[0..self.pin_len];
     }
 
+    pub fn accountKtvSlice(self: *const FintsSession) []const u8 {
+        return self.account_ktv[0..self.account_ktv_len];
+    }
+
     pub fn systemIdSlice(self: *const FintsSession) []const u8 {
         return self.system_id[0..self.system_id_len];
     }
@@ -109,9 +146,26 @@ pub const FintsSession = struct {
         return self.product_id[0..self.product_id_len];
     }
 
+    pub fn tanSecFuncSlice(self: *const FintsSession) []const u8 {
+        return self.tan_sec_func[0..self.tan_sec_func_len];
+    }
+
     pub fn clearPin(self: *FintsSession) void {
         @memset(&self.pin, 0);
         self.pin_len = 0;
+    }
+
+    /// Reset dialog state for a new dialog (keeps credentials + product_id).
+    pub fn resetDialog(self: *FintsSession) void {
+        self.dialog_id_len = 1;
+        self.dialog_id[0] = '0';
+        self.msg_num = 1;
+        self.has_pending_tan = false;
+        self.has_active_dialog = false;
+        self.decoupled = false;
+        self.challenge_len = 0;
+        self.challenge_hhduc_len = 0;
+        self.challenge_ref_len = 0;
     }
 };
 
@@ -188,6 +242,167 @@ pub const ParsedResponse = struct {
     }
 };
 
+fn clampHktanVersion(v: u8) u8 {
+    return switch (v) {
+        2, 3, 5, 6, 7 => v,
+        else => 6,
+    };
+}
+
+fn buildHktanProcess4(session: *const FintsSession, buf: []u8, offset: usize, num: u16, segment_ref: []const u8) ?usize {
+    const hktan_ver = clampHktanVersion(session.hitan_version);
+    return switch (hktan_ver) {
+        // v2/v3 do not carry segment_type
+        2 => writeSegment(buf, offset, "HKTAN", num, 2, &.{
+            "4",
+        }),
+        3 => writeSegment(buf, offset, "HKTAN", num, 3, &.{
+            "4",
+        }),
+        // v5+ carry segment_type and optional fields afterwards
+        5 => writeSegment(buf, offset, "HKTAN", num, 5, &.{
+            "4",
+            segment_ref,
+        }),
+        6, 7 => writeHktanProcess4V6Like(session, buf, offset, num, hktan_ver, segment_ref),
+        else => null,
+    };
+}
+
+fn writeHktanProcess4V6Like(session: *const FintsSession, buf: []u8, offset: usize, num: u16, ver: u8, segment_ref: []const u8) ?usize {
+    var pos: usize = offset;
+    if (buf.len - pos < 128) return null;
+
+    // Manual writer to preserve DEG delimiters (:) for parameter_challenge_class.
+    const prefix = "HKTAN:";
+    @memcpy(buf[pos .. pos + prefix.len], prefix);
+    pos += prefix.len;
+    pos += writeUint(buf[pos..], num) orelse return null;
+    buf[pos] = ':';
+    pos += 1;
+    pos += writeUint(buf[pos..], ver) orelse return null;
+
+    // de1 tan_process
+    buf[pos] = '+';
+    pos += 1;
+    buf[pos] = '4';
+    pos += 1;
+    // de2 segment_type
+    buf[pos] = '+';
+    pos += 1;
+    @memcpy(buf[pos .. pos + segment_ref.len], segment_ref);
+    pos += segment_ref.len;
+
+    // de3..de9 empty optional fields
+    for (0..7) |_| {
+        buf[pos] = '+';
+        pos += 1;
+    }
+
+    // de10 parameter_challenge_class (DEG). python-fints sends an empty group for v6 init.
+    buf[pos] = '+';
+    pos += 1;
+    if (session.include_empty_parameter_challenge_class) {
+        buf[pos] = ':';
+        pos += 1;
+    }
+
+    // de11 tan_medium_name: python-fints sends this for process 4 when required.
+    if (session.tan_medium_name_len > 0 or session.tan_medium_required) {
+        buf[pos] = '+';
+        pos += 1;
+        if (session.tan_medium_name_len > 0) {
+            const tm = session.tan_medium_name[0..session.tan_medium_name_len];
+            pos += escapeFintsValue(buf[pos..], tm) orelse return null;
+        }
+    }
+
+    // Segment terminator
+    buf[pos] = '\'';
+    pos += 1;
+    return pos - offset;
+}
+
+fn buildHktanProcess2(session: *const FintsSession, buf: []u8, offset: usize, num: u16, task_ref: []const u8) ?usize {
+    const hktan_ver = clampHktanVersion(session.hitan_version);
+    return switch (hktan_ver) {
+        // v2/v3: set task_reference and further_tan_follows=false ("N") like python-fints
+        2 => writeSegment(buf, offset, "HKTAN", num, 2, &.{
+            "2", // tan_process
+            "", // task_hash_value
+            task_ref, // task_reference
+            "", // tan_list_number
+            "N", // further_tan_follows
+        }),
+        3 => writeSegment(buf, offset, "HKTAN", num, 3, &.{
+            "2",
+            "", // task_hash_value
+            task_ref,
+            "", // tan_list_number
+            "N", // further_tan_follows
+        }),
+        // v5 includes tan_list_number between task_reference and further_tan_follows
+        5 => writeSegment(buf, offset, "HKTAN", num, 5, &.{
+            "2", // tan_process
+            "", // segment_type
+            "", // account
+            "", // task_hash_value
+            task_ref, // task_reference
+            "", // tan_list_number
+            "N", // further_tan_follows
+        }),
+        // v6/v7: no tan_list_number, but same process semantics
+        6, 7 => writeSegment(buf, offset, "HKTAN", num, hktan_ver, &.{
+            "2", // tan_process
+            "", // segment_type
+            "", // account
+            "", // task_hash_value
+            task_ref, // task_reference
+            "N", // further_tan_follows
+        }),
+        else => null,
+    };
+}
+
+fn fillCurrentDateTime(date_buf: *[8]u8, time_buf: *[6]u8) void {
+    if (is_wasm) {
+        @memcpy(date_buf[0..8], "19700101");
+        @memcpy(time_buf[0..6], "000000");
+        return;
+    }
+
+    const now_secs = std.time.timestamp();
+    const epoch_secs = std.time.epoch.EpochSeconds{ .secs = @intCast(@max(now_secs, 0)) };
+    const epoch_day = epoch_secs.getEpochDay();
+    const day_secs = epoch_secs.getDaySeconds();
+    const yd = epoch_day.calculateYearDay();
+    const md = yd.calculateMonthDay();
+
+    writeFixedWidthUnsigned(date_buf[0..4], yd.year);
+    writeFixedWidthUnsigned(date_buf[4..6], md.month.numeric());
+    writeFixedWidthUnsigned(date_buf[6..8], @as(u6, md.day_index) + 1);
+
+    writeFixedWidthUnsigned(time_buf[0..2], day_secs.getHoursIntoDay());
+    writeFixedWidthUnsigned(time_buf[2..4], day_secs.getMinutesIntoHour());
+    writeFixedWidthUnsigned(time_buf[4..6], day_secs.getSecondsIntoMinute());
+}
+
+fn writeFixedWidthUnsigned(buf: []u8, value: anytype) void {
+    var n: u64 = @intCast(value);
+    var i: usize = buf.len;
+    while (i > 0) {
+        i -= 1;
+        buf[i] = @intCast('0' + (n % 10));
+        n /= 10;
+    }
+}
+
+fn generateSecurityReference(out: *[7]u8) []const u8 {
+    const n = std.crypto.random.intRangeAtMost(u32, 1_000_000, 9_999_999);
+    writeFixedWidthUnsigned(out[0..7], n);
+    return out[0..7];
+}
+
 // ============================================================
 // Message Building
 // ============================================================
@@ -205,134 +420,228 @@ pub fn buildAnonInit(session: *const FintsSession, buf: []u8) ?usize {
 
     // HKVVB — BPD request
     inner_pos += writeSegment(&inner_buf, inner_pos, "HKVVB", 3, 3, &.{
-        "0",
-        "0",
-        "0",
+        "0", // BPD version unknown in anonymous bootstrap
+        "0", // UPD version unknown in anonymous bootstrap
+        "1", // language DE
         session.productIdSlice(),
-        "1.0",
+        "5.0.0", // python-fints product version
     }) orelse return null;
 
     return writeEnvelope(session, buf, inner_buf[0..inner_pos]);
 }
 
-/// Build authenticated initialization message.
-/// Includes security envelope (HNVSK/HNVSD) with PIN.
+/// Build synchronization dialog init (sec_func=999, HKSYN to get system_id).
+/// Used as first step in connect — fetches BPD and system_id.
+pub fn buildSyncInit(session: *const FintsSession, buf: []u8) ?usize {
+    var inner_buf: [4096]u8 = undefined;
+    var inner_pos: usize = 0;
+
+    var sec_ref_buf: [7]u8 = undefined;
+    const sec_ref = generateSecurityReference(&sec_ref_buf);
+
+    // HNSHK — sec_func=999 (one-step, allowed for sync only)
+    inner_pos += writeSignatureHeader(&inner_buf, inner_pos, 2, session, sec_ref, "999") orelse return null;
+
+    // HKIDN — Identification (system_id=0 for sync)
+    inner_pos += writeHkidn(&inner_buf, inner_pos, 3, &session.blz, session.userIdSlice(), "0", "1") orelse return null;
+
+    // HKVVB — BPD request
+    inner_pos += writeSegment(&inner_buf, inner_pos, "HKVVB", 4, 3, &.{
+        if (session.bpd_version == 0) "0" else blk: {
+            var b: [8]u8 = undefined;
+            const l = writeUint(&b, session.bpd_version) orelse return null;
+            break :blk b[0..l];
+        },
+        if (session.upd_version == 0) "0" else blk: {
+            var b: [8]u8 = undefined;
+            const l = writeUint(&b, session.upd_version) orelse return null;
+            break :blk b[0..l];
+        },
+        "1", // dialog language = DE (python-fints Language2.DE)
+        session.productIdSlice(),
+        "5.0.0", // python-fints product version
+    }) orelse return null;
+
+    // HKSYN — Synchronization (mode 0 = new system ID)
+    inner_pos += writeSegment(&inner_buf, inner_pos, "HKSYN", 5, 3, &.{
+        "0",
+    }) orelse return null;
+
+    // HNSHA — Signature footer (contains PIN)
+    inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 6, sec_ref, session.pinSlice(), "") orelse return null;
+
+    return writeAuthEnvelope(session, "999", buf, inner_buf[0..inner_pos], 6);
+}
+
+/// Build authenticated initialization message for business dialogs.
+/// Uses real TAN security function (e.g. 902 for photoTAN).
 pub fn buildAuthInit(session: *const FintsSession, buf: []u8) ?usize {
     var inner_buf: [4096]u8 = undefined;
     var inner_pos: usize = 0;
 
-    // HKIDN — Identification (segment numbers start at 2, no security envelope)
-    // Kreditinstitutskennung is a DEG: 280:BLZ (colon must NOT be escaped)
-    inner_pos += writeHkidn(&inner_buf, inner_pos, 2, &session.blz, session.userIdSlice(), session.systemIdSlice(), "1") orelse return null;
+    var sec_ref_buf: [7]u8 = undefined;
+    const sec_ref = generateSecurityReference(&sec_ref_buf);
+    const sec_func = session.tanSecFuncSlice();
+
+    // HNSHK — with real TAN method
+    inner_pos += writeSignatureHeader(&inner_buf, inner_pos, 2, session, sec_ref, sec_func) orelse return null;
+
+    // HKIDN — Identification (with real system_id from sync)
+    inner_pos += writeHkidn(&inner_buf, inner_pos, 3, &session.blz, session.userIdSlice(), session.systemIdSlice(), "1") orelse return null;
 
     // HKVVB — BPD request
-    inner_pos += writeSegment(&inner_buf, inner_pos, "HKVVB", 3, 3, &.{
-        "0",
-        "0",
-        "0",
+    inner_pos += writeSegment(&inner_buf, inner_pos, "HKVVB", 4, 3, &.{
+        if (session.bpd_version == 0) "0" else blk: {
+            var b: [8]u8 = undefined;
+            const l = writeUint(&b, session.bpd_version) orelse return null;
+            break :blk b[0..l];
+        },
+        if (session.upd_version == 0) "0" else blk: {
+            var b: [8]u8 = undefined;
+            const l = writeUint(&b, session.upd_version) orelse return null;
+            break :blk b[0..l];
+        },
+        "1", // dialog language = DE (python-fints Language2.DE)
         session.productIdSlice(),
-        "1.0",
+        "5.0.0", // python-fints product version
     }) orelse return null;
 
-    // HKTAN — TAN process init (two-step, version 6)
-    inner_pos += writeSegment(&inner_buf, inner_pos, "HKTAN", 4, 6, &.{
-        "4", // process variant 4 = init
-        "HKIDN", // segment reference
-    }) orelse return null;
+    const is_one_step = std.mem.eql(u8, sec_func, "999");
+    if (!is_one_step) {
+        // HKTAN process-4 init for two-step auth flows.
+        inner_pos += buildHktanProcess4(session, &inner_buf, inner_pos, 5, "HKIDN") orelse return null;
 
-    return writeEnvelope(session, buf, inner_buf[0..inner_pos]);
+        // HNSHA — Signature footer (contains PIN)
+        inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 6, sec_ref, session.pinSlice(), "") orelse return null;
+        return writeAuthEnvelope(session, sec_func, buf, inner_buf[0..inner_pos], 6);
+    }
+
+    // One-step init (python-fints bootstrap style) without HKTAN.
+    inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 5, sec_ref, session.pinSlice(), "") orelse return null;
+    return writeAuthEnvelope(session, sec_func, buf, inner_buf[0..inner_pos], 5);
 }
 
 /// Build HKKAZ (fetch bank statements) message.
-pub fn buildFetchStatements(session: *const FintsSession, from: []const u8, to: []const u8, buf: []u8) ?usize {
+/// Uses HNVSK/HNVSD security envelope with PIN in HNSHA.
+pub fn buildFetchStatements(session: *const FintsSession, from: []const u8, to: []const u8, touchdown: []const u8, buf: []u8) ?usize {
     var inner_buf: [4096]u8 = undefined;
     var inner_pos: usize = 0;
 
-    // HKKAZ — Account statements MT940
-    // Version 5 (Comdirect supports v5 per BPD HIKAZS:11:5)
+    var sec_ref_buf: [7]u8 = undefined;
+    const sec_ref = generateSecurityReference(&sec_ref_buf);
+
+    // HNSHK — Signature header (always seg 2 inside HNVSD)
+    inner_pos += writeSignatureHeader(&inner_buf, inner_pos, 2, session, sec_ref, session.tanSecFuncSlice()) orelse return null;
+
+    // HKKAZ — Account statements MT940 (seg 3)
     // Kontoverbindung DEG = Ktonr:Unterkonto:Laenderkennung:BLZ
-    // Note: colon inside DEG gets escaped by writeSegment, but Account2
-    // DEG colons ARE structural separators. So we build the DEG manually.
-    var acct_buf: [64]u8 = undefined;
+    var acct_buf: [128]u8 = undefined;
     var acct_pos: usize = 0;
-    const uid = session.userIdSlice();
-    @memcpy(acct_buf[acct_pos .. acct_pos + uid.len], uid);
-    acct_pos += uid.len;
-    const acct_suffix = ":0:280:";
-    @memcpy(acct_buf[acct_pos .. acct_pos + acct_suffix.len], acct_suffix);
-    acct_pos += acct_suffix.len;
-    @memcpy(acct_buf[acct_pos .. acct_pos + 8], &session.blz);
-    acct_pos += 8;
+    if (session.account_ktv_len > 0) {
+        const ktv = session.accountKtvSlice();
+        @memcpy(acct_buf[acct_pos .. acct_pos + ktv.len], ktv);
+        acct_pos += ktv.len;
+    } else {
+        const uid = session.userIdSlice();
+        @memcpy(acct_buf[acct_pos .. acct_pos + uid.len], uid);
+        acct_pos += uid.len;
+        const acct_suffix = ":0:280:";
+        @memcpy(acct_buf[acct_pos .. acct_pos + acct_suffix.len], acct_suffix);
+        acct_pos += acct_suffix.len;
+        @memcpy(acct_buf[acct_pos .. acct_pos + 8], &session.blz);
+        acct_pos += 8;
+    }
 
     // Write HKKAZ manually (DEG colons must not be escaped)
     var kaz_buf: [256]u8 = undefined;
     var kaz_pos: usize = 0;
-    const kaz_header = "HKKAZ:2:5+";
+    const kaz_header = "HKKAZ:3:5+";
     @memcpy(kaz_buf[kaz_pos .. kaz_pos + kaz_header.len], kaz_header);
     kaz_pos += kaz_header.len;
-    // Account DEG (colons are structural, NOT escaped)
     @memcpy(kaz_buf[kaz_pos .. kaz_pos + acct_pos], acct_buf[0..acct_pos]);
     kaz_pos += acct_pos;
-    // +N+ (Alle Konten = Nein)
     @memcpy(kaz_buf[kaz_pos .. kaz_pos + 3], "+N+");
     kaz_pos += 3;
-    // Von Datum
     @memcpy(kaz_buf[kaz_pos .. kaz_pos + from.len], from);
     kaz_pos += from.len;
     kaz_buf[kaz_pos] = '+';
     kaz_pos += 1;
-    // Bis Datum
     @memcpy(kaz_buf[kaz_pos .. kaz_pos + to.len], to);
     kaz_pos += to.len;
-    // ++ (max entries, start token) + terminator
-    @memcpy(kaz_buf[kaz_pos .. kaz_pos + 3], "++'");
-    kaz_pos += 3;
+    if (touchdown.len > 0) {
+        @memcpy(kaz_buf[kaz_pos .. kaz_pos + 2], "++");
+        kaz_pos += 2;
+        @memcpy(kaz_buf[kaz_pos .. kaz_pos + touchdown.len], touchdown);
+        kaz_pos += touchdown.len;
+        kaz_buf[kaz_pos] = '\'';
+        kaz_pos += 1;
+    } else {
+        @memcpy(kaz_buf[kaz_pos .. kaz_pos + 3], "++'");
+        kaz_pos += 3;
+    }
 
     @memcpy(inner_buf[inner_pos .. inner_pos + kaz_pos], kaz_buf[0..kaz_pos]);
     inner_pos += kaz_pos;
 
-    // HKTAN
-    inner_pos += writeSegment(&inner_buf, inner_pos, "HKTAN", 3, 6, &.{
-        "4",
-        "HKKAZ",
-    }) orelse return null;
+    // HKTAN process-4 for the concrete business segment.
+    inner_pos += buildHktanProcess4(session, &inner_buf, inner_pos, 4, "HKKAZ") orelse return null;
 
-    return writeEnvelope(session, buf, inner_buf[0..inner_pos]);
+    // HNSHA (seg 5)
+    inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 5, sec_ref, session.pinSlice(), "") orelse return null;
+
+    return writeAuthEnvelope(session, session.tanSecFuncSlice(), buf, inner_buf[0..inner_pos], 5);
 }
 
 /// Build TAN submission message.
+/// Uses HNVSK/HNVSD security envelope.
 pub fn buildTanResponse(session: *const FintsSession, tan: []const u8, buf: []u8) ?usize {
     var inner_buf: [4096]u8 = undefined;
     var inner_pos: usize = 0;
 
-    // HKTAN with the TAN (segment 2, no security envelope)
-    inner_pos += writeSegment(&inner_buf, inner_pos, "HKTAN", 2, 6, &.{
-        "2", // process variant 2 = submit TAN
-        "",
-        session.challenge_ref[0..session.challenge_ref_len],
-        "",
-        tan,
-    }) orelse return null;
+    var sec_ref_buf: [7]u8 = undefined;
+    const sec_ref = generateSecurityReference(&sec_ref_buf);
 
-    return writeEnvelope(session, buf, inner_buf[0..inner_pos]);
+    // HNSHK (seg 2)
+    inner_pos += writeSignatureHeader(&inner_buf, inner_pos, 2, session, sec_ref, session.tanSecFuncSlice()) orelse return null;
+
+    // HKTAN process-2 submit (python-fints sets task_reference + further_tan_follows=false).
+    inner_pos += buildHktanProcess2(session, &inner_buf, inner_pos, 3, session.challenge_ref[0..session.challenge_ref_len]) orelse return null;
+
+    // HNSHA (seg 4)
+    inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 4, sec_ref, session.pinSlice(), tan) orelse return null;
+
+    return writeAuthEnvelope(session, session.tanSecFuncSlice(), buf, inner_buf[0..inner_pos], 4);
 }
 
-/// Build dialog end message.
-pub fn buildDialogEnd(session: *const FintsSession, buf: []u8) ?usize {
+/// Build dialog end message with security envelope.
+pub fn buildDialogEndWithSecFunc(session: *const FintsSession, sec_func: []const u8, buf: []u8) ?usize {
     var inner_buf: [4096]u8 = undefined;
     var inner_pos: usize = 0;
 
-    inner_pos += writeSegment(&inner_buf, inner_pos, "HKEND", 2, 1, &.{
+    var sec_ref_buf: [7]u8 = undefined;
+    const sec_ref = generateSecurityReference(&sec_ref_buf);
+
+    // HNSHK (seg 2)
+    inner_pos += writeSignatureHeader(&inner_buf, inner_pos, 2, session, sec_ref, sec_func) orelse return null;
+
+    // HKEND (seg 3)
+    inner_pos += writeSegment(&inner_buf, inner_pos, "HKEND", 3, 1, &.{
         session.dialogIdSlice(),
     }) orelse return null;
 
-    return writeEnvelope(session, buf, inner_buf[0..inner_pos]);
+    // HNSHA (seg 4)
+    inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 4, sec_ref, session.pinSlice(), "") orelse return null;
+
+    return writeAuthEnvelope(session, sec_func, buf, inner_buf[0..inner_pos], 4);
+}
+
+/// Build dialog end message with current TAN security function.
+pub fn buildDialogEnd(session: *const FintsSession, buf: []u8) ?usize {
+    return buildDialogEndWithSecFunc(session, session.tanSecFuncSlice(), buf);
 }
 
 /// Parse a FinTS response message, updating session state.
 pub fn parseResponse(session: *FintsSession, data: []const u8, out: *ParsedResponse) void {
-    out.* = ParsedResponse.init();
-
     // Split by unescaped segment delimiter '
     var seg_iter = SegmentIterator{ .data = data, .pos = 0 };
     while (seg_iter.next()) |segment| {
@@ -363,9 +672,15 @@ pub fn parseResponse(session: *FintsSession, data: []const u8, out: *ParsedRespo
             }
         } else if (startsWith(segment, "HNVSD")) {
             // Security envelope contains inner segments
-            // Extract content between @len@ markers
             if (extractEnvelopeContent(segment)) |inner| {
+                if (!is_wasm) {
+                    const plen = @min(inner.len, 120);
+                    std.debug.print("[FinTS Zig] HNVSD inner[0..{d}]='{s}'\n", .{ plen, inner[0..plen] });
+                    std.debug.print("[FinTS Zig] HNVSD inner.len={d}, segment.len={d}\n", .{ inner.len, segment.len });
+                }
                 parseResponse(session, inner, out);
+            } else {
+                if (!is_wasm) std.debug.print("[FinTS Zig] HNVSD: extractEnvelopeContent returned null!\n", .{});
             }
         } else if (startsWith(segment, "HIRMG") or startsWith(segment, "HIRMS")) {
             // Response codes
@@ -374,10 +689,120 @@ pub fn parseResponse(session: *FintsSession, data: []const u8, out: *ParsedRespo
             // Security header — skip
         } else if (startsWith(segment, "HISYN")) {
             // System ID response
+            if (!is_wasm) {
+                const plen = @min(segment.len, 80);
+                std.debug.print("[FinTS Zig] HISYN segment='{s}'\n", .{segment[0..plen]});
+            }
             extractSystemId(segment, out);
-        } else if (startsWith(segment, "HITAN")) {
-            // TAN challenge
+        } else if (startsWith(segment, "HITANS:")) {
+            // TAN method params (version advertised by bank). Track highest seen version.
+            var c: usize = 0;
+            var colon_count: u8 = 0;
+            var ver: u8 = 0;
+            while (c < segment.len) : (c += 1) {
+                if (segment[c] == ':') {
+                    colon_count += 1;
+                    if (colon_count == 2) {
+                        c += 1;
+                        while (c < segment.len and segment[c] >= '0' and segment[c] <= '9') : (c += 1) {
+                            ver = ver * 10 + @as(u8, segment[c] - '0');
+                        }
+                        break;
+                    }
+                }
+            }
+            if (ver >= 2 and ver <= 7 and (session.hitan_version == 0 or ver > session.hitan_version)) {
+                session.hitan_version = ver;
+            }
+            // Parse twostep_parameters groups for selected sec_func (e.g. 902) to drive HKTAN optionals.
+            // HITANS payload fields are '+' separated; twostep parameter entries are colon-separated DEGs.
+            var fp: usize = 0;
+            while (fp < segment.len and segment[fp] != '+') : (fp += 1) {}
+            if (fp < segment.len) fp += 1;
+            var field_start = fp;
+            while (fp <= segment.len) : (fp += 1) {
+                if (fp == segment.len or segment[fp] == '+' or segment[fp] == '\'') {
+                    const field = segment[field_start..fp];
+                    // candidate twostep parameter begins with "ddd:p:" where ddd is sec_func and p is tan_process.
+                    if (field.len >= 7 and
+                        field[0] >= '0' and field[0] <= '9' and
+                        field[1] >= '0' and field[1] <= '9' and
+                        field[2] >= '0' and field[2] <= '9' and
+                        field[3] == ':' and field[5] == ':')
+                    {
+                        const sf = field[0..3];
+                        const tp = field[4];
+                        if (std.mem.eql(u8, sf, session.tanSecFuncSlice()) and tp == '2') {
+                            // TwoStepParameters field offsets by HITANS version:
+                            // v5: description_required=19, supported_media_number=20
+                            // v6/v7: description_required=17, response_hhd_uc_required=18, supported_media_number=19
+                            const desc_idx: u8 = if (ver >= 6) 17 else 19;
+                            const hhd_uc_idx: u8 = if (ver >= 6) 18 else 255;
+                            const media_idx: u8 = if (ver >= 6) 19 else 20;
+                            var description_required: u8 = 0;
+                            var supported_media_number: u8 = 0;
+                            var response_hhd_uc_required = false;
+                            var idx: u8 = 0;
+                            var cp: usize = 0;
+                            var token_start: usize = 0;
+                            while (cp <= field.len) : (cp += 1) {
+                                if (cp == field.len or field[cp] == ':') {
+                                    const tok = field[token_start..cp];
+                                    if (idx == desc_idx and tok.len > 0 and tok[0] >= '0' and tok[0] <= '2') {
+                                        description_required = tok[0] - '0';
+                                    } else if (idx == hhd_uc_idx and tok.len > 0) {
+                                        response_hhd_uc_required = (tok[0] == 'J');
+                                    } else if (idx == media_idx and tok.len > 0 and tok[0] >= '0' and tok[0] <= '9') {
+                                        supported_media_number = std.fmt.parseInt(u8, tok, 10) catch 0;
+                                    }
+                                    token_start = cp + 1;
+                                    idx += 1;
+                                }
+                            }
+                            session.tan_description_required = description_required;
+                            session.tan_supported_media_number = supported_media_number;
+                            session.tan_response_hhd_uc_required = response_hhd_uc_required;
+                            session.tan_medium_required = (supported_media_number > 1 and description_required == 2);
+                            // python-fints HKTAN6 process-4 includes empty parameter_challenge_class DEG.
+                            session.include_empty_parameter_challenge_class = (session.hitan_version >= 6);
+                            break;
+                        }
+                    }
+                    field_start = fp + 1;
+                }
+            }
+        } else if (startsWith(segment, "HITAN:")) {
+            // TAN challenge / TAN submit feedback segment
             extractTanChallenge(segment, out);
+        } else if (startsWith(segment, "HIBPA")) {
+            // HIBPA:...+bpd_version+...
+            var p: usize = 0;
+            while (p < segment.len and segment[p] != '+') : (p += 1) {}
+            if (p < segment.len) {
+                p += 1;
+                const start = p;
+                while (p < segment.len and segment[p] >= '0' and segment[p] <= '9') : (p += 1) {}
+                if (p > start) {
+                    const parsed = std.fmt.parseInt(u16, segment[start..p], 10) catch 0;
+                    if (parsed > 0) session.bpd_version = parsed;
+                }
+            }
+        } else if (startsWith(segment, "HIUPA")) {
+            // HIUPA:...+upd_version+...
+            var p: usize = 0;
+            while (p < segment.len and segment[p] != '+') : (p += 1) {}
+            if (p < segment.len) {
+                p += 1;
+                const start = p;
+                while (p < segment.len and segment[p] >= '0' and segment[p] <= '9') : (p += 1) {}
+                if (p > start) {
+                    const parsed = std.fmt.parseInt(u16, segment[start..p], 10) catch 0;
+                    session.upd_version = parsed;
+                }
+            }
+        } else if (startsWith(segment, "HIUPD")) {
+            // Account data; extract Kontoverbindung (Ktonr:Unterkonto:280:BLZ) for HKKAZ parity.
+            extractAccountKtvFromHiupd(session, segment);
         } else if (startsWith(segment, "HIKAZ")) {
             // Account statements (MT940 data)
             extractMt940(segment, out);
@@ -398,6 +823,10 @@ pub fn parseResponse(session: *FintsSession, data: []const u8, out: *ParsedRespo
     if (out.has_tan_request) {
         session.has_pending_tan = true;
         session.decoupled = out.decoupled;
+        // Reset previous TAN payload first, then copy what is present in this response.
+        session.challenge_len = 0;
+        session.challenge_hhduc_len = 0;
+        session.challenge_ref_len = 0;
         if (out.challenge_len > 0) {
             @memcpy(session.challenge[0..out.challenge_len], out.challenge[0..out.challenge_len]);
             session.challenge_len = out.challenge_len;
@@ -410,6 +839,12 @@ pub fn parseResponse(session: *FintsSession, data: []const u8, out: *ParsedRespo
             @memcpy(session.challenge_ref[0..out.challenge_ref_len], out.challenge_ref[0..out.challenge_ref_len]);
             session.challenge_ref_len = out.challenge_ref_len;
         }
+    } else {
+        // No TAN request in this response; clear stale challenge state.
+        session.has_pending_tan = false;
+        session.decoupled = false;
+        session.challenge_len = 0;
+        session.challenge_hhduc_len = 0;
     }
 }
 
@@ -487,15 +922,18 @@ fn writeSegment(buf: []u8, offset: usize, id: []const u8, num: u16, ver: u8, des
 }
 
 /// Write HNHBK...HNHBS envelope around inner segments.
-fn writeEnvelope(session: *const FintsSession, buf: []u8, inner: []const u8) ?usize {
+/// hnhbs_num: explicit HNHBS segment number. If 0, auto-calculated from inner segment count.
+fn writeEnvelopeWithNum(session: *const FintsSession, buf: []u8, inner: []const u8, hnhbs_num: u16) ?usize {
     // HNHBK header: HNHBK:1:3+MSGSIZE+300+DIALOG_ID+MSG_NUM'
     // HNHBS trailer: HNHBS:N:1+MSG_NUM'
 
     // Build trailer first to know its size
     var trailer_buf: [64]u8 = undefined;
-    const seg_num = 2 + countSegments(inner);
+    const seg_num = if (hnhbs_num > 0) hnhbs_num else 2 + countSegments(inner);
+    var msg_num_buf: [6]u8 = undefined;
+    const msg_num_len = writeUint(&msg_num_buf, session.msg_num) orelse return null;
     const trailer_len = writeSegment(&trailer_buf, 0, "HNHBS", seg_num, 1, &.{
-        &formatMsgNum(session.msg_num),
+        msg_num_buf[0..msg_num_len],
     }) orelse return null;
 
     // Build header placeholder — we'll patch the size
@@ -528,10 +966,8 @@ fn writeEnvelope(session: *const FintsSession, buf: []u8, inner: []const u8) ?us
     header_pos += did.len;
     header_buf[header_pos] = '+';
     header_pos += 1;
-    // Message number
-    const mn = formatMsgNum(session.msg_num);
-    @memcpy(header_buf[header_pos .. header_pos + mn.len], &mn);
-    header_pos += mn.len;
+    // Message number (python-fints renders this as plain numeric, not zero-padded)
+    header_pos += writeUint(header_buf[header_pos..], session.msg_num) orelse return null;
     header_buf[header_pos] = '\'';
     header_pos += 1;
 
@@ -554,58 +990,227 @@ fn writeEnvelope(session: *const FintsSession, buf: []u8, inner: []const u8) ?us
     return pos;
 }
 
-/// Wrap inner segments in HNVSK + HNVSD security envelope with PIN.
-fn writeSecurityEnvelope(session: *const FintsSession, buf: []u8, inner: []const u8) ?usize {
+/// Write HNHBK...HNHBS envelope (auto segment numbering for bare messages).
+fn writeEnvelope(session: *const FintsSession, buf: []u8, inner: []const u8) ?usize {
+    return writeEnvelopeWithNum(session, buf, inner, 0);
+}
+
+/// Write HNSHK (signature header) segment for PIN/TAN.
+/// Fields per python-fints: security_profile, security_function, security_reference,
+/// security_application_area, security_role, security_identification_details,
+/// security_reference_number, security_datetime, hash_algorithm, signature_algorithm, key_name.
+fn writeSignatureHeader(buf: []u8, offset: usize, num: u16, session: *const FintsSession, sec_ref: []const u8, sec_func: []const u8) ?usize {
+    var pos: usize = offset;
+    const remaining = buf.len - pos;
+    if (remaining < 256) return null;
+
+    // HNSHK:num:4+PIN:1+sec_func+sec_ref+1+1+2::sys_id+1+1:DATE:TIME+1:999:1+6:10:16+280:BLZ:user:S:0:0'
+    const header = "HNSHK:";
+    @memcpy(buf[pos .. pos + header.len], header);
+    pos += header.len;
+    pos += writeUint(buf[pos..], num) orelse return null;
+
+    // HNSHK always uses PIN:1 (signature header). Only HNVSK uses PIN:2.
+    const part1a = ":4+PIN:1+";
+    @memcpy(buf[pos .. pos + part1a.len], part1a);
+    pos += part1a.len;
+
+    // Security function (999 for sync, 902 for photoTAN, etc.)
+    @memcpy(buf[pos .. pos + sec_func.len], sec_func);
+    pos += sec_func.len;
+
+    buf[pos] = '+';
+    pos += 1;
+
+    // Security reference
+    @memcpy(buf[pos .. pos + sec_ref.len], sec_ref);
+    pos += sec_ref.len;
+
+    // +SHM+ISS+ident(MS::system_id)+ref_num+datetime+hash+sig+key_name
+    // security_identification_details = IdentifiedRole.MS (2) + system_id
+    const part2a = "+1+1+2::";
+    @memcpy(buf[pos .. pos + part2a.len], part2a);
+    pos += part2a.len;
+
+    // System ID (0 for sync, real ID after sync)
+    const sid = session.systemIdSlice();
+    @memcpy(buf[pos .. pos + sid.len], sid);
+    pos += sid.len;
+
+    var date_buf: [8]u8 = undefined;
+    var time_buf: [6]u8 = undefined;
+    fillCurrentDateTime(&date_buf, &time_buf);
+
+    const part2b = "+1+1:";
+    @memcpy(buf[pos .. pos + part2b.len], part2b);
+    pos += part2b.len;
+    @memcpy(buf[pos .. pos + 8], &date_buf);
+    pos += 8;
+    buf[pos] = ':';
+    pos += 1;
+    @memcpy(buf[pos .. pos + 6], &time_buf);
+    pos += 6;
+    const part2c = "+1:999:1+6:10:16+280:";
+    @memcpy(buf[pos .. pos + part2c.len], part2c);
+    pos += part2c.len;
+
+    // BLZ
+    @memcpy(buf[pos .. pos + 8], &session.blz);
+    pos += 8;
+    buf[pos] = ':';
+    pos += 1;
+
+    // user_id
+    const uid = session.userIdSlice();
+    @memcpy(buf[pos .. pos + uid.len], uid);
+    pos += uid.len;
+
+    // :S:0:0'
+    const part3 = ":S:0:0'";
+    @memcpy(buf[pos .. pos + part3.len], part3);
+    pos += part3.len;
+
+    return pos - offset;
+}
+
+/// Write HNSHA (signature footer) segment with PIN and optional TAN.
+fn writeSignatureFooter(buf: []u8, offset: usize, num: u16, sec_ref: []const u8, pin: []const u8, tan: []const u8) ?usize {
+    var pos: usize = offset;
+    const remaining = buf.len - pos;
+    if (remaining < 128) return null;
+
+    // HNSHA:num:2+sec_ref++pin(:tan)?'
+    const header = "HNSHA:";
+    @memcpy(buf[pos .. pos + header.len], header);
+    pos += header.len;
+    pos += writeUint(buf[pos..], num) orelse return null;
+
+    const part1 = ":2+";
+    @memcpy(buf[pos .. pos + part1.len], part1);
+    pos += part1.len;
+
+    @memcpy(buf[pos .. pos + sec_ref.len], sec_ref);
+    pos += sec_ref.len;
+
+    // ++PIN
+    @memcpy(buf[pos .. pos + 2], "++");
+    pos += 2;
+
+    @memcpy(buf[pos .. pos + pin.len], pin);
+    pos += pin.len;
+
+    // :TAN (if provided)
+    if (tan.len > 0) {
+        buf[pos] = ':';
+        pos += 1;
+        @memcpy(buf[pos .. pos + tan.len], tan);
+        pos += tan.len;
+    }
+
+    buf[pos] = '\'';
+    pos += 1;
+
+    return pos - offset;
+}
+
+/// Wrap inner segments (which include HNSHK/HNSHA) in HNVSK + HNVSD envelope.
+/// last_inner_seg: the segment number of the last segment inside HNVSD (e.g. HNSHA).
+/// HNHBS will be last_inner_seg + 1.
+fn writeAuthEnvelope(session: *const FintsSession, sec_func: []const u8, buf: []u8, inner: []const u8, last_inner_seg: u16) ?usize {
     var sec_buf: [8192]u8 = undefined;
     var sec_pos: usize = 0;
 
-    // HNVSK — Security header (segment 998)
-    // Simplified PIN/TAN mode
-    sec_pos += writeSegment(&sec_buf, sec_pos, "HNVSK", 998, 3, &.{
-        "998", // security profile
-        "1", // security function
-        "1", // security class
-        "", // role
-        "1", // version
-        "0", // date (ignored for PIN/TAN)
-        "1", // encryption algorithm
-        "2:2:13:@8@00000000:5:1", // key name (simplified)
-        "0", // compression
-    }) orelse return null;
+    // HNVSK:998:3 — Security header (dummy encryption for PIN/TAN)
+    // Fields: security_profile(PIN:1) + security_function(998) + security_role(1) +
+    //         security_identification(1::0) + security_datetime(1:DATE:TIME) +
+    //         encryption_algorithm(2:2:13:@8@\0\0\0\0\0\0\0\0:5:1) +
+    //         key_name(280:BLZ:user:V:0:0) + compression(0)
+    var hnvsk_buf: [256]u8 = undefined;
+    var vsk_pos: usize = 0;
 
-    // Build inner segment with PIN authentication
-    var pin_inner_buf: [8192]u8 = undefined;
-    var pin_pos: usize = 0;
+    // python-fints parity: one-step (999) uses profile PIN:1, two-step methods use PIN:2.
+    const pin_ver: []const u8 = if (std.mem.eql(u8, sec_func, "999")) "1" else "2";
 
-    // HNVSD contains the actual segments + authentication
-    // First write the inner segments
-    @memcpy(pin_inner_buf[pin_pos .. pin_pos + inner.len], inner);
-    pin_pos += inner.len;
+    // Part before system_id in security_identification
+    const vsk_h1 = "HNVSK:998:3+PIN:";
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + vsk_h1.len], vsk_h1);
+    vsk_pos += vsk_h1.len;
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + pin_ver.len], pin_ver);
+    vsk_pos += pin_ver.len;
+    // security_identification_details = IdentifiedRole.MS (2) + system_id
+    const vsk_h2 = "+998+1+2::";
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + vsk_h2.len], vsk_h2);
+    vsk_pos += vsk_h2.len;
 
-    // Format the HNVSD segment with @len@ binary data marker
-    // HNVSD:999:1+@len@data'
+    // System ID in security_identification (0 for sync, real after sync)
+    const sid = session.systemIdSlice();
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + sid.len], sid);
+    vsk_pos += sid.len;
+
+    var date_buf: [8]u8 = undefined;
+    var time_buf: [6]u8 = undefined;
+    fillCurrentDateTime(&date_buf, &time_buf);
+
+    const vsk_part1 = "+1:";
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + vsk_part1.len], vsk_part1);
+    vsk_pos += vsk_part1.len;
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + 8], &date_buf);
+    vsk_pos += 8;
+    hnvsk_buf[vsk_pos] = ':';
+    vsk_pos += 1;
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + 6], &time_buf);
+    vsk_pos += 6;
+    const vsk_part1b = "+2:2:13:@8@";
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + vsk_part1b.len], vsk_part1b);
+    vsk_pos += vsk_part1b.len;
+
+    // 8 null bytes (encryption key value — dummy for PIN/TAN)
+    @memset(hnvsk_buf[vsk_pos .. vsk_pos + 8], 0);
+    vsk_pos += 8;
+
+    // Part after binary key value, up to BLZ
+    const vsk_part2 = ":5:1+280:";
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + vsk_part2.len], vsk_part2);
+    vsk_pos += vsk_part2.len;
+
+    // BLZ
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + 8], &session.blz);
+    vsk_pos += 8;
+    hnvsk_buf[vsk_pos] = ':';
+    vsk_pos += 1;
+
+    // user_id
+    const uid = session.userIdSlice();
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + uid.len], uid);
+    vsk_pos += uid.len;
+
+    const vsk_suffix = ":V:0:0+0'";
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + vsk_suffix.len], vsk_suffix);
+    vsk_pos += vsk_suffix.len;
+
+    @memcpy(sec_buf[sec_pos .. sec_pos + vsk_pos], hnvsk_buf[0..vsk_pos]);
+    sec_pos += vsk_pos;
+
+    // HNVSD:999:1+@len@inner_data'
     const hnvsd_prefix = "HNVSD:999:1+@";
-    if (sec_pos + hnvsd_prefix.len > sec_buf.len) return null;
     @memcpy(sec_buf[sec_pos .. sec_pos + hnvsd_prefix.len], hnvsd_prefix);
     sec_pos += hnvsd_prefix.len;
 
     // Write length as decimal
-    sec_pos += writeUint(sec_buf[sec_pos..], @intCast(pin_pos)) orelse return null;
+    sec_pos += writeUint(sec_buf[sec_pos..], @intCast(inner.len)) orelse return null;
 
-    if (sec_pos >= sec_buf.len) return null;
     sec_buf[sec_pos] = '@';
     sec_pos += 1;
 
     // Write the inner data
-    if (sec_pos + pin_pos >= sec_buf.len) return null;
-    @memcpy(sec_buf[sec_pos .. sec_pos + pin_pos], pin_inner_buf[0..pin_pos]);
-    sec_pos += pin_pos;
+    if (sec_pos + inner.len + 1 >= sec_buf.len) return null;
+    @memcpy(sec_buf[sec_pos .. sec_pos + inner.len], inner);
+    sec_pos += inner.len;
 
-    if (sec_pos >= sec_buf.len) return null;
     sec_buf[sec_pos] = '\'';
     sec_pos += 1;
 
-    return writeEnvelope(session, buf, sec_buf[0..sec_pos]);
+    return writeEnvelopeWithNum(session, buf, sec_buf[0..sec_pos], last_inner_seg + 1);
 }
 
 // ============================================================
@@ -613,6 +1218,7 @@ fn writeSecurityEnvelope(session: *const FintsSession, buf: []u8, inner: []const
 // ============================================================
 
 /// Iterator that splits FinTS message by unescaped ' delimiter.
+/// Handles @len@ binary data blocks (skips over them without splitting).
 const SegmentIterator = struct {
     data: []const u8,
     pos: usize,
@@ -622,6 +1228,13 @@ const SegmentIterator = struct {
 
         const start = self.pos;
         while (self.pos < self.data.len) {
+            // Skip @len@ binary data blocks
+            if (self.data[self.pos] == '@' and !isEscaped(self.data, self.pos)) {
+                if (self.parseBinaryLen()) |bin_len| {
+                    self.pos += bin_len; // skip binary content
+                    continue;
+                }
+            }
             if (self.data[self.pos] == '\'' and !isEscaped(self.data, self.pos)) {
                 const segment = self.data[start..self.pos];
                 self.pos += 1;
@@ -634,6 +1247,21 @@ const SegmentIterator = struct {
         // Remaining data (no trailing ')
         if (start < self.data.len) return self.data[start..];
         return null;
+    }
+
+    /// Parse @len@ and advance pos past the closing @. Returns the binary length to skip.
+    fn parseBinaryLen(self: *SegmentIterator) ?usize {
+        var p = self.pos + 1; // skip opening @
+        var len: usize = 0;
+        var has_digits = false;
+        while (p < self.data.len and self.data[p] >= '0' and self.data[p] <= '9') : (p += 1) {
+            len = len * 10 + (self.data[p] - '0');
+            has_digits = true;
+        }
+        if (!has_digits or p >= self.data.len or self.data[p] != '@') return null;
+        // Advance past closing @ and the binary data
+        self.pos = p + 1; // past closing @
+        return len;
     }
 };
 
@@ -704,8 +1332,32 @@ fn extractSystemId(segment: []const u8, out: *ParsedResponse) void {
 }
 
 fn extractTanChallenge(segment: []const u8, out: *ParsedResponse) void {
-    // HITAN:N:V+process+ref+...+challenge+...
+    // HITAN:N:V+... (field mapping depends on HITAN version)
     out.has_tan_request = true;
+
+    // Parse HITAN version from header (HITAN:<num>:<ver>...)
+    var hitan_ver: u8 = 0;
+    var c: usize = 0;
+    var colon_count: u8 = 0;
+    while (c < segment.len) : (c += 1) {
+        if (segment[c] == ':') {
+            colon_count += 1;
+            if (colon_count == 2) {
+                c += 1;
+                while (c < segment.len and segment[c] >= '0' and segment[c] <= '9') : (c += 1) {
+                    hitan_ver = hitan_ver * 10 + @as(u8, segment[c] - '0');
+                }
+                break;
+            }
+        }
+    }
+
+    // python-fints mapping:
+    // HITAN6/7: field2=task_hash_value, field3=task_reference, field4=challenge, field5=challenge_hhduc
+    // older HITAN variants: field2=task_reference, field4=challenge, field5=challenge_hhduc
+    const ref_field_num: u8 = if (hitan_ver >= 6) 3 else 2;
+    const challenge_field_num: u8 = 4;
+    const hhduc_field_num: u8 = 5;
 
     // Split by + to find challenge fields
     var field_num: u8 = 0;
@@ -719,54 +1371,71 @@ fn extractTanChallenge(segment: []const u8, out: *ParsedResponse) void {
 
     while (pos < segment.len) {
         const field_start = pos;
-        // Find next unescaped +
-        while (pos < segment.len) {
-            if ((segment[pos] == '+' or segment[pos] == '\'') and !isEscaped(segment, pos)) break;
-            pos += 1;
+        var parsed_binary_field = false;
+
+        // FinTS binary fields are encoded as @len@<raw-bytes>. Those bytes may contain
+        // '+' or '\'' and must be consumed by length, not delimiter scanning.
+        if (segment[pos] == '@') {
+            var p = pos + 1;
+            var bin_len: usize = 0;
+            var has_digits = false;
+            while (p < segment.len and segment[p] >= '0' and segment[p] <= '9') : (p += 1) {
+                has_digits = true;
+                bin_len = (bin_len * 10) + @as(usize, segment[p] - '0');
+            }
+            if (has_digits and p < segment.len and segment[p] == '@') {
+                const data_start = p + 1;
+                if (data_start <= segment.len and bin_len <= (segment.len - data_start)) {
+                    pos = data_start + bin_len;
+                    parsed_binary_field = true;
+                }
+            }
+        }
+
+        if (!parsed_binary_field) {
+            // Find next unescaped '+' or segment terminator.
+            while (pos < segment.len) {
+                if ((segment[pos] == '+' or segment[pos] == '\'') and !isEscaped(segment, pos)) break;
+                pos += 1;
+            }
         }
         const field = segment[field_start..pos];
 
-        switch (field_num) {
-            1 => {
-                // Process variant — check for "S" (decoupled)
-                if (std.mem.eql(u8, field, "S")) {
-                    out.decoupled = true;
-                }
-            },
-            2 => {
-                // Challenge reference
-                const ref_len = @min(field.len, 32);
-                @memcpy(out.challenge_ref[0..ref_len], field[0..ref_len]);
-                out.challenge_ref_len = @intCast(ref_len);
-            },
-            4 => {
-                // Challenge text
-                const chal_len = @min(field.len, 512);
-                @memcpy(out.challenge[0..chal_len], field[0..chal_len]);
-                out.challenge_len = @intCast(chal_len);
-            },
-            5 => {
-                // Challenge HHDUC — photoTAN image data
-                // May be prefixed with @len@ binary marker
-                if (std.mem.indexOf(u8, field, "@")) |at_pos| {
-                    const after = field[at_pos + 1 ..];
-                    if (std.mem.indexOf(u8, after, "@")) |end_at| {
-                        const data_start = at_pos + 1 + end_at + 1;
-                        if (data_start < field.len) {
-                            const data = field[data_start..];
-                            const copy_len = @min(data.len, 8192);
-                            @memcpy(out.challenge_hhduc[0..copy_len], data[0..copy_len]);
-                            out.challenge_hhduc_len = @intCast(copy_len);
-                        }
+        if (field_num == 1) {
+            // Process variant — check for "S" (decoupled)
+            if (std.mem.eql(u8, field, "S")) {
+                out.decoupled = true;
+            }
+        } else if (field_num == ref_field_num) {
+            // Challenge reference
+            const ref_len = @min(field.len, 32);
+            @memcpy(out.challenge_ref[0..ref_len], field[0..ref_len]);
+            out.challenge_ref_len = @intCast(ref_len);
+        } else if (field_num == challenge_field_num) {
+            // Challenge text
+            const chal_len = @min(field.len, 512);
+            @memcpy(out.challenge[0..chal_len], field[0..chal_len]);
+            out.challenge_len = @intCast(chal_len);
+        } else if (field_num == hhduc_field_num) {
+            // Challenge HHDUC — photoTAN image data
+            // May be prefixed with @len@ binary marker
+            if (std.mem.indexOf(u8, field, "@")) |at_pos| {
+                const after = field[at_pos + 1 ..];
+                if (std.mem.indexOf(u8, after, "@")) |end_at| {
+                    const data_start = at_pos + 1 + end_at + 1;
+                    if (data_start < field.len) {
+                        const data = field[data_start..];
+                        const copy_len = @min(data.len, 8192);
+                        @memcpy(out.challenge_hhduc[0..copy_len], data[0..copy_len]);
+                        out.challenge_hhduc_len = @intCast(copy_len);
                     }
-                } else if (field.len > 0) {
-                    // Raw data without @len@ prefix
-                    const copy_len = @min(field.len, 8192);
-                    @memcpy(out.challenge_hhduc[0..copy_len], field[0..copy_len]);
-                    out.challenge_hhduc_len = @intCast(copy_len);
                 }
-            },
-            else => {},
+            } else if (field.len > 0) {
+                // Raw data without @len@ prefix
+                const copy_len = @min(field.len, 8192);
+                @memcpy(out.challenge_hhduc[0..copy_len], field[0..copy_len]);
+                out.challenge_hhduc_len = @intCast(copy_len);
+            }
         }
 
         field_num += 1;
@@ -775,44 +1444,132 @@ fn extractTanChallenge(segment: []const u8, out: *ParsedResponse) void {
 }
 
 fn extractMt940(segment: []const u8, out: *ParsedResponse) void {
-    // HIKAZ:N:V+@len@mt940data+...
-    // Find @len@ binary data marker
-    if (std.mem.indexOf(u8, segment, "@")) |at_pos| {
-        const after_at = segment[at_pos + 1 ..];
-        // Find closing @
-        if (std.mem.indexOf(u8, after_at, "@")) |end_at| {
-            const data_start = at_pos + 1 + end_at + 1;
-            if (data_start < segment.len) {
-                const remaining = segment[data_start..];
-                const copy_len = @min(remaining.len, 32768);
-                @memcpy(out.mt940_data[0..copy_len], remaining[0..copy_len]);
-                out.mt940_len = @intCast(copy_len);
-                return;
+    // HIKAZ can contain multiple binary fields; append the one(s) that look like MT940.
+    var pos: usize = 0;
+    while (pos < segment.len and segment[pos] != '+') : (pos += 1) {}
+    if (pos >= segment.len) return;
+    pos += 1; // first field after segment header
+
+    var appended_any = false;
+    var first_binary: []const u8 = "";
+
+    while (pos < segment.len) {
+        // Binary field: @len@<raw bytes>
+        if (segment[pos] == '@' and !isEscaped(segment, pos)) {
+            var p = pos + 1;
+            var bin_len: usize = 0;
+            var has_digits = false;
+            while (p < segment.len and segment[p] >= '0' and segment[p] <= '9') : (p += 1) {
+                has_digits = true;
+                bin_len = bin_len * 10 + (segment[p] - '0');
+            }
+            if (has_digits and p < segment.len and segment[p] == '@') {
+                const data_start = p + 1;
+                if (data_start <= segment.len) {
+                    const available = segment.len - data_start;
+                    const raw = segment[data_start .. data_start + @min(bin_len, available)];
+                    if (first_binary.len == 0) first_binary = raw;
+                    if (looksLikeMt940(raw)) {
+                        appendMt940(out, raw);
+                        appended_any = true;
+                    }
+                    pos = data_start + @min(bin_len, available);
+                    if (pos < segment.len and segment[pos] == '+' and !isEscaped(segment, pos)) {
+                        pos += 1;
+                    }
+                    continue;
+                }
+            }
+        }
+
+        // Non-binary field: skip to next unescaped +.
+        while (pos < segment.len) : (pos += 1) {
+            if (segment[pos] == '+' and !isEscaped(segment, pos)) {
+                pos += 1;
+                break;
             }
         }
     }
 
-    // Fallback: try to find MT940 data after first +
+    // If nothing matched MT940 heuristics, keep old behavior and use the first binary block.
+    if (!appended_any and first_binary.len > 0) {
+        appendMt940(out, first_binary);
+    }
+}
+
+fn appendMt940(out: *ParsedResponse, chunk: []const u8) void {
+    if (chunk.len == 0) return;
+    const offset: usize = out.mt940_len;
+    if (offset >= out.mt940_data.len) return;
+    const copy_len = @min(chunk.len, out.mt940_data.len - offset);
+    @memcpy(out.mt940_data[offset .. offset + copy_len], chunk[0..copy_len]);
+    out.mt940_len = @intCast(offset + copy_len);
+}
+
+fn looksLikeMt940(data: []const u8) bool {
+    if (data.len == 0) return false;
+    // Trim leading whitespace/newlines before checking markers.
+    var start: usize = 0;
+    while (start < data.len and (data[start] == '\r' or data[start] == '\n' or data[start] == ' ' or data[start] == '\t')) : (start += 1) {}
+    if (start >= data.len) return false;
+    const s = data[start..];
+
+    if (std.mem.startsWith(u8, s, ":20:")) return true;
+    if (std.mem.indexOf(u8, s, "\n:20:") != null) return true;
+    if (std.mem.indexOf(u8, s, "\r:20:") != null) return true;
+    // Some banks omit :20: in fragments, but :61: still indicates statement body.
+    if (std.mem.startsWith(u8, s, ":61:")) return true;
+    if (std.mem.indexOf(u8, s, "\n:61:") != null) return true;
+    if (std.mem.indexOf(u8, s, "\r:61:") != null) return true;
+    return false;
+}
+
+fn extractAccountKtvFromHiupd(session: *FintsSession, segment: []const u8) void {
+    // Find a field like "Ktonr:Unterkonto:280:BLZ" and keep it for HKKAZ requests.
     var pos: usize = 0;
     while (pos < segment.len and segment[pos] != '+') : (pos += 1) {}
-    if (pos < segment.len) {
-        pos += 1;
-        const remaining = segment[pos..];
-        const copy_len = @min(remaining.len, 32768);
-        @memcpy(out.mt940_data[0..copy_len], remaining[0..copy_len]);
-        out.mt940_len = @intCast(copy_len);
+    if (pos >= segment.len) return;
+    pos += 1;
+
+    var field_start = pos;
+    while (pos <= segment.len) : (pos += 1) {
+        if (pos == segment.len or (segment[pos] == '+' and !isEscaped(segment, pos))) {
+            const field = segment[field_start..pos];
+            if (std.mem.indexOf(u8, field, ":280:")) |country_pos| {
+                if (country_pos > 0 and country_pos + 13 <= field.len) {
+                    const blz = field[country_pos + 5 .. country_pos + 13];
+                    if (std.mem.eql(u8, blz, &session.blz) and std.mem.indexOfScalar(u8, field[0..country_pos], ':') != null) {
+                        const candidate = field[0 .. country_pos + 13];
+                        const copy_len = @min(candidate.len, session.account_ktv.len);
+                        @memcpy(session.account_ktv[0..copy_len], candidate[0..copy_len]);
+                        session.account_ktv_len = @intCast(copy_len);
+                        return;
+                    }
+                }
+            }
+            field_start = pos + 1;
+        }
     }
 }
 
 fn extractEnvelopeContent(segment: []const u8) ?[]const u8 {
-    // Find @len@ marker in HNVSD segment
+    // Find @len@ marker in HNVSD segment and return exactly len bytes
     if (std.mem.indexOf(u8, segment, "@")) |at_pos| {
-        const after_at = segment[at_pos + 1 ..];
-        if (std.mem.indexOf(u8, after_at, "@")) |end_at| {
-            const data_start = at_pos + 1 + end_at + 1;
-            if (data_start < segment.len) {
-                return segment[data_start..];
-            }
+        var p = at_pos + 1;
+        var len: usize = 0;
+        var has_digits = false;
+        while (p < segment.len and segment[p] >= '0' and segment[p] <= '9') : (p += 1) {
+            len = len * 10 + (segment[p] - '0');
+            has_digits = true;
+        }
+        if (!has_digits or p >= segment.len or segment[p] != '@') return null;
+        const data_start = p + 1; // after closing @
+        if (data_start + len <= segment.len) {
+            return segment[data_start .. data_start + len];
+        }
+        // Fallback: return everything after @len@
+        if (data_start < segment.len) {
+            return segment[data_start..];
         }
     }
     return null;
@@ -897,18 +1654,6 @@ fn formatFixedWidth(buf: *[12]u8, val: usize) void {
         buf[i] = @intCast('0' + (n % 10));
         n /= 10;
     }
-}
-
-fn formatMsgNum(num: u16) [4]u8 {
-    var result: [4]u8 = undefined;
-    var n: u16 = num;
-    var i: usize = 4;
-    while (i > 0) {
-        i -= 1;
-        result[i] = @intCast('0' + (n % 10));
-        n /= 10;
-    }
-    return result;
 }
 
 fn countSegments(data: []const u8) u16 {
@@ -1034,12 +1779,6 @@ test "writeEnvelope size field is correct" {
     try std.testing.expectEqual(len, declared_size);
 }
 
-test "formatMsgNum pads to 4 digits" {
-    try std.testing.expectEqualStrings("0001", &formatMsgNum(1));
-    try std.testing.expectEqualStrings("0042", &formatMsgNum(42));
-    try std.testing.expectEqualStrings("0100", &formatMsgNum(100));
-}
-
 test "formatFixedWidth pads to 12 digits" {
     var buf: [12]u8 = undefined;
     formatFixedWidth(&buf, 95);
@@ -1067,6 +1806,32 @@ test "parseResponse detects error codes" {
     try std.testing.expect(resp.codes[0].isError());
 }
 
+test "parseResponse extracts dialog_id from HNHBK with HNVSK binary data" {
+    var s = FintsSession.init("20041177", "https://x.de/f", "u", "p");
+    var resp = ParsedResponse.init();
+
+    // Build data with HNHBK + HNVSK (with @8@ null bytes) + HNHBS
+    var data: [512]u8 = undefined;
+    var pos: usize = 0;
+    const hnhbk = "HNHBK:1:3+000000000200+300+TestDid123+1'";
+    @memcpy(data[pos .. pos + hnhbk.len], hnhbk);
+    pos += hnhbk.len;
+    const vsk_pre = "HNVSK:998:3+PIN:1+998+1+2::0+1+2:2:13:@8@";
+    @memcpy(data[pos .. pos + vsk_pre.len], vsk_pre);
+    pos += vsk_pre.len;
+    @memset(data[pos .. pos + 8], 0);
+    pos += 8;
+    const vsk_post = ":5:1+280:20041177:u:V:0:0+0'";
+    @memcpy(data[pos .. pos + vsk_post.len], vsk_post);
+    pos += vsk_post.len;
+    const hnhbs = "HNHBS:3:1+1'";
+    @memcpy(data[pos .. pos + hnhbs.len], hnhbs);
+    pos += hnhbs.len;
+
+    parseResponse(&s, data[0..pos], &resp);
+    try std.testing.expectEqualStrings("TestDid123", s.dialogIdSlice());
+}
+
 test "parseResponse extracts system ID from HISYN" {
     var s = FintsSession.init("12345678", "https://x.de/f", "u", "p");
     var resp = ParsedResponse.init();
@@ -1076,10 +1841,28 @@ test "parseResponse extracts system ID from HISYN" {
     try std.testing.expectEqualStrings("mySystemId123", s.systemIdSlice());
 }
 
+test "buildAuthInit uses MS role code in HNSHK and HNVSK" {
+    var s = FintsSession.init("20041177", "https://x.de/f", "46236380", "191819");
+    s.product_id_len = 25;
+    @memcpy(s.product_id[0..25], "F7C4049477F6136957A46EC28");
+    @memcpy(s.tan_sec_func[0..3], "902");
+    s.tan_sec_func_len = 3;
+    s.system_id_len = 28;
+    @memcpy(s.system_id[0..28], "DEc3N2PD/ZwBAACkKjPRyAWCCgQA");
+
+    var buf: [8192]u8 = undefined;
+    const len = buildAuthInit(&s, &buf) orelse return error.TestUnexpectedResult;
+    const msg = buf[0..len];
+
+    try std.testing.expect(std.mem.indexOf(u8, msg, "HNVSK:998:3+PIN:2+998+1+2::DEc3N2PD/ZwBAACkKjPRyAWCCgQA") != null);
+    try std.testing.expect(std.mem.indexOf(u8, msg, "HNSHK:2:4+PIN:1+902+") != null);
+    try std.testing.expect(std.mem.indexOf(u8, msg, "+1+1+2::DEc3N2PD/ZwBAACkKjPRyAWCCgQA+1+1:") != null);
+}
+
 test "parseResponse extracts TAN challenge" {
     var s = FintsSession.init("12345678", "https://x.de/f", "u", "p");
     var resp = ParsedResponse.init();
-    const data = "HITAN:5:7+4+REF123++Bitte TAN eingeben+moredata'";
+    const data = "HITAN:5:7+4++REF123+Bitte TAN eingeben+moredata'";
     parseResponse(&s, data, &resp);
 
     try std.testing.expect(resp.has_tan_request);
@@ -1101,6 +1884,24 @@ test "SegmentIterator splits correctly" {
     try std.testing.expect(startsWith(s3, "SEG3"));
 
     try std.testing.expect(iter.next() == null);
+}
+
+test "parseResponse concatenates split HIKAZ mt940 payload" {
+    var s = FintsSession.init("20041177", "https://x.de/f", "u", "p");
+    var resp = ParsedResponse.init();
+    const data = "HIKAZ:1:5+@5@abcde'HIKAZ:2:5+@5@12345'";
+    parseResponse(&s, data, &resp);
+
+    try std.testing.expectEqual(@as(u16, 10), resp.mt940_len);
+    try std.testing.expectEqualStrings("abcde12345", resp.mt940_data[0..resp.mt940_len]);
+}
+
+test "extractMt940 prefers field with MT940 markers" {
+    var s = FintsSession.init("20041177", "https://x.de/f", "u", "p");
+    var resp = ParsedResponse.init();
+    const data = "HIKAZ:1:5+@6@ABCDEF+@14@:20:START\\n:61:'";
+    parseResponse(&s, data, &resp);
+    try std.testing.expect(std.mem.indexOf(u8, resp.mt940_data[0..resp.mt940_len], ":20:START") != null);
 }
 
 test "ResponseCode classification" {

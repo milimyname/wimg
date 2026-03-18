@@ -1472,6 +1472,188 @@ fn wimg_set_http_callback(cb: fints_http_mod.HttpCallback) callconv(.c) void {
     fints_http_mod.setCallback(cb);
 }
 
+/// Send HKEND to close the current dialog. Best-effort, ignores errors.
+fn sendDialogEnd(session: *fints_mod.FintsSession, sec_func: []const u8, msg_buf: *[8192]u8, resp_buf: *[65536]u8) void {
+    const end_len = fints_mod.buildDialogEndWithSecFunc(session, sec_func, msg_buf) orelse return;
+    _ = fints_http_mod.sendFintsMessage(
+        std.heap.page_allocator,
+        session.urlSlice(),
+        msg_buf[0..end_len],
+        resp_buf,
+    ) catch {};
+}
+
+fn classifyHhduc(payload: []const u8) []const u8 {
+    if (payload.len >= 4) {
+        const type_len: usize = (@as(usize, payload[0]) << 8) | @as(usize, payload[1]);
+        if (type_len > 0 and 2 + type_len + 2 <= payload.len) {
+            const mime = payload[2 .. 2 + type_len];
+            if (std.mem.startsWith(u8, mime, "image/")) {
+                return "matrix-container-image";
+            }
+        }
+    }
+    if (payload.len >= 4 and payload[0] == 0x89 and payload[1] == 'P' and payload[2] == 'N' and payload[3] == 'G') {
+        return "png-binary";
+    }
+    if (payload.len >= 2 and payload[0] == 0xFF and payload[1] == 0xD8) {
+        return "jpeg-binary";
+    }
+    if (std.mem.startsWith(u8, payload, "GIF87a") or std.mem.startsWith(u8, payload, "GIF89a")) {
+        return "gif-binary";
+    }
+    if (std.mem.startsWith(u8, payload, "data:image/")) {
+        return "image-data-uri";
+    }
+    if (std.mem.startsWith(u8, payload, "iVBO")) {
+        return "png-base64-ascii";
+    }
+    if (std.mem.startsWith(u8, payload, "CHLGUC")) {
+        return "hhd-uc-chlguc";
+    }
+    if (payload.len > 0 and payload[0] >= 32 and payload[0] <= 126) {
+        return "ascii-text";
+    }
+    return "binary-unknown";
+}
+
+fn looksLikeImageBytes(data: []const u8) bool {
+    if (data.len >= 4 and data[0] == 0x89 and data[1] == 'P' and data[2] == 'N' and data[3] == 'G') return true;
+    if (data.len >= 2 and data[0] == 0xFF and data[1] == 0xD8) return true;
+    if (std.mem.startsWith(u8, data, "GIF87a") or std.mem.startsWith(u8, data, "GIF89a")) return true;
+    if (data.len >= 12 and std.mem.eql(u8, data[0..4], "RIFF") and std.mem.eql(u8, data[8..12], "WEBP")) return true;
+    if (std.mem.startsWith(u8, data, "BM")) return true; // BMP
+    return false;
+}
+
+fn maybeDecodeBase64Image(source: []const u8, decoded_buf: []u8) ?[]const u8 {
+    if (source.len < 16) return null;
+    const decoder = std.base64.standard.Decoder;
+    const decoded_len = decoder.calcSizeForSlice(source) catch return null;
+    if (decoded_len == 0 or decoded_len > decoded_buf.len) return null;
+    decoder.decode(decoded_buf[0..decoded_len], source) catch return null;
+    const decoded = decoded_buf[0..decoded_len];
+    if (looksLikeImageBytes(decoded)) return decoded;
+    return null;
+}
+
+fn pngHasIend(data: []const u8) bool {
+    if (data.len < 12) return false;
+    // IEND chunk marker appears as 49 45 4E 44
+    return std.mem.indexOf(u8, data, "IEND") != null;
+}
+
+fn extractMatrixImagePayload(raw: []const u8) ?[]const u8 {
+    if (raw.len < 6) return null;
+    const type_len: usize = (@as(usize, raw[0]) << 8) | @as(usize, raw[1]);
+    if (type_len == 0 or 2 + type_len + 2 > raw.len) return null;
+    const mime_start: usize = 2;
+    const mime_end: usize = mime_start + type_len;
+    const mime = raw[mime_start..mime_end];
+    if (!std.mem.startsWith(u8, mime, "image/")) return null;
+
+    const content_len_start: usize = mime_end;
+    const content_len_be: usize = (@as(usize, raw[content_len_start]) << 8) | @as(usize, raw[content_len_start + 1]);
+    const content_len_le: usize = (@as(usize, raw[content_len_start + 1]) << 8) | @as(usize, raw[content_len_start]);
+    const content_start: usize = content_len_start + 2;
+    const remaining = raw.len - content_start;
+
+    const content_len: usize = blk: {
+        if (content_len_be > 0 and content_len_be <= remaining) break :blk content_len_be;
+        if (content_len_le > 0 and content_len_le <= remaining) break :blk content_len_le;
+        // Some banks provide malformed/variant length fields; fall back to full remainder.
+        break :blk remaining;
+    };
+    if (content_len == 0) return null;
+
+    return raw[content_start .. content_start + content_len];
+}
+
+fn normalizePhotoTanPayload(raw: []const u8, decoded_buf: []u8) []const u8 {
+    if (extractMatrixImagePayload(raw)) |img_payload| {
+        if (maybeDecodeBase64Image(img_payload, decoded_buf)) |decoded| {
+            return decoded;
+        }
+        if (looksLikeImageBytes(img_payload)) {
+            return img_payload;
+        }
+        return img_payload;
+    }
+
+    var source = raw;
+    if (std.mem.startsWith(u8, source, "data:image/")) {
+        if (std.mem.indexOf(u8, source, ",")) |comma| {
+            source = source[comma + 1 ..];
+        }
+    }
+
+    if (maybeDecodeBase64Image(source, decoded_buf)) |decoded| {
+        return decoded;
+    }
+    return raw;
+}
+
+fn isNoChallenge(challenge: []const u8) bool {
+    if (challenge.len == 0) return true;
+    var start: usize = 0;
+    while (start < challenge.len and (challenge[start] == ' ' or challenge[start] == '\t' or challenge[start] == '\r' or challenge[start] == '\n')) : (start += 1) {}
+    if (start >= challenge.len) return true;
+    return std.ascii.startsWithIgnoreCase(challenge[start..], "nochallenge");
+}
+
+/// Update selected TAN security function from sync response (python-fints style).
+/// Parse 3920 capability text and pick first advertised two-step method.
+fn selectTanSecFuncFromSync(sync_resp: *const fints_mod.ParsedResponse, session: *fints_mod.FintsSession) void {
+    var selected_buf: [3]u8 = undefined;
+    var has_selected = false;
+    for (sync_resp.codes[0..sync_resp.code_count]) |*c| {
+        if (!std.mem.eql(u8, c.codeSlice(), "3920")) continue;
+        const txt = c.textSlice();
+        var i: usize = 0;
+        while (i + 2 < txt.len) : (i += 1) {
+            const a = txt[i];
+            const b = txt[i + 1];
+            const d = txt[i + 2];
+            if (a < '0' or a > '9' or b < '0' or b > '9' or d < '0' or d > '9') continue;
+
+            const token = txt[i .. i + 3];
+            // Keep one-step only as fallback; prefer first advertised two-step mechanism.
+            if (std.mem.eql(u8, token, "999")) continue;
+            @memcpy(selected_buf[0..3], token);
+            has_selected = true;
+            break;
+        }
+        if (has_selected) break;
+    }
+
+    if (has_selected) {
+        @memcpy(session.tan_sec_func[0..3], selected_buf[0..3]);
+        session.tan_sec_func_len = 3;
+    }
+}
+
+fn extractTouchdownToken(resp: *const fints_mod.ParsedResponse, out_buf: []u8) []const u8 {
+    for (resp.codes[0..resp.code_count]) |*c| {
+        if (!std.mem.eql(u8, c.codeSlice(), "3040")) continue;
+        const txt = c.textSlice();
+        if (txt.len == 0) continue;
+
+        var end = txt.len;
+        while (end > 0 and (txt[end - 1] == ' ' or txt[end - 1] == '\t' or txt[end - 1] == '\r' or txt[end - 1] == '\n')) : (end -= 1) {}
+        if (end == 0) continue;
+
+        var start = end;
+        while (start > 0 and txt[start - 1] != ':') : (start -= 1) {}
+        if (start >= end) continue;
+
+        const token = txt[start..end];
+        if (token.len == 0 or token.len > out_buf.len) continue;
+        @memcpy(out_buf[0..token.len], token);
+        return out_buf[0..token.len];
+    }
+    return "";
+}
+
 /// Connect to a bank via FinTS. Input JSON: {"blz":"...","user":"...","pin":"..."}
 /// Returns length-prefixed JSON: {"status":"ok"} or {"status":"tan_required","challenge":"..."}
 fn wimg_fints_connect(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
@@ -1505,83 +1687,71 @@ fn wimg_fints_connect(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
     @memcpy(fints_session.product_id[0..prod_len], product[0..prod_len]);
     fints_session.product_id_len = @intCast(prod_len);
 
-    // Step 1: Anonymous init to fetch BPD
+    // Step 1: Sync dialog (sec_func=999, HKSYN to get system_id)
     var msg_buf: [8192]u8 = undefined;
-    const anon_len = fints_mod.buildAnonInit(&fints_session, &msg_buf) orelse {
-        setError("wimg_fints_connect: failed to build anon init", .{});
-        return null;
-    };
-
     var resp_buf: [65536]u8 = undefined;
-    const resp_len = fints_http_mod.sendFintsMessage(
+
+    const sync_len = fints_mod.buildSyncInit(&fints_session, &msg_buf) orelse {
+        setError("wimg_fints_connect: failed to build sync init", .{});
+        return null;
+    };
+
+    const sync_resp_len = fints_http_mod.sendFintsMessage(
         std.heap.page_allocator,
         fints_session.urlSlice(),
-        msg_buf[0..anon_len],
+        msg_buf[0..sync_len],
         &resp_buf,
     ) catch {
-        setError("wimg_fints_connect: HTTP request failed", .{});
+        setError("wimg_fints_connect: sync HTTP request failed", .{});
         return null;
     };
 
-    var anon_resp = fints_mod.ParsedResponse.init();
-    fints_mod.parseResponse(&fints_session, resp_buf[0..resp_len], &anon_resp);
+    var sync_resp = fints_mod.ParsedResponse.init();
+    fints_mod.parseResponse(&fints_session, resp_buf[0..sync_resp_len], &sync_resp);
+    selectTanSecFuncFromSync(&sync_resp, &fints_session);
     fints_session.msg_num += 1;
 
-    // Step 2: Authenticated init
-    const auth_len = fints_mod.buildAuthInit(&fints_session, &msg_buf) orelse {
-        setError("wimg_fints_connect: failed to build auth init", .{});
-        return null;
-    };
-
-    const auth_resp_len = fints_http_mod.sendFintsMessage(
-        std.heap.page_allocator,
-        fints_session.urlSlice(),
-        msg_buf[0..auth_len],
-        &resp_buf,
-    ) catch {
-        setError("wimg_fints_connect: auth HTTP request failed", .{});
-        return null;
-    };
-
-    var auth_resp = fints_mod.ParsedResponse.init();
-    fints_mod.parseResponse(&fints_session, resp_buf[0..auth_resp_len], &auth_resp);
-    fints_session.msg_num += 1;
-
-    // Clear PIN from memory after auth
-    fints_session.clearPin();
-
-    // Check result
-    if (auth_resp.hasError()) {
-        var result_buf: [512]u8 = undefined;
-        const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"error\",\"message\":\"Authentication failed\"}}", .{}) catch return null;
-        return makeLengthPrefixed(result_json);
+    // Debug: log what parseResponse extracted (native uses stderr, visible in Xcode console)
+    if (!is_wasm) {
+        std.debug.print("[FinTS Zig] sync resp_len={d}, codes={d}, has_tan={}\n", .{
+            sync_resp_len,
+            sync_resp.code_count,
+            fints_session.has_pending_tan,
+        });
+        std.debug.print("[FinTS Zig] dialog_id='{s}' (len={d})\n", .{
+            fints_session.dialogIdSlice(),
+            fints_session.dialog_id_len,
+        });
+        std.debug.print("[FinTS Zig] system_id='{s}' (len={d})\n", .{
+            fints_session.systemIdSlice(),
+            fints_session.system_id_len,
+        });
+        // First 200 bytes of response to see HNHBK
+        const preview_len = @min(sync_resp_len, 200);
+        std.debug.print("[FinTS Zig] resp[0..{d}]='{s}'\n", .{ preview_len, resp_buf[0..preview_len] });
     }
 
-    if (fints_session.has_pending_tan) {
-        var result_buf: [16384]u8 = undefined;
-        const challenge = fints_session.challenge[0..fints_session.challenge_len];
+    // End sync dialog and reset for next dialog
+    // Close sync dialog using sync security function (999), independent of later TAN method.
+    _ = sendDialogEnd(&fints_session, "999", &msg_buf, &resp_buf);
 
-        // TAN exception: "nochallenge" means SCA not required — auto-skip
-        if (std.mem.eql(u8, challenge, "nochallenge") or fints_session.challenge_len == 0) {
-            fints_session.has_pending_tan = false;
-            return makeLengthPrefixed("{\"status\":\"ok\"}");
-        }
-
-        if (fints_session.challenge_hhduc_len > 0) {
-            // photoTAN: Base64-encode the image data
-            const hhduc = fints_session.challenge_hhduc[0..fints_session.challenge_hhduc_len];
-            const b64_encoder = std.base64.standard.Encoder;
-            var b64_buf: [12288]u8 = undefined;
-            const b64_data = b64_encoder.encode(&b64_buf, hhduc);
-            const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"tan_required\",\"challenge\":\"{s}\",\"phototan\":\"{s}\"}}", .{ challenge, b64_data }) catch return null;
-            return makeLengthPrefixed(result_json);
-        }
-
-        const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"tan_required\",\"challenge\":\"{s}\"}}", .{challenge}) catch return null;
-        return makeLengthPrefixed(result_json);
+    // Check sync result
+    if (sync_resp.hasError()) {
+        fints_session.clearPin();
+        return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"Sync failed\"}");
     }
 
-    return makeLengthPrefixed("{\"status\":\"ok\"}");
+    // Return debug info with system_id and dialog_id for verification
+    var debug_buf: [512]u8 = undefined;
+    const did = fints_session.dialogIdSlice();
+    const sid = fints_session.systemIdSlice();
+    const debug_json = std.fmt.bufPrint(&debug_buf, "{{\"status\":\"ok\",\"_debug_dialog_id\":\"{s}\",\"_debug_system_id\":\"{s}\",\"_debug_did_len\":{d},\"_debug_sid_len\":{d}}}", .{ did, sid, did.len, sid.len }) catch return makeLengthPrefixed("{\"status\":\"ok\"}");
+
+    // Reset dialog state for fetch (keeps system_id, PIN, product_id)
+    fints_session.resetDialog();
+    fints_session.has_pending_tan = false; // nochallenge from sync is irrelevant
+
+    return makeLengthPrefixed(debug_json);
 }
 
 /// Submit a TAN. Input JSON: {"tan":"123456"}
@@ -1594,12 +1764,26 @@ fn wimg_fints_send_tan(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
         setError("wimg_fints_send_tan: missing tan field", .{});
         return null;
     };
+    if (fints_session.challenge_ref_len == 0) {
+        return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"Missing TAN task reference (challenge_ref)\"}");
+    }
+    if (fints_session.pin_len == 0) {
+        return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"PIN missing in session, please reconnect\"}");
+    }
 
     var msg_buf: [8192]u8 = undefined;
     const msg_len = fints_mod.buildTanResponse(&fints_session, tan, &msg_buf) orelse {
         setError("wimg_fints_send_tan: failed to build TAN response", .{});
         return null;
     };
+    if (!is_wasm) {
+        std.debug.print("[FinTS Zig] send tan: task_reference='{s}' (len={d})\n", .{
+            fints_session.challenge_ref[0..fints_session.challenge_ref_len],
+            fints_session.challenge_ref_len,
+        });
+        const req_preview = @min(msg_len, 280);
+        std.debug.print("[FinTS Zig] send tan msg[0..{d}]='{s}'\n", .{ req_preview, msg_buf[0..req_preview] });
+    }
 
     var resp_buf: [65536]u8 = undefined;
     const resp_len = fints_http_mod.sendFintsMessage(
@@ -1616,17 +1800,99 @@ fn wimg_fints_send_tan(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
     fints_mod.parseResponse(&fints_session, resp_buf[0..resp_len], &resp);
     fints_session.msg_num += 1;
 
+    if (!is_wasm) {
+        std.debug.print("[FinTS Zig] fetch hkkaz: resp_len={d}, codes={d}, mt940_len={d}, has_tan={}\n", .{
+            resp_len,
+            resp.code_count,
+            resp.mt940_len,
+            fints_session.has_pending_tan,
+        });
+        for (resp.codes[0..resp.code_count]) |*c| {
+            std.debug.print("[FinTS Zig] fetch hkkaz code: {s} '{s}'\n", .{ c.codeSlice(), c.textSlice() });
+        }
+        if (resp.mt940_len == 0) {
+            const p_len = @min(resp_len, 260);
+            std.debug.print("[FinTS Zig] fetch hkkaz resp[0..{d}]='{s}'\n", .{ p_len, resp_buf[0..p_len] });
+        } else {
+            const p_len = @min(@as(usize, resp.mt940_len), 120);
+            std.debug.print("[FinTS Zig] fetch hkkaz mt940[0..{d}]='{s}'\n", .{ p_len, resp.mt940_data[0..p_len] });
+        }
+    }
+
+    if (!is_wasm) {
+        std.debug.print("[FinTS Zig] send tan: resp_len={d}, codes={d}, has_tan={}, challenge_len={d}, hhduc_len={d}\n", .{
+            resp_len,
+            resp.code_count,
+            fints_session.has_pending_tan,
+            fints_session.challenge_len,
+            fints_session.challenge_hhduc_len,
+        });
+        for (resp.codes[0..resp.code_count]) |*c| {
+            std.debug.print("[FinTS Zig] send tan code: {s} '{s}'\n", .{ c.codeSlice(), c.textSlice() });
+        }
+        const p_len = @min(resp_len, 300);
+        std.debug.print("[FinTS Zig] send tan resp[0..{d}]='{s}'\n", .{ p_len, resp_buf[0..p_len] });
+    }
+
     if (resp.hasError()) {
+        var result_buf: [1024]u8 = undefined;
+        if (resp.code_count > 0) {
+            const c = resp.codes[resp.code_count - 1];
+            const msg = std.fmt.bufPrint(&result_buf, "{{\"status\":\"error\",\"message\":\"{s} {s}\"}}", .{
+                c.codeSlice(),
+                c.textSlice(),
+            }) catch return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"TAN rejected\"}");
+            return makeLengthPrefixed(msg);
+        }
         return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"TAN rejected\"}");
     }
 
+    // If TAN submit response already contains statement payload, TAN flow is complete.
+    if (resp.mt940_len > 0) {
+        fints_session.has_pending_tan = false;
+        fints_session.challenge_len = 0;
+        fints_session.challenge_hhduc_len = 0;
+    }
+
+    // Some flows return another TAN/challenge step (or decoupled polling) after submit.
+    if (fints_session.has_pending_tan and resp.mt940_len == 0) {
+        var result_buf: [16384]u8 = undefined;
+        const challenge = fints_session.challenge[0..fints_session.challenge_len];
+
+        // Bank can return HITAN with "nochallenge" (or empty challenge) to signal
+        // that no SCA step is required. Do not surface TAN UI in that case.
+        if (isNoChallenge(challenge)) {
+            fints_session.has_pending_tan = false;
+            fints_session.challenge_len = 0;
+            fints_session.challenge_hhduc_len = 0;
+            return makeLengthPrefixed("{\"status\":\"ok\"}");
+        }
+
+        if (fints_session.challenge_hhduc_len > 0) {
+            const hhduc = fints_session.challenge_hhduc[0..fints_session.challenge_hhduc_len];
+            var decoded_hhduc_buf: [8192]u8 = undefined;
+            const normalized_hhduc = normalizePhotoTanPayload(hhduc, &decoded_hhduc_buf);
+            const b64_encoder = std.base64.standard.Encoder;
+            var b64_buf: [12288]u8 = undefined;
+            const b64_data = b64_encoder.encode(&b64_buf, normalized_hhduc);
+            const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"tan_required\",\"challenge\":\"{s}\",\"phototan\":\"{s}\"}}", .{
+                challenge,
+                b64_data,
+            }) catch return makeLengthPrefixed("{\"status\":\"tan_required\"}");
+            return makeLengthPrefixed(result_json);
+        }
+        const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"tan_required\",\"challenge\":\"{s}\"}}", .{challenge}) catch return makeLengthPrefixed("{\"status\":\"tan_required\"}");
+        return makeLengthPrefixed(result_json);
+    }
+
     fints_session.has_pending_tan = false;
+    fints_session.has_active_dialog = true; // dialog ready for HKKAZ
     return makeLengthPrefixed("{\"status\":\"ok\"}");
 }
 
 /// Fetch bank statements. Input JSON: {"from":"2026-01-01","to":"2026-03-01"}
-/// Fetches MT940 data, parses it, inserts transactions into DB.
-/// Returns length-prefixed JSON: {"imported":N,"duplicates":N}
+/// Opens a new authenticated dialog, sends HKKAZ, parses MT940, inserts transactions.
+/// Returns length-prefixed JSON: {"imported":N,"duplicates":N} or {"status":"tan_required",...}
 fn wimg_fints_fetch(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
     if (is_wasm) return null;
 
@@ -1655,86 +1921,360 @@ fn wimg_fints_fetch(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
         break :blk to_buf[0..8];
     } else to_raw;
 
-    // Build and send HKKAZ request
     var msg_buf: [8192]u8 = undefined;
-    const msg_len = fints_mod.buildFetchStatements(&fints_session, from, to, &msg_buf) orelse {
-        setError("wimg_fints_fetch: failed to build fetch request", .{});
-        return null;
-    };
-
     var resp_buf: [65536]u8 = undefined;
-    const resp_len = fints_http_mod.sendFintsMessage(
-        std.heap.page_allocator,
-        fints_session.urlSlice(),
-        msg_buf[0..msg_len],
-        &resp_buf,
-    ) catch {
-        setError("wimg_fints_fetch: HTTP request failed", .{});
-        return null;
-    };
 
+    // If we have an active dialog (post-TAN), skip auth init and go straight to HKKAZ
+    if (!fints_session.has_active_dialog) {
+        // Step 1: Open a new authenticated dialog for HKKAZ
+        fints_session.resetDialog();
+
+        const auth_len = fints_mod.buildAuthInit(&fints_session, &msg_buf) orelse {
+            setError("wimg_fints_fetch: failed to build auth init", .{});
+            fints_session.clearPin();
+            return null;
+        };
+
+        // Debug: log auth init raw message
+        if (!is_wasm) {
+            const req_preview = @min(auth_len, 450);
+            std.debug.print("[FinTS Zig] auth init msg[0..{d}]='{s}'\n", .{ req_preview, msg_buf[0..req_preview] });
+            std.debug.print("[FinTS Zig] auth init total_len={d}\n", .{auth_len});
+        }
+
+        const auth_resp_len = fints_http_mod.sendFintsMessage(
+            std.heap.page_allocator,
+            fints_session.urlSlice(),
+            msg_buf[0..auth_len],
+            &resp_buf,
+        ) catch {
+            setError("wimg_fints_fetch: auth HTTP request failed", .{});
+            fints_session.clearPin();
+            return null;
+        };
+
+        var auth_resp = fints_mod.ParsedResponse.init();
+        fints_mod.parseResponse(&fints_session, resp_buf[0..auth_resp_len], &auth_resp);
+        fints_session.msg_num += 1;
+
+        if (!is_wasm) {
+            std.debug.print("[FinTS Zig] fetch auth: resp_len={d}, codes={d}, has_tan={}, dialog_id='{s}'\n", .{
+                auth_resp_len,
+                auth_resp.code_count,
+                fints_session.has_pending_tan,
+                fints_session.dialogIdSlice(),
+            });
+            std.debug.print("[FinTS Zig] fetch auth: challenge_len={d}, hhduc_len={d}\n", .{
+                fints_session.challenge_len,
+                fints_session.challenge_hhduc_len,
+            });
+            if (fints_session.challenge_hhduc_len > 0) {
+                const hh = fints_session.challenge_hhduc[0..fints_session.challenge_hhduc_len];
+                const p0: u8 = if (hh.len > 0) hh[0] else 0;
+                const p1: u8 = if (hh.len > 1) hh[1] else 0;
+                const p2: u8 = if (hh.len > 2) hh[2] else 0;
+                const p3: u8 = if (hh.len > 3) hh[3] else 0;
+                std.debug.print("[FinTS Zig] fetch auth: hhduc kind={s}, first4={x:0>2} {x:0>2} {x:0>2} {x:0>2}\n", .{
+                    classifyHhduc(hh),
+                    p0,
+                    p1,
+                    p2,
+                    p3,
+                });
+                if (hh.len >= 4) {
+                    const type_len: usize = (@as(usize, hh[0]) << 8) | @as(usize, hh[1]);
+                    if (type_len > 0 and 2 + type_len <= hh.len) {
+                        const mime = hh[2 .. 2 + type_len];
+                        if (std.mem.startsWith(u8, mime, "image/")) {
+                            std.debug.print("[FinTS Zig] fetch auth: hhduc mime={s}\n", .{mime});
+                        }
+                    }
+                }
+            }
+            // Show response codes
+            for (auth_resp.codes[0..auth_resp.code_count]) |*c| {
+                std.debug.print("[FinTS Zig] fetch auth code: {s} '{s}'\n", .{ c.codeSlice(), c.textSlice() });
+            }
+            const p_len = @min(auth_resp_len, 450);
+            std.debug.print("[FinTS Zig] fetch auth resp[0..{d}]='{s}'\n", .{ p_len, resp_buf[0..p_len] });
+        }
+
+        if (auth_resp.hasError()) {
+            // python-fints parity: when bank requests TAN mechanism selection (3920),
+            // pick a two-step method and retry auth-init once.
+            var requested_tan_method = false;
+            for (auth_resp.codes[0..auth_resp.code_count]) |*c| {
+                if (std.mem.eql(u8, c.codeSlice(), "3920")) {
+                    requested_tan_method = true;
+                    break;
+                }
+            }
+            if (requested_tan_method and std.mem.eql(u8, fints_session.tanSecFuncSlice(), "999")) {
+                selectTanSecFuncFromSync(&auth_resp, &fints_session);
+                fints_session.resetDialog();
+
+                const retry_auth_len = fints_mod.buildAuthInit(&fints_session, &msg_buf) orelse {
+                    setError("wimg_fints_fetch: failed to build retry auth init", .{});
+                    fints_session.clearPin();
+                    return null;
+                };
+                const retry_auth_resp_len = fints_http_mod.sendFintsMessage(
+                    std.heap.page_allocator,
+                    fints_session.urlSlice(),
+                    msg_buf[0..retry_auth_len],
+                    &resp_buf,
+                ) catch {
+                    setError("wimg_fints_fetch: retry auth HTTP request failed", .{});
+                    fints_session.clearPin();
+                    return null;
+                };
+                auth_resp = fints_mod.ParsedResponse.init();
+                fints_mod.parseResponse(&fints_session, resp_buf[0..retry_auth_resp_len], &auth_resp);
+                fints_session.msg_num += 1;
+                if (!auth_resp.hasError()) {
+                    // Continue normal flow from successful retry.
+                } else {
+                    fints_session.clearPin();
+                    return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"Authentication failed\"}");
+                }
+            } else {
+                fints_session.clearPin();
+                return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"Authentication failed\"}");
+            }
+        }
+
+        // Handle TAN from auth init
+        if (fints_session.has_pending_tan) {
+            const challenge = fints_session.challenge[0..fints_session.challenge_len];
+
+            // nochallenge = SCA not required, continue to HKKAZ
+            if (isNoChallenge(challenge)) {
+                fints_session.has_pending_tan = false;
+            } else {
+                // Real TAN challenge (e.g. photoTAN) — return to user for TAN entry
+                // Dialog stays open; after sendTan, fetch will be called again with has_active_dialog=true
+                var result_buf: [16384]u8 = undefined;
+
+                if (fints_session.challenge_hhduc_len > 0) {
+                    const hhduc = fints_session.challenge_hhduc[0..fints_session.challenge_hhduc_len];
+                    var decoded_hhduc_buf: [8192]u8 = undefined;
+                    const normalized_hhduc = normalizePhotoTanPayload(hhduc, &decoded_hhduc_buf);
+                    if (!is_wasm) {
+                        std.debug.print("[FinTS Zig] fetch auth: normalized phototan kind={s}, len={d}\n", .{
+                            classifyHhduc(normalized_hhduc),
+                            normalized_hhduc.len,
+                        });
+                        const n0: u8 = if (normalized_hhduc.len > 0) normalized_hhduc[0] else 0;
+                        const n1: u8 = if (normalized_hhduc.len > 1) normalized_hhduc[1] else 0;
+                        const n2: u8 = if (normalized_hhduc.len > 2) normalized_hhduc[2] else 0;
+                        const n3: u8 = if (normalized_hhduc.len > 3) normalized_hhduc[3] else 0;
+                        std.debug.print("[FinTS Zig] fetch auth: normalized first4={x:0>2} {x:0>2} {x:0>2} {x:0>2}\n", .{ n0, n1, n2, n3 });
+                        if (normalized_hhduc.len >= 4 and normalized_hhduc[0] == 0x89 and normalized_hhduc[1] == 'P' and normalized_hhduc[2] == 'N' and normalized_hhduc[3] == 'G') {
+                            std.debug.print("[FinTS Zig] fetch auth: normalized png has_iend={}\n", .{pngHasIend(normalized_hhduc)});
+                        }
+                    }
+                    const b64_encoder = std.base64.standard.Encoder;
+                    var b64_buf: [12288]u8 = undefined;
+                    const b64_data = b64_encoder.encode(&b64_buf, normalized_hhduc);
+                    const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"tan_required\",\"challenge\":\"{s}\",\"phototan\":\"{s}\"}}", .{ challenge, b64_data }) catch return null;
+                    return makeLengthPrefixed(result_json);
+                }
+
+                const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"tan_required\",\"challenge\":\"{s}\"}}", .{challenge}) catch return null;
+                return makeLengthPrefixed(result_json);
+            }
+        }
+    }
+
+    // Step 2: Send HKKAZ in this dialog (either after nochallenge or after TAN confirmation).
+    // Handle continuation pages via touchdown token (HIRMS 3040), like python-fints.
+    var imported: u32 = 0;
+    var duplicates: u32 = 0;
+    var saw_mt940 = false;
+    var page_count: u8 = 0;
+    var touchdown_buf: [128]u8 = undefined;
+    var touchdown: []const u8 = "";
     var resp = fints_mod.ParsedResponse.init();
-    fints_mod.parseResponse(&fints_session, resp_buf[0..resp_len], &resp);
-    fints_session.msg_num += 1;
-
-    // Check if TAN is required for statement fetch
-    if (fints_session.has_pending_tan) {
-        var result_buf: [512]u8 = undefined;
-        const challenge = fints_session.challenge[0..fints_session.challenge_len];
-        const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"tan_required\",\"challenge\":\"{s}\"}}", .{challenge}) catch return null;
-        return makeLengthPrefixed(result_json);
-    }
-
-    if (resp.mt940_len == 0) {
-        return makeLengthPrefixed("{\"imported\":0,\"duplicates\":0}");
-    }
-
-    // Parse MT940 data
     const bank = banks_mod.findByBlz(&fints_session.blz);
     const account_name = if (bank) |b| b.nameSlice() else "FinTS";
 
-    var txn_buf: [2000]Transaction = undefined;
-    const mt940_result = mt940_mod.parseMt940(
-        resp.mt940_data[0..resp.mt940_len],
-        account_name,
-        &txn_buf,
-    );
-
-    // Insert into database
-    var imported: u32 = 0;
-    var duplicates: u32 = 0;
-
-    for (txn_buf[0..mt940_result.count]) |*txn| {
-        const inserted = database.insertTransaction(txn) catch {
-            continue;
+    while (true) {
+        const msg_len = fints_mod.buildFetchStatements(&fints_session, from, to, touchdown, &msg_buf) orelse {
+            setError("wimg_fints_fetch: failed to build fetch request", .{});
+            fints_session.clearPin();
+            return null;
         };
-        if (inserted) {
-            imported += 1;
-            // Auto-categorize
-            if (txn.category == .uncategorized) {
-                const matched = categories.matchRules(database.handle, txn.descriptionSlice());
-                if (matched != .uncategorized) {
-                    database.setCategoryById(&txn.id, matched) catch {};
+        if (!is_wasm) {
+            const req_preview = @min(msg_len, 450);
+            std.debug.print("[FinTS Zig] fetch hkkaz msg[0..{d}]='{s}'\n", .{ req_preview, msg_buf[0..req_preview] });
+            if (fints_session.account_ktv_len > 0) {
+                std.debug.print("[FinTS Zig] fetch hkkaz account_ktv='{s}'\n", .{fints_session.accountKtvSlice()});
+            } else {
+                std.debug.print("[FinTS Zig] fetch hkkaz account_ktv missing, fallback user_id='{s}'\n", .{fints_session.userIdSlice()});
+            }
+            if (touchdown.len > 0) {
+                std.debug.print("[FinTS Zig] fetch hkkaz touchdown='{s}'\n", .{touchdown});
+            }
+        }
+
+        const resp_len = fints_http_mod.sendFintsMessage(
+            std.heap.page_allocator,
+            fints_session.urlSlice(),
+            msg_buf[0..msg_len],
+            &resp_buf,
+        ) catch {
+            setError("wimg_fints_fetch: HTTP request failed", .{});
+            fints_session.clearPin();
+            return null;
+        };
+
+        resp = fints_mod.ParsedResponse.init();
+        fints_mod.parseResponse(&fints_session, resp_buf[0..resp_len], &resp);
+        fints_session.msg_num += 1;
+
+        // TAN challenge requested for HKKAZ only when no statement payload was returned.
+        if (fints_session.has_pending_tan and resp.mt940_len == 0) {
+            var result_buf: [16384]u8 = undefined;
+            const challenge = fints_session.challenge[0..fints_session.challenge_len];
+            if (isNoChallenge(challenge)) {
+                fints_session.has_pending_tan = false;
+                fints_session.challenge_len = 0;
+                fints_session.challenge_hhduc_len = 0;
+            } else {
+                if (fints_session.challenge_hhduc_len > 0) {
+                    const hhduc = fints_session.challenge_hhduc[0..fints_session.challenge_hhduc_len];
+                    var decoded_hhduc_buf: [8192]u8 = undefined;
+                    const normalized_hhduc = normalizePhotoTanPayload(hhduc, &decoded_hhduc_buf);
+                    const b64_encoder = std.base64.standard.Encoder;
+                    var b64_buf: [12288]u8 = undefined;
+                    const b64_data = b64_encoder.encode(&b64_buf, normalized_hhduc);
+                    const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"tan_required\",\"challenge\":\"{s}\",\"phototan\":\"{s}\"}}", .{ challenge, b64_data }) catch return null;
+                    return makeLengthPrefixed(result_json);
+                }
+                const result_json = std.fmt.bufPrint(&result_buf, "{{\"status\":\"tan_required\",\"challenge\":\"{s}\"}}", .{challenge}) catch return null;
+                return makeLengthPrefixed(result_json);
+            }
+        }
+
+        if (resp.mt940_len > 0) {
+            saw_mt940 = true;
+
+            var txn_buf: [2000]Transaction = undefined;
+            const mt940_result = mt940_mod.parseMt940(
+                resp.mt940_data[0..resp.mt940_len],
+                account_name,
+                &txn_buf,
+            );
+
+            if (!is_wasm) {
+                std.debug.print("[FinTS Zig] fetch hkkaz mt940 parsed count={d}, errors={d}, mt940_len={d}\n", .{
+                    mt940_result.count,
+                    mt940_result.errors,
+                    resp.mt940_len,
+                });
+                const preview_len = @min(@as(usize, resp.mt940_len), 180);
+                if (preview_len > 0) {
+                    std.debug.print("[FinTS Zig] fetch hkkaz mt940 preview[0..{d}]='{s}'\n", .{
+                        preview_len,
+                        resp.mt940_data[0..preview_len],
+                    });
                 }
             }
-        } else {
-            duplicates += 1;
+
+            for (txn_buf[0..mt940_result.count]) |*txn| {
+                const inserted = database.insertTransaction(txn) catch {
+                    continue;
+                };
+                if (inserted) {
+                    imported += 1;
+                    if (txn.category == .uncategorized) {
+                        const matched = categories.matchRules(database.handle, txn.descriptionSlice());
+                        if (matched != .uncategorized) {
+                            database.setCategoryById(&txn.id, matched) catch {};
+                        }
+                    }
+                } else {
+                    duplicates += 1;
+                }
+            }
         }
+
+        const next_touchdown = extractTouchdownToken(&resp, &touchdown_buf);
+        if (next_touchdown.len == 0) break;
+        touchdown = next_touchdown;
+        page_count += 1;
+        if (page_count >= 30) break; // safety guard against endless touchdown loops
+    }
+
+    if (!saw_mt940) {
+        _ = sendDialogEnd(&fints_session, fints_session.tanSecFuncSlice(), &msg_buf, &resp_buf);
+        fints_session.clearPin();
+        var result_buf: [1024]u8 = undefined;
+        var pos: usize = 0;
+
+        const prefix = "{\"status\":\"error\",\"message\":\"No MT940 payload from bank";
+        if (prefix.len > result_buf.len) return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"No MT940 payload from bank\"}");
+        @memcpy(result_buf[pos .. pos + prefix.len], prefix);
+        pos += prefix.len;
+
+        if (resp.code_count > 0) {
+            var selected_idx: usize = 0;
+            var found_non_success = false;
+            for (resp.codes[0..resp.code_count], 0..) |*c, i| {
+                if (!c.isSuccess()) {
+                    selected_idx = i;
+                    found_non_success = true;
+                    break;
+                }
+            }
+            if (!found_non_success) selected_idx = resp.code_count - 1;
+            const selected = resp.codes[selected_idx];
+
+            const middle = " (";
+            if (pos + middle.len <= result_buf.len) {
+                @memcpy(result_buf[pos .. pos + middle.len], middle);
+                pos += middle.len;
+            }
+
+            const code = selected.codeSlice();
+            if (pos + code.len <= result_buf.len) {
+                @memcpy(result_buf[pos .. pos + code.len], code);
+                pos += code.len;
+            }
+
+            const sep = ": ";
+            if (pos + sep.len <= result_buf.len) {
+                @memcpy(result_buf[pos .. pos + sep.len], sep);
+                pos += sep.len;
+            }
+
+            pos += db_mod.jsonEscapeString(result_buf[pos..], selected.textSlice()) orelse 0;
+
+            const close = ")";
+            if (pos + close.len <= result_buf.len) {
+                @memcpy(result_buf[pos .. pos + close.len], close);
+                pos += close.len;
+            }
+        }
+
+        const suffix = "\"}";
+        if (pos + suffix.len > result_buf.len) return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"No MT940 payload from bank\"}");
+        @memcpy(result_buf[pos .. pos + suffix.len], suffix);
+        pos += suffix.len;
+
+        return makeLengthPrefixed(result_buf[0..pos]);
+    }
+
+    if (!is_wasm) {
+        std.debug.print("[FinTS Zig] fetch hkkaz import result imported={d}, duplicates={d}\n", .{ imported, duplicates });
     }
 
     // Auto-create account entry
     database.ensureAccount(account_name, account_name, "#4361ee") catch {};
 
     // End dialog
-    const end_len = fints_mod.buildDialogEnd(&fints_session, &msg_buf);
-    if (end_len) |el| {
-        _ = fints_http_mod.sendFintsMessage(
-            std.heap.page_allocator,
-            fints_session.urlSlice(),
-            msg_buf[0..el],
-            &resp_buf,
-        ) catch {};
-    }
+    _ = sendDialogEnd(&fints_session, fints_session.tanSecFuncSlice(), &msg_buf, &resp_buf);
+    fints_session.clearPin();
 
     var result_buf: [256]u8 = undefined;
     const result_json = std.fmt.bufPrint(&result_buf, "{{\"imported\":{d},\"duplicates\":{d}}}", .{ imported, duplicates }) catch return null;

@@ -29,6 +29,7 @@ struct FintsFetchResult: Codable {
     // When TAN is required mid-fetch
     let status: String?
     let challenge: String?
+    let phototan: String?
 
     var needsTan: Bool { status == "tan_required" }
 }
