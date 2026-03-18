@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.15 (2026-03-18)
+
+- docs: add FinTS technical runbook and phase 6.7 plan
+- fix: harden FinTS TAN flow and paginated statement import
+
 ## v0.6.14 (2026-03-17)
 
 - fix: CI svelte-check errors — exclude test files, a11y fixes, toSorted
