@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.16 (2026-03-18)
+
+- docs: add TestFlight guide and auto-reset build number in release.sh
+
 ## v0.6.15 (2026-03-18)
 
 - docs: add FinTS technical runbook and phase 6.7 plan
