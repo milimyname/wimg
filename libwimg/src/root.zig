@@ -1636,23 +1636,41 @@ fn selectTanSecFuncFromSync(sync_resp: *const fints_mod.ParsedResponse, session:
 fn extractTouchdownToken(resp: *const fints_mod.ParsedResponse, out_buf: []u8) []const u8 {
     for (resp.codes[0..resp.code_count]) |*c| {
         if (!std.mem.eql(u8, c.codeSlice(), "3040")) continue;
-        const txt = c.textSlice();
-        if (txt.len == 0) continue;
+        // Prefer structured parameter field first, then fallback to message text.
+        const candidates = [_][]const u8{
+            c.parameterSlice(),
+            c.textSlice(),
+        };
 
-        var end = txt.len;
-        while (end > 0 and (txt[end - 1] == ' ' or txt[end - 1] == '\t' or txt[end - 1] == '\r' or txt[end - 1] == '\n')) : (end -= 1) {}
-        if (end == 0) continue;
-
-        var start = end;
-        while (start > 0 and txt[start - 1] != ':') : (start -= 1) {}
-        if (start >= end) continue;
-
-        const token = txt[start..end];
-        if (token.len == 0 or token.len > out_buf.len) continue;
-        @memcpy(out_buf[0..token.len], token);
-        return out_buf[0..token.len];
+        for (candidates) |candidate| {
+            const token = normalizeTouchdownToken(candidate, out_buf);
+            if (token.len > 0) return token;
+        }
     }
     return "";
+}
+
+fn normalizeTouchdownToken(raw: []const u8, out_buf: []u8) []const u8 {
+    const trimmed = std.mem.trim(u8, raw, " \t\r\n");
+    if (trimmed.len == 0) return "";
+
+    var token = trimmed;
+
+    // If localized text embeds the token, keep the tail after ":" or "=".
+    if (std.mem.lastIndexOfScalar(u8, token, ':')) |idx| {
+        if (idx + 1 < token.len) token = token[idx + 1 ..];
+    } else if (std.mem.lastIndexOfScalar(u8, token, '=')) |idx| {
+        if (idx + 1 < token.len) token = token[idx + 1 ..];
+    }
+
+    token = std.mem.trim(u8, token, " \t\r\n'\"");
+    if (token.len == 0 or token.len > out_buf.len) return "";
+
+    // Reject obvious non-token values.
+    if (std.mem.indexOfScalar(u8, token, ' ') != null) return "";
+
+    @memcpy(out_buf[0..token.len], token);
+    return out_buf[0..token.len];
 }
 
 /// Connect to a bank via FinTS. Input JSON: {"blz":"...","user":"...","pin":"..."}
@@ -2521,4 +2539,45 @@ fn accountInfoForFormat(format: parser.CsvFormat) AccountInfo {
         .scalable_capital => .{ .id = "scalable_capital", .name = "Scalable Capital", .color = "#6c5ce7" },
         .unknown => .{ .id = "unknown", .name = "Unbekannt", .color = "#4361ee" },
     };
+}
+
+test "extractTouchdownToken prefers structured parameter field" {
+    var resp = fints_mod.ParsedResponse.init();
+    resp.code_count = 1;
+    @memcpy(resp.codes[0].code[0..4], "3040");
+    @memcpy(resp.codes[0].parameter[0..8], "TD123456");
+    resp.codes[0].parameter_len = 8;
+    const text = "Weitere Daten folgen:ALT";
+    @memcpy(resp.codes[0].text[0..text.len], text);
+    resp.codes[0].text_len = @intCast(text.len);
+
+    var out: [64]u8 = undefined;
+    const tok = extractTouchdownToken(&resp, &out);
+    try std.testing.expectEqualStrings("TD123456", tok);
+}
+
+test "extractTouchdownToken parses token from localized text fallback" {
+    var resp = fints_mod.ParsedResponse.init();
+    resp.code_count = 1;
+    @memcpy(resp.codes[0].code[0..4], "3040");
+    const text = "Weitere Daten folgen, Aufsetzpunkt: ABCD-01";
+    @memcpy(resp.codes[0].text[0..text.len], text);
+    resp.codes[0].text_len = @intCast(text.len);
+
+    var out: [64]u8 = undefined;
+    const tok = extractTouchdownToken(&resp, &out);
+    try std.testing.expectEqualStrings("ABCD-01", tok);
+}
+
+test "extractTouchdownToken ignores non-token text" {
+    var resp = fints_mod.ParsedResponse.init();
+    resp.code_count = 1;
+    @memcpy(resp.codes[0].code[0..4], "3040");
+    const text = "Weitere Daten folgen";
+    @memcpy(resp.codes[0].text[0..text.len], text);
+    resp.codes[0].text_len = @intCast(text.len);
+
+    var out: [64]u8 = undefined;
+    const tok = extractTouchdownToken(&resp, &out);
+    try std.testing.expectEqual(@as(usize, 0), tok.len);
 }

@@ -194,8 +194,12 @@ pub const FintsSession = struct {
 /// FinTS response code.
 pub const ResponseCode = struct {
     code: [4]u8,
+    reference: [7]u8,
+    reference_len: u8,
     text: [128]u8,
     text_len: u8,
+    parameter: [64]u8,
+    parameter_len: u8,
 
     pub fn codeSlice(self: *const ResponseCode) []const u8 {
         return &self.code;
@@ -203,6 +207,14 @@ pub const ResponseCode = struct {
 
     pub fn textSlice(self: *const ResponseCode) []const u8 {
         return self.text[0..self.text_len];
+    }
+
+    pub fn referenceSlice(self: *const ResponseCode) []const u8 {
+        return self.reference[0..self.reference_len];
+    }
+
+    pub fn parameterSlice(self: *const ResponseCode) []const u8 {
+        return self.parameter[0..self.parameter_len];
     }
 
     pub fn isSuccess(self: *const ResponseCode) bool {
@@ -1503,29 +1515,71 @@ fn parseResponseCodes(segment: []const u8, out: *ParsedResponse) void {
 
     // Parse each code group (separated by +)
     while (pos < segment.len) {
-        // Read 4-digit code
-        if (pos + 4 > segment.len) break;
-        if (out.code_count >= 16) break;
-
-        var code: *ResponseCode = &out.codes[out.code_count];
-        @memset(&code.text, 0);
-
-        // Code is first 4 chars before ':'
-        @memcpy(&code.code, segment[pos .. pos + 4]);
-        pos += 4;
-
-        // Skip separator ':'
-        if (pos < segment.len and segment[pos] == ':') pos += 1;
-
-        // Read text until next unescaped '+'
-        const text_start = pos;
+        // Read one response group first (until next unescaped '+').
+        const group_start = pos;
         while (pos < segment.len) {
             if (segment[pos] == '+' and !isEscaped(segment, pos)) break;
             pos += 1;
         }
-        const text_len = @min(pos - text_start, 128);
-        @memcpy(code.text[0..text_len], segment[text_start .. text_start + text_len]);
-        code.text_len = @intCast(text_len);
+        const group = segment[group_start..pos];
+        if (group.len < 4) {
+            if (pos < segment.len and segment[pos] == '+') pos += 1;
+            continue;
+        }
+        if (out.code_count >= 16) break;
+
+        var code = &out.codes[out.code_count];
+        @memset(&code.code, 0);
+        @memset(&code.reference, 0);
+        @memset(&code.text, 0);
+        @memset(&code.parameter, 0);
+        code.reference_len = 0;
+        code.text_len = 0;
+        code.parameter_len = 0;
+
+        // Split group by unescaped ':' into up to 4 parts:
+        // - HIRMG style: code:text
+        // - HIRMS style: code:reference:text:parameter
+        var part_start: usize = 0;
+        var parts: [4][]const u8 = .{ "", "", "", "" };
+        var part_count: u8 = 0;
+        var gp: usize = 0;
+        while (gp <= group.len and part_count < 4) : (gp += 1) {
+            if (gp == group.len or (group[gp] == ':' and !isEscaped(group, gp))) {
+                parts[part_count] = group[part_start..gp];
+                part_count += 1;
+                part_start = gp + 1;
+            }
+        }
+
+        const code_src = parts[0];
+        if (code_src.len < 4) {
+            if (pos < segment.len and segment[pos] == '+') pos += 1;
+            continue;
+        }
+        @memcpy(code.code[0..4], code_src[0..4]);
+
+        if (part_count >= 3) {
+            // code:reference:text(:parameter)
+            const ref_len = @min(parts[1].len, code.reference.len);
+            @memcpy(code.reference[0..ref_len], parts[1][0..ref_len]);
+            code.reference_len = @intCast(ref_len);
+
+            const text_len = @min(parts[2].len, code.text.len);
+            @memcpy(code.text[0..text_len], parts[2][0..text_len]);
+            code.text_len = @intCast(text_len);
+
+            if (part_count >= 4) {
+                const param_len = @min(parts[3].len, code.parameter.len);
+                @memcpy(code.parameter[0..param_len], parts[3][0..param_len]);
+                code.parameter_len = @intCast(param_len);
+            }
+        } else if (part_count >= 2) {
+            // code:text
+            const text_len = @min(parts[1].len, code.text.len);
+            @memcpy(code.text[0..text_len], parts[1][0..text_len]);
+            code.text_len = @intCast(text_len);
+        }
 
         out.code_count += 1;
 
@@ -2161,6 +2215,19 @@ test "parseResponse extracts response codes" {
     try std.testing.expectEqual(@as(u8, 2), resp.code_count);
     try std.testing.expectEqualStrings("0010", resp.codes[0].codeSlice());
     try std.testing.expect(resp.codes[0].isSuccess());
+}
+
+test "parseResponse extracts HIRMS reference and parameter" {
+    var s = FintsSession.init("12345678", "https://x.de/f", "u", "p");
+    var resp = ParsedResponse.init();
+    const data = "HIRMS:3:2:4+3040:4:Weitere Daten folgen:TD_TOKEN_123'";
+    parseResponse(&s, data, &resp);
+
+    try std.testing.expectEqual(@as(u8, 1), resp.code_count);
+    try std.testing.expectEqualStrings("3040", resp.codes[0].codeSlice());
+    try std.testing.expectEqualStrings("4", resp.codes[0].referenceSlice());
+    try std.testing.expectEqualStrings("Weitere Daten folgen", resp.codes[0].textSlice());
+    try std.testing.expectEqualStrings("TD_TOKEN_123", resp.codes[0].parameterSlice());
 }
 
 test "parseResponse detects error codes" {
