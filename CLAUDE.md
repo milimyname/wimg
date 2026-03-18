@@ -189,3 +189,4 @@ Split into `.claude/rules/` for context efficiency:
 - `decisions.md` — decision log (all architectural choices)
 - `release.md` — release process, commit format, CI pipeline
 - `banking-aggregators.md` — PSD2/PSD3 research, aggregator comparison, AISP licensing
+- `fints.md` — FinTS 3.0 technical deep dive (wire format, TAN flow, paging, MT940)
