@@ -36,6 +36,10 @@ pub const FintsSession = struct {
     upd_version: u16,
 
     hitan_version: u8,
+    hikaz_version: u8,
+    supports_camt: bool,
+    camt_format: [128]u8,
+    camt_format_len: u8,
     // Selected TAN security function (e.g. "902" for photoTAN, "901" for mobileTAN)
     tan_sec_func: [4]u8,
     tan_sec_func_len: u8,
@@ -45,6 +49,10 @@ pub const FintsSession = struct {
     tan_supported_media_number: u8,
     tan_medium_required: bool,
     tan_response_hhd_uc_required: bool,
+    decoupled_max_poll_number: u8,
+    wait_before_first_poll: u8,
+    wait_before_next_poll: u8,
+    automated_polling_allowed: bool,
     include_empty_parameter_challenge_class: bool, // python-fints v6/v7 process-4 parity
 
     challenge: [512]u8,
@@ -96,6 +104,11 @@ pub const FintsSession = struct {
         s.msg_num = 1;
         // 0 = unknown; builders fall back to v6 until HITANS is parsed from BPD.
         s.hitan_version = 0;
+        // HKKAZ defaults to v5 unless bank BPD advertises higher versions.
+        s.hikaz_version = 5;
+        s.supports_camt = false;
+        @memset(&s.camt_format, 0);
+        s.camt_format_len = 0;
         // Start in one-step mode (999). Upgrade to two-step after parsing bank capabilities.
         @memcpy(s.tan_sec_func[0..3], "999");
         s.tan_sec_func_len = 3;
@@ -104,6 +117,11 @@ pub const FintsSession = struct {
         s.tan_supported_media_number = 0;
         s.tan_medium_required = false;
         s.tan_response_hhd_uc_required = false;
+        // Reasonable defaults if bank does not publish decoupled timings.
+        s.decoupled_max_poll_number = 10;
+        s.wait_before_first_poll = 4;
+        s.wait_before_next_poll = 2;
+        s.automated_polling_allowed = true;
         s.include_empty_parameter_challenge_class = false;
         s.has_pending_tan = false;
         s.has_active_dialog = false;
@@ -148,6 +166,10 @@ pub const FintsSession = struct {
 
     pub fn tanSecFuncSlice(self: *const FintsSession) []const u8 {
         return self.tan_sec_func[0..self.tan_sec_func_len];
+    }
+
+    pub fn camtFormatSlice(self: *const FintsSession) []const u8 {
+        return self.camt_format[0..self.camt_format_len];
     }
 
     pub fn clearPin(self: *FintsSession) void {
@@ -206,6 +228,8 @@ pub const ParsedResponse = struct {
     system_id_len: u8,
     mt940_data: [32768]u8, // up to 32 KB of MT940 data
     mt940_len: u16,
+    camt_data: [65536]u8, // up to 64 KB of CAMT XML data
+    camt_len: u16,
     challenge: [512]u8,
     challenge_len: u16,
     challenge_hhduc: [8192]u8, // photoTAN image data
@@ -221,12 +245,14 @@ pub const ParsedResponse = struct {
         r.dialog_id_len = 0;
         r.system_id_len = 0;
         r.mt940_len = 0;
+        r.camt_len = 0;
         r.challenge_len = 0;
         r.challenge_hhduc_len = 0;
         r.challenge_ref_len = 0;
         r.has_tan_request = false;
         r.decoupled = false;
         @memset(&r.mt940_data, 0);
+        @memset(&r.camt_data, 0);
         @memset(&r.dialog_id, 0);
         @memset(&r.system_id, 0);
         @memset(&r.challenge, 0);
@@ -246,6 +272,13 @@ fn clampHktanVersion(v: u8) u8 {
     return switch (v) {
         2, 3, 5, 6, 7 => v,
         else => 6,
+    };
+}
+
+fn clampHikazVersion(v: u8) u8 {
+    return switch (v) {
+        5, 6, 7 => v,
+        else => 5,
     };
 }
 
@@ -323,19 +356,19 @@ fn writeHktanProcess4V6Like(session: *const FintsSession, buf: []u8, offset: usi
     return pos - offset;
 }
 
-fn buildHktanProcess2(session: *const FintsSession, buf: []u8, offset: usize, num: u16, task_ref: []const u8) ?usize {
+fn buildHktanProcessSubmit(session: *const FintsSession, tan_process: []const u8, buf: []u8, offset: usize, num: u16, task_ref: []const u8) ?usize {
     const hktan_ver = clampHktanVersion(session.hitan_version);
     return switch (hktan_ver) {
         // v2/v3: set task_reference and further_tan_follows=false ("N") like python-fints
         2 => writeSegment(buf, offset, "HKTAN", num, 2, &.{
-            "2", // tan_process
+            tan_process, // tan_process ("2" submit or "S" decoupled status)
             "", // task_hash_value
             task_ref, // task_reference
             "", // tan_list_number
             "N", // further_tan_follows
         }),
         3 => writeSegment(buf, offset, "HKTAN", num, 3, &.{
-            "2",
+            tan_process,
             "", // task_hash_value
             task_ref,
             "", // tan_list_number
@@ -343,7 +376,7 @@ fn buildHktanProcess2(session: *const FintsSession, buf: []u8, offset: usize, nu
         }),
         // v5 includes tan_list_number between task_reference and further_tan_follows
         5 => writeSegment(buf, offset, "HKTAN", num, 5, &.{
-            "2", // tan_process
+            tan_process, // tan_process ("2" submit or "S" decoupled status)
             "", // segment_type
             "", // account
             "", // task_hash_value
@@ -353,7 +386,7 @@ fn buildHktanProcess2(session: *const FintsSession, buf: []u8, offset: usize, nu
         }),
         // v6/v7: no tan_list_number, but same process semantics
         6, 7 => writeSegment(buf, offset, "HKTAN", num, hktan_ver, &.{
-            "2", // tan_process
+            tan_process, // tan_process ("2" submit or "S" decoupled status)
             "", // segment_type
             "", // account
             "", // task_hash_value
@@ -533,6 +566,8 @@ pub fn buildFetchStatements(session: *const FintsSession, from: []const u8, to: 
     // HNSHK — Signature header (always seg 2 inside HNVSD)
     inner_pos += writeSignatureHeader(&inner_buf, inner_pos, 2, session, sec_ref, session.tanSecFuncSlice()) orelse return null;
 
+    const hikaz_ver = clampHikazVersion(session.hikaz_version);
+
     // HKKAZ — Account statements MT940 (seg 3)
     // Kontoverbindung DEG = Ktonr:Unterkonto:Laenderkennung:BLZ
     var acct_buf: [128]u8 = undefined;
@@ -552,14 +587,43 @@ pub fn buildFetchStatements(session: *const FintsSession, from: []const u8, to: 
         acct_pos += 8;
     }
 
-    // Write HKKAZ manually (DEG colons must not be escaped)
+    // Write HKKAZ manually (DEG colons must not be escaped).
+    // v5(Account2)/v6(Account3): account:subaccount:280:BLZ
+    // v7(KTI1): iban+bic+account+subaccount+280:BLZ
     var kaz_buf: [256]u8 = undefined;
     var kaz_pos: usize = 0;
-    const kaz_header = "HKKAZ:3:5+";
+    const kaz_header = switch (hikaz_ver) {
+        6 => "HKKAZ:3:6+",
+        7 => "HKKAZ:3:7+",
+        else => "HKKAZ:3:5+",
+    };
     @memcpy(kaz_buf[kaz_pos .. kaz_pos + kaz_header.len], kaz_header);
     kaz_pos += kaz_header.len;
-    @memcpy(kaz_buf[kaz_pos .. kaz_pos + acct_pos], acct_buf[0..acct_pos]);
-    kaz_pos += acct_pos;
+    if (hikaz_ver == 7) {
+        const ktv = acct_buf[0..acct_pos];
+        if (splitAccountKtv(ktv)) |parts| {
+            // We usually do not have IBAN/BIC in HIUPD yet, so keep both empty.
+            @memcpy(kaz_buf[kaz_pos .. kaz_pos + 2], "++");
+            kaz_pos += 2;
+            @memcpy(kaz_buf[kaz_pos .. kaz_pos + parts.account.len], parts.account);
+            kaz_pos += parts.account.len;
+            kaz_buf[kaz_pos] = '+';
+            kaz_pos += 1;
+            @memcpy(kaz_buf[kaz_pos .. kaz_pos + parts.subaccount.len], parts.subaccount);
+            kaz_pos += parts.subaccount.len;
+            @memcpy(kaz_buf[kaz_pos .. kaz_pos + 5], "+280:");
+            kaz_pos += 5;
+            @memcpy(kaz_buf[kaz_pos .. kaz_pos + parts.blz.len], parts.blz);
+            kaz_pos += parts.blz.len;
+        } else {
+            // Fallback if we cannot split account components.
+            @memcpy(kaz_buf[kaz_pos .. kaz_pos + acct_pos], acct_buf[0..acct_pos]);
+            kaz_pos += acct_pos;
+        }
+    } else {
+        @memcpy(kaz_buf[kaz_pos .. kaz_pos + acct_pos], acct_buf[0..acct_pos]);
+        kaz_pos += acct_pos;
+    }
     @memcpy(kaz_buf[kaz_pos .. kaz_pos + 3], "+N+");
     kaz_pos += 3;
     @memcpy(kaz_buf[kaz_pos .. kaz_pos + from.len], from);
@@ -592,6 +656,108 @@ pub fn buildFetchStatements(session: *const FintsSession, from: []const u8, to: 
     return writeAuthEnvelope(session, session.tanSecFuncSlice(), buf, inner_buf[0..inner_pos], 5);
 }
 
+/// Build HKCAZ (fetch bank statements CAMT XML) message.
+/// Uses HNVSK/HNVSD security envelope with PIN in HNSHA.
+pub fn buildFetchStatementsCamt(session: *const FintsSession, from: []const u8, to: []const u8, touchdown: []const u8, buf: []u8) ?usize {
+    var inner_buf: [4096]u8 = undefined;
+    var inner_pos: usize = 0;
+
+    var sec_ref_buf: [7]u8 = undefined;
+    const sec_ref = generateSecurityReference(&sec_ref_buf);
+
+    // HNSHK — Signature header (always seg 2 inside HNVSD)
+    inner_pos += writeSignatureHeader(&inner_buf, inner_pos, 2, session, sec_ref, session.tanSecFuncSlice()) orelse return null;
+
+    // Account reference in KTI1-compatible shape.
+    var acct_buf: [160]u8 = undefined;
+    var acct_pos: usize = 0;
+    if (session.account_ktv_len > 0) {
+        if (splitAccountKtv(session.accountKtvSlice())) |parts| {
+            @memcpy(acct_buf[acct_pos .. acct_pos + 2], "++");
+            acct_pos += 2;
+            @memcpy(acct_buf[acct_pos .. acct_pos + parts.account.len], parts.account);
+            acct_pos += parts.account.len;
+            acct_buf[acct_pos] = '+';
+            acct_pos += 1;
+            @memcpy(acct_buf[acct_pos .. acct_pos + parts.subaccount.len], parts.subaccount);
+            acct_pos += parts.subaccount.len;
+            @memcpy(acct_buf[acct_pos .. acct_pos + 5], "+280:");
+            acct_pos += 5;
+            @memcpy(acct_buf[acct_pos .. acct_pos + parts.blz.len], parts.blz);
+            acct_pos += parts.blz.len;
+        } else {
+            // Fallback for malformed/unknown account data.
+            @memcpy(acct_buf[acct_pos .. acct_pos + 2], "++");
+            acct_pos += 2;
+            const uid = session.userIdSlice();
+            @memcpy(acct_buf[acct_pos .. acct_pos + uid.len], uid);
+            acct_pos += uid.len;
+            @memcpy(acct_buf[acct_pos .. acct_pos + 7], "+0+280:");
+            acct_pos += 7;
+            @memcpy(acct_buf[acct_pos .. acct_pos + 8], &session.blz);
+            acct_pos += 8;
+        }
+    } else {
+        @memcpy(acct_buf[acct_pos .. acct_pos + 2], "++");
+        acct_pos += 2;
+        const uid = session.userIdSlice();
+        @memcpy(acct_buf[acct_pos .. acct_pos + uid.len], uid);
+        acct_pos += uid.len;
+        @memcpy(acct_buf[acct_pos .. acct_pos + 7], "+0+280:");
+        acct_pos += 7;
+        @memcpy(acct_buf[acct_pos .. acct_pos + 8], &session.blz);
+        acct_pos += 8;
+    }
+
+    var camt_buf: [1024]u8 = undefined;
+    var camt_pos: usize = 0;
+    const header = "HKCAZ:3:1+";
+    @memcpy(camt_buf[camt_pos .. camt_pos + header.len], header);
+    camt_pos += header.len;
+    @memcpy(camt_buf[camt_pos .. camt_pos + acct_pos], acct_buf[0..acct_pos]);
+    camt_pos += acct_pos;
+
+    // Supported CAMT message type list (DEG). Keep first supported format from HICAZS.
+    camt_buf[camt_pos] = '+';
+    camt_pos += 1;
+    const default_fmt = "urn?:iso?:std?:iso?:20022?:tech?:xsd?:camt.052.001.02";
+    const camt_fmt = if (session.camt_format_len > 0) session.camtFormatSlice() else default_fmt;
+    @memcpy(camt_buf[camt_pos .. camt_pos + camt_fmt.len], camt_fmt);
+    camt_pos += camt_fmt.len;
+
+    @memcpy(camt_buf[camt_pos .. camt_pos + 3], "+N+");
+    camt_pos += 3;
+    @memcpy(camt_buf[camt_pos .. camt_pos + from.len], from);
+    camt_pos += from.len;
+    camt_buf[camt_pos] = '+';
+    camt_pos += 1;
+    @memcpy(camt_buf[camt_pos .. camt_pos + to.len], to);
+    camt_pos += to.len;
+
+    if (touchdown.len > 0) {
+        @memcpy(camt_buf[camt_pos .. camt_pos + 2], "++");
+        camt_pos += 2;
+        @memcpy(camt_buf[camt_pos .. camt_pos + touchdown.len], touchdown);
+        camt_pos += touchdown.len;
+        camt_buf[camt_pos] = '\'';
+        camt_pos += 1;
+    } else {
+        @memcpy(camt_buf[camt_pos .. camt_pos + 3], "++'");
+        camt_pos += 3;
+    }
+
+    @memcpy(inner_buf[inner_pos .. inner_pos + camt_pos], camt_buf[0..camt_pos]);
+    inner_pos += camt_pos;
+
+    // HKTAN process-4 for the concrete business segment.
+    inner_pos += buildHktanProcess4(session, &inner_buf, inner_pos, 4, "HKCAZ") orelse return null;
+
+    // HNSHA (seg 5)
+    inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 5, sec_ref, session.pinSlice(), "") orelse return null;
+
+    return writeAuthEnvelope(session, session.tanSecFuncSlice(), buf, inner_buf[0..inner_pos], 5);
+}
+
 /// Build TAN submission message.
 /// Uses HNVSK/HNVSD security envelope.
 pub fn buildTanResponse(session: *const FintsSession, tan: []const u8, buf: []u8) ?usize {
@@ -604,11 +770,15 @@ pub fn buildTanResponse(session: *const FintsSession, tan: []const u8, buf: []u8
     // HNSHK (seg 2)
     inner_pos += writeSignatureHeader(&inner_buf, inner_pos, 2, session, sec_ref, session.tanSecFuncSlice()) orelse return null;
 
-    // HKTAN process-2 submit (python-fints sets task_reference + further_tan_follows=false).
-    inner_pos += buildHktanProcess2(session, &inner_buf, inner_pos, 3, session.challenge_ref[0..session.challenge_ref_len]) orelse return null;
+    // HKTAN submit:
+    // - process "2" for regular TAN submit
+    // - process "S" for decoupled status polling
+    const tan_process = if (session.decoupled) "S" else "2";
+    inner_pos += buildHktanProcessSubmit(session, tan_process, &inner_buf, inner_pos, 3, session.challenge_ref[0..session.challenge_ref_len]) orelse return null;
 
     // HNSHA (seg 4)
-    inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 4, sec_ref, session.pinSlice(), tan) orelse return null;
+    const tan_payload = if (session.decoupled) "" else tan;
+    inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 4, sec_ref, session.pinSlice(), tan_payload) orelse return null;
 
     return writeAuthEnvelope(session, session.tanSecFuncSlice(), buf, inner_buf[0..inner_pos], 4);
 }
@@ -742,6 +912,10 @@ pub fn parseResponse(session: *FintsSession, data: []const u8, out: *ParsedRespo
                             var description_required: u8 = 0;
                             var supported_media_number: u8 = 0;
                             var response_hhd_uc_required = false;
+                            var decoupled_max_poll_number: u8 = 0;
+                            var wait_before_first_poll: u8 = 0;
+                            var wait_before_next_poll: u8 = 0;
+                            var automated_polling_allowed = true;
                             var idx: u8 = 0;
                             var cp: usize = 0;
                             var token_start: usize = 0;
@@ -754,6 +928,23 @@ pub fn parseResponse(session: *FintsSession, data: []const u8, out: *ParsedRespo
                                         response_hhd_uc_required = (tok[0] == 'J');
                                     } else if (idx == media_idx and tok.len > 0 and tok[0] >= '0' and tok[0] <= '9') {
                                         supported_media_number = std.fmt.parseInt(u8, tok, 10) catch 0;
+                                    } else if (ver >= 7 and tok.len > 0 and tok[0] >= '0' and tok[0] <= '9') {
+                                        // Some banks shift v7 token positions; support both observed layouts:
+                                        // canonical: max=21, first_wait=22, next_wait=23, auto=25
+                                        // shifted:   max=20, first_wait=21, next_wait=22, auto=24
+                                        if (idx == 20 or idx == 21) {
+                                            const parsed = std.fmt.parseInt(u8, tok, 10) catch 0;
+                                            if (parsed > 0 and decoupled_max_poll_number == 0) decoupled_max_poll_number = parsed;
+                                        } else if (idx == 22) {
+                                            const parsed = std.fmt.parseInt(u8, tok, 10) catch 0;
+                                            if (parsed > 0 and wait_before_first_poll == 0) wait_before_first_poll = parsed;
+                                        } else if (idx == 23) {
+                                            const parsed = std.fmt.parseInt(u8, tok, 10) catch 0;
+                                            if (parsed > 0 and wait_before_next_poll == 0) wait_before_next_poll = parsed;
+                                        }
+                                    } else if (ver >= 7 and (idx == 24 or idx == 25) and tok.len > 0) {
+                                        // "J" = automatic polling allowed, "N" = disallow.
+                                        automated_polling_allowed = (tok[0] != 'N');
                                     }
                                     token_start = cp + 1;
                                     idx += 1;
@@ -763,6 +954,10 @@ pub fn parseResponse(session: *FintsSession, data: []const u8, out: *ParsedRespo
                             session.tan_supported_media_number = supported_media_number;
                             session.tan_response_hhd_uc_required = response_hhd_uc_required;
                             session.tan_medium_required = (supported_media_number > 1 and description_required == 2);
+                            if (decoupled_max_poll_number > 0) session.decoupled_max_poll_number = decoupled_max_poll_number;
+                            if (wait_before_first_poll > 0) session.wait_before_first_poll = wait_before_first_poll;
+                            if (wait_before_next_poll > 0) session.wait_before_next_poll = wait_before_next_poll;
+                            session.automated_polling_allowed = automated_polling_allowed;
                             // python-fints HKTAN6 process-4 includes empty parameter_challenge_class DEG.
                             session.include_empty_parameter_challenge_class = (session.hitan_version >= 6);
                             break;
@@ -803,9 +998,36 @@ pub fn parseResponse(session: *FintsSession, data: []const u8, out: *ParsedRespo
         } else if (startsWith(segment, "HIUPD")) {
             // Account data; extract Kontoverbindung (Ktonr:Unterkonto:280:BLZ) for HKKAZ parity.
             extractAccountKtvFromHiupd(session, segment);
+        } else if (startsWith(segment, "HIKAZS:")) {
+            // Statement parameter segment. Keep highest advertised HIKAZS/HKKAZ version.
+            var c: usize = 0;
+            var colon_count: u8 = 0;
+            var ver: u8 = 0;
+            while (c < segment.len) : (c += 1) {
+                if (segment[c] == ':') {
+                    colon_count += 1;
+                    if (colon_count == 2) {
+                        c += 1;
+                        while (c < segment.len and segment[c] >= '0' and segment[c] <= '9') : (c += 1) {
+                            ver = ver * 10 + @as(u8, segment[c] - '0');
+                        }
+                        break;
+                    }
+                }
+            }
+            if (ver >= 5 and ver <= 7 and ver > session.hikaz_version) {
+                session.hikaz_version = ver;
+            }
+        } else if (startsWith(segment, "HICAZS:")) {
+            // CAMT statement parameter segment. If present, bank supports HKCAZ/HICAZ.
+            session.supports_camt = true;
+            extractCamtFormatFromHicazs(session, segment);
         } else if (startsWith(segment, "HIKAZ")) {
             // Account statements (MT940 data)
             extractMt940(segment, out);
+        } else if (startsWith(segment, "HICAZ")) {
+            // Account statements (CAMT XML data)
+            extractCamtXml(segment, out);
         }
     }
 
@@ -1506,6 +1728,15 @@ fn appendMt940(out: *ParsedResponse, chunk: []const u8) void {
     out.mt940_len = @intCast(offset + copy_len);
 }
 
+fn appendCamt(out: *ParsedResponse, chunk: []const u8) void {
+    if (chunk.len == 0) return;
+    const offset: usize = out.camt_len;
+    if (offset >= out.camt_data.len) return;
+    const copy_len = @min(chunk.len, out.camt_data.len - offset);
+    @memcpy(out.camt_data[offset .. offset + copy_len], chunk[0..copy_len]);
+    out.camt_len = @intCast(offset + copy_len);
+}
+
 fn looksLikeMt940(data: []const u8) bool {
     if (data.len == 0) return false;
     // Trim leading whitespace/newlines before checking markers.
@@ -1522,6 +1753,99 @@ fn looksLikeMt940(data: []const u8) bool {
     if (std.mem.indexOf(u8, s, "\n:61:") != null) return true;
     if (std.mem.indexOf(u8, s, "\r:61:") != null) return true;
     return false;
+}
+
+fn looksLikeCamtXml(data: []const u8) bool {
+    if (data.len == 0) return false;
+    if (std.mem.indexOf(u8, data, "<Document") != null) return true;
+    if (std.mem.indexOf(u8, data, "<BkToCstmrStmt") != null) return true;
+    if (std.mem.indexOf(u8, data, "<BkToCstmrAcctRpt") != null) return true;
+    if (std.mem.indexOf(u8, data, "camt.052") != null) return true;
+    if (std.mem.indexOf(u8, data, "camt.053") != null) return true;
+    return false;
+}
+
+fn extractCamtXml(segment: []const u8, out: *ParsedResponse) void {
+    // HICAZ includes multiple binary fields; append the one(s) that look like XML.
+    var pos: usize = 0;
+    while (pos < segment.len and segment[pos] != '+') : (pos += 1) {}
+    if (pos >= segment.len) return;
+    pos += 1;
+
+    var appended_any = false;
+    var first_binary: []const u8 = "";
+
+    while (pos < segment.len) {
+        if (segment[pos] == '@' and !isEscaped(segment, pos)) {
+            var p = pos + 1;
+            var bin_len: usize = 0;
+            var has_digits = false;
+            while (p < segment.len and segment[p] >= '0' and segment[p] <= '9') : (p += 1) {
+                has_digits = true;
+                bin_len = bin_len * 10 + (segment[p] - '0');
+            }
+            if (has_digits and p < segment.len and segment[p] == '@') {
+                const data_start = p + 1;
+                if (data_start <= segment.len) {
+                    const available = segment.len - data_start;
+                    const raw = segment[data_start .. data_start + @min(bin_len, available)];
+                    if (first_binary.len == 0) first_binary = raw;
+                    if (looksLikeCamtXml(raw)) {
+                        appendCamt(out, raw);
+                        appended_any = true;
+                    }
+                    pos = data_start + @min(bin_len, available);
+                    if (pos < segment.len and segment[pos] == '+' and !isEscaped(segment, pos)) {
+                        pos += 1;
+                    }
+                    continue;
+                }
+            }
+        }
+
+        while (pos < segment.len) : (pos += 1) {
+            if (segment[pos] == '+' and !isEscaped(segment, pos)) {
+                pos += 1;
+                break;
+            }
+        }
+    }
+
+    if (!appended_any and first_binary.len > 0) {
+        appendCamt(out, first_binary);
+    }
+}
+
+fn extractCamtFormatFromHicazs(session: *FintsSession, segment: []const u8) void {
+    // Keep first supported CAMT format token that contains "camt.".
+    var pos: usize = 0;
+    while (pos < segment.len and segment[pos] != '+') : (pos += 1) {}
+    if (pos >= segment.len) return;
+    pos += 1;
+
+    var field_start = pos;
+    while (pos <= segment.len) : (pos += 1) {
+        if (pos == segment.len or ((segment[pos] == '+' or segment[pos] == '\'') and !isEscaped(segment, pos))) {
+            const field = segment[field_start..pos];
+            if (field.len > 0 and std.mem.indexOf(u8, field, "camt.") != null) {
+                var token_start: usize = 0;
+                var fp: usize = 0;
+                while (fp <= field.len) : (fp += 1) {
+                    if (fp == field.len or (field[fp] == ':' and !isEscaped(field, fp))) {
+                        const tok = field[token_start..fp];
+                        if (tok.len > 0 and std.mem.indexOf(u8, tok, "camt.") != null) {
+                            const copy_len = @min(tok.len, session.camt_format.len);
+                            @memcpy(session.camt_format[0..copy_len], tok[0..copy_len]);
+                            session.camt_format_len = @intCast(copy_len);
+                            return;
+                        }
+                        token_start = fp + 1;
+                    }
+                }
+            }
+            field_start = pos + 1;
+        }
+    }
 }
 
 fn extractAccountKtvFromHiupd(session: *FintsSession, segment: []const u8) void {
@@ -1550,6 +1874,49 @@ fn extractAccountKtvFromHiupd(session: *FintsSession, segment: []const u8) void 
             field_start = pos + 1;
         }
     }
+}
+
+const AccountKtvParts = struct {
+    account: []const u8,
+    subaccount: []const u8,
+    blz: []const u8,
+};
+
+fn splitAccountKtv(ktv: []const u8) ?AccountKtvParts {
+    // Expected format: account:subaccount:280:BLZ
+    var first_colon: ?usize = null;
+    var second_colon: ?usize = null;
+    var third_colon: ?usize = null;
+
+    for (ktv, 0..) |ch, i| {
+        if (ch != ':') continue;
+        if (first_colon == null) {
+            first_colon = i;
+        } else if (second_colon == null) {
+            second_colon = i;
+        } else {
+            third_colon = i;
+            break;
+        }
+    }
+
+    if (first_colon == null or second_colon == null or third_colon == null) return null;
+    const c1 = first_colon.?;
+    const c2 = second_colon.?;
+    const c3 = third_colon.?;
+    if (c2 <= c1 or c3 <= c2 + 1) return null;
+    if (!std.mem.eql(u8, ktv[c2 + 1 .. c3], "280")) return null;
+
+    const account = ktv[0..c1];
+    const subaccount = ktv[c1 + 1 .. c2];
+    const blz = ktv[c3 + 1 ..];
+    if (blz.len == 0) return null;
+
+    return .{
+        .account = account,
+        .subaccount = subaccount,
+        .blz = blz,
+    };
 }
 
 fn extractEnvelopeContent(segment: []const u8) ?[]const u8 {
@@ -1902,6 +2269,40 @@ test "extractMt940 prefers field with MT940 markers" {
     const data = "HIKAZ:1:5+@6@ABCDEF+@14@:20:START\\n:61:'";
     parseResponse(&s, data, &resp);
     try std.testing.expect(std.mem.indexOf(u8, resp.mt940_data[0..resp.mt940_len], ":20:START") != null);
+}
+
+test "parseResponse extracts HICAZS camt format token" {
+    var s = FintsSession.init("20041177", "https://x.de/f", "u", "p");
+    var resp = ParsedResponse.init();
+    const data = "HICAZS:2:1+urn?:iso?:std?:iso?:20022?:tech?:xsd?:camt.053.001.02'";
+    parseResponse(&s, data, &resp);
+
+    try std.testing.expect(s.supports_camt);
+    try std.testing.expect(std.mem.indexOf(u8, s.camtFormatSlice(), "camt.053.001.02") != null);
+    try std.testing.expectEqual(@as(u16, 0), resp.camt_len);
+}
+
+test "parseResponse extracts HICAZ xml payload" {
+    var s = FintsSession.init("20041177", "https://x.de/f", "u", "p");
+    var resp = ParsedResponse.init();
+    const xml = "<Document><BkToCstmrStmt><Stmt/></BkToCstmrStmt></Document>";
+
+    var msg_buf: [512]u8 = undefined;
+    const prefix = "HICAZ:1:1+foo+bar+@";
+    @memcpy(msg_buf[0..prefix.len], prefix);
+    var pos: usize = prefix.len;
+    const len_written = writeUint(msg_buf[pos..], xml.len) orelse return error.TestUnexpectedResult;
+    pos += len_written;
+    msg_buf[pos] = '@';
+    pos += 1;
+    @memcpy(msg_buf[pos .. pos + xml.len], xml);
+    pos += xml.len;
+    msg_buf[pos] = '\'';
+    pos += 1;
+
+    parseResponse(&s, msg_buf[0..pos], &resp);
+    try std.testing.expectEqual(@as(u16, @intCast(xml.len)), resp.camt_len);
+    try std.testing.expect(std.mem.indexOf(u8, resp.camt_data[0..resp.camt_len], "<Document>") != null);
 }
 
 test "ResponseCode classification" {

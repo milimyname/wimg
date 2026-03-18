@@ -26,6 +26,7 @@ struct FinTSView: View {
     @State private var challengeText = ""
     @State private var photoTanData: Data?
     @State private var showInvertedPhotoTan = false
+    @State private var isDecoupledChallenge = false
     @State private var tanInput = ""
     @State private var sendingTan = false
 
@@ -328,7 +329,7 @@ struct FinTSView: View {
                         .foregroundStyle(.orange)
                 }
 
-                Text("TAN-Eingabe")
+                Text(isDecoupledChallenge ? "Freigabe in Banking-App" : "TAN-Eingabe")
                     .font(.system(.title3, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
             }
@@ -395,17 +396,33 @@ struct FinTSView: View {
                     .padding(.horizontal, 8)
             }
 
-            // TAN input
-            VStack(alignment: .leading, spacing: 4) {
-                Text("TAN")
-                    .font(.caption2)
-                    .foregroundStyle(WimgTheme.textSecondary)
-                TextField("TAN eingeben", text: $tanInput)
-                    .font(.system(.subheadline, design: .monospaced))
-                    .keyboardType(.numberPad)
-                    .padding(12)
-                    .background(WimgTheme.bg)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            if isDecoupledChallenge {
+                VStack(spacing: 8) {
+                    Text("Bitte in Ihrer Banking-App bestätigen.")
+                        .font(.system(.subheadline, design: .rounded, weight: .medium))
+                        .foregroundStyle(WimgTheme.text)
+                        .multilineTextAlignment(.center)
+                    Text("wimg prüft den Status automatisch. Falls nötig, können Sie manuell erneut prüfen.")
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(12)
+                .background(WimgTheme.bg)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            } else {
+                // TAN input
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("TAN")
+                        .font(.caption2)
+                        .foregroundStyle(WimgTheme.textSecondary)
+                    TextField("TAN eingeben", text: $tanInput)
+                        .font(.system(.subheadline, design: .monospaced))
+                        .keyboardType(.numberPad)
+                        .padding(12)
+                        .background(WimgTheme.bg)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
             }
 
             Button {
@@ -416,7 +433,7 @@ struct FinTSView: View {
                         ProgressView()
                             .tint(.white)
                     } else {
-                        Text("TAN senden")
+                        Text(isDecoupledChallenge ? "Status prüfen" : "TAN senden")
                     }
                 }
                 .font(.system(.headline, design: .rounded, weight: .bold))
@@ -426,7 +443,7 @@ struct FinTSView: View {
                 .foregroundStyle(.white)
                 .clipShape(Capsule())
             }
-            .disabled(sendingTan || tanInput.isEmpty)
+            .disabled(sendingTan || (!isDecoupledChallenge && tanInput.isEmpty))
         }
         .padding(24)
         .wimgCard(radius: WimgTheme.radiusLarge)
@@ -622,6 +639,7 @@ struct FinTSView: View {
                     KeychainService.set(KeychainService.fintsKennung, value: kennung)
                     stage = .dateRange
                 } else if result.needsTan {
+                    isDecoupledChallenge = result.decoupled ?? false
                     challengeText = result.challenge ?? "TAN erforderlich"
                     if let b64 = result.phototan, let data = Data(base64Encoded: b64) {
                         photoTanData = data
@@ -632,6 +650,9 @@ struct FinTSView: View {
                     }
                     tanInput = ""
                     stage = .tanChallenge
+                    if isDecoupledChallenge {
+                        Task { await handleSendTan() }
+                    }
                 } else {
                     errorMessage = result.message ?? "Verbindung fehlgeschlagen"
                 }
@@ -670,7 +691,8 @@ struct FinTSView: View {
             let result: FintsStatusResult = try await withCheckedThrowingContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
                     do {
-                        let r = try LibWimg.fintsSendTan(tan: tanInput)
+                        let outgoingTan = isDecoupledChallenge ? "" : tanInput
+                        let r = try LibWimg.fintsSendTan(tan: outgoingTan)
                         continuation.resume(returning: r)
                     } catch {
                         continuation.resume(throwing: error)
@@ -682,6 +704,18 @@ struct FinTSView: View {
                 if result.isOk {
                     // TAN accepted — dialog is active, fetch statements now
                     Task { await handleFetch() }
+                } else if result.needsTan {
+                    isDecoupledChallenge = result.decoupled ?? isDecoupledChallenge
+                    challengeText = result.challenge ?? "TAN erforderlich"
+                    if let b64 = result.phototan, let data = Data(base64Encoded: b64) {
+                        photoTanData = data
+                        showInvertedPhotoTan = false
+                    } else {
+                        photoTanData = nil
+                        showInvertedPhotoTan = false
+                    }
+                    tanInput = ""
+                    stage = .tanChallenge
                 } else {
                     errorMessage = result.message ?? "TAN fehlgeschlagen"
                 }
@@ -718,6 +752,7 @@ struct FinTSView: View {
             }
             await MainActor.run {
                 if result.needsTan {
+                    isDecoupledChallenge = result.decoupled ?? false
                     challengeText = result.challenge ?? "TAN erforderlich"
                     if let b64 = result.phototan, let data = Data(base64Encoded: b64) {
                         photoTanData = data
@@ -728,6 +763,9 @@ struct FinTSView: View {
                     }
                     tanInput = ""
                     stage = .tanChallenge
+                    if isDecoupledChallenge {
+                        Task { await handleSendTan() }
+                    }
                 } else {
                     importedCount = result.imported ?? 0
                     duplicateCount = result.duplicates ?? 0
@@ -752,6 +790,7 @@ struct FinTSView: View {
         pin = ""
         tanInput = ""
         challengeText = ""
+        isDecoupledChallenge = false
         showInvertedPhotoTan = false
         errorMessage = nil
         importedCount = 0
