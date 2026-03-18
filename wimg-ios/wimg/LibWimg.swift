@@ -521,7 +521,7 @@ final class LibWimg {
     static func fintsSetTanMedium(name: String) throws -> FintsStatusResult {
         try ensureInit()
         let payload = TanMediumSetRequest(name: name)
-        let data = try JSONEncoder().encode(payload)
+        let data = Array(try JSONEncoder().encode(payload))
         let ptr: UnsafePointer<UInt8>? = data.withUnsafeBufferPointer { buf in
             wimg_fints_set_tan_medium(buf.baseAddress!, UInt32(buf.count))
         }
