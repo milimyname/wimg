@@ -75,7 +75,9 @@ echo "  updated $PKG"
 # ── update project.yml ───────────────────────────────────────────────────────
 
 sed -i '' "s/MARKETING_VERSION: \"$OLD\"/MARKETING_VERSION: \"$NEW\"/" "$YML"
-echo "  updated $YML"
+# Reset iOS build number to 1 on each new version
+sed -i '' 's/CURRENT_PROJECT_VERSION: [0-9]*/CURRENT_PROJECT_VERSION: 1/' "$YML"
+echo "  updated $YML (version + reset build number)"
 
 # ── generate changelog entry ─────────────────────────────────────────────────
 
