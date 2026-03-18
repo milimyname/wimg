@@ -249,6 +249,27 @@
     </div>
   </div>
 
+  <!-- Privacy details -->
+  <div class="bg-white rounded-2xl p-5 border border-gray-100 space-y-3">
+    <h3 class="font-bold text-sm text-(--color-text)">Datenschutz im Detail</h3>
+    {#each [
+      { icon: "🔒", title: "Lokal gespeichert", desc: "SQLite-Datenbank auf deinem Gerät. Kein Cloud-Konto nötig." },
+      { icon: "🔐", title: "Ende-zu-Ende verschlüsselt", desc: "Sync nutzt XChaCha20-Poly1305. Der Server sieht nur Chiffretext." },
+      { icon: "🏦", title: "FinTS direkt zur Bank", desc: "Kein Drittanbieter zwischen dir und deiner Bank." },
+      { icon: "🚫", title: "Kein Tracking", desc: "Keine Analytics, kein Sentry, kein Google. Null Telemetrie." },
+      { icon: "👤", title: "Kein Account", desc: "Kein Passwort, keine E-Mail. Dein Sync-Schlüssel ist deine Identität." },
+      { icon: "🧠", title: "KI sieht keine Klarnamen", desc: "MCP-Antworten werden von IBANs, BICs und Namen bereinigt." },
+    ] as item (item.title)}
+      <div class="flex gap-3 items-start">
+        <span class="text-base leading-none mt-0.5">{item.icon}</span>
+        <div>
+          <p class="text-xs font-semibold text-(--color-text)">{item.title}</p>
+          <p class="text-xs text-(--color-text-secondary) leading-snug">{item.desc}</p>
+        </div>
+      </div>
+    {/each}
+  </div>
+
   <!-- GitHub button -->
   <a
     href="https://github.com/milimyname/wimg"
@@ -519,7 +540,7 @@
     </h3>
 
     <div class="space-y-2">
-      {#each faqs as faq}
+      {#each faqs as faq (faq.id)}
         <details
           id={faq.id}
           class="group bg-white rounded-2xl border border-gray-100 overflow-hidden"

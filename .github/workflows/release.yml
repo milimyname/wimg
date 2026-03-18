@@ -147,6 +147,55 @@ jobs:
           name: libwimg-ios
           path: libwimg/build-ios/libwimg.xcframework.zip
 
+      - name: Archive for TestFlight
+        run: |
+          xcodebuild archive \
+            -project wimg-ios/wimg.xcodeproj \
+            -scheme wimg \
+            -destination "generic/platform=iOS" \
+            -archivePath build/wimg.xcarchive \
+            -allowProvisioningUpdates \
+            -quiet
+
+      - name: Export IPA
+        run: |
+          cat > build/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store-connect</string>
+              <key>destination</key>
+              <string>upload</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+              <key>teamID</key>
+              <string>W5N395VNYH</string>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath build/wimg.xcarchive \
+            -exportOptionsPlist build/ExportOptions.plist \
+            -exportPath build/export \
+            -allowProvisioningUpdates \
+            -quiet
+
+      - name: Upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_CONTENT: ${{ secrets.ASC_KEY_CONTENT }}
+        run: |
+          mkdir -p ~/.appstoreconnect
+          echo "$ASC_KEY_CONTENT" > ~/.appstoreconnect/key.p8
+          xcrun altool --upload-app \
+            --type ios \
+            --file build/export/wimg.ipa \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"
+
   deploy-sync:
     needs: [check, build-and-deploy-web]
     runs-on: ubuntu-latest

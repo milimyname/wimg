@@ -4,6 +4,8 @@ struct SearchView: View {
     @Binding var selectedAccount: String?
     @State private var searchText = ""
     @State private var transactions: [Transaction] = []
+    @State private var loadingTransactions = false
+    @State private var reloadToken: UUID = .init()
     @State private var selectedTransaction: Transaction?
     @State private var undoMessage: String?
     @State private var showFeedback = false
@@ -101,7 +103,17 @@ struct SearchView: View {
                 if isSearching {
                     // Search results
                     if filtered.isEmpty {
-                        ContentUnavailableView.search(text: searchText)
+                        if loadingTransactions {
+                            VStack(spacing: 10) {
+                                ProgressView()
+                                Text("Lade Transaktionen...")
+                                    .font(.system(.subheadline, design: .rounded))
+                                    .foregroundStyle(WimgTheme.textSecondary)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else {
+                            ContentUnavailableView.search(text: searchText)
+                        }
                     } else {
                         List {
                             ForEach(grouped, id: \.0) { date, txs in
@@ -472,8 +484,20 @@ struct SearchView: View {
     }
 
     private func reload() {
-        transactions = ((try? LibWimg.getTransactionsFiltered(account: selectedAccount)) ?? [])
-            .sorted { $0.date > $1.date }
+        let token = UUID()
+        reloadToken = token
+        loadingTransactions = true
+        let account = selectedAccount
+        Task.detached(priority: .userInitiated) {
+            let loaded = ((try? LibWimg.getTransactionsFiltered(account: account)) ?? [])
+                .sorted { $0.date > $1.date }
+            await MainActor.run {
+                // Ignore stale completions if a newer reload started.
+                guard reloadToken == token else { return }
+                transactions = loaded
+                loadingTransactions = false
+            }
+        }
     }
 
     private func showUndo(_ message: String) {

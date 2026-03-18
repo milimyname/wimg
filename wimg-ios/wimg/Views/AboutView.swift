@@ -124,6 +124,24 @@ struct AboutView: View {
                 .background(Color.green.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
+                // MARK: - Privacy Details
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Datenschutz im Detail")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.text)
+
+                    privacyRow("lock.fill", "Lokal gespeichert", "SQLite-Datenbank auf deinem Gerät. Kein Cloud-Konto nötig.")
+                    privacyRow("key.fill", "Ende-zu-Ende verschlüsselt", "Sync nutzt XChaCha20-Poly1305. Der Server sieht nur Chiffretext.")
+                    privacyRow("building.columns", "FinTS direkt zur Bank", "Kein Drittanbieter zwischen dir und deiner Bank.")
+                    privacyRow("eye.slash.fill", "Kein Tracking", "Keine Analytics, kein Sentry, kein Google. Null Telemetrie.")
+                    privacyRow("person.fill.xmark", "Kein Account", "Kein Passwort, keine E-Mail. Dein Sync-Schlüssel ist deine Identität.")
+                    privacyRow("brain.head.profile", "KI sieht keine Klarnamen", "MCP-Antworten werden von IBANs, BICs und Namen bereinigt.")
+                }
+                .padding(16)
+                .background(WimgTheme.cardBg)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+
                 // MARK: - GitHub Button
                 Link(destination: URL(string: "https://github.com/milimyname/wimg")!) {
                     HStack(spacing: 8) {
@@ -297,6 +315,25 @@ struct AboutView: View {
         .background(WimgTheme.bg)
         .navigationTitle("Über wimg")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func privacyRow(_ icon: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundStyle(.green)
+                .frame(width: 20, alignment: .center)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                    .foregroundStyle(WimgTheme.text)
+                Text(detail)
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(WimgTheme.textSecondary)
+            }
+        }
     }
 
     private func mcpStep(number: Int, title: String, detail: String) -> some View {

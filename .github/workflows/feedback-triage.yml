@@ -10,11 +10,13 @@ concurrency:
 
 jobs:
   triage:
-    # Only run on issues created by the feedback system
-    if: contains(github.event.issue.labels.*.name, 'user-feedback')
+    # Only run on user-feedback issues created by repo owner
+    if: |
+      contains(github.event.issue.labels.*.name, 'user-feedback') &&
+      github.event.issue.user.login == github.repository_owner
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       issues: write
       id-token: write
       pull-requests: write

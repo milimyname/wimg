@@ -12,6 +12,7 @@ struct FinTSView: View {
 
     @State private var stage: Stage = .bankSelect
     @State private var banks: [BankInfo] = []
+    @State private var loadingBanks = false
     @State private var searchText = ""
     @State private var selectedBank: BankInfo?
     @State private var errorMessage: String?
@@ -78,14 +79,22 @@ struct FinTSView: View {
         .navigationTitle("Bankkonto")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            banks = LibWimg.fintsGetBanks()
-            // Restore saved bank + kennung from Keychain
-            if let savedBLZ = KeychainService.get(KeychainService.fintsBLZ),
-               let bank = banks.first(where: { $0.blz == savedBLZ })
-            {
-                selectedBank = bank
-                kennung = KeychainService.get(KeychainService.fintsKennung) ?? ""
-                stage = .credentials
+            guard banks.isEmpty else { return }
+            loadingBanks = true
+            Task.detached(priority: .userInitiated) {
+                let loaded = LibWimg.fintsGetBanks()
+                await MainActor.run {
+                    banks = loaded
+                    loadingBanks = false
+                    // Restore saved bank + kennung from Keychain
+                    if let savedBLZ = KeychainService.get(KeychainService.fintsBLZ),
+                       let bank = loaded.first(where: { $0.blz == savedBLZ })
+                    {
+                        selectedBank = bank
+                        kennung = KeychainService.get(KeychainService.fintsKennung) ?? ""
+                        stage = .credentials
+                    }
+                }
             }
         }
     }
@@ -136,6 +145,19 @@ struct FinTSView: View {
             let displayBanks = searchText.isEmpty ? Array(banks.prefix(50)) : Array(filteredBanks.prefix(50))
 
             VStack(spacing: 0) {
+                if loadingBanks {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text("Lade Banken...")
+                            .font(.system(.subheadline, design: .rounded))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    Divider().padding(.leading, 70)
+                }
+
                 ForEach(displayBanks) { bank in
                     Button {
                         selectedBank = bank
