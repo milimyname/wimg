@@ -113,13 +113,16 @@ in WimgTheme, settings picker). Onboarding updated (4 cards:
 privacy, import, goals/net-worth, tax/sync). SearchView has nav links to
 all features including Bankverbindung (FinTS).
 
-FinTS 3.0 protocol engine (pure Zig, ~2000 lines): anonymous init, authenticated
-dialog (PIN/TAN), HKKAZ v5 statement fetch, MT940 parsing, photoTAN challenge
-extraction. HTTP transport via C ABI callback (URLSession on iOS). Tested with
-Comdirect (BLZ 20041177) — full auth/fetch/TAN flow works, including task
-reference handling, `HIKAZ` multi-part MT940 assembly, and touchdown pagination
-for >100 transactions.
-Key protocol details: bare envelope (no HNVSK/HNVSD), HKTAN v6, contiguous
+FinTS 3.0 protocol engine (pure Zig, ~2500 lines): anonymous init, authenticated
+dialog (PIN/TAN), HKKAZ v5/v6/v7 statement fetch (version negotiated from BPD),
+MT940 + CAMT parsing, photoTAN challenge extraction, decoupled TAN polling
+(HKTAN process-S with BPD-derived timings), TAN mechanism auto-selection from
+`3920`, HKTAB TAN medium fetch + selection (for banks requiring
+`description_required=2`), touchdown pagination with structured `3040` extraction.
+HTTP transport via C ABI callback (URLSession on iOS). Tested with Comdirect
+(BLZ 20041177). Top-bank matrix script validates 8 major banks (anon init probe).
+Bank catalog drift checker compares official CSV against `banks.zig` (1,745 entries).
+Key protocol details: bare envelope (no HNVSK/HNVSD), HKTAN v2-v7, contiguous
 segment numbering, YYYYMMDD dates, DEG colons not escaped. Static buffers for
 Base64 encode/decode (prevent stack overflow on iOS GCD threads).
 

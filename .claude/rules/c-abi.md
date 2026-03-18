@@ -54,7 +54,16 @@ export fn wimg_restore_db(ptr: [*]const u8, len: usize) i32
 // SQL (DevTools)
 export fn wimg_query(sql_ptr: [*]const u8, sql_len: u32) ?[*]const u8
 
-// Embeddings (Phase 5.5)
+// FinTS (native-only — not in WASM builds)
+export fn wimg_fints_connect(data: [*]const u8, len: u32) ?[*]const u8    // {"blz","user","pin","product"}
+export fn wimg_fints_send_tan(data: [*]const u8, len: u32) ?[*]const u8   // {"tan":"123456"}
+export fn wimg_fints_fetch(data: [*]const u8, len: u32) ?[*]const u8      // {"from":"...","to":"..."}
+export fn wimg_fints_get_banks() ?[*]const u8                              // returns bank list JSON
+export fn wimg_fints_get_tan_media() ?[*]const u8                          // HKTAB → TAN media JSON
+export fn wimg_fints_set_tan_medium(data: [*]const u8, len: u32) ?[*]const u8  // {"name":"..."}
+export fn wimg_set_http_callback(cb: http_callback_fn) void                // iOS URLSession transport
+
+// Embeddings (Phase 5.5 — removed in 5.9, stubs may remain)
 export fn wimg_alloc_model(size: u32) ?[*]u8           // grows WASM memory for model
 export fn wimg_load_model(data: [*]const u8, len: u32) i32
 export fn wimg_embed_text(text: [*]const u8, text_len: u32) ?[*]const u8

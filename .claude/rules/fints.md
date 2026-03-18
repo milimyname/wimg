@@ -1,28 +1,36 @@
 # FinTS 3.0 Technical Notes
 
 Purpose: protocol-level reference for `libwimg` FinTS implementation.
-Audience: engineers touching `libwimg/src/fints.zig`, `root.zig`, `mt940.zig`.
+Audience: engineers touching `libwimg/src/fints.zig`, `root.zig`, `mt940.zig`, `camt.zig`.
 
 ## Scope
 
 - Native-only FinTS (`iOS`), no WASM transport.
 - Protocol implemented in Zig, transport provided by iOS callback (`URLSession`).
 - Current verified bank: Comdirect (`BLZ 20041177`).
+- Top-bank matrix validates 8 major banks via anonymous init probing.
 
 ## End-to-End Flow (Current)
 
-1. Sync init (bootstrap, sec func `999`), parse BPD/UPD/HITANS.
+1. Sync init (bootstrap, sec func `999`), parse BPD/UPD/HITANS/HIKAZS/HICAZS.
 2. Select TAN mechanism from `3920` (prefer two-step, e.g. `902`).
-3. Auth init (HKTAN process-4 for `HKIDN` when two-step mode).
-4. If challenge:
+3. If `tan_medium_required` (description_required=2, supported_media_number>1):
+   - Send HKTAB to fetch TAN media list.
+   - Parse HITAB response for medium names.
+   - User selects medium → stored in session `tan_medium_name`.
+4. Auth init (HKTAN process-4 for `HKIDN` when two-step mode).
+5. If challenge:
    - `nochallenge`/empty -> continue automatically.
+   - Decoupled (HITAN process variant `S`) -> auto-poll via HKTAN process-S.
    - photoTAN/TAN challenge -> return to UI.
-5. Fetch statements (`HKKAZ` + process-4 `HKTAN`).
-6. If TAN required for fetch:
+6. Fetch statements (`HKKAZ`/`HKCAZ` version negotiated from BPD + process-4 `HKTAN`).
+   - HKKAZ v5 (Account2), v6 (Account3), v7 (KTI1) — version from `HIKAZS`.
+   - Transparent MT940 → CAMT fallback when `HIKAZS` absent but `HICAZS` present.
+7. If TAN required for fetch:
    - Submit via HKTAN process-2 with `task_reference`.
-7. Parse `HIKAZ` response(s), assemble MT940, insert transactions.
-8. Follow touchdown pagination via `3040` token until exhaustion.
-9. End dialog (`HKEND`), clear sensitive state.
+8. Parse `HIKAZ` (MT940) or `HICAZ` (CAMT XML) response(s), insert transactions.
+9. Follow touchdown pagination via structured `3040` parameter extraction.
+10. End dialog (`HKEND`), clear sensitive state.
 
 ## Critical Wire-Format Rules
 
@@ -41,6 +49,42 @@ Audience: engineers touching `libwimg/src/fints.zig`, `root.zig`, `mt940.zig`.
 - TAN submit request must still include correct signature footer content
   (`PIN:TAN` shape as required by current envelope/signature builder).
 - On successful response with statement payload, clear stale TAN state immediately.
+- Decoupled TAN (process-S): empty TAN payload, no PIN in signature, poll loop
+  with BPD-derived timings (`decoupled_max_poll_number`, `wait_before_first_poll`,
+  `wait_before_next_poll`, `automated_polling_allowed`).
+
+## TAN Medium Selection (HKTAB/HITAB)
+
+- Banks with `description_required=2` and `supported_media_number>1` require
+  explicit TAN medium selection before business segments (HKKAZ etc.).
+- C ABI: `wimg_fints_get_tan_media` sends HKTAB:3:4+0+A' and returns parsed
+  HITAB media names as JSON array.
+- C ABI: `wimg_fints_set_tan_medium` stores selected name in session
+  `tan_medium_name` for inclusion in HKTAN process-4.
+- iOS: `FinTSView` shows `.tanMediumSelect` stage after connect if
+  `tan_medium_required=true` in connect response.
+
+## HKKAZ Version Negotiation
+
+- Default HKKAZ version is v5.
+- `HIKAZS` BPD segment advertises supported versions; keep highest (v5/v6/v7).
+- v5: Account2 DEG (Ktonr:Unterkonto:280:BLZ).
+- v6: Account3 DEG (same as v5 for current implementation).
+- v7: KTI1 DEG (IBAN+BIC+account+subaccount+280:BLZ).
+- If no `HIKAZS` but `HICAZS` present → CAMT fallback via `HKCAZ`.
+
+## CAMT Fallback
+
+- `camt.zig` parser: Ntry extraction, multi-Ustrd concatenation, Amt Ccy parsing.
+- Same Transaction model, same DB/categorization pipeline as MT940.
+- 112 tests covering CAMT parsing.
+
+## Touchdown Paging
+
+- Response code `3040` carries continuation token.
+- Prefer structured `parameter` field from ResponseCode, fallback to `text` field.
+- Normalize token: strip whitespace, extract after last `:` or `=`, reject spaces.
+- Continue HKKAZ/HKCAZ requests with touchdown field until no `3040` remains.
 
 ## HKKAZ and Paging
 
@@ -68,11 +112,27 @@ Audience: engineers touching `libwimg/src/fints.zig`, `root.zig`, `mt940.zig`.
 - `3060`: warnings present.
 - `3076`: strong customer authentication not required.
 - `3920`: available TAN methods listed.
+- `3956`: decoupled TAN — poll for status.
 - `9010`: order not processed due to general message errors.
 - `9050`: message contains errors.
 - `9110`: invalid order message / unknown structure.
 - `9120`: invalid order message / initialization missing.
+- `9400`: not permitted / access denied (ING anon mode).
 - `9800`: dialog aborted.
+
+## Top-Bank Matrix
+
+`scripts/test-bank-matrix.py` probes 8 target banks with anonymous init:
+- Comdirect, Berliner Sparkasse, Deutsche Bank, Commerzbank, Postbank, ING, DKB, Atruvia representative.
+- Tests: endpoint reachability, BPD presence, HIKAZS/HICAZS versions, TAN methods, response codes.
+- Last result: 8/8 reachable, 3/8 full BPD, 6/8 structural OK.
+- Deutsche Bank + Postbank reject with `9110` — likely need security envelope or bank-family-specific init.
+
+## Bank Catalog Drift
+
+`scripts/check-bank-drift.py` compares official FinTS institute CSV against `banks.zig`:
+- Reports: missing banks (in CSV not in catalog), URL changes, removed banks.
+- Run manually when new CSV received from registrierung@hbci-zka.de.
 
 ## Debugging Playbook
 

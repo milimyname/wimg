@@ -10,7 +10,9 @@ wimg/
 │   ├── build-ios.sh           build XCFramework + copy to Frameworks
 │   ├── gen-xcodeproj.sh       regenerate .xcodeproj from project.yml
 │   ├── build-all.sh           all three above
-│   └── dev-web.sh             start wimg-web dev server
+│   ├── dev-web.sh             start wimg-web dev server
+│   ├── test-bank-matrix.py    FinTS top-bank anonymous init probe matrix
+│   └── check-bank-drift.py    compare official CSV against banks.zig catalog
 │
 ├── .github/workflows/
 │   └── release.yml            CI: check → build-wasm + build-ios → GitHub release
@@ -35,6 +37,7 @@ wimg/
 │       ├── fints.zig            FinTS 3.0 protocol engine (native only)
 │       ├── fints_http.zig       HTTPS transport (native only)
 │       ├── mt940.zig            MT940 bank statement parser
+│       ├── camt.zig             CAMT XML bank statement parser
 │       └── banks.zig            German bank list (BLZ + FinTS URLs)
 │
 ├── wimg-web/

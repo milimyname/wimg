@@ -218,6 +218,17 @@ const uint8_t *wimg_fints_fetch(const uint8_t *data, uint32_t len);
 // Each entry: {"blz":"...","name":"...","url":"..."}
 const uint8_t *wimg_fints_get_banks(void);
 
+// Fetch available TAN media from the bank (HKTAB).
+// Requires active session (call wimg_fints_connect first).
+// Returns length-prefixed JSON array: [{"name":"...","status":1},...]
+// Returns "[]" if bank does not require TAN medium selection.
+const uint8_t *wimg_fints_get_tan_media(void);
+
+// Set the selected TAN medium name for subsequent requests.
+// Input JSON: {"name":"iPhone von Max"}
+// Must be called before wimg_fints_fetch if bank requires medium selection.
+const uint8_t *wimg_fints_set_tan_medium(const uint8_t *data, uint32_t len);
+
 #endif // !LIBWIMG_WASM
 
 #ifdef __cplusplus

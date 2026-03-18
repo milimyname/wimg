@@ -1465,6 +1465,8 @@ comptime {
         @export(&wimg_fints_send_tan, .{ .name = "wimg_fints_send_tan" });
         @export(&wimg_fints_fetch, .{ .name = "wimg_fints_fetch" });
         @export(&wimg_fints_get_banks, .{ .name = "wimg_fints_get_banks" });
+        @export(&wimg_fints_get_tan_media, .{ .name = "wimg_fints_get_tan_media" });
+        @export(&wimg_fints_set_tan_medium, .{ .name = "wimg_fints_set_tan_medium" });
         @export(&wimg_set_http_callback, .{ .name = "wimg_set_http_callback" });
     }
 }
@@ -1760,11 +1762,12 @@ fn wimg_fints_connect(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
         return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"Sync failed\"}");
     }
 
-    // Return debug info with system_id and dialog_id for verification
+    // Return status with tan_medium_required flag so UI knows if picker is needed
     var debug_buf: [512]u8 = undefined;
     const did = fints_session.dialogIdSlice();
     const sid = fints_session.systemIdSlice();
-    const debug_json = std.fmt.bufPrint(&debug_buf, "{{\"status\":\"ok\",\"_debug_dialog_id\":\"{s}\",\"_debug_system_id\":\"{s}\",\"_debug_did_len\":{d},\"_debug_sid_len\":{d}}}", .{ did, sid, did.len, sid.len }) catch return makeLengthPrefixed("{\"status\":\"ok\"}");
+    const tan_med_req = if (fints_session.tan_medium_required) "true" else "false";
+    const debug_json = std.fmt.bufPrint(&debug_buf, "{{\"status\":\"ok\",\"tan_medium_required\":{s},\"_debug_dialog_id\":\"{s}\",\"_debug_system_id\":\"{s}\",\"_debug_did_len\":{d},\"_debug_sid_len\":{d}}}", .{ tan_med_req, did, sid, did.len, sid.len }) catch return makeLengthPrefixed("{\"status\":\"ok\"}");
 
     // Reset dialog state for fetch (keeps system_id, PIN, product_id)
     fints_session.resetDialog();
@@ -2435,6 +2438,109 @@ fn wimg_fints_get_banks() callconv(.c) ?[*]const u8 {
         return null;
     };
     return makeLengthPrefixed(buf[0..len]);
+}
+
+/// Fetch available TAN media from the bank via HKTAB.
+/// Requires an active session (call wimg_fints_connect first).
+/// Returns length-prefixed JSON object:
+/// - success: {"status":"ok","media":[{"name":"...","status":1},...]}
+/// - error:   {"status":"error","message":"..."}
+fn wimg_fints_get_tan_media() callconv(.c) ?[*]const u8 {
+    if (is_wasm) return null;
+
+    if (!fints_session.tan_medium_required) {
+        // Bank does not require TAN medium selection.
+        return makeLengthPrefixed("{\"status\":\"ok\",\"media\":[]}");
+    }
+
+    if (fints_session.pin_len == 0) {
+        return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"PIN missing in session, please reconnect\"}");
+    }
+
+    var msg_buf: [8192]u8 = undefined;
+    var resp_buf: [65536]u8 = undefined;
+
+    // Build and send HKTAB request
+    const msg_len = fints_mod.buildFetchTanMedia(&fints_session, &msg_buf) orelse {
+        setError("wimg_fints_get_tan_media: failed to build HKTAB message", .{});
+        return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"Failed to build HKTAB message\"}");
+    };
+
+    const resp_len = fints_http_mod.sendFintsMessage(
+        std.heap.page_allocator,
+        fints_session.urlSlice(),
+        msg_buf[0..msg_len],
+        &resp_buf,
+    ) catch {
+        setError("wimg_fints_get_tan_media: HTTP request failed", .{});
+        return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"HKTAB HTTP request failed\"}");
+    };
+
+    var resp = fints_mod.ParsedResponse.init();
+    fints_mod.parseResponse(&fints_session, resp_buf[0..resp_len], &resp);
+    fints_session.msg_num += 1;
+
+    if (!is_wasm) {
+        std.debug.print("[FinTS Zig] HKTAB resp: tan_media_count={d}\n", .{resp.tan_media_count});
+    }
+
+    // Build JSON object with TAN media array
+    var json_buf: [3072]u8 = undefined;
+    var json_pos: usize = 0;
+    const prefix = "{\"status\":\"ok\",\"media\":[";
+    if (prefix.len > json_buf.len) return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"Internal buffer overflow\"}");
+    @memcpy(json_buf[json_pos .. json_pos + prefix.len], prefix);
+    json_pos += prefix.len;
+
+    for (resp.tan_media[0..resp.tan_media_count], 0..) |*media, i| {
+        if (i > 0) {
+            json_buf[json_pos] = ',';
+            json_pos += 1;
+        }
+        const entry_prefix = "{\"name\":\"";
+        if (json_pos + entry_prefix.len >= json_buf.len) break;
+        @memcpy(json_buf[json_pos .. json_pos + entry_prefix.len], entry_prefix);
+        json_pos += entry_prefix.len;
+        json_pos += db_mod.jsonEscapeString(json_buf[json_pos..], media.nameSlice()) orelse 0;
+        const entry_suffix = "\",\"status\":";
+        if (json_pos + entry_suffix.len >= json_buf.len) break;
+        @memcpy(json_buf[json_pos .. json_pos + entry_suffix.len], entry_suffix);
+        json_pos += entry_suffix.len;
+        const status_text = std.fmt.bufPrint(json_buf[json_pos..], "{d}", .{media.status}) catch break;
+        json_pos += status_text.len;
+        if (json_pos >= json_buf.len) break;
+        json_buf[json_pos] = '}';
+        json_pos += 1;
+    }
+
+    const close = "]}";
+    if (json_pos + close.len > json_buf.len) return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"Internal buffer overflow\"}");
+    @memcpy(json_buf[json_pos .. json_pos + close.len], close);
+    json_pos += close.len;
+
+    return makeLengthPrefixed(json_buf[0..json_pos]);
+}
+
+/// Set the selected TAN medium name in the session.
+/// Input JSON: {"name":"iPhone von Max"}
+/// This must be called before wimg_fints_fetch if the bank requires medium selection.
+fn wimg_fints_set_tan_medium(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
+    if (is_wasm) return null;
+
+    const json = data[0..len];
+    const name = jsonExtractString(json, "\"name\"") orelse {
+        return makeLengthPrefixed("{\"status\":\"error\",\"message\":\"Missing name field\"}");
+    };
+
+    const n_len = @min(name.len, fints_session.tan_medium_name.len);
+    @memcpy(fints_session.tan_medium_name[0..n_len], name[0..n_len]);
+    fints_session.tan_medium_name_len = @intCast(n_len);
+
+    if (!is_wasm) {
+        std.debug.print("[FinTS Zig] TAN medium set to '{s}'\n", .{fints_session.tan_medium_name[0..n_len]});
+    }
+
+    return makeLengthPrefixed("{\"status\":\"ok\"}");
 }
 
 // --- Helpers ---

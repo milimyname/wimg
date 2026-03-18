@@ -4,6 +4,7 @@ struct FinTSView: View {
     enum Stage {
         case bankSelect
         case credentials
+        case tanMediumSelect
         case tanChallenge
         case dateRange
         case fetching
@@ -29,6 +30,10 @@ struct FinTSView: View {
     @State private var isDecoupledChallenge = false
     @State private var tanInput = ""
     @State private var sendingTan = false
+
+    // TAN Medium Selection
+    @State private var tanMedia: [TanMediumInfo] = []
+    @State private var loadingTanMedia = false
 
     // Date range
     @State private var dateFrom = Calendar.current.date(byAdding: .day, value: -90, to: Date())!
@@ -59,6 +64,8 @@ struct FinTSView: View {
                     bankSelectSection
                 case .credentials:
                     credentialsSection
+                case .tanMediumSelect:
+                    tanMediumSelectSection
                 case .tanChallenge:
                     tanChallengeSection
                 case .dateRange:
@@ -309,6 +316,111 @@ struct FinTSView: View {
                     .foregroundStyle(WimgTheme.textSecondary)
             }
             .disabled(connecting)
+        }
+        .padding(24)
+        .wimgCard(radius: WimgTheme.radiusLarge)
+        .padding(.horizontal)
+    }
+
+    // MARK: - TAN Medium Selection
+
+    private var tanMediumSelectSection: some View {
+        VStack(spacing: 16) {
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.purple.opacity(0.2))
+                        .frame(width: 64, height: 64)
+                    Image(systemName: "iphone.and.arrow.forward")
+                        .font(.system(size: 28))
+                        .foregroundStyle(.purple)
+                }
+
+                Text("TAN-Medium wählen")
+                    .font(.system(.title3, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text)
+
+                Text("Ihre Bank unterstützt mehrere TAN-Verfahren. Bitte wählen Sie das gewünschte Medium.")
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(WimgTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            if loadingTanMedia {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Lade TAN-Medien...")
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                }
+                .padding(.vertical, 12)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(tanMedia) { medium in
+                        Button {
+                            Task { await handleSelectTanMedium(medium.name) }
+                        } label: {
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.purple.opacity(0.1))
+                                        .frame(width: 40, height: 40)
+                                    Image(systemName: medium.status == 1 ? "checkmark.shield.fill" : "shield")
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(.purple)
+                                }
+
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(medium.name)
+                                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                        .foregroundStyle(WimgTheme.text)
+                                    Text(medium.status == 1 ? "Aktiv" : "Inaktiv")
+                                        .font(.system(.caption, design: .rounded))
+                                        .foregroundStyle(medium.status == 1 ? .green : WimgTheme.textSecondary)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(WimgTheme.textSecondary)
+                            }
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                        }
+                        .buttonStyle(.plain)
+
+                        if medium.id != tanMedia.last?.id {
+                            Divider().padding(.leading, 70)
+                        }
+                    }
+                }
+                .background(WimgTheme.bg)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+
+            if tanMedia.isEmpty && !loadingTanMedia {
+                // No media found — skip selection
+                Button {
+                    stage = .dateRange
+                } label: {
+                    Text("Weiter ohne Auswahl")
+                        .font(.system(.headline, design: .rounded, weight: .bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(16)
+                        .background(WimgTheme.text)
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                }
+            }
+
+            Button {
+                stage = .credentials
+            } label: {
+                Text("Zurück")
+                    .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    .foregroundStyle(WimgTheme.textSecondary)
+            }
         }
         .padding(24)
         .wimgCard(radius: WimgTheme.radiusLarge)
@@ -637,7 +749,13 @@ struct FinTSView: View {
                     // Save credentials for next time (not PIN)
                     KeychainService.set(KeychainService.fintsBLZ, value: bank.blz)
                     KeychainService.set(KeychainService.fintsKennung, value: kennung)
-                    stage = .dateRange
+                    if result.tan_medium_required == true {
+                        // Bank requires TAN medium selection — fetch media list
+                        stage = .tanMediumSelect
+                        Task { await handleFetchTanMedia() }
+                    } else {
+                        stage = .dateRange
+                    }
                 } else if result.needsTan {
                     isDecoupledChallenge = result.decoupled ?? false
                     challengeText = result.challenge ?? "TAN erforderlich"
@@ -728,6 +846,75 @@ struct FinTSView: View {
         }
     }
 
+    private func handleFetchTanMedia() async {
+        loadingTanMedia = true
+        errorMessage = nil
+
+        do {
+            let result: FintsTanMediaResult = try await withCheckedThrowingContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        let r = try LibWimg.fintsGetTanMedia()
+                        continuation.resume(returning: r)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+
+            await MainActor.run {
+                loadingTanMedia = false
+                if result.isOk {
+                    let media = result.media ?? []
+                    tanMedia = media
+                    if media.isEmpty {
+                        // Bank returned no selectable media — continue.
+                        stage = .dateRange
+                    }
+                } else {
+                    // Keep user on medium-selection stage and surface backend error.
+                    tanMedia = []
+                    errorMessage = result.message ?? "TAN-Medien konnten nicht geladen werden"
+                }
+            }
+        } catch {
+            await MainActor.run {
+                loadingTanMedia = false
+                tanMedia = []
+                // Keep user on medium-selection stage and surface transport/decode error.
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private func handleSelectTanMedium(_ name: String) async {
+        errorMessage = nil
+
+        do {
+            let result: FintsStatusResult = try await withCheckedThrowingContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        let r = try LibWimg.fintsSetTanMedium(name: name)
+                        continuation.resume(returning: r)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+            await MainActor.run {
+                if result.isOk {
+                    stage = .dateRange
+                } else {
+                    errorMessage = result.message ?? "TAN-Medium konnte nicht gesetzt werden"
+                }
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
     private func handleFetch() async {
         errorMessage = nil
         let formatter = DateFormatter()
@@ -795,6 +982,8 @@ struct FinTSView: View {
         errorMessage = nil
         importedCount = 0
         duplicateCount = 0
+        tanMedia = []
+        loadingTanMedia = false
         dateFrom = Calendar.current.date(byAdding: .day, value: -90, to: Date())!
         dateTo = Date()
     }

@@ -250,6 +250,8 @@ pub const ParsedResponse = struct {
     challenge_ref_len: u8,
     has_tan_request: bool,
     decoupled: bool,
+    tan_media: [8]TanMedium,
+    tan_media_count: u8,
 
     pub fn init() ParsedResponse {
         var r: ParsedResponse = undefined;
@@ -263,6 +265,7 @@ pub const ParsedResponse = struct {
         r.challenge_ref_len = 0;
         r.has_tan_request = false;
         r.decoupled = false;
+        r.tan_media_count = 0;
         @memset(&r.mt940_data, 0);
         @memset(&r.camt_data, 0);
         @memset(&r.dialog_id, 0);
@@ -770,6 +773,135 @@ pub fn buildFetchStatementsCamt(session: *const FintsSession, from: []const u8, 
     return writeAuthEnvelope(session, session.tanSecFuncSlice(), buf, inner_buf[0..inner_pos], 5);
 }
 
+/// Build HKTAB message to fetch available TAN media for the user.
+/// The bank responds with HITAB containing TAN medium names.
+/// HKTAB:seg:4+0+A' — request all TAN media, listing mode.
+pub fn buildFetchTanMedia(session: *const FintsSession, buf: []u8) ?usize {
+    var inner_buf: [4096]u8 = undefined;
+    var inner_pos: usize = 0;
+
+    var sec_ref_buf: [7]u8 = undefined;
+    const sec_ref = generateSecurityReference(&sec_ref_buf);
+
+    // HNSHK (seg 2)
+    inner_pos += writeSignatureHeader(&inner_buf, inner_pos, 2, session, sec_ref, session.tanSecFuncSlice()) orelse return null;
+
+    // HKTAB:3:4+0+A' — fetch all TAN media
+    inner_pos += writeSegment(&inner_buf, inner_pos, "HKTAB", 3, 4, &.{
+        "0", // tan_media_type: 0 = all
+        "A", // tan_media_class: A = all
+    }) orelse return null;
+
+    // HNSHA (seg 4)
+    inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 4, sec_ref, session.pinSlice(), "") orelse return null;
+
+    return writeAuthEnvelope(session, session.tanSecFuncSlice(), buf, inner_buf[0..inner_pos], 4);
+}
+
+/// TAN medium entry parsed from HITAB response.
+pub const TanMedium = struct {
+    name: [64]u8,
+    name_len: u8,
+    media_class: [16]u8, // "M" = mobileTAN, "P" = photoTAN, etc.
+    media_class_len: u8,
+    status: u8, // 1 = active, 0 = inactive
+
+    pub fn nameSlice(self: *const TanMedium) []const u8 {
+        return self.name[0..self.name_len];
+    }
+};
+
+/// Parse HITAB segment to extract TAN media names.
+/// Returns number of media found. Media written to out_media array.
+pub fn parseHitab(segment: []const u8, out_media: []TanMedium) u8 {
+    // HITAB:seg:ver+field1+field2+...
+    // Each TAN medium is a colon-separated DEG within the segment body.
+    // HITAB v4 format per field (after first '+'): tan_media_type : tan_media_class : status : ... : media_name : ...
+    // The exact field positions vary by HITAB version. We look for name-like tokens.
+
+    var count: u8 = 0;
+    if (out_media.len == 0) return 0;
+
+    // Skip segment header (everything before first '+')
+    var pos: usize = 0;
+    while (pos < segment.len and segment[pos] != '+') : (pos += 1) {}
+    if (pos >= segment.len) return 0;
+    pos += 1; // skip '+'
+
+    // Parse fields separated by '+'
+    while (pos < segment.len and count < out_media.len) {
+        // Find end of this field
+        var field_end = pos;
+        while (field_end < segment.len and segment[field_end] != '+' and segment[field_end] != '\'') : (field_end += 1) {}
+
+        const field = segment[pos..field_end];
+
+        // Each TAN medium group is colon-separated. Look for groups that
+        // contain a name (typically field index depends on HITAB version).
+        // HITAB v4: the medium entries start at field index 1+.
+        // Entry structure: media_class:status:card_number:card_seq:... :name:phone:...
+        // We parse colon-separated tokens and pick the name heuristically.
+        if (field.len > 3) {
+            var media: TanMedium = undefined;
+            @memset(&media.name, 0);
+            @memset(&media.media_class, 0);
+            media.name_len = 0;
+            media.media_class_len = 0;
+            media.status = 0;
+
+            var tok_idx: u8 = 0;
+            var tok_start: usize = 0;
+            var best_name: ?[]const u8 = null;
+            var cp: usize = 0;
+            while (cp <= field.len) : (cp += 1) {
+                if (cp == field.len or field[cp] == ':') {
+                    const tok = field[tok_start..cp];
+                    if (tok_idx == 0) {
+                        // media_class (A=all, L=list, M=mobile, P=pushTAN, etc.)
+                        const mc_len = @min(tok.len, media.media_class.len);
+                        @memcpy(media.media_class[0..mc_len], tok[0..mc_len]);
+                        media.media_class_len = @intCast(mc_len);
+                    } else if (tok_idx == 1 and tok.len == 1 and tok[0] >= '0' and tok[0] <= '9') {
+                        // status: 1=active
+                        media.status = tok[0] - '0';
+                    }
+
+                    // Heuristic: the longest alphanumeric token with length >= 3
+                    // that is not purely numeric is likely the medium name.
+                    if (tok.len >= 3 and !isAllDigits(tok)) {
+                        if (best_name == null or tok.len > best_name.?.len) {
+                            best_name = tok;
+                        }
+                    }
+
+                    tok_start = cp + 1;
+                    tok_idx += 1;
+                }
+            }
+
+            if (best_name) |name| {
+                const n_len = @min(name.len, media.name.len);
+                @memcpy(media.name[0..n_len], name[0..n_len]);
+                media.name_len = @intCast(n_len);
+                out_media[count] = media;
+                count += 1;
+            }
+        }
+
+        pos = field_end;
+        if (pos < segment.len) pos += 1; // skip '+' or '\''
+    }
+
+    return count;
+}
+
+fn isAllDigits(s: []const u8) bool {
+    for (s) |c| {
+        if (c < '0' or c > '9') return false;
+    }
+    return true;
+}
+
 /// Build TAN submission message.
 /// Uses HNVSK/HNVSD security envelope.
 pub fn buildTanResponse(session: *const FintsSession, tan: []const u8, buf: []u8) ?usize {
@@ -1034,6 +1166,13 @@ pub fn parseResponse(session: *FintsSession, data: []const u8, out: *ParsedRespo
             // CAMT statement parameter segment. If present, bank supports HKCAZ/HICAZ.
             session.supports_camt = true;
             extractCamtFormatFromHicazs(session, segment);
+        } else if (startsWith(segment, "HITAB")) {
+            // TAN media list response — parse TAN medium names.
+            const remaining = out.tan_media.len - out.tan_media_count;
+            if (remaining > 0) {
+                const found = parseHitab(segment, out.tan_media[out.tan_media_count..]);
+                out.tan_media_count += found;
+            }
         } else if (startsWith(segment, "HIKAZ")) {
             // Account statements (MT940 data)
             extractMt940(segment, out);
@@ -2370,6 +2509,34 @@ test "parseResponse extracts HICAZ xml payload" {
     parseResponse(&s, msg_buf[0..pos], &resp);
     try std.testing.expectEqual(@as(u16, @intCast(xml.len)), resp.camt_len);
     try std.testing.expect(std.mem.indexOf(u8, resp.camt_data[0..resp.camt_len], "<Document>") != null);
+}
+
+test "parseHitab extracts typical TAN media names" {
+    const seg = "HITAB:6:4+M:1:12345:0:iPhone von Max:SMS+P:0:00000:0:photoTAN App'";
+    var media: [8]TanMedium = undefined;
+    const n = parseHitab(seg, &media);
+    try std.testing.expectEqual(@as(u8, 2), n);
+    try std.testing.expectEqualStrings("iPhone von Max", media[0].nameSlice());
+    try std.testing.expectEqual(@as(u8, 1), media[0].status);
+    try std.testing.expectEqualStrings("photoTAN App", media[1].nameSlice());
+}
+
+test "parseHitab handles reordered tokens and picks best name token" {
+    // Name is intentionally the longest non-numeric token in this entry.
+    const seg = "HITAB:6:4+P:1:1:2:3:DeviceNameLongerThanOthers:XYZ:123'";
+    var media: [8]TanMedium = undefined;
+    const n = parseHitab(seg, &media);
+    try std.testing.expectEqual(@as(u8, 1), n);
+    try std.testing.expectEqualStrings("DeviceNameLongerThanOthers", media[0].nameSlice());
+    try std.testing.expectEqual(@as(u8, 1), media[0].status);
+}
+
+test "parseHitab supports names with non-ascii bytes" {
+    const seg = "HITAB:6:4+M:1:123:0:Ger\xc3\xa4t M\xc3\xbcller'";
+    var media: [8]TanMedium = undefined;
+    const n = parseHitab(seg, &media);
+    try std.testing.expectEqual(@as(u8, 1), n);
+    try std.testing.expectEqualStrings("Ger\xc3\xa4t M\xc3\xbcller", media[0].nameSlice());
 }
 
 test "ResponseCode classification" {

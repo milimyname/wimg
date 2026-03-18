@@ -16,10 +16,26 @@ struct FintsStatusResult: Codable {
     let phototan: String?    // Base64-encoded photoTAN PNG image
     let decoupled: Bool?     // true when bank expects decoupled/push approval polling
     let message: String?     // Error message (when status == "error")
+    let tan_medium_required: Bool? // true when bank needs TAN medium selection
 
     var isOk: Bool { status == "ok" }
     var needsTan: Bool { status == "tan_required" }
     var isError: Bool { status == "error" }
+}
+
+struct TanMediumInfo: Codable, Identifiable {
+    let name: String
+    let status: Int  // 1 = active, 0 = inactive
+
+    var id: String { name }
+}
+
+struct FintsTanMediaResult: Codable {
+    let status: String
+    let media: [TanMediumInfo]?
+    let message: String?
+
+    var isOk: Bool { status == "ok" }
 }
 
 struct FintsFetchResult: Codable {

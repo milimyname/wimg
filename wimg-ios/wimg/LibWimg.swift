@@ -505,6 +505,33 @@ final class LibWimg {
         return try decodeLengthPrefixed(ptr)
     }
 
+    private struct TanMediumSetRequest: Codable {
+        let name: String
+    }
+
+    static func fintsGetTanMedia() throws -> FintsTanMediaResult {
+        try ensureInit()
+        guard let ptr = wimg_fints_get_tan_media() else {
+            throw WimgError.operationFailed("fintsGetTanMedia", lastError())
+        }
+        defer { wimg_free(ptr, 0) }
+        return try decodeLengthPrefixed(ptr)
+    }
+
+    static func fintsSetTanMedium(name: String) throws -> FintsStatusResult {
+        try ensureInit()
+        let payload = TanMediumSetRequest(name: name)
+        let data = try JSONEncoder().encode(payload)
+        let ptr: UnsafePointer<UInt8>? = data.withUnsafeBufferPointer { buf in
+            wimg_fints_set_tan_medium(buf.baseAddress!, UInt32(buf.count))
+        }
+        guard let ptr else {
+            throw WimgError.operationFailed("fintsSetTanMedium", lastError())
+        }
+        defer { wimg_free(ptr, 0) }
+        return try decodeLengthPrefixed(ptr)
+    }
+
     static func fintsFetch(from: String, to: String) throws -> FintsFetchResult {
         try ensureInit()
         let json = """
