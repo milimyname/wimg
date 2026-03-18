@@ -11,8 +11,8 @@ wimg/
 │   ├── gen-xcodeproj.sh       regenerate .xcodeproj from project.yml
 │   ├── build-all.sh           all three above
 │   ├── dev-web.sh             start wimg-web dev server
-│   ├── test-bank-matrix.py    FinTS top-bank anonymous init probe matrix
-│   └── check-bank-drift.py    compare official CSV against banks.zig catalog
+│   ├── test-bank-matrix.ts    FinTS top-bank anonymous init probe matrix
+│   └── check-bank-drift.ts    compare official CSV against banks.zig catalog
 │
 ├── .github/workflows/
 │   └── release.yml            CI: check → build-wasm + build-ios → GitHub release

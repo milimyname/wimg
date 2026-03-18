@@ -122,7 +122,7 @@ Audience: engineers touching `libwimg/src/fints.zig`, `root.zig`, `mt940.zig`, `
 
 ## Top-Bank Matrix
 
-`scripts/test-bank-matrix.py` probes 8 target banks with anonymous init:
+`scripts/test-bank-matrix.ts` probes 8 target banks with anonymous init:
 - Comdirect, Berliner Sparkasse, Deutsche Bank, Commerzbank, Postbank, ING, DKB, Atruvia representative.
 - Tests: endpoint reachability, BPD presence, HIKAZS/HICAZS versions, TAN methods, response codes.
 - Last result: 8/8 reachable, 3/8 full BPD, 6/8 structural OK.
@@ -130,7 +130,7 @@ Audience: engineers touching `libwimg/src/fints.zig`, `root.zig`, `mt940.zig`, `
 
 ## Bank Catalog Drift
 
-`scripts/check-bank-drift.py` compares official FinTS institute CSV against `banks.zig`:
+`scripts/check-bank-drift.ts` compares official FinTS institute CSV against `banks.zig`:
 - Reports: missing banks (in CSV not in catalog), URL changes, removed banks.
 - Run manually when new CSV received from registrierung@hbci-zka.de.
 

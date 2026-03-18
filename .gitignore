@@ -79,3 +79,6 @@ npm-debug.log*
 docs/wimg-full.md
 
 wimg-sync/.dev.vars
+
+# Generated reports
+scripts/bank-matrix-last.json
