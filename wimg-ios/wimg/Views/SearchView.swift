@@ -311,7 +311,7 @@ struct SearchView: View {
             EmptyView()
         } else {
             NavigationLink {
-                destination()
+                LazyDestination(destination)
             } label: {
                 HStack(spacing: 14) {
                     ZStack {
@@ -504,4 +504,11 @@ struct SearchView: View {
             root.present(av, animated: true)
         }
     }
+}
+
+/// Defers view creation until navigation occurs.
+private struct LazyDestination<Content: View>: View {
+    let build: () -> Content
+    init(_ build: @escaping () -> Content) { self.build = build }
+    var body: some View { build() }
 }

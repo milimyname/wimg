@@ -20,7 +20,9 @@ targets:
         MARKETING_VERSION: "0.6.14"
         CURRENT_PROJECT_VERSION: 1
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        CODE_SIGN_IDENTITY: "iPhone Developer"
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: W5N395VNYH
         SWIFT_OBJC_BRIDGING_HEADER: "wimg/wimg-Bridging-Header.h"
         FRAMEWORK_SEARCH_PATHS:
           - "$(inherited)"
@@ -34,7 +36,7 @@ targets:
           - "@executable_path/Frameworks"
     dependencies:
       - framework: Frameworks/libwimg.xcframework
-        embed: true
+        embed: false
     info:
       path: wimg/Info.plist
       properties:
@@ -42,3 +44,8 @@ targets:
         CFBundleDisplayName: wimg
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
