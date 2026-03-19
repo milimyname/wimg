@@ -1626,6 +1626,17 @@ fn selectTanSecFuncFromSync(sync_resp: *const fints_mod.ParsedResponse, session:
             has_selected = true;
             break;
         }
+        // Some banks (e.g. Comdirect) return only procedure labels ("photoTAN")
+        // instead of numeric IDs in 3920 text. Map known labels to sec_func IDs.
+        if (!has_selected) {
+            if (containsIgnoreCase(txt, "phototan") or containsIgnoreCase(txt, "photo tan")) {
+                @memcpy(selected_buf[0..3], "902");
+                has_selected = true;
+            } else if (containsIgnoreCase(txt, "mobiletan") or containsIgnoreCase(txt, "sms")) {
+                @memcpy(selected_buf[0..3], "901");
+                has_selected = true;
+            }
+        }
         if (has_selected) break;
     }
 
@@ -1633,6 +1644,25 @@ fn selectTanSecFuncFromSync(sync_resp: *const fints_mod.ParsedResponse, session:
         @memcpy(session.tan_sec_func[0..3], selected_buf[0..3]);
         session.tan_sec_func_len = 3;
     }
+}
+
+fn containsIgnoreCase(haystack: []const u8, needle: []const u8) bool {
+    if (needle.len == 0) return true;
+    if (haystack.len < needle.len) return false;
+    const limit = haystack.len - needle.len + 1;
+    for (0..limit) |i| {
+        var ok = true;
+        for (needle, 0..) |n, j| {
+            const h = std.ascii.toLower(haystack[i + j]);
+            const nl = std.ascii.toLower(n);
+            if (h != nl) {
+                ok = false;
+                break;
+            }
+        }
+        if (ok) return true;
+    }
+    return false;
 }
 
 fn extractTouchdownToken(resp: *const fints_mod.ParsedResponse, out_buf: []u8) []const u8 {
@@ -2686,4 +2716,20 @@ test "extractTouchdownToken ignores non-token text" {
     var out: [64]u8 = undefined;
     const tok = extractTouchdownToken(&resp, &out);
     try std.testing.expectEqual(@as(usize, 0), tok.len);
+}
+
+test "selectTanSecFuncFromSync maps photoTAN label to 902" {
+    var s = fints_mod.FintsSession.init("20041177", "https://x.de/f", "u", "p");
+    @memcpy(s.tan_sec_func[0..3], "999");
+    s.tan_sec_func_len = 3;
+
+    var resp = fints_mod.ParsedResponse.init();
+    resp.code_count = 1;
+    @memcpy(resp.codes[0].code[0..4], "3920");
+    const txt = "Verfuegbare TAN-Verfahren?: photoTAN.";
+    @memcpy(resp.codes[0].text[0..txt.len], txt);
+    resp.codes[0].text_len = @intCast(txt.len);
+
+    selectTanSecFuncFromSync(&resp, &s);
+    try std.testing.expectEqualStrings("902", s.tanSecFuncSlice());
 }
