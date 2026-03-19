@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.20 (2026-03-19)
+
+- Version bump
+
 ## v0.6.19 (2026-03-19)
 
 - fix: resolve double-tap required for navigation in iOS views
