@@ -15,6 +15,7 @@ struct FinTSView: View {
     @State private var banks: [BankInfo] = []
     @State private var loadingBanks = false
     @State private var searchText = ""
+    @State private var displayBanks: [BankInfo] = []
     @State private var selectedBank: BankInfo?
     @State private var errorMessage: String?
 
@@ -48,11 +49,14 @@ struct FinTSView: View {
         return UIImage(data: data)
     }
 
-    private var filteredBanks: [BankInfo] {
-        if searchText.isEmpty { return banks }
-        let query = searchText.localizedLowercase
-        return banks.filter {
-            $0.name.localizedCaseInsensitiveContains(query) || $0.blz.contains(query)
+    private func updateDisplayBanks() {
+        if searchText.isEmpty {
+            displayBanks = Array(banks.prefix(50))
+        } else {
+            let query = searchText.localizedLowercase
+            displayBanks = Array(banks.lazy.filter {
+                $0.name.localizedCaseInsensitiveContains(query) || $0.blz.contains(query)
+            }.prefix(50))
         }
     }
 
@@ -86,6 +90,11 @@ struct FinTSView: View {
         .background(WimgTheme.bg)
         .navigationTitle("Bankkonto")
         .navigationBarTitleDisplayMode(.inline)
+        .task(id: searchText) {
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            updateDisplayBanks()
+        }
         .onAppear {
             guard banks.isEmpty else { return }
             loadingBanks = true
@@ -93,6 +102,7 @@ struct FinTSView: View {
                 let loaded = LibWimg.fintsGetBanks()
                 await MainActor.run {
                     banks = loaded
+                    displayBanks = Array(loaded.prefix(50))
                     loadingBanks = false
                     // Restore saved bank + kennung from Keychain
                     if let savedBLZ = KeychainService.get(KeychainService.fintsBLZ),
@@ -148,9 +158,6 @@ struct FinTSView: View {
             .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusSmall, style: .continuous))
             .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
             .padding(.horizontal)
-
-            // Bank list — show max 50 results for performance
-            let displayBanks = searchText.isEmpty ? Array(banks.prefix(50)) : Array(filteredBanks.prefix(50))
 
             VStack(spacing: 0) {
                 if loadingBanks {

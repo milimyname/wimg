@@ -3,6 +3,7 @@ import SwiftUI
 struct SearchView: View {
     @Binding var selectedAccount: String?
     @State private var searchText = ""
+    @State private var debouncedSearch = ""
     @State private var transactions: [Transaction] = []
     @State private var loadingTransactions = false
     @State private var reloadToken: UUID = .init()
@@ -15,6 +16,12 @@ struct SearchView: View {
     @State private var amountMax: Double = 1000
     @State private var filterCategories: Set<Int> = []
 
+    private static let isoFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        return fmt
+    }()
+
     private let allCategories: [WimgCategory] = [
         .groceries, .dining, .transport, .housing, .utilities,
         .entertainment, .shopping, .health, .insurance, .subscriptions,
@@ -24,9 +31,9 @@ struct SearchView: View {
     private var filtered: [Transaction] {
         var result = transactions
 
-        if !searchText.isEmpty {
+        if !debouncedSearch.isEmpty {
             result = result.filter {
-                $0.description.localizedCaseInsensitiveContains(searchText)
+                $0.description.localizedCaseInsensitiveContains(debouncedSearch)
             }
         }
 
@@ -35,15 +42,11 @@ struct SearchView: View {
         }
 
         if let dateFrom {
-            let fmt = DateFormatter()
-            fmt.dateFormat = "yyyy-MM-dd"
-            let fromStr = fmt.string(from: dateFrom)
+            let fromStr = Self.isoFormatter.string(from: dateFrom)
             result = result.filter { $0.date >= fromStr }
         }
         if let dateTo {
-            let fmt = DateFormatter()
-            fmt.dateFormat = "yyyy-MM-dd"
-            let toStr = fmt.string(from: dateTo)
+            let toStr = Self.isoFormatter.string(from: dateTo)
             result = result.filter { $0.date <= toStr }
         }
 
@@ -67,7 +70,7 @@ struct SearchView: View {
     }
 
     private var isSearching: Bool {
-        !searchText.isEmpty || hasActiveFilters
+        !debouncedSearch.isEmpty || hasActiveFilters
     }
 
     var body: some View {
@@ -145,6 +148,11 @@ struct SearchView: View {
             .background(WimgTheme.bg)
             .navigationTitle("Suche")
             .searchable(text: $searchText, prompt: "Transaktionen suchen...")
+            .task(id: searchText) {
+                try? await Task.sleep(for: .milliseconds(300))
+                guard !Task.isCancelled else { return }
+                debouncedSearch = searchText
+            }
             .toolbar { filterToolbar }
             .onAppear { reload() }
             .onChange(of: selectedAccount) { reload() }
