@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.22 (2026-03-20)
+
+- fix: iOS crash on data reset, FinTS search lag, and post-TAN loading
+- feat: Phase 6.8 — Deutsche Bank / Postbank FinTS compatibility
+
 ## v0.6.21 (2026-03-19)
 
 - fix: fetch tags and exclude version-bump files in CI change detection
