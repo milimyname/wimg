@@ -42,7 +42,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 - **Release:** `scripts/release.sh` — bump versions, changelog (filters chore/ci/build), commit, tag, `--push`
 - **Build WASM:** `scripts/build-wasm.sh` — two variants (web 209MB + compact 53MB)
 - **Build iOS:** `scripts/build-ios.sh` — XCFramework
-- **CI:** `.github/workflows/release.yml` — check → build → GitHub release
+- **CI:** `.github/workflows/release.yml` — check → build → GitHub release (TestFlight upload commented out — manual via Xcode)
 - **Feedback CI:** `.github/workflows/feedback-triage.yml` — Claude Code Action triages user-feedback issues
 
 ---
