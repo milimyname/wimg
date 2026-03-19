@@ -20,15 +20,16 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Detect changed paths
         id: changes
         run: |
           PREV_TAG=$(git tag -l --sort=-v:refname | sed -n '2p')
           if [ -n "$PREV_TAG" ]; then
-            CHANGED=$(git diff --name-only "$PREV_TAG"..HEAD)
+            CHANGED=$(git diff --name-only "$PREV_TAG"..HEAD -- . ':(exclude)CHANGELOG.md' ':(exclude)wimg-web/package.json' ':(exclude)wimg-ios/project.yml')
           else
-            CHANGED=$(git diff --name-only HEAD~1)
+            CHANGED=$(git diff --name-only HEAD~1 -- . ':(exclude)CHANGELOG.md' ':(exclude)wimg-web/package.json' ':(exclude)wimg-ios/project.yml')
           fi
           echo "libwimg=$(echo "$CHANGED" | grep -q '^libwimg/' && echo true || echo false)" >> $GITHUB_OUTPUT
           echo "web=$(echo "$CHANGED" | grep -q '^wimg-web/' && echo true || echo false)" >> $GITHUB_OUTPUT
