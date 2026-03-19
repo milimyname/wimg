@@ -355,8 +355,8 @@ struct SearchView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
+                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -386,8 +386,8 @@ struct SearchView: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Filter Toolbar

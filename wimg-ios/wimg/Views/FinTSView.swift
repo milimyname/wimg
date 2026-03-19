@@ -206,8 +206,8 @@ struct FinTSView: View {
                         }
                         .padding(.vertical, 12)
                         .padding(.horizontal, 16)
+                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
 
                     Divider().padding(.leading, 70)
                 }
@@ -394,8 +394,8 @@ struct FinTSView: View {
                             }
                             .padding(.vertical, 12)
                             .padding(.horizontal, 16)
+                            .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
 
                         if medium.id != tanMedia.last?.id {
                             Divider().padding(.leading, 70)
