@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.6.17 (2026-03-19)
+
+- fix: map label-only 3920 TAN methods for Comdirect
+- perf: debounce search and fix DateFormatter allocation in iOS views
+- fix: use Array wrapper for Data in fintsSetTanMedium Swift call
+- refactor: rewrite FinTS scripts from Python to Bun, remove one-off tests
+- feat: harden FinTS TAN medium flow and bank support tooling
+- feat: improve top-bank matrix diagnostics and reporting
+- fix: harden touchdown token parsing from 3040 responses
+- fix: harden CAMT parsing for multi-Ustrd and currency attribute
+- feat: add FinTS decoupled TAN and CAMT fallback support
+- feat: improve mobile UX and privacy visibility
+
 ## v0.6.16 (2026-03-18)
 
 - docs: add TestFlight guide and auto-reset build number in release.sh
