@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.18 (2026-03-19)
+
+- Version bump
+
 ## v0.6.17 (2026-03-19)
 
 - fix: map label-only 3920 TAN methods for Comdirect
