@@ -11,8 +11,29 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    outputs:
+      libwimg: ${{ steps.changes.outputs.libwimg }}
+      web: ${{ steps.changes.outputs.web }}
+      ios: ${{ steps.changes.outputs.ios }}
+      sync: ${{ steps.changes.outputs.sync }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        id: changes
+        run: |
+          PREV_TAG=$(git tag -l --sort=-v:refname | sed -n '2p')
+          if [ -n "$PREV_TAG" ]; then
+            CHANGED=$(git diff --name-only "$PREV_TAG"..HEAD)
+          else
+            CHANGED=$(git diff --name-only HEAD~1)
+          fi
+          echo "libwimg=$(echo "$CHANGED" | grep -q '^libwimg/' && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "web=$(echo "$CHANGED" | grep -q '^wimg-web/' && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "ios=$(echo "$CHANGED" | grep -q '^wimg-ios/' && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "sync=$(echo "$CHANGED" | grep -q '^wimg-sync/' && echo true || echo false)" >> $GITHUB_OUTPUT
 
       - uses: mlugg/setup-zig@v2
         with:
@@ -66,6 +87,7 @@ jobs:
 
   build-and-deploy-web:
     needs: check
+    if: needs.check.outputs.web == 'true' || needs.check.outputs.libwimg == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -112,6 +134,7 @@ jobs:
 
   build-ios:
     needs: check
+    if: needs.check.outputs.ios == 'true' || needs.check.outputs.libwimg == 'true'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
@@ -201,6 +224,9 @@ jobs:
 
   deploy-sync:
     needs: [check, build-and-deploy-web]
+    if: |
+      always() && !failure() && !cancelled() &&
+      (needs.check.outputs.sync == 'true' || needs.check.outputs.libwimg == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -225,17 +251,27 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   release:
-    needs: [build-and-deploy-web, build-ios]
+    needs: [check, build-and-deploy-web, build-ios]
+    if: always() && !failure() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Download all artifacts
+      - name: Download WASM artifacts
+        if: needs.build-and-deploy-web.result == 'success'
         uses: actions/download-artifact@v8
         with:
-          path: artifacts
+          name: libwimg-wasm
+          path: artifacts/libwimg-wasm
+
+      - name: Download iOS artifacts
+        if: needs.build-ios.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: libwimg-ios
+          path: artifacts/libwimg-ios
 
       - name: Create GitHub Release
         env:
@@ -262,8 +298,12 @@ jobs:
 
           echo "$NOTES" > release-notes.md
 
+          # Collect available artifacts
+          ASSETS=()
+          [ -f artifacts/libwimg-wasm/wimg-web/static/libwimg.wasm ] && ASSETS+=(artifacts/libwimg-wasm/wimg-web/static/libwimg.wasm)
+          [ -f artifacts/libwimg-ios/libwimg.xcframework.zip ] && ASSETS+=(artifacts/libwimg-ios/libwimg.xcframework.zip)
+
           gh release create "$TAG" \
             --title "$TAG" \
             --notes-file release-notes.md \
-            artifacts/libwimg-wasm/wimg-web/static/libwimg.wasm \
-            artifacts/libwimg-ios/libwimg.xcframework.zip
+            "${ASSETS[@]}"
