@@ -49,7 +49,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6 all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8 all **done**.
 
 Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules +
 auto-learn), summaries, debts, recurring detection, multi-account, undo/redo,
@@ -122,9 +122,13 @@ MT940 + CAMT parsing, photoTAN challenge extraction, decoupled TAN polling
 HTTP transport via C ABI callback (URLSession on iOS). Tested with Comdirect
 (BLZ 20041177). Top-bank matrix script validates 8 major banks (anon init probe).
 Bank catalog drift checker compares official CSV against `banks.zig` (1,745 entries).
-Key protocol details: bare envelope (no HNVSK/HNVSD), HKTAN v2-v7, contiguous
-segment numbering, YYYYMMDD dates, DEG colons not escaped. Static buffers for
-Base64 encode/decode (prevent stack overflow on iOS GCD threads).
+Key protocol details: bare envelope (no HNVSK/HNVSD) for standard banks,
+HNVSK/HNVSD envelope for Deutsche Bank/Postbank/norisbank family,
+HKTAN v2-v7, contiguous segment numbering, YYYYMMDD dates, DEG colons not
+escaped. Static buffers for Base64 encode/decode (prevent stack overflow on
+iOS GCD threads). Bank-family detection from URL (`BankFamily` enum in
+`banks.zig`) auto-selects envelope style. Anonymous customer_id uses
+`9999999999` per FinTS spec (not `0`).
 
 Deferred: Phase 5.2 (Notifications) — TBD.
 Deferred: Phase 6.1 (Annual Review / "Geld-Wrapped") — planned for end of year.

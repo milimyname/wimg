@@ -1,6 +1,9 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const is_wasm = builtin.cpu.arch == .wasm32;
+const banks_mod = if (!is_wasm) @import("banks.zig") else struct {
+    pub const BankFamily = enum(u8) { standard = 0, deutsche_bank = 1, postbank = 2, norisbank = 3 };
+};
 
 pub const FintsError = error{
     BufferTooSmall,
@@ -65,6 +68,7 @@ pub const FintsSession = struct {
     has_pending_tan: bool,
     has_active_dialog: bool, // auth dialog is open (post-TAN)
     decoupled: bool,
+    bank_family: banks_mod.BankFamily,
 
     pub fn init(blz: []const u8, url: []const u8, user_id: []const u8, pin: []const u8) FintsSession {
         var s: FintsSession = undefined;
@@ -126,6 +130,7 @@ pub const FintsSession = struct {
         s.has_pending_tan = false;
         s.has_active_dialog = false;
         s.decoupled = false;
+        s.bank_family = if (!is_wasm) banks_mod.detectBankFamily(url) else .standard;
         s.challenge_len = 0;
         s.challenge_hhduc_len = 0;
         s.challenge_ref_len = 0;
@@ -461,10 +466,10 @@ pub fn buildAnonInit(session: *const FintsSession, buf: []u8) ?usize {
     var inner_buf: [4096]u8 = undefined;
     var inner_pos: usize = 0;
 
-    // HKIDN — Identification (anonymous: user_id=0, system_id=0)
+    // HKIDN — Identification (anonymous: user_id=9999999999 per FinTS spec, system_id=0)
     // Kreditinstitutskennung is a DEG: 280:BLZ (colon must NOT be escaped)
     // Segment numbers start at 2 (1 = HNHBK, no security envelope in anonymous mode)
-    inner_pos += writeHkidn(&inner_buf, inner_pos, 2, &session.blz, "0", "0", "0") orelse return null;
+    inner_pos += writeHkidn(&inner_buf, inner_pos, 2, &session.blz, "9999999999", "0", "0") orelse return null;
 
     // HKVVB — BPD request
     inner_pos += writeSegment(&inner_buf, inner_pos, "HKVVB", 3, 3, &.{
@@ -476,6 +481,95 @@ pub fn buildAnonInit(session: *const FintsSession, buf: []u8) ?usize {
     }) orelse return null;
 
     return writeEnvelope(session, buf, inner_buf[0..inner_pos]);
+}
+
+/// Build anonymous initialization wrapped in HNVSK/HNVSD security envelope.
+/// Required by Deutsche Bank, Postbank, and norisbank which reject bare anonymous init with 9110.
+/// Uses dummy encryption (PIN:1, sec_func=998), user_id=9999999999, system_id=0.
+pub fn buildAnonInitWithEnvelope(session: *const FintsSession, buf: []u8) ?usize {
+    var inner_buf: [4096]u8 = undefined;
+    var inner_pos: usize = 0;
+
+    // HKIDN — anonymous identification inside envelope (seg 3, after HNVSK=998 and HNVSD=999)
+    inner_pos += writeHkidn(&inner_buf, inner_pos, 3, &session.blz, "9999999999", "0", "0") orelse return null;
+
+    // HKVVB — BPD request
+    inner_pos += writeSegment(&inner_buf, inner_pos, "HKVVB", 4, 3, &.{
+        "0",
+        "0",
+        "1",
+        session.productIdSlice(),
+        "5.0.0",
+    }) orelse return null;
+
+    // Wrap in HNVSK/HNVSD envelope using sec_func=998 (dummy encryption for anonymous)
+    // Uses "9999999999" as user_id in key_name, system_id=0
+    return writeAnonAuthEnvelope(session, buf, inner_buf[0..inner_pos], 4);
+}
+
+/// Write HNVSK/HNVSD envelope for anonymous init (no real credentials).
+/// Similar to writeAuthEnvelope but uses anonymous identifiers.
+fn writeAnonAuthEnvelope(session: *const FintsSession, buf: []u8, inner: []const u8, last_inner_seg: u16) ?usize {
+    var sec_buf: [8192]u8 = undefined;
+    var sec_pos: usize = 0;
+
+    // HNVSK:998:3 — dummy encryption header for anonymous mode
+    var hnvsk_buf: [256]u8 = undefined;
+    var vsk_pos: usize = 0;
+
+    const vsk_h1 = "HNVSK:998:3+PIN:1+998+1+2::0+1:";
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + vsk_h1.len], vsk_h1);
+    vsk_pos += vsk_h1.len;
+
+    var date_buf: [8]u8 = undefined;
+    var time_buf: [6]u8 = undefined;
+    fillCurrentDateTime(&date_buf, &time_buf);
+
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + 8], &date_buf);
+    vsk_pos += 8;
+    hnvsk_buf[vsk_pos] = ':';
+    vsk_pos += 1;
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + 6], &time_buf);
+    vsk_pos += 6;
+    const vsk_enc = "+2:2:13:@8@";
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + vsk_enc.len], vsk_enc);
+    vsk_pos += vsk_enc.len;
+
+    // 8 null bytes (dummy encryption key)
+    @memset(hnvsk_buf[vsk_pos .. vsk_pos + 8], 0);
+    vsk_pos += 8;
+
+    // Key name with anonymous user_id
+    const vsk_key = ":5:1+280:";
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + vsk_key.len], vsk_key);
+    vsk_pos += vsk_key.len;
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + 8], &session.blz);
+    vsk_pos += 8;
+    const vsk_anon_suffix = ":9999999999:V:0:0+0'";
+    @memcpy(hnvsk_buf[vsk_pos .. vsk_pos + vsk_anon_suffix.len], vsk_anon_suffix);
+    vsk_pos += vsk_anon_suffix.len;
+
+    @memcpy(sec_buf[sec_pos .. sec_pos + vsk_pos], hnvsk_buf[0..vsk_pos]);
+    sec_pos += vsk_pos;
+
+    // HNVSD:999:1+@len@inner_data'
+    const hnvsd_prefix = "HNVSD:999:1+@";
+    @memcpy(sec_buf[sec_pos .. sec_pos + hnvsd_prefix.len], hnvsd_prefix);
+    sec_pos += hnvsd_prefix.len;
+
+    sec_pos += writeUint(sec_buf[sec_pos..], @intCast(inner.len)) orelse return null;
+
+    sec_buf[sec_pos] = '@';
+    sec_pos += 1;
+
+    if (sec_pos + inner.len + 1 >= sec_buf.len) return null;
+    @memcpy(sec_buf[sec_pos .. sec_pos + inner.len], inner);
+    sec_pos += inner.len;
+
+    sec_buf[sec_pos] = '\'';
+    sec_pos += 1;
+
+    return writeEnvelopeWithNum(session, buf, sec_buf[0..sec_pos], last_inner_seg + 1);
 }
 
 /// Build synchronization dialog init (sec_func=999, HKSYN to get system_id).
@@ -2309,7 +2403,7 @@ test "writeSegment basic" {
     try std.testing.expect(std.mem.indexOf(u8, seg, "testuser") != null);
 }
 
-test "buildAnonInit produces valid envelope" {
+test "buildAnonInit produces valid envelope with 9999999999 customer_id" {
     var s = FintsSession.init("20041133", "https://x.de/f", "user", "pin");
     s.product_id_len = 25;
     @memcpy(s.product_id[0..25], "F7C4049477F6136957A46EC28");
@@ -2324,6 +2418,46 @@ test "buildAnonInit produces valid envelope" {
     try std.testing.expect(std.mem.indexOf(u8, msg, "HKIDN") != null);
     try std.testing.expect(std.mem.indexOf(u8, msg, "HKVVB") != null);
     try std.testing.expect(std.mem.indexOf(u8, msg, "HNHBS") != null);
+    // Must use 9999999999 as anonymous customer_id (FinTS spec)
+    try std.testing.expect(std.mem.indexOf(u8, msg, "9999999999") != null);
+    // Must NOT contain HNVSK (bare envelope for standard banks)
+    try std.testing.expect(std.mem.indexOf(u8, msg, "HNVSK") == null);
+}
+
+test "buildAnonInitWithEnvelope wraps in HNVSK/HNVSD" {
+    var s = FintsSession.init("10070000", "https://fints.deutsche-bank.de/", "user", "pin");
+    s.product_id_len = 25;
+    @memcpy(s.product_id[0..25], "F7C4049477F6136957A46EC28");
+
+    var buf: [8192]u8 = undefined;
+    const len = buildAnonInitWithEnvelope(&s, &buf) orelse return error.TestUnexpectedResult;
+    const msg = buf[0..len];
+
+    // Must start with HNHBK
+    try std.testing.expect(startsWith(msg, "HNHBK:1:3+"));
+    // Must contain security envelope segments
+    try std.testing.expect(std.mem.indexOf(u8, msg, "HNVSK:998:3+PIN:1+998") != null);
+    try std.testing.expect(std.mem.indexOf(u8, msg, "HNVSD:999:1+@") != null);
+    // Must contain HKIDN and HKVVB inside envelope
+    try std.testing.expect(std.mem.indexOf(u8, msg, "HKIDN") != null);
+    try std.testing.expect(std.mem.indexOf(u8, msg, "HKVVB") != null);
+    // Must use 9999999999 as anonymous user
+    try std.testing.expect(std.mem.indexOf(u8, msg, "9999999999") != null);
+    // Size field must match actual message length
+    const size_str = msg[10..22];
+    const declared_size = std.fmt.parseInt(usize, size_str, 10) catch return error.TestUnexpectedResult;
+    try std.testing.expectEqual(len, declared_size);
+}
+
+test "FintsSession detects bank_family from URL" {
+    const s1 = FintsSession.init("10070000", "https://fints.deutsche-bank.de/", "u", "p");
+    try std.testing.expectEqual(banks_mod.BankFamily.deutsche_bank, s1.bank_family);
+
+    const s2 = FintsSession.init("10010010", "https://hbci.postbank.de/banking/hbci.do", "u", "p");
+    try std.testing.expectEqual(banks_mod.BankFamily.postbank, s2.bank_family);
+
+    const s3 = FintsSession.init("20041133", "https://fints.comdirect.de/fints", "u", "p");
+    try std.testing.expectEqual(banks_mod.BankFamily.standard, s3.bank_family);
 }
 
 test "writeEnvelope size field is correct" {

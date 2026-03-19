@@ -44,8 +44,8 @@ interface ProbeResult {
 }
 
 function buildAnonymousInit(blz: string): string {
-	const hkidn = `HKIDN:2:2+${COUNTRY}:${blz}+0+0+0'`;
-	const hkvvb = `HKVVB:3:3+0+0+0+${PRODUCT_ID}+1.0'`;
+	const hkidn = `HKIDN:2:2+${COUNTRY}:${blz}+9999999999+0+0'`;
+	const hkvvb = `HKVVB:3:3+0+0+0+${PRODUCT_ID}+5.0.0'`;
 	const inner = hkidn + hkvvb;
 	const hnhbs = "HNHBS:4:1+1'";
 
@@ -58,7 +58,7 @@ function buildAnonymousInit(blz: string): string {
 }
 
 function buildAnonymousInitWithHksyn(blz: string): string {
-	const hkidn = `HKIDN:2:2+${COUNTRY}:${blz}+0+0+0'`;
+	const hkidn = `HKIDN:2:2+${COUNTRY}:${blz}+9999999999+0+0'`;
 	const hkvvb = `HKVVB:3:3+0+0+0+${PRODUCT_ID}+5.0.0'`;
 	const hksyn = "HKSYN:4:3+0'";
 	const inner = hkidn + hkvvb + hksyn;
@@ -70,6 +70,35 @@ function buildAnonymousInitWithHksyn(blz: string): string {
 	const total = headerLen + inner.length + hnhbs.length;
 	const header = `${headerPrefix}${String(total).padStart(12, "0")}${headerSuffix}`;
 	return header + inner + hnhbs;
+}
+
+function buildAnonymousInitWithEnvelope(blz: string): string {
+	// HNVSK/HNVSD envelope for banks that reject bare anonymous init (Deutsche Bank, Postbank)
+	const now = new Date();
+	const date = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+	const time = `${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}${String(now.getSeconds()).padStart(2, "0")}`;
+
+	// Inner segments (HKIDN + HKVVB)
+	const hkidn = `HKIDN:3:2+${COUNTRY}:${blz}+9999999999+0+0'`;
+	const hkvvb = `HKVVB:4:3+0+0+1+${PRODUCT_ID}+5.0.0'`;
+	const inner = hkidn + hkvvb;
+
+	// HNVSK — dummy encryption header (anonymous, PIN:1, sec_func=998)
+	const nullBytes = "\x00\x00\x00\x00\x00\x00\x00\x00";
+	const hnvsk = `HNVSK:998:3+PIN:1+998+1+2::0+1:${date}:${time}+2:2:13:@8@${nullBytes}:5:1+${COUNTRY}:${blz}:9999999999:V:0:0+0'`;
+
+	// HNVSD — wraps inner segments
+	const hnvsd = `HNVSD:999:1+@${inner.length}@${inner}'`;
+
+	const body = hnvsk + hnvsd;
+	const hnhbs = "HNHBS:5:1+1'";
+
+	const headerPrefix = "HNHBK:1:3+";
+	const headerSuffix = "+300+0+1'";
+	const headerLen = headerPrefix.length + 12 + headerSuffix.length;
+	const total = headerLen + body.length + hnhbs.length;
+	const header = `${headerPrefix}${String(total).padStart(12, "0")}${headerSuffix}`;
+	return header + body + hnhbs;
 }
 
 function decodeFintsResponse(raw: ArrayBuffer): string {
@@ -140,7 +169,9 @@ async function sendAnonymousProbe(
 	try {
 		const msg = variant === "anon_hksyn"
 			? buildAnonymousInitWithHksyn(bank.blz)
-			: buildAnonymousInit(bank.blz);
+			: variant === "anon_envelope"
+				? buildAnonymousInitWithEnvelope(bank.blz)
+				: buildAnonymousInit(bank.blz);
 		const body = Buffer.from(msg, "latin1").toString("base64");
 
 		const controller = new AbortController();
@@ -329,14 +360,24 @@ for (const [label, bank] of targets) {
 		"anon",
 	);
 	let chosen = primary;
-	if (tryHksyn && (!primary.bpd_ok || !primary.structural_ok)) {
+	// Auto-try envelope variant for banks that reject with 9110
+	if (!primary.structural_ok && primary.response_codes.includes("9110")) {
+		process.stdout.write("  -> trying anon_envelope variant (9110 detected) ...\n");
+		const envelope = await sendAnonymousProbe(
+			{ ...bank, name: label },
+			timeoutS * 1000,
+			"anon_envelope",
+		);
+		chosen = chooseBetterResult(primary, envelope);
+	}
+	if (tryHksyn && (!chosen.bpd_ok || !chosen.structural_ok)) {
 		process.stdout.write("  -> trying anon_hksyn variant ...\n");
 		const secondary = await sendAnonymousProbe(
 			{ ...bank, name: label },
 			timeoutS * 1000,
 			"anon_hksyn",
 		);
-		chosen = chooseBetterResult(primary, secondary);
+		chosen = chooseBetterResult(chosen, secondary);
 	}
 	results.push(chosen);
 }

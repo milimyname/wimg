@@ -1732,11 +1732,18 @@ fn wimg_fints_connect(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
         return null;
     };
 
-    // Initialize session
+    // Initialize session (bank_family auto-detected from URL in FintsSession.init)
     fints_session = fints_mod.FintsSession.init(blz, bank.urlSlice(), user, pin);
     const prod_len = @min(product.len, 25);
     @memcpy(fints_session.product_id[0..prod_len], product[0..prod_len]);
     fints_session.product_id_len = @intCast(prod_len);
+
+    if (!is_wasm) {
+        std.debug.print("[FinTS Zig] bank_family={s} for BLZ {s}\n", .{
+            @tagName(fints_session.bank_family),
+            blz,
+        });
+    }
 
     // Step 1: Sync dialog (sec_func=999, HKSYN to get system_id)
     var msg_buf: [8192]u8 = undefined;

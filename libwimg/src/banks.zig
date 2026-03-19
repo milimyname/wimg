@@ -1,5 +1,28 @@
 const std = @import("std");
 
+pub const BankFamily = enum(u8) {
+    standard = 0,
+    deutsche_bank = 1,
+    postbank = 2,
+    norisbank = 3,
+};
+
+/// Detect bank family from FinTS endpoint URL.
+pub fn detectBankFamily(url: []const u8) BankFamily {
+    if (std.mem.indexOf(u8, url, "fints.deutsche-bank.de") != null) return .deutsche_bank;
+    if (std.mem.indexOf(u8, url, "hbci.postbank.de") != null) return .postbank;
+    if (std.mem.indexOf(u8, url, "fints.norisbank.de") != null) return .norisbank;
+    return .standard;
+}
+
+/// Returns true if the bank family requires HNVSK/HNVSD envelope for anonymous init.
+pub fn needsAnonEnvelope(family: BankFamily) bool {
+    return switch (family) {
+        .deutsche_bank, .postbank, .norisbank => true,
+        .standard => false,
+    };
+}
+
 pub const BankInfo = struct {
     blz: [8]u8,
     bic: [11]u8,
@@ -1882,4 +1905,27 @@ test "all bank BLZs are 8 digits" {
 
 test "bank count is correct" {
     try std.testing.expectEqual(@as(usize, 1744), banks.len);
+}
+
+test "detectBankFamily identifies Deutsche Bank" {
+    try std.testing.expectEqual(BankFamily.deutsche_bank, detectBankFamily("https://fints.deutsche-bank.de/"));
+}
+
+test "detectBankFamily identifies Postbank" {
+    try std.testing.expectEqual(BankFamily.postbank, detectBankFamily("https://hbci.postbank.de/banking/hbci.do"));
+}
+
+test "detectBankFamily identifies norisbank" {
+    try std.testing.expectEqual(BankFamily.norisbank, detectBankFamily("https://fints.norisbank.de/"));
+}
+
+test "detectBankFamily returns standard for Comdirect" {
+    try std.testing.expectEqual(BankFamily.standard, detectBankFamily("https://fints.comdirect.de/fints"));
+}
+
+test "needsAnonEnvelope for bank families" {
+    try std.testing.expect(needsAnonEnvelope(.deutsche_bank));
+    try std.testing.expect(needsAnonEnvelope(.postbank));
+    try std.testing.expect(needsAnonEnvelope(.norisbank));
+    try std.testing.expect(!needsAnonEnvelope(.standard));
 }
