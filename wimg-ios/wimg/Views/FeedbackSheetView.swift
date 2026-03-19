@@ -128,26 +128,28 @@ struct FeedbackSheetView: View {
                                 .tracking(0.5)
 
                             ForEach(history.prefix(5)) { entry in
-                                HStack(spacing: 10) {
-                                    Text(entry.type == "bug" ? "\u{1F41B}" : entry.type == "feature" ? "\u{2728}" : "\u{1F4AC}")
-                                        .font(.subheadline)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(entry.message)
-                                            .font(.system(.caption, design: .rounded, weight: .medium))
-                                            .lineLimit(1)
-                                            .foregroundStyle(WimgTheme.text)
-                                        Text("#\(entry.number) · \(entry.date)")
-                                            .font(.system(size: 10, design: .rounded))
+                                Link(destination: URL(string: entry.url)!) {
+                                    HStack(spacing: 10) {
+                                        Text(entry.type == "bug" ? "\u{1F41B}" : entry.type == "feature" ? "\u{2728}" : "\u{1F4AC}")
+                                            .font(.subheadline)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(entry.message)
+                                                .font(.system(.caption, design: .rounded, weight: .medium))
+                                                .lineLimit(1)
+                                                .foregroundStyle(WimgTheme.text)
+                                            Text("#\(entry.number) · \(entry.date)")
+                                                .font(.system(size: 10, design: .rounded))
+                                                .foregroundStyle(WimgTheme.textSecondary)
+                                        }
+                                        Spacer()
+                                        Image(systemName: "arrow.up.right.square")
+                                            .font(.system(size: 10))
                                             .foregroundStyle(WimgTheme.textSecondary)
                                     }
-                                    Spacer()
-                                    Image(systemName: "arrow.up.right.square")
-                                        .font(.system(size: 10))
-                                        .foregroundStyle(WimgTheme.textSecondary)
+                                    .padding(10)
+                                    .background(Color(.systemGray6))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 }
-                                .padding(10)
-                                .background(Color(.systemGray6))
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
                         }
                         .padding(.top, 16)

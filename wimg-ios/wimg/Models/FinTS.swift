@@ -48,6 +48,8 @@ struct FintsFetchResult: Codable {
     let challenge: String?
     let phototan: String?
     let decoupled: Bool?
+    let message: String?
 
     var needsTan: Bool { status == "tan_required" }
+    var isError: Bool { status == "error" }
 }

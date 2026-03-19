@@ -499,6 +499,7 @@ struct SettingsView: View {
 
     private func handleResetData() {
         resetting = true
+        LibWimg.isResetting = true
         LibWimg.close()
 
         let dbPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -514,6 +515,7 @@ struct SettingsView: View {
 
         // Re-init with fresh DB
         try? LibWimg.initialize()
+        LibWimg.isResetting = false
         syncEnabled = false
         syncKey = ""
         confirmReset = false

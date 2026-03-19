@@ -7,6 +7,8 @@ final class LibWimg {
     private init() {}
 
     private static var isInitialized = false
+    /// Set during data reset to prevent concurrent C ABI calls while DB is being destroyed/recreated.
+    static var isResetting = false
 
     // MARK: - Lifecycle
 
@@ -133,7 +135,7 @@ final class LibWimg {
     }
 
     static func getTransactionsFiltered(account: String?) throws -> [Transaction] {
-        guard isInitialized else { return [] }
+        guard isInitialized, !isResetting else { return [] }
         let acctData = Array((account ?? "").utf8)
         let ptr: UnsafePointer<UInt8>? = acctData.withUnsafeBufferPointer { buf in
             wimg_get_transactions_filtered(buf.baseAddress!, UInt32(buf.count))
@@ -172,7 +174,7 @@ final class LibWimg {
     }
 
     static func autoCategorize() -> Int {
-        guard isInitialized else { return 0 }
+        guard isInitialized, !isResetting else { return 0 }
         let result = wimg_auto_categorize()
         return Int(max(result, 0))
     }
@@ -185,7 +187,7 @@ final class LibWimg {
 
     static func getSummaryFiltered(year: Int, month: Int, account: String?) -> MonthlySummary {
         let empty = MonthlySummary(year: year, month: month, income: 0, expenses: 0, available: 0, tx_count: 0, by_category: [])
-        guard isInitialized else { return empty }
+        guard isInitialized, !isResetting else { return empty }
         let acctData = Array((account ?? "").utf8)
         let ptr: UnsafePointer<UInt8>? = acctData.withUnsafeBufferPointer { buf in
             wimg_get_summary_filtered(UInt32(year), UInt32(month), buf.baseAddress!, UInt32(buf.count))
@@ -198,7 +200,7 @@ final class LibWimg {
     // MARK: - Recurring
 
     static func getRecurring() -> [RecurringPattern] {
-        guard isInitialized else { return [] }
+        guard isInitialized, !isResetting else { return [] }
         guard let ptr = wimg_get_recurring() else { return [] }
         defer { wimg_free(ptr, 0) }
         return (try? decodeLengthPrefixed(ptr)) ?? []
@@ -206,7 +208,7 @@ final class LibWimg {
 
     @discardableResult
     static func detectRecurring() -> Int {
-        guard isInitialized else { return 0 }
+        guard isInitialized, !isResetting else { return 0 }
         let result = wimg_detect_recurring()
         return Int(max(result, 0))
     }
@@ -214,7 +216,7 @@ final class LibWimg {
     // MARK: - Debts
 
     static func getDebts() -> [Debt] {
-        guard isInitialized else { return [] }
+        guard isInitialized, !isResetting else { return [] }
         guard let ptr = wimg_get_debts() else { return [] }
         defer { wimg_free(ptr, 0) }
         return (try? decodeLengthPrefixed(ptr)) ?? []
@@ -260,7 +262,7 @@ final class LibWimg {
     // MARK: - Savings Goals
 
     static func getGoals() -> [Goal] {
-        guard isInitialized else { return [] }
+        guard isInitialized, !isResetting else { return [] }
         guard let ptr = wimg_get_goals() else { return [] }
         defer { wimg_free(ptr, 0) }
         return (try? decodeLengthPrefixed(ptr)) ?? []
@@ -308,7 +310,7 @@ final class LibWimg {
     // MARK: - Accounts
 
     static func getAccounts() -> [Account] {
-        guard isInitialized else { return [] }
+        guard isInitialized, !isResetting else { return [] }
         guard let ptr = wimg_get_accounts() else { return [] }
         defer { wimg_free(ptr, 0) }
         return (try? decodeLengthPrefixed(ptr)) ?? []
@@ -363,14 +365,14 @@ final class LibWimg {
     }
 
     static func undo() -> UndoResult? {
-        guard isInitialized else { return nil }
+        guard isInitialized, !isResetting else { return nil }
         guard let ptr = wimg_undo() else { return nil }
         defer { wimg_free(ptr, 0) }
         return try? decodeLengthPrefixed(ptr)
     }
 
     static func redo() -> UndoResult? {
-        guard isInitialized else { return nil }
+        guard isInitialized, !isResetting else { return nil }
         guard let ptr = wimg_redo() else { return nil }
         defer { wimg_free(ptr, 0) }
         return try? decodeLengthPrefixed(ptr)
@@ -390,7 +392,7 @@ final class LibWimg {
     }
 
     static func getChanges(sinceMs: Int) -> [SyncRow] {
-        guard isInitialized else { return [] }
+        guard isInitialized, !isResetting else { return [] }
         guard let ptr = wimg_get_changes(Int64(sinceMs)) else { return [] }
         defer { wimg_free(ptr, 0) }
         let payload: SyncPayload? = try? decodeLengthPrefixed(ptr)
@@ -559,7 +561,7 @@ final class LibWimg {
     }
 
     static func getSnapshots() -> [Snapshot] {
-        guard isInitialized else { return [] }
+        guard isInitialized, !isResetting else { return [] }
         guard let ptr = wimg_get_snapshots() else { return [] }
         defer { wimg_free(ptr, 0) }
         return (try? decodeLengthPrefixed(ptr)) ?? []
@@ -568,14 +570,14 @@ final class LibWimg {
     // MARK: - Export
 
     static func exportCsv() -> String? {
-        guard isInitialized else { return nil }
+        guard isInitialized, !isResetting else { return nil }
         guard let ptr = wimg_export_csv() else { return nil }
         defer { wimg_free(ptr, 0) }
         return readLengthPrefixedString(ptr)
     }
 
     static func exportDb() -> String? {
-        guard isInitialized else { return nil }
+        guard isInitialized, !isResetting else { return nil }
         guard let ptr = wimg_export_db() else { return nil }
         defer { wimg_free(ptr, 0) }
         return readLengthPrefixedString(ptr)
@@ -589,7 +591,7 @@ final class LibWimg {
     }
 
     private static func ensureInit() throws {
-        if !isInitialized {
+        if !isInitialized || isResetting {
             throw WimgError.notInitialized
         }
     }

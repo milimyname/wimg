@@ -13,6 +13,7 @@ struct FinTSView: View {
 
     @State private var stage: Stage = .bankSelect
     @State private var banks: [BankInfo] = []
+    @State private var banksLower: [String] = [] // precomputed lowercased names for fast search
     @State private var loadingBanks = false
     @State private var searchText = ""
     @State private var displayBanks: [BankInfo] = []
@@ -49,17 +50,6 @@ struct FinTSView: View {
         return UIImage(data: data)
     }
 
-    private func updateDisplayBanks() {
-        if searchText.isEmpty {
-            displayBanks = Array(banks.prefix(50))
-        } else {
-            let query = searchText.localizedLowercase
-            displayBanks = Array(banks.lazy.filter {
-                $0.name.localizedCaseInsensitiveContains(query) || $0.blz.contains(query)
-            }.prefix(50))
-        }
-    }
-
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -91,17 +81,37 @@ struct FinTSView: View {
         .navigationTitle("Bankkonto")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: searchText) {
-            try? await Task.sleep(for: .milliseconds(250))
+            try? await Task.sleep(for: .milliseconds(150))
             guard !Task.isCancelled else { return }
-            updateDisplayBanks()
+            let query = searchText
+            let allBanks = banks
+            let allLower = banksLower
+            let filtered = await Task.detached(priority: .userInitiated) {
+                if query.isEmpty {
+                    return Array(allBanks.prefix(50))
+                }
+                let q = query.lowercased()
+                var result: [BankInfo] = []
+                for i in 0..<allBanks.count {
+                    if allLower[i].contains(q) || allBanks[i].blz.contains(q) {
+                        result.append(allBanks[i])
+                        if result.count >= 50 { break }
+                    }
+                }
+                return result
+            }.value
+            guard !Task.isCancelled else { return }
+            displayBanks = filtered
         }
         .onAppear {
             guard banks.isEmpty else { return }
             loadingBanks = true
             Task.detached(priority: .userInitiated) {
                 let loaded = LibWimg.fintsGetBanks()
+                let lower = loaded.map { $0.name.lowercased() }
                 await MainActor.run {
                     banks = loaded
+                    banksLower = lower
                     displayBanks = Array(loaded.prefix(50))
                     loadingBanks = false
                     // Restore saved bank + kennung from Keychain
@@ -159,7 +169,7 @@ struct FinTSView: View {
             .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
             .padding(.horizontal)
 
-            VStack(spacing: 0) {
+            LazyVStack(spacing: 0) {
                 if loadingBanks {
                     HStack(spacing: 10) {
                         ProgressView()
@@ -828,6 +838,7 @@ struct FinTSView: View {
                 sendingTan = false
                 if result.isOk {
                     // TAN accepted — dialog is active, fetch statements now
+                    stage = .fetching
                     Task { await handleFetch() }
                 } else if result.needsTan {
                     isDecoupledChallenge = result.decoupled ?? isDecoupledChallenge
@@ -960,6 +971,9 @@ struct FinTSView: View {
                     if isDecoupledChallenge {
                         Task { await handleSendTan() }
                     }
+                } else if result.isError {
+                    errorMessage = result.message ?? "Abruf fehlgeschlagen"
+                    stage = .dateRange
                 } else {
                     importedCount = result.imported ?? 0
                     duplicateCount = result.duplicates ?? 0
