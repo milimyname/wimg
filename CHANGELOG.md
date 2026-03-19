@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.21 (2026-03-19)
+
+- fix: fetch tags and exclude version-bump files in CI change detection
+
 ## v0.6.20 (2026-03-19)
 
 - Version bump
