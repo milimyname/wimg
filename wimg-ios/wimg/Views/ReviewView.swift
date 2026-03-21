@@ -97,9 +97,20 @@ struct ReviewView: View {
                             Text("Keine Daten für diesen Monat")
                                 .font(.system(.title3, design: .rounded, weight: .bold))
                                 .foregroundStyle(WimgTheme.text)
-                            Text("CSV importieren um zu starten")
+                            Text("Importiere Bankdaten um den Rückblick zu sehen")
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundStyle(WimgTheme.textSecondary)
+
+                            NavigationLink(destination: ImportView()) {
+                                Text("CSV importieren")
+                                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 10)
+                                    .background(WimgTheme.text)
+                                    .clipShape(Capsule())
+                            }
+                            .padding(.top, 4)
                         }
                         .padding(.vertical, 40)
                     }
@@ -131,13 +142,13 @@ struct ReviewView: View {
             VStack(spacing: 8) {
                 Text(saved >= 0 ? "Gespart" : "Defizit")
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .foregroundStyle(WimgTheme.text.opacity(0.7))
+                    .foregroundStyle(WimgTheme.heroText.opacity(0.7))
                     .textCase(.uppercase)
                     .tracking(1)
 
                 Text(formatAmountShort(abs(saved)))
                     .font(.system(size: 40, weight: .black, design: .rounded))
-                    .foregroundStyle(WimgTheme.text)
+                    .foregroundStyle(WimgTheme.heroText)
                     .tracking(-1)
 
                 if let delta = savingsDelta {
@@ -150,14 +161,14 @@ struct ReviewView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(WimgTheme.text)
+                    .background(WimgTheme.heroText)
                     .clipShape(Capsule())
                     .padding(.top, 4)
                 }
 
                 Text(savingsMessage)
                     .font(.system(.caption, design: .rounded, weight: .medium))
-                    .foregroundStyle(WimgTheme.text.opacity(0.7))
+                    .foregroundStyle(WimgTheme.heroText.opacity(0.7))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
                     .padding(.top, 4)
@@ -388,7 +399,7 @@ struct ReviewView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(20)
-                    .background(WimgTheme.text)
+                    .background(WimgTheme.heroText)
                     .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusLarge, style: .continuous))
                     .shadow(color: .black.opacity(0.08), radius: 16, y: 4)
                     .padding(.horizontal)

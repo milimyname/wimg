@@ -96,7 +96,7 @@ struct OnboardingView: View {
             } label: {
                 Text(step < cards.count - 1 ? "Weiter" : "Los geht's")
                     .font(.system(.body, design: .rounded, weight: .bold))
-                    .foregroundStyle(WimgTheme.text)
+                    .foregroundStyle(WimgTheme.heroText)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(WimgTheme.accent)

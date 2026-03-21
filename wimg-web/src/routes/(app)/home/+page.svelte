@@ -9,6 +9,7 @@
   import MonthPicker from "../../../components/MonthPicker.svelte";
   import DonutChart from "../../../components/DonutChart.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
+  import Coachmark from "../../../components/Coachmark.svelte";
   let loadingDemo = $state(false);
 
   let hasAnyData = $derived(data.hasAnyData());
@@ -228,10 +229,11 @@
     <div class="flex items-center gap-5">
       <div class="relative shrink-0">
         <DonutChart data={expenseCategories} size={120} />
-        <div class="absolute inset-0 flex flex-col items-center justify-center">
+        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span class="text-[10px] text-(--color-text-secondary) font-bold uppercase tracking-wide">Total</span>
           <span class="text-base font-display font-extrabold">{formatEurCompact(Math.abs(summary.expenses))}</span>
         </div>
+        <Coachmark key="dashboard_donut" text="Tippe Details für die volle Analyse" />
       </div>
       <div class="flex flex-col gap-4 flex-1 min-w-0">
         {#each expenseCategories.slice(0, 4) as cat}

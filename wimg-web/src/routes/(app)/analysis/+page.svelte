@@ -7,6 +7,7 @@
   import MonthPicker from "../../../components/MonthPicker.svelte";
   import DonutChart from "../../../components/DonutChart.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
+  import Coachmark from "../../../components/Coachmark.svelte";
   import NetWorthChart from "../../../components/NetWorthChart.svelte";
   import SpendingHeatmap from "../../../components/SpendingHeatmap.svelte";
 
@@ -159,12 +160,13 @@
   {/if}
 
   <!-- Categories Header -->
-  <div id="categories" class="flex items-center justify-between px-1 mb-4">
+  <div id="categories" class="flex items-center justify-between px-1 mb-4 relative">
+    <Coachmark key="analysis_category" text="Tippe auf eine Kategorie für Details" position="bottom" />
     <a href="#categories" class="text-2xl font-display font-extrabold">Kategorien</a>
     <div class="flex items-center gap-1 text-sm text-(--color-text-secondary) font-medium bg-white px-3 py-1.5 rounded-full shadow-[var(--shadow-card)]">
       <span>vs. Vormonat</span>
     </div>
-  </div>
+  </div><!-- /relative -->
 
   <!-- Category Cards -->
   <div class="space-y-4 mb-5">

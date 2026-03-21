@@ -41,6 +41,7 @@ targets:
       path: wimg/Info.plist
       properties:
         UILaunchScreen: {}
+        ITSAppUsesNonExemptEncryption: false
         CFBundleDisplayName: wimg
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

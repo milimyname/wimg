@@ -227,6 +227,7 @@ jobs:
     needs: [check, build-and-deploy-web]
     if: |
       always() && !failure() && !cancelled() &&
+      needs.build-and-deploy-web.result == 'success' &&
       (needs.check.outputs.sync == 'true' || needs.check.outputs.libwimg == 'true')
     runs-on: ubuntu-latest
     steps:

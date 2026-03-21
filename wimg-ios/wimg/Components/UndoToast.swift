@@ -20,7 +20,7 @@ struct UndoToast: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
-        .background(WimgTheme.text.opacity(0.92))
+        .background(Color(red: 0.102, green: 0.102, blue: 0.102).opacity(0.92)) // always dark
         .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusSmall, style: .continuous))
         .padding(.horizontal)
         .transition(.move(edge: .bottom).combined(with: .opacity))

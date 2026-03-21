@@ -69,6 +69,32 @@ struct TaxView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
+                    if transactions.isEmpty {
+                        VStack(spacing: 8) {
+                            Text("🧾")
+                                .font(.system(size: 48))
+                            Text("Keine Transaktionen")
+                                .font(.system(.title3, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.text)
+                            Text("Importiere Bankdaten um steuerrelevante Ausgaben zu finden")
+                                .font(.system(.subheadline, design: .rounded))
+                                .foregroundStyle(WimgTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+
+                            NavigationLink(destination: ImportView()) {
+                                Text("CSV importieren")
+                                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 10)
+                                    .background(WimgTheme.text)
+                                    .clipShape(Capsule())
+                            }
+                            .padding(.top, 4)
+                        }
+                        .padding(.vertical, 40)
+                        .padding(.horizontal)
+                    } else {
                     // Hero card
                     heroCard
 
@@ -85,6 +111,7 @@ struct TaxView: View {
                     if !taggedTransactions.isEmpty {
                         transactionsSection
                     }
+                    } // end else transactions.isEmpty
                 }
                 .padding(.bottom, 24)
             }
@@ -107,7 +134,7 @@ struct TaxView: View {
                 HStack {
                     Text("Absetzbare Ausgaben")
                         .font(.system(.caption, design: .rounded, weight: .bold))
-                        .foregroundStyle(WimgTheme.text.opacity(0.6))
+                        .foregroundStyle(WimgTheme.heroText.opacity(0.6))
                         .textCase(.uppercase)
                         .tracking(1)
                     Spacer()
@@ -118,17 +145,18 @@ struct TaxView: View {
                     }
                     .pickerStyle(.menu)
                     .font(.system(.caption, design: .rounded, weight: .bold))
+                    .tint(WimgTheme.heroText)
                 }
 
                 Text(formatAmountShort(gesamtabzug))
                     .font(.system(size: 36, weight: .black, design: .rounded))
-                    .foregroundStyle(WimgTheme.text)
+                    .foregroundStyle(WimgTheme.heroText)
                     .tracking(-1)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 Text("Geschätztes Steuerjahr \(String(year))")
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
-                    .foregroundStyle(WimgTheme.text.opacity(0.7))
+                    .foregroundStyle(WimgTheme.heroText.opacity(0.7))
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxWidth: .infinity)

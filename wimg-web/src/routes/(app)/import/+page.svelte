@@ -664,6 +664,18 @@
         </div>
       </div>
     {/if}
+
+    <!-- Post-import navigation -->
+    <div class="flex gap-3 mt-2">
+      <a
+        href="/home"
+        class="flex-1 text-center px-4 py-3 rounded-full bg-(--color-text) text-white text-sm font-bold no-underline hover:opacity-90 transition-opacity"
+      >Zum Dashboard →</a>
+      <a
+        href="/transactions"
+        class="flex-1 text-center px-4 py-3 rounded-full bg-(--color-accent) text-(--color-text) text-sm font-bold no-underline hover:opacity-90 transition-opacity"
+      >Transaktionen ansehen →</a>
+    </div>
   {/if}
 {/if}
 

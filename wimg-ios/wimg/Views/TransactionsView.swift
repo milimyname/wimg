@@ -169,13 +169,32 @@ struct TransactionsView: View {
             if let loadError {
                 errorView(loadError)
             } else if grouped.isEmpty {
-                ContentUnavailableView(
-                    "Keine Umsätze",
-                    systemImage: "tray",
-                    description: Text("Importiere eine CSV-Datei um loszulegen.")
-                )
+                Spacer()
+                VStack(spacing: 8) {
+                    Text("📋")
+                        .font(.system(size: 48))
+                    Text("Keine Umsätze")
+                        .font(.system(.title3, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.text)
+                    Text("Importiere eine CSV-Datei um loszulegen")
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+
+                    NavigationLink(destination: ImportView()) {
+                        Text("CSV importieren")
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.bg)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(WimgTheme.text)
+                            .clipShape(Capsule())
+                    }
+                    .padding(.top, 4)
+                }
+                Spacer()
             } else {
                 transactionList
+                    .coachmark(key: "transactions_categorize", text: "Tippe auf eine Buchung zum Kategorisieren")
             }
         }
     }
@@ -391,11 +410,12 @@ struct CategoryEditorSheet: View {
         VStack(spacing: 8) {
             Text(transaction.description)
                 .font(.system(.headline, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.heroText)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
             Text(formatAmount(transaction.amount))
                 .font(.system(.title2, design: .rounded, weight: .black))
-                .foregroundStyle(transaction.isIncome ? .green : WimgTheme.text)
+                .foregroundStyle(transaction.isIncome ? .green : WimgTheme.heroText)
         }
         .frame(maxWidth: .infinity)
         .padding(24)
@@ -523,7 +543,7 @@ struct AdvancedFilterSheet: View {
                 .font(.system(.body, design: .rounded))
         }
         .padding(14)
-        .background(.white)
+        .background(WimgTheme.cardBg)
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -672,7 +692,7 @@ struct AdvancedFilterSheet: View {
                 }
             }
             .padding(14)
-            .background(.white)
+            .background(WimgTheme.cardBg)
             .clipShape(RoundedRectangle(cornerRadius: 16))
         }
     }
@@ -703,7 +723,7 @@ struct AdvancedFilterSheet: View {
                         .foregroundStyle(WimgTheme.textSecondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(.white)
+                        .background(WimgTheme.cardBg)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                 }
             }
@@ -712,7 +732,7 @@ struct AdvancedFilterSheet: View {
             } label: {
                 Text("Ergebnisse anzeigen")
                     .font(.system(.headline, design: .rounded, weight: .bold))
-                    .foregroundStyle(WimgTheme.text)
+                    .foregroundStyle(WimgTheme.heroText)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(WimgTheme.accent)
@@ -736,7 +756,7 @@ struct AdvancedFilterSheet: View {
                 .font(.system(.caption, design: .rounded, weight: .bold))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(active ? WimgTheme.accent : .white)
+                .background(active ? WimgTheme.accent : WimgTheme.cardBg)
                 .clipShape(Capsule())
                 .overlay(
                     Capsule()

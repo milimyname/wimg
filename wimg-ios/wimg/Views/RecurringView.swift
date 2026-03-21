@@ -66,7 +66,7 @@ struct RecurringView: View {
                             Text(detecting ? "Erkennung..." : "Erkennen")
                         }
                         .font(.system(.caption, design: .rounded, weight: .bold))
-                        .foregroundStyle(WimgTheme.text)
+                        .foregroundStyle(WimgTheme.heroText)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
                         .background(WimgTheme.accent)

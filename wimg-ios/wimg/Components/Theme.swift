@@ -53,6 +53,8 @@ enum WimgTheme {
     // Colors — adaptive for light/dark
     static let accent = Color(red: 1.0, green: 0.914, blue: 0.49)        // #FFE97D
     static let accentHover = Color(red: 1.0, green: 0.878, blue: 0.322)  // #FFE052
+    /// Always-dark text for use on accent/hero cards (yellow bg needs dark text in both themes)
+    static let heroText = Color(red: 0.102, green: 0.102, blue: 0.102)   // #1A1A1A
 
     static var bg: Color {
         Color(UIColor { traits in

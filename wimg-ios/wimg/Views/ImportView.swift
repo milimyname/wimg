@@ -2,6 +2,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ImportView: View {
+    var onViewTransactions: (() -> Void)?
+
     enum Stage {
         case idle
         case preview
@@ -117,7 +119,7 @@ struct ImportView: View {
                     .frame(maxWidth: .infinity)
                     .padding(16)
                     .background(WimgTheme.text)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WimgTheme.bg)
                     .clipShape(Capsule())
             }
             .disabled(isParsing || isImporting)
@@ -214,7 +216,7 @@ struct ImportView: View {
                     Group {
                         if isImporting {
                             ProgressView()
-                                .tint(WimgTheme.text)
+                                .tint(WimgTheme.heroText)
                         } else {
                             Text("Importieren (\(result.transactions.count))")
                         }
@@ -223,7 +225,7 @@ struct ImportView: View {
                     .frame(maxWidth: .infinity)
                     .padding(16)
                     .background(WimgTheme.accent)
-                    .foregroundStyle(WimgTheme.text)
+                    .foregroundStyle(WimgTheme.heroText)
                     .clipShape(Capsule())
                 }
                 .disabled(isImporting)
@@ -319,7 +321,7 @@ struct ImportView: View {
                         .frame(maxWidth: .infinity)
                         .padding(16)
                         .background(WimgTheme.text)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(WimgTheme.bg)
                         .clipShape(Capsule())
                 }
                 .padding(.horizontal)
@@ -340,6 +342,21 @@ struct ImportView: View {
                     .clipShape(Capsule())
             }
             .padding(.horizontal)
+
+            if let onViewTransactions {
+                Button {
+                    onViewTransactions()
+                } label: {
+                    Label("Transaktionen ansehen", systemImage: "list.bullet")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(16)
+                        .background(WimgTheme.accent)
+                        .foregroundStyle(WimgTheme.heroText)
+                        .clipShape(Capsule())
+                }
+                .padding(.horizontal)
+            }
         }
     }
 
@@ -383,7 +400,7 @@ struct ImportView: View {
                         }
                     }
                     .font(.system(.caption, design: .rounded, weight: .bold))
-                    .foregroundStyle(WimgTheme.text)
+                    .foregroundStyle(WimgTheme.heroText)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .background(WimgTheme.accent)

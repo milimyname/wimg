@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct FinTSView: View {
+    var onViewTransactions: (() -> Void)?
+
     enum Stage {
         case bankSelect
         case credentials
@@ -303,6 +305,29 @@ struct FinTSView: View {
                 }
             }
 
+            // Lockout warning
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .font(.subheadline)
+                    .padding(.top, 2)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Bitte PIN sorgfältig eingeben")
+                        .font(.system(.caption, design: .rounded, weight: .bold))
+                        .foregroundStyle(Color.orange.opacity(0.9))
+                    Text("Mehrere fehlgeschlagene Anmeldungen können dein Konto bei der Bank sperren. Die PIN wird nicht gespeichert.")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(Color.orange.opacity(0.8))
+                }
+            }
+            .padding(12)
+            .background(Color.orange.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.orange.opacity(0.2), lineWidth: 1)
+            }
+
             // Connect button
             Button {
                 Task { await handleConnect() }
@@ -310,7 +335,7 @@ struct FinTSView: View {
                 Group {
                     if connecting {
                         ProgressView()
-                            .tint(.white)
+                            .tint(WimgTheme.bg)
                     } else {
                         Text("Verbinden")
                     }
@@ -319,7 +344,7 @@ struct FinTSView: View {
                 .frame(maxWidth: .infinity)
                 .padding(16)
                 .background(WimgTheme.text)
-                .foregroundStyle(.white)
+                .foregroundStyle(WimgTheme.bg)
                 .clipShape(Capsule())
             }
             .disabled(connecting || kennung.isEmpty || pin.isEmpty)
@@ -426,7 +451,7 @@ struct FinTSView: View {
                         .frame(maxWidth: .infinity)
                         .padding(16)
                         .background(WimgTheme.text)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(WimgTheme.bg)
                         .clipShape(Capsule())
                 }
             }
@@ -560,7 +585,7 @@ struct FinTSView: View {
                 Group {
                     if sendingTan {
                         ProgressView()
-                            .tint(.white)
+                            .tint(WimgTheme.bg)
                     } else {
                         Text(isDecoupledChallenge ? "Status prüfen" : "TAN senden")
                     }
@@ -569,7 +594,7 @@ struct FinTSView: View {
                 .frame(maxWidth: .infinity)
                 .padding(16)
                 .background(WimgTheme.text)
-                .foregroundStyle(.white)
+                .foregroundStyle(WimgTheme.bg)
                 .clipShape(Capsule())
             }
             .disabled(sendingTan || (!isDecoupledChallenge && tanInput.isEmpty))
@@ -626,7 +651,7 @@ struct FinTSView: View {
                     .frame(maxWidth: .infinity)
                     .padding(16)
                     .background(WimgTheme.text)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WimgTheme.bg)
                     .clipShape(Capsule())
             }
         }
@@ -719,6 +744,39 @@ struct FinTSView: View {
                     .clipShape(Capsule())
             }
             .padding(.horizontal)
+
+            if importedCount > 0 {
+                Button {
+                    let count = LibWimg.autoCategorize()
+                    if count > 0 {
+                        NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+                    }
+                } label: {
+                    Label("Kategorisieren (\(importedCount))", systemImage: "tag")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(16)
+                        .background(WimgTheme.accent)
+                        .foregroundStyle(WimgTheme.heroText)
+                        .clipShape(Capsule())
+                }
+                .padding(.horizontal)
+            }
+
+            if let onViewTransactions {
+                Button {
+                    onViewTransactions()
+                } label: {
+                    Label("Transaktionen ansehen", systemImage: "list.bullet")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(16)
+                        .background(WimgTheme.text)
+                        .foregroundStyle(WimgTheme.bg)
+                        .clipShape(Capsule())
+                }
+                .padding(.horizontal)
+            }
         }
     }
 

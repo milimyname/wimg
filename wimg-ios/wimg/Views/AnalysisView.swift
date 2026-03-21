@@ -7,6 +7,7 @@ struct AnalysisView: View {
     @State private var month: Int
     @State private var summary: MonthlySummary?
     @State private var hasAnyData = false
+    @State private var selectedAngle: Double?
 
     init(selectedAccount: Binding<String?>) {
         _selectedAccount = selectedAccount
@@ -48,7 +49,7 @@ struct AnalysisView: View {
                             NavigationLink(destination: ImportView()) {
                                 Text("CSV importieren")
                                     .font(.system(.body, design: .rounded, weight: .bold))
-                                    .foregroundStyle(WimgTheme.text)
+                                    .foregroundStyle(WimgTheme.heroText)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 14)
                                     .background(WimgTheme.accent)
@@ -65,22 +66,53 @@ struct AnalysisView: View {
                     if let cats = summary?.by_category, !cats.isEmpty {
                         // Donut chart card
                         VStack(spacing: 16) {
-                            Chart(cats) { cat in
-                                SectorMark(
-                                    angle: .value("Betrag", abs(cat.amount)),
-                                    innerRadius: .ratio(0.6),
-                                    angularInset: 1.5
-                                )
-                                .foregroundStyle(WimgCategory.from(cat.id).color)
-                                .cornerRadius(4)
-                            }
-                            .frame(height: 220)
-                            .padding(.horizontal, 20)
+                            ZStack {
+                                Chart(cats) { cat in
+                                    SectorMark(
+                                        angle: .value("Betrag", abs(cat.amount)),
+                                        innerRadius: .ratio(0.58),
+                                        angularInset: 1
+                                    )
+                                    .foregroundStyle(WimgCategory.from(cat.id).color)
+                                    .opacity(selectedCategory(cats) == nil || selectedCategory(cats)?.id == cat.id ? 1 : 0.4)
+                                }
+                                .chartLegend(.hidden)
+                                .chartAngleSelection(value: $selectedAngle)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 220)
 
-                            // Total
-                            Text("Gesamt: \(formatAmountShort(summary?.expenses ?? 0))")
-                                .font(.system(.title3, design: .rounded, weight: .bold))
-                                .foregroundStyle(WimgTheme.text)
+                                // Center: selected category or total
+                                VStack(spacing: 2) {
+                                    if let sel = selectedCategory(cats) {
+                                        let wmCat = WimgCategory.from(sel.id)
+                                        Image(systemName: wmCat.icon)
+                                            .font(.system(size: 16))
+                                            .foregroundStyle(wmCat.color)
+                                        Text(sel.name)
+                                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                                            .foregroundStyle(WimgTheme.text)
+                                        Text(formatAmountShort(sel.amount))
+                                            .font(.system(.headline, design: .rounded, weight: .black))
+                                            .foregroundStyle(WimgTheme.text)
+                                        let pct = abs(summary?.expenses ?? 1) > 0
+                                            ? Int(abs(sel.amount) / abs(summary?.expenses ?? 1) * 100) : 0
+                                        Text("\(pct)%")
+                                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                                            .foregroundStyle(WimgTheme.textSecondary)
+                                    } else {
+                                        Text("Gesamt")
+                                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                                            .foregroundStyle(WimgTheme.textSecondary)
+                                            .textCase(.uppercase)
+                                            .tracking(0.5)
+                                        Text(formatAmountShort(summary?.expenses ?? 0))
+                                            .font(.system(.headline, design: .rounded, weight: .black))
+                                            .foregroundStyle(WimgTheme.text)
+                                    }
+                                }
+                                .allowsHitTesting(false)
+                            }
+                            .padding(.horizontal, 20)
                         }
                         .padding(.vertical, 20)
                         .wimgCard(radius: WimgTheme.radiusLarge)
@@ -103,6 +135,7 @@ struct AnalysisView: View {
                         }
                         .wimgCard(radius: WimgTheme.radiusLarge)
                         .padding(.horizontal)
+                        .coachmark(key: "analysis_category", text: "Tippe auf das Diagramm oder eine Kategorie")
                     } else {
                         ContentUnavailableView(
                             "Keine Ausgaben",
@@ -179,8 +212,21 @@ struct AnalysisView: View {
         .padding(.vertical, 12)
     }
 
+    private func selectedCategory(_ cats: [CategoryBreakdown]) -> CategoryBreakdown? {
+        guard let angle = selectedAngle else { return nil }
+        var cumulative = 0.0
+        for cat in cats {
+            cumulative += abs(cat.amount)
+            if angle <= cumulative {
+                return cat
+            }
+        }
+        return cats.last
+    }
+
     private func reload() {
         hasAnyData = ((try? LibWimg.getTransactions()) ?? []).count > 0
         summary = LibWimg.getSummaryFiltered(year: year, month: month, account: selectedAccount)
+        selectedAngle = nil
     }
 }

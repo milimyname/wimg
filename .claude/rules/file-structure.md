@@ -58,7 +58,8 @@ wimg/
 │       │   ├── devtools.svelte.ts DevTools store (WASM calls, sync events, actions, diffs, sparkline)
 │       │   ├── version.ts       APP_VERSION + GitHub releases link
 │       │   ├── update.svelte.ts SW update detection + activation store
-│       │   └── toast.svelte.ts  Undo snackbar store
+│       │   ├── toast.svelte.ts  Undo snackbar store
+│       │   └── coachmarks.svelte.ts Coachmark dismissal store (localStorage)
 │       ├── routes/
 │       │   ├── +page.svelte     redirect → /dashboard
 │       │   ├── dashboard/       Verfügbares Einkommen hero, donut, overview
@@ -78,6 +79,7 @@ wimg/
 │           ├── SpendingHeatmap.svelte GitHub-style grid heatmap for monthly expenses
 │           ├── MonthPicker.svelte   month/year selector
 │           ├── Toast.svelte         undo snackbar
+│           ├── Coachmark.svelte     first-visit tooltip with dismiss
 │           └── UpdateBanner.svelte  PWA update notification banner
 │
 ├── wimg-ios/
@@ -98,7 +100,8 @@ wimg/
 │       │   └── Notifications.swift
 │       ├── Services/
 │       │   ├── SyncService.swift  Sync orchestrator + WebSocket client
-│       │   └── FeatureFlags.swift Feature flags observable class
+│       │   ├── FeatureFlags.swift Feature flags observable class
+│       │   └── CoachmarkManager.swift Coachmark dismissal (UserDefaults)
 │       ├── Views/
 │       │   ├── DashboardView.swift
 │       │   ├── TransactionsView.swift  + CategoryEditorSheet
@@ -113,7 +116,8 @@ wimg/
 │           ├── MonthPicker.swift
 │           ├── TransactionCard.swift  + formatAmountShort()
 │           ├── CategoryBadge.swift
-│           ├── SpendingHeatmap.swift GitHub-style spending heatmap
+│           ├── SpendingHeatmap.swift GitHub-style spending heatmap (+ tap-to-select)
+│           ├── CoachmarkView.swift  .coachmark() ViewModifier + tooltip
 │           └── UndoToast.swift
 │
 └── wimg-sync/                  Phase 4B — Cloudflare Worker + DO + MCP

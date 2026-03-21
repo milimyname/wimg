@@ -37,7 +37,7 @@ struct GoalsView: View {
                         if !goals.isEmpty {
                             Text("\(goals.count) \(goals.count == 1 ? "Ziel" : "Ziele")")
                                 .font(.system(.caption, design: .rounded, weight: .bold))
-                                .foregroundStyle(WimgTheme.text)
+                                .foregroundStyle(WimgTheme.heroText)
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 6)
                                 .background(WimgTheme.accent)
@@ -56,6 +56,19 @@ struct GoalsView: View {
                             Text("Setze dir Sparziele und verfolge deinen Fortschritt")
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundStyle(WimgTheme.textSecondary)
+
+                            Button {
+                                showAddSheet = true
+                            } label: {
+                                Text("Sparziel erstellen")
+                                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                    .foregroundStyle(WimgTheme.bg)
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 10)
+                                    .background(WimgTheme.text)
+                                    .clipShape(Capsule())
+                            }
+                            .padding(.top, 4)
                         }
                         .padding(.vertical, 40)
                     } else {
@@ -131,28 +144,28 @@ struct GoalsView: View {
             VStack(spacing: 12) {
                 Text("Gesamtfortschritt")
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .foregroundStyle(WimgTheme.text.opacity(0.7))
+                    .foregroundStyle(WimgTheme.heroText.opacity(0.7))
                     .textCase(.uppercase)
                     .tracking(1)
 
                 Text(formatAmountShort(totalSaved))
                     .font(.system(size: 36, weight: .black, design: .rounded))
-                    .foregroundStyle(WimgTheme.text)
+                    .foregroundStyle(WimgTheme.heroText)
                     .tracking(-1)
 
                 Text("von \(formatAmountShort(totalTarget)) gespart")
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
-                    .foregroundStyle(WimgTheme.text.opacity(0.7))
+                    .foregroundStyle(WimgTheme.heroText.opacity(0.7))
 
                 VStack(spacing: 8) {
                     HStack {
                         Text("Fortschritt")
                             .font(.system(.caption, design: .rounded, weight: .bold))
-                            .foregroundStyle(WimgTheme.text.opacity(0.6))
+                            .foregroundStyle(WimgTheme.heroText.opacity(0.6))
                         Spacer()
                         Text(String(format: "%.0f%%", overallProgress * 100))
                             .font(.system(.subheadline, design: .rounded, weight: .black))
-                            .foregroundStyle(WimgTheme.text)
+                            .foregroundStyle(WimgTheme.heroText)
                     }
 
                     GeometryReader { geo in
@@ -161,7 +174,7 @@ struct GoalsView: View {
                                 .fill(.white.opacity(0.4))
                                 .frame(height: 12)
                             RoundedRectangle(cornerRadius: 6)
-                                .fill(WimgTheme.text)
+                                .fill(WimgTheme.heroText)
                                 .frame(width: geo.size.width * overallProgress, height: 12)
                         }
                     }
@@ -223,7 +236,7 @@ struct GoalsView: View {
                             Text("Einzahlen")
                         }
                         .font(.system(.caption, design: .rounded, weight: .bold))
-                        .foregroundStyle(WimgTheme.text)
+                        .foregroundStyle(WimgTheme.heroText)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
                         .background(WimgTheme.accent)
@@ -396,7 +409,7 @@ struct AddGoalSheet: View {
                             .frame(maxWidth: .infinity)
                             .padding(16)
                             .background(WimgTheme.accent)
-                            .foregroundStyle(WimgTheme.text)
+                            .foregroundStyle(WimgTheme.heroText)
                             .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusSmall, style: .continuous))
                     }
                     .disabled(name.isEmpty || target.isEmpty)

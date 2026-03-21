@@ -52,7 +52,7 @@ struct DashboardView: View {
                             NavigationLink(destination: ImportView()) {
                                 Text("CSV importieren")
                                     .font(.system(.body, design: .rounded, weight: .bold))
-                                    .foregroundStyle(WimgTheme.text)
+                                    .foregroundStyle(WimgTheme.heroText)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 14)
                                     .background(WimgTheme.accent)
@@ -157,18 +157,18 @@ struct DashboardView: View {
                 VStack(spacing: 6) {
                     Text("Verfügbar")
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
-                        .foregroundStyle(WimgTheme.text.opacity(0.7))
+                        .foregroundStyle(WimgTheme.heroText.opacity(0.7))
                         .textCase(.uppercase)
                         .tracking(1)
 
                     Text(formatAmountShort(summary?.available ?? 0))
                         .font(.system(size: 40, weight: .black, design: .rounded))
-                        .foregroundStyle(WimgTheme.text)
+                        .foregroundStyle(WimgTheme.heroText)
                         .tracking(-1)
 
                     Text("\(summary?.tx_count ?? 0) Transaktionen")
                         .font(.system(.caption, design: .rounded, weight: .medium))
-                        .foregroundStyle(WimgTheme.text.opacity(0.6))
+                        .foregroundStyle(WimgTheme.heroText.opacity(0.6))
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 28)
@@ -244,17 +244,19 @@ struct DashboardView: View {
                 .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal, 20)
+                .coachmark(key: "dashboard_donut", text: "Gehe zur Analyse für Details")
 
             ZStack {
                 Chart(categories) { cat in
                     SectorMark(
                         angle: .value("Betrag", abs(cat.amount)),
-                        innerRadius: .ratio(0.6),
-                        angularInset: 1.5
+                        innerRadius: .ratio(0.58),
+                        angularInset: 1
                     )
                     .foregroundStyle(WimgCategory.from(cat.id).color)
-                    .cornerRadius(4)
                 }
+                .chartLegend(.hidden)
+                .frame(maxWidth: .infinity)
                 .frame(height: 220)
 
                 // Center total overlay
@@ -268,7 +270,9 @@ struct DashboardView: View {
                         .font(.system(.headline, design: .rounded, weight: .black))
                         .foregroundStyle(WimgTheme.text)
                 }
+                .allowsHitTesting(false)
             }
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, 20)
 
             // Legend

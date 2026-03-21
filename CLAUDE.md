@@ -49,7 +49,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8 all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8, 7.1 all **done**.
 
 Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules +
 auto-learn), summaries, debts, recurring detection, multi-account, undo/redo,
@@ -129,6 +129,13 @@ escaped. Static buffers for Base64 encode/decode (prevent stack overflow on
 iOS GCD threads). Bank-family detection from URL (`BankFamily` enum in
 `banks.zig`) auto-selects envelope style. Anonymous customer_id uses
 `9999999999` per FinTS spec (not `0`).
+
+Contextual onboarding (Phase 7.1): empty state CTAs on all screens
+(Goals, Debts, Review, Tax, Transactions — iOS + web), post-import next
+steps (dashboard/transactions nav buttons), coachmarks system (3 first-visit
+tooltips: donut chart, transaction list, category breakdown). iOS
+SpendingHeatmap tap-to-select with inline amount label. CoachmarkManager
+(iOS, UserDefaults) + coachmarks.svelte.ts (web, localStorage).
 
 Deferred: Phase 5.2 (Notifications) — TBD.
 Deferred: Phase 6.1 (Annual Review / "Geld-Wrapped") — planned for end of year.

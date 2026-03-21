@@ -13,6 +13,7 @@
   import { data } from "$lib/data.svelte";
   import { toastStore } from "$lib/toast.svelte";
   import Drawer from "../../../components/Drawer.svelte";
+  import Coachmark from "../../../components/Coachmark.svelte";
   import { pushState, replaceState } from "$app/navigation";
   import { page } from "$app/state";
 
@@ -367,6 +368,9 @@
 {/if}
 
 <!-- Transaction List -->
+<div class="relative">
+  <Coachmark key="transactions_categorize" text="Tippe auf eine Transaktion zum Kategorisieren" />
+</div>
 {#if loadError}
   <div class="bg-red-50 border border-red-200 rounded-2xl p-5 mb-4">
     <p class="font-bold text-red-700 text-sm">{loadError}</p>
@@ -375,13 +379,11 @@
   <div class="text-center py-16 text-(--color-text-secondary)">
     <p class="text-4xl mb-3">📋</p>
     <p class="font-display font-bold text-lg">Keine Transaktionen</p>
-    <p class="text-sm mt-2">
-      <a
-        href="/import"
-        class="text-(--color-text) font-bold underline underline-offset-2"
-        >CSV importieren</a
-      > um zu starten
-    </p>
+    <p class="text-sm mt-2 mb-4">Importiere eine CSV-Datei um loszulegen</p>
+    <a
+      href="/import"
+      class="inline-block px-5 py-2.5 rounded-full bg-(--color-text) text-white text-sm font-bold no-underline hover:opacity-90 transition-opacity"
+    >CSV importieren</a>
   </div>
 {:else if filtered.length === 0}
   <div class="text-center py-16 text-(--color-text-secondary)">

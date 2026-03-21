@@ -33,7 +33,7 @@ struct AboutView: View {
         ("Kann ich mehrere Konten verwalten?",
          "Ja. Über den Konto-Switcher oben rechts kannst du zwischen Konten wechseln oder alle anzeigen. Neue Konten werden beim CSV-Import automatisch erstellt oder können manuell in den Einstellungen angelegt werden."),
         ("Kann ich Änderungen rückgängig machen?",
-         "Ja. Nach jeder Aktion erscheint ein Undo-Toast am unteren Bildschirmrand. wimg speichert bis zu 50 Undo-Schritte."),
+         "Ja. Nach jeder Aktion (Kategorisierung, Schuld hinzufügen, Sparziel löschen etc.) erscheint ein Undo-Toast am unteren Bildschirmrand. Über die Suche findest du auch \"Rückgängig\" und \"Wiederherstellen\". wimg speichert bis zu 50 Undo-Schritte — das funktioniert plattformübergreifend im selben Zig-Core."),
         ("Was kann die Steuern-Seite?",
          "Die Steuern-Seite hilft dir, absetzbare Ausgaben für deine Steuererklärung zu finden. Sie berechnet Pendlerpauschale (§9 EStG) und Homeoffice-Pauschale (§4 Abs. 5 Nr. 6c EStG) und scannt Transaktionen nach steuerrelevanten Schlüsselwörtern. Alles kann als CSV exportiert werden."),
         ("Wie lösche ich meine Daten?",
@@ -59,7 +59,7 @@ struct AboutView: View {
                 VStack(spacing: 16) {
                     ZStack(alignment: .bottomTrailing) {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .fill(WimgTheme.text)
+                            .fill(WimgTheme.heroText)
                             .frame(width: 80, height: 80)
                             .shadow(color: .black.opacity(0.1), radius: 12, y: 4)
                             .overlay {
@@ -340,6 +340,7 @@ struct AboutView: View {
         HStack(alignment: .top, spacing: 12) {
             Text("\(number)")
                 .font(.system(.caption, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.heroText)
                 .frame(width: 28, height: 28)
                 .background(WimgTheme.accent)
                 .clipShape(Circle())

@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SpendingHeatmap: View {
+    @State private var selectedCell: (year: Int, month: Int)?
+
     private let months = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
     private let cellSize: CGFloat = 28
     private let gap: CGFloat = 3
@@ -89,15 +91,48 @@ struct SpendingHeatmap: View {
                                 ForEach(data.years, id: \.self) { year in
                                     let cell = data.cells.first { $0.0 == year && $0.1 == monthIdx }
                                     let amount = cell?.2 ?? 0
+                                    let isSelected = selectedCell?.year == year && selectedCell?.month == monthIdx
 
                                     RoundedRectangle(cornerRadius: 4, style: .continuous)
                                         .fill(cellColor(amount, max: data.max))
                                         .frame(width: cellSize, height: cellSize)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                                .stroke(isSelected ? WimgTheme.text : .clear, lineWidth: 2)
+                                        )
+                                        .onTapGesture {
+                                            withAnimation(.easeInOut(duration: 0.15)) {
+                                                if isSelected {
+                                                    selectedCell = nil
+                                                } else {
+                                                    selectedCell = (year: year, month: monthIdx)
+                                                }
+                                            }
+                                        }
                                 }
                             }
                             .padding(.vertical, gap / 2)
                         }
                     }
+                }
+
+                // Selected cell info
+                if let sel = selectedCell,
+                   let cell = data.cells.first(where: { $0.0 == sel.year && $0.1 == sel.month }) {
+                    HStack(spacing: 8) {
+                        Text("\(months[sel.month]) \(String(sel.year))")
+                            .font(.system(.caption, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.text)
+                        Spacer()
+                        Text(formatAmountShort(cell.2))
+                            .font(.system(.subheadline, design: .rounded, weight: .black))
+                            .foregroundStyle(WimgTheme.text)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .transition(.opacity)
                 }
 
                 // Legend

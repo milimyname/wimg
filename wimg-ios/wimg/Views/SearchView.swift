@@ -232,23 +232,65 @@ struct SearchView: View {
                     navLink("Sind meine Daten sicher?", icon: "questionmark.circle", color: .orange) {
                         AboutView(scrollToFAQ: "Sind meine Daten sicher?")
                     }
+                    navLink("Welche Banken werden unterstützt?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Welche Banken werden unterstützt?")
+                    }
                     navLink("Wie funktioniert der Import?", icon: "questionmark.circle", color: .orange) {
                         AboutView(scrollToFAQ: "Wie funktioniert der Import?")
+                    }
+                    navLink("Wie funktioniert die Kategorisierung?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Wie funktioniert die Kategorisierung?")
+                    }
+                    navLink("Ist wimg wirklich kostenlos?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Ist wimg wirklich kostenlos?")
+                    }
+                    navLink("Wo werden die Daten gespeichert?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Wo werden die Daten gespeichert?")
+                    }
+                    navLink("Was ist der MCP-Server?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Was ist der MCP-Server?")
                     }
                     navLink("Wie funktioniert Auto-Learn?", icon: "questionmark.circle", color: .orange) {
                         AboutView(scrollToFAQ: "Wie funktioniert Auto-Learn?")
                     }
+                    navLink("Was zeigt das Vermögens-Diagramm?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Was zeigt das Vermögens-Diagramm?")
+                    }
                     navLink("Wie synchronisiere ich?", icon: "questionmark.circle", color: .orange) {
                         AboutView(scrollToFAQ: "Wie synchronisiere ich zwischen Geräten?")
                     }
+                    navLink("Wie funktionieren Sparziele?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Wie funktionieren Sparziele?")
+                    }
+                    navLink("Wie erkennt wimg Abos?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Wie erkennt wimg Abos und wiederkehrende Zahlungen?")
+                    }
+                    navLink("Funktioniert wimg offline?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Funktioniert wimg offline?")
+                    }
+                    navLink("Gibt es einen Dark Mode?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Gibt es einen Dark Mode?")
+                    }
+                    navLink("Kann ich mehrere Konten verwalten?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Kann ich mehrere Konten verwalten?")
+                    }
+                    navLink("Kann ich Änderungen rückgängig machen?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Kann ich Änderungen rückgängig machen?")
+                    }
                     navLink("Was kann die Steuern-Seite?", icon: "questionmark.circle", color: .orange) {
                         AboutView(scrollToFAQ: "Was kann die Steuern-Seite?")
+                    }
+                    navLink("Wie lösche ich meine Daten?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Wie lösche ich meine Daten?")
                     }
                     navLink("Was ist die Sparquote?", icon: "questionmark.circle", color: .orange) {
                         AboutView(scrollToFAQ: "Was ist die Sparquote?")
                     }
                     navLink("Was zeigt die Ausgaben-Heatmap?", icon: "questionmark.circle", color: .orange) {
                         AboutView(scrollToFAQ: "Was zeigt die Ausgaben-Heatmap?")
+                    }
+                    navLink("Wie kann ich beitragen?", icon: "questionmark.circle", color: .orange) {
+                        AboutView(scrollToFAQ: "Wie kann ich beitragen?")
                     }
                     navLink("MCP-Verbindung einrichten", icon: "link", color: .purple) {
                         AboutView()
@@ -278,6 +320,23 @@ struct SearchView: View {
                         )
                         showUndo("Snapshot erstellt")
                     }
+                    actionButton("Snapshots für alle Monate", icon: "camera.fill", color: .blue) {
+                        let txns = (try? LibWimg.getTransactions()) ?? []
+                        guard !txns.isEmpty else {
+                            showUndo("Keine Transaktionen vorhanden")
+                            return
+                        }
+                        var months = Set<String>()
+                        for tx in txns { months.insert(String(tx.date.prefix(7))) }
+                        var count = 0
+                        for m in months {
+                            let parts = m.split(separator: "-").compactMap { Int($0) }
+                            guard parts.count == 2 else { continue }
+                            try? LibWimg.takeSnapshot(year: parts[0], month: parts[1])
+                            count += 1
+                        }
+                        showUndo("\(count) Snapshots erstellt")
+                    }
                     actionButton("CSV exportieren", icon: "square.and.arrow.up", color: .indigo) {
                         exportCsv()
                     }
@@ -292,14 +351,14 @@ struct SearchView: View {
                         if let result = LibWimg.undo() {
                             reload()
                             NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
-                            showUndo("Rückgängig: \(result)")
+                            showUndo("Rückgängig: \(result.op) \(result.table)")
                         }
                     }
                     actionButton("Wiederherstellen", icon: "arrow.uturn.forward", color: .gray) {
                         if let result = LibWimg.redo() {
                             reload()
                             NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
-                            showUndo("Wiederhergestellt: \(result)")
+                            showUndo("Wiederhergestellt: \(result.op) \(result.table)")
                         }
                     }
                 }
@@ -346,6 +405,7 @@ struct SearchView: View {
                     Text(label)
                         .font(.system(.subheadline, design: .rounded, weight: .medium))
                         .foregroundStyle(WimgTheme.text)
+                        .multilineTextAlignment(.leading)
 
                     Spacer()
 
@@ -484,7 +544,7 @@ struct SearchView: View {
                     .font(.system(size: 10, weight: .bold))
             }
         }
-        .foregroundStyle(WimgTheme.text)
+        .foregroundStyle(WimgTheme.heroText)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(WimgTheme.accent)

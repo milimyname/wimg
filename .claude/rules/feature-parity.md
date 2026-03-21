@@ -11,7 +11,9 @@ chart + Spending Heatmap), Debts, Savings Goals, Tax Helper
 CSV Import, Auto-categorization, Claude AI, Account Switcher, Account
 Management, Sync (enable/link/manual/copy key), Real-time WebSocket, E2E
 Encryption, Settings (+ dark mode picker), More page, About page, Data
-Export, Monthly Snapshots, Undo toast, Onboarding (4 cards).
+Export, Monthly Snapshots, Undo toast, Onboarding (4 cards), Empty state
+CTAs (all screens), Post-import next steps, Coachmarks (3 first-visit
+tooltips), Spending Heatmap tap-to-select (iOS).
 
 ## iOS Missing
 

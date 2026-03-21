@@ -90,7 +90,7 @@ struct SettingsView: View {
                         } label: {
                             Text(syncing ? "Aktiviere..." : "Sync aktivieren")
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(WimgTheme.bg)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
                                 .background(WimgTheme.text)
@@ -500,28 +500,33 @@ struct SettingsView: View {
     private func handleResetData() {
         resetting = true
         LibWimg.isResetting = true
-        LibWimg.close()
 
-        let dbPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("wimg.db").path
-        try? FileManager.default.removeItem(atPath: dbPath)
+        // Defer close to next runloop tick so in-flight SwiftUI body evaluations
+        // see isResetting=true and bail out before we tear down the DB.
+        DispatchQueue.main.async {
+            LibWimg.close()
 
-        Task { await SyncService.shared.disconnectWebSocket() }
-        SyncService.shared.clearSyncKey()
-        KeychainService.deleteAll()
-        UserDefaults.standard.removeObject(forKey: "wimg_sync_last_ts")
-        DemoDataService.clearDemoFlag()
-        UserDefaults.standard.removeObject(forKey: "wimg_onboarding_completed")
+            let dbPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("wimg.db").path
+            try? FileManager.default.removeItem(atPath: dbPath)
 
-        // Re-init with fresh DB
-        try? LibWimg.initialize()
-        LibWimg.isResetting = false
-        syncEnabled = false
-        syncKey = ""
-        confirmReset = false
-        resetting = false
+            Task { await SyncService.shared.disconnectWebSocket() }
+            SyncService.shared.clearSyncKey()
+            KeychainService.deleteAll()
+            UserDefaults.standard.removeObject(forKey: "wimg_sync_last_ts")
+            DemoDataService.clearDemoFlag()
+            UserDefaults.standard.removeObject(forKey: "wimg_onboarding_completed")
 
-        NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+            // Re-init with fresh DB
+            try? LibWimg.initialize()
+            LibWimg.isResetting = false
+            syncEnabled = false
+            syncKey = ""
+            confirmReset = false
+            resetting = false
+
+            NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+        }
     }
 
     private func exportData(format: String) {
