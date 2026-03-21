@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.23 (2026-03-21)
+
+- feat: contextual onboarding, dark mode fixes, and iOS donut interaction
+
 ## v0.6.22 (2026-03-20)
 
 - fix: iOS crash on data reset, FinTS search lag, and post-TAN loading
