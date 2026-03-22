@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v0.6.24). Uses latest tag if empty."
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -25,6 +31,15 @@ jobs:
       - name: Detect changed paths
         id: changes
         run: |
+          # On manual dispatch, build everything (retrying a failed release)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "libwimg=true" >> $GITHUB_OUTPUT
+            echo "web=true" >> $GITHUB_OUTPUT
+            echo "ios=true" >> $GITHUB_OUTPUT
+            echo "sync=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           PREV_TAG=$(git tag -l --sort=-v:refname | sed -n '2p')
           if [ -n "$PREV_TAG" ]; then
             CHANGED=$(git diff --name-only "$PREV_TAG"..HEAD -- . ':(exclude)CHANGELOG.md' ':(exclude)wimg-web/package.json' ':(exclude)wimg-ios/project.yml')
@@ -279,7 +294,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
+          # Resolve tag: from input (manual dispatch), GITHUB_REF (tag push), or latest tag
+          if [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+          elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+          else
+            TAG=$(git tag -l --sort=-v:refname | head -1)
+          fi
 
           # Find the last tag that has a GitHub release (skips failed CI tags)
           PREV_TAG=""
