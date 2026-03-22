@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.28 (2026-03-22)
+
+- feat: add renewals calendar tab to recurring page (Phase 5.4)
+- fix: decouple deploy-sync from web build in CI
+- fix: simplify deploy-sync condition to not gate on web build result
+
 ## v0.6.27 (2026-03-22)
 
 - fix: allow sync deploy when web build is skipped
