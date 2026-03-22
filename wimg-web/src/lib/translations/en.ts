@@ -271,6 +271,17 @@ export const en: Record<string, string> = {
   "Muster erkennen": "Detect Patterns",
   "Analysiere deine Transaktionen, um Abos und regelmäßige Zahlungen automatisch zu finden.":
     "Analyze your transactions to automatically find subscriptions and regular payments.",
+  Kalender: "Calendar",
+  "Nächste 30 Tage": "Next 30 Days",
+  Zahlung: "Payment",
+  Zahlungen: "Payments",
+  "12-Monats-Übersicht": "12-Month Overview",
+  "Anstehende Zahlungen": "Upcoming Payments",
+  "Keine anstehenden Zahlungen": "No upcoming payments",
+  "Erkenne zuerst wiederkehrende Muster im Abonnements-Tab.":
+    "Detect recurring patterns in the Subscriptions tab first.",
+  "Zu Abonnements": "Go to Subscriptions",
+  Zahlungskalender: "Payment Calendar",
 
   // Tax
   "Importiere eine CSV-Datei um steuerlich relevante Ausgaben zu erkennen.":
@@ -377,8 +388,8 @@ export const en: Record<string, string> = {
     "The savings rate shows what percentage of your income you save: (income − expenses) ÷ income × 100. It appears on the dashboard next to available income. A higher savings rate means faster wealth building. The change vs. last month is shown in percentage points (pp).",
   "Die Heatmap auf der Analyse-Seite zeigt deine monatlichen Ausgaben als Farbgitter — inspiriert vom GitHub Contribution Graph. Jede Zelle ist ein Monat, dunklere Farben bedeuten höhere Ausgaben. So erkennst du auf einen Blick saisonale Muster (z.B. Dezember-Spitzen, günstige Sommermonate). Die Daten kommen aus deinen monatlichen Snapshots.":
     "The heatmap on the analysis page shows your monthly expenses as a color grid — inspired by the GitHub Contribution Graph. Each cell is a month, darker colors mean higher spending. This lets you spot seasonal patterns at a glance (e.g. December peaks, cheaper summer months). Data comes from your monthly snapshots.",
-  "wimg analysiert deine Transaktionen automatisch und erkennt regelmäßige Muster (monatlich, vierteljährlich, jährlich). Unter Mehr → Wiederkehrend siehst du alle erkannten Abos mit Betrag, Intervall und dem nächsten Fälligkeitsdatum. Preisänderungen werden ebenfalls erkannt.":
-    "wimg automatically analyzes your transactions and detects recurring patterns (monthly, quarterly, yearly). Under More → Recurring you can see all detected subscriptions with amount, interval and next due date. Price changes are also detected.",
+  "wimg analysiert deine Transaktionen automatisch und erkennt regelmäßige Muster (monatlich, vierteljährlich, jährlich). Unter Mehr → Wiederkehrend siehst du alle erkannten Abos mit Betrag, Intervall und dem nächsten Fälligkeitsdatum. Preisänderungen werden ebenfalls erkannt. Im Kalender-Tab siehst du eine 12-Monats-Vorschau aller anstehenden Zahlungen mit Gesamtbeträgen pro Monat.":
+    "wimg automatically analyzes your transactions and detects recurring patterns (monthly, quarterly, yearly). Under More → Recurring you can see all detected subscriptions with amount, interval and next due date. Price changes are also detected. The Calendar tab shows a 12-month preview of all upcoming payments with monthly totals.",
   "Besuche das GitHub-Repository. Code, Übersetzungen, Feedback und Bug-Reports sind willkommen.":
     "Visit the GitHub repository. Code, translations, feedback and bug reports are welcome.",
 

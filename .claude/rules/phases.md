@@ -23,7 +23,7 @@
 
 - **Phase 5.7b** — Command Palette Refinement (Done): Shared `dateNav` store for month/year across dashboard/analysis/review. Palette actions: prev/next/current month. Quick categorize from search results (inline category picker). Exclude/include toggle on search results. Dark mode (light/dark/system) with CSS variable overrides, flash prevention, premium dark theme (#111114 bg, #1c1c1e cards, white/5 borders). Theme toggle action in palette.
 - **Phase 5.2** — Notifications (deferred, TBD)
-- **Phase 5.4** — Annual Renewals Calendar
+- **Phase 5.4** — Renewals Calendar (Done): Calendar tab on recurring page showing 12-month payment forecast. Projects future dates from `next_due` + `interval` for all active patterns. Hero card with next-30-days total, 12-month bar overview (inline SVG), monthly-grouped payment timeline. Segmented tab control (Abonnements/Kalender). Command Palette action for direct calendar access. No new schema, no Zig changes — pure UI.
 - **Phase 6.1** — Annual Review ("Geld-Wrapped")
 - **Phase 6.2** — Net Worth Over Time (Done): SVG area chart in analysis page showing cumulative net worth from snapshots. Smooth bezier curves, gradient fill, dot markers, month labels, stats grid (highest/lowest/average), year-over-year growth badge. NetWorthChart component. Requires 2+ snapshots.
 - **Phase 6.3** — Anlage N Assistant (Done): Tax helper page (`/tax`) with Pendlerpauschale calculator (0.30€/km first 20km + 0.38€/km beyond), Homeoffice-Pauschale (6€/day, max 210 days), auto-tagged tax-relevant transactions (5 categories: Arbeitsmittel, Fortbildung, Fachliteratur, Fahrtkosten, Versicherungen), include/exclude toggles, year picker, summary grid, CSV export. Config persisted in localStorage. Feature-flagged (`tax: true`).

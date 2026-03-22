@@ -168,6 +168,15 @@ const STATIC_ACTIONS: PaletteAction[] = [
     enabled: () => featureStore.isEnabled("recurring"),
   },
   {
+    id: "nav-renewals",
+    label: "Zahlungskalender",
+    group: "Navigation",
+    icon: "📆",
+    keywords: ["kalender", "calendar", "renewals", "anstehend", "upcoming", "fällig"],
+    handler: () => goto("/recurring?tab=calendar"),
+    enabled: () => featureStore.isEnabled("recurring"),
+  },
+  {
     id: "nav-review",
     label: "Rückblick",
     group: "Navigation",

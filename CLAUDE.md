@@ -66,7 +66,9 @@ navigation across dashboard/analysis/review via `dateNav` store, savings goals
 time chart (SVG area chart in analysis page, cumulative from snapshots),
 tax helper (Pendlerpauschale + Homeoffice calculators, auto-tagged
 tax-relevant transactions, CSV export), Sparquote (savings rate) on
-dashboard hero card, spending heatmap (GitHub contribution graph style).
+dashboard hero card, spending heatmap (GitHub contribution graph style),
+renewals calendar (12-month payment forecast with monthly totals, upcoming
+payments timeline, next-30-days hero card — tab on recurring page).
 
 Embeddings were built (Phase 5.5) then removed (Phase 5.9) — 4,400 lines
 deleted. Keyword rules cover ~80% of categorization, MCP + Claude handles
