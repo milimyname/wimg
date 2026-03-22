@@ -2,10 +2,6 @@ name = "wimg-sync"
 main = "src/index.ts"
 compatibility_date = "2025-03-12"
 
-[[r2_buckets]]
-binding = "BUCKET"
-bucket_name = "wimg-sync"
-
 [durable_objects]
 bindings = [
   { name = "SYNC_ROOM", class_name = "SyncRoom" },

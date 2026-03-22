@@ -121,7 +121,7 @@ wimg/
 │           └── UndoToast.swift
 │
 └── wimg-sync/                  Phase 4B — Cloudflare Worker + DO + MCP
-    ├── wrangler.toml             Worker config, R2 + DO bindings, WASM rule
+    ├── wrangler.toml             Worker config, DO bindings, WASM rule
     ├── package.json              hono + zod
     ├── libwimg-compact.wasm      compact WASM build (small buffers for CF Workers)
     └── src/

@@ -51,7 +51,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8, 7.1, 7.2 all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8, 7.0, 7.1, 7.2 all **done**.
 
 Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules +
 auto-learn), summaries, debts, recurring detection, multi-account, undo/redo,

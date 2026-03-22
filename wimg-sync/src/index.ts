@@ -5,7 +5,6 @@ export { SyncRoom } from "./sync-room";
 export { McpSession } from "./mcp-session";
 
 type Bindings = {
-  BUCKET: R2Bucket;
   SYNC_ROOM: DurableObjectNamespace;
   MCP_SESSION: DurableObjectNamespace;
   FEEDBACK_GITHUB_TOKEN: string;

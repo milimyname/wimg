@@ -3,17 +3,16 @@
  *
  * Each sync key maps to one McpSession DO. The DO:
  * 1. Instantiates libwimg.wasm on first request
- * 2. Pulls data from R2 (via SyncRoom DO)
+ * 2. Pulls data from SyncRoom DO (DO SQLite storage)
  * 3. Decrypts + applies to in-memory SQLite
  * 4. Handles MCP JSON-RPC requests (tools/list, tools/call)
- * 5. For write tools: syncs changes back to SyncRoom → R2 + WS broadcast
+ * 5. For write tools: syncs changes back to SyncRoom → DO SQLite + WS broadcast
  */
 
 import { WasmInstance, type SyncRow } from "./mcp-wasm";
 import { getToolDefinitions, WRITE_TOOL_NAMES } from "./mcp-tools";
 
 interface Env {
-  BUCKET: R2Bucket;
   SYNC_ROOM: DurableObjectNamespace;
 }
 
@@ -31,7 +30,7 @@ interface JsonRpcResponse {
   error?: { code: number; message: string; data?: unknown };
 }
 
-const REFRESH_INTERVAL_MS = 60_000; // Re-pull from R2 every 60s on read
+const REFRESH_INTERVAL_MS = 60_000; // Re-pull from SyncRoom every 60s on read
 
 export class McpSession implements DurableObject {
   private syncKey: string | null = null;
@@ -149,7 +148,7 @@ export class McpSession implements DurableObject {
     // Derive encryption key from sync key
     this.encryptionKey = this.wasm.deriveEncryptionKey(syncKey);
 
-    // Pull all data from R2 via SyncRoom
+    // Pull all data from SyncRoom DO
     await this.pullFromSync();
     this.lastRefreshTs = Date.now();
   }
@@ -193,7 +192,7 @@ export class McpSession implements DurableObject {
       ) as unknown as Record<string, unknown>,
     }));
 
-    // Push to SyncRoom DO → R2 + WebSocket broadcast
+    // Push to SyncRoom DO → SQLite + WebSocket broadcast
     const stub = this.getSyncRoomStub();
     const res = await stub.fetch(
       new Request(`https://internal/sync/${this.syncKey}`, {

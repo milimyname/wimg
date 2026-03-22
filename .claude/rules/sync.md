@@ -9,7 +9,7 @@ with WebSocket Hibernation API. Hono router. Last-write-wins per row. No CRDTs.
 
 1. User taps "Sync aktivieren" → generates UUID sync key
 2. Sync key IS the identity — no signup, no auth
-3. Changes pushed via HTTP POST → DO merges to R2 + broadcasts via WebSocket
+3. Changes pushed via HTTP POST → DO merges to SQLite + broadcasts via WebSocket
 4. All connected devices receive changes in real-time (~1-2 seconds)
 
 ## API
@@ -37,11 +37,12 @@ XChaCha20-Poly1305 encrypt/decrypt. Server stores ciphertext only.
 
 ## Storage
 
-`r2://wimg-sync/{sync-key}/changes.json` — one JSON blob per sync key.
+DO SQLite — each SyncRoom DO has a `sync_rows` table with `(tbl, row_id, data, updated_at)`.
+`INSERT ... ON CONFLICT DO UPDATE WHERE excluded.updated_at > sync_rows.updated_at` for LWW upserts.
 
 ## MCP Server
 
 McpSession Durable Object inside wimg-sync. Loads libwimg-compact.wasm,
-pulls data from R2, decrypts, serves 17 MCP tools (8 read + 9 write).
+pulls data from SyncRoom DO, decrypts, serves 17 MCP tools (8 read + 9 write).
 
 Claude.ai connector: `URL: https://wimg-sync.mili-my.name/mcp`, `Auth: Bearer <sync-key>`

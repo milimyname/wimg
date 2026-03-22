@@ -1,14 +1,10 @@
 /**
- * SyncRoom — Durable Object with WebSocket Hibernation API.
+ * SyncRoom — Durable Object with WebSocket Hibernation API + SQLite storage.
  *
  * One DO instance per sync key. Holds all WebSocket connections for that key.
- * When device A pushes changes, the DO merges into R2 and broadcasts to all
+ * When device A pushes changes, the DO merges into SQLite and broadcasts to all
  * other connected devices via WebSocket.
  */
-
-interface Env {
-  BUCKET: R2Bucket;
-}
 
 interface Row {
   table: string;
@@ -27,48 +23,34 @@ interface WSMessage {
   since?: number;
 }
 
-const MAX_SIZE_BYTES = 100 * 1024 * 1024; // 100MB per key
 const PING_INTERVAL_MS = 30_000;
 
-/** SHA-256 hash of sync key for R2 paths — Cloudflare never sees the raw key in storage */
-async function hashForStorage(key: string): Promise<string> {
-  const data = new TextEncoder().encode(key);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 export class SyncRoom implements DurableObject {
-  private syncKey: string | null = null;
-  private storageHash: string | null = null;
+  private tableReady = false;
 
   constructor(
     private state: DurableObjectState,
-    private env: Env,
-  ) {
-    // Restore syncKey from storage after hibernation wake-up
-    this.state.blockConcurrencyWhile(async () => {
-      this.syncKey = (await this.state.storage.get<string>("syncKey")) ?? null;
-      if (this.syncKey) {
-        this.storageHash = await hashForStorage(this.syncKey);
-      }
-    });
+    _env: unknown,
+  ) {}
+
+  private ensureTable(): void {
+    if (this.tableReady) return;
+    this.state.storage.sql.exec(`
+      CREATE TABLE IF NOT EXISTS sync_rows (
+        tbl TEXT NOT NULL,
+        row_id TEXT NOT NULL,
+        data TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (tbl, row_id)
+      )
+    `);
+    this.tableReady = true;
   }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
-    // Extract sync key from header (set by Worker router) and persist for hibernation
-    const headerKey = request.headers.get("X-Sync-Key") ?? url.pathname.split("/").pop() ?? null;
-    if (headerKey && headerKey !== this.syncKey) {
-      this.syncKey = headerKey;
-      this.storageHash = await hashForStorage(headerKey);
-      await this.state.storage.put("syncKey", headerKey);
-    }
-
     if (url.pathname.endsWith("/ws")) {
-      // WebSocket upgrade
       const pair = new WebSocketPair();
       const [client, server] = [pair[0], pair[1]];
 
@@ -96,22 +78,19 @@ export class SyncRoom implements DurableObject {
       const msg = JSON.parse(message) as WSMessage;
 
       if (msg.type === "pong") {
-        // Heartbeat response — client is alive
         return;
       }
 
       if (msg.type === "push" && msg.rows?.length) {
-        // Push via WebSocket: merge to R2 + broadcast to others
-        const merged = await this.mergeToR2(msg.rows);
+        const merged = this.mergeRows(msg.rows);
         this.broadcast({ type: "changes", rows: msg.rows }, ws);
         ws.send(JSON.stringify({ type: "push_ack", merged }));
         return;
       }
 
       if (msg.type === "pull") {
-        // Pull via WebSocket
         const since = msg.since ?? 0;
-        const rows = await this.getRowsSince(since);
+        const rows = this.getRowsSince(since);
         ws.send(JSON.stringify({ type: "pull_result", rows }));
         return;
       }
@@ -127,7 +106,6 @@ export class SyncRoom implements DurableObject {
     _wasClean: boolean,
   ): Promise<void> {
     // WebSocket already closed by runtime — nothing to do.
-    // Hibernation API auto-removes it from getWebSockets().
   }
 
   async webSocketError(_ws: WebSocket, _error: unknown): Promise<void> {
@@ -135,7 +113,6 @@ export class SyncRoom implements DurableObject {
   }
 
   async alarm(): Promise<void> {
-    // Ping all connected clients
     const sockets = this.state.getWebSockets();
     if (sockets.length === 0) return;
 
@@ -144,7 +121,7 @@ export class SyncRoom implements DurableObject {
       try {
         ws.send(ping);
       } catch {
-        // Socket dead, will be cleaned up by webSocketClose/webSocketError
+        // Dead socket — will be cleaned up
       }
     }
 
@@ -152,7 +129,6 @@ export class SyncRoom implements DurableObject {
   }
 
   private schedulePing(): void {
-    // Schedule alarm for next ping — Hibernation API keeps DO alive only when needed
     this.state.storage.setAlarm(Date.now() + PING_INTERVAL_MS);
   }
 
@@ -163,7 +139,7 @@ export class SyncRoom implements DurableObject {
       return Response.json({ error: "No rows provided" }, { status: 400 });
     }
 
-    const merged = await this.mergeToR2(incoming.rows);
+    const merged = this.mergeRows(incoming.rows);
 
     // Broadcast to all WebSocket clients
     this.broadcast({ type: "changes", rows: incoming.rows });
@@ -171,84 +147,53 @@ export class SyncRoom implements DurableObject {
     return Response.json({ merged });
   }
 
-  private async handlePull(url: URL): Promise<Response> {
+  private handlePull(url: URL): Response {
     const since = Number(url.searchParams.get("since") || "0");
-    const rows = await this.getRowsSince(since);
+    const rows = this.getRowsSince(since);
     return Response.json({ rows });
   }
 
-  /** Get R2 object, migrating from raw-key path to hashed path if needed */
-  private async getR2Object(): Promise<SyncData> {
-    const hash = this.storageHash;
-    if (!hash) return { rows: [] };
-
-    const hashedKey = `${hash}/changes.json`;
-    const existing = await this.env.BUCKET.get(hashedKey);
-    if (existing) {
-      return (await existing.json()) as SyncData;
-    }
-
-    // Migration: check old raw-key path
-    const rawKey = this.syncKey;
-    if (!rawKey) return { rows: [] };
-
-    const oldKey = `${rawKey}/changes.json`;
-    const old = await this.env.BUCKET.get(oldKey);
-    if (!old) return { rows: [] };
-
-    // Migrate: copy to hashed path, delete old
-    const data = (await old.json()) as SyncData;
-    await this.env.BUCKET.put(hashedKey, JSON.stringify(data), {
-      httpMetadata: { contentType: "application/json" },
-    });
-    await this.env.BUCKET.delete(oldKey);
-    return data;
-  }
-
-  private async mergeToR2(incomingRows: Row[]): Promise<number> {
-    if (!this.storageHash) throw new Error("No sync key");
-
-    const stored = await this.getR2Object();
-
-    // Merge: last-write-wins per table+id
-    const index = new Map<string, number>();
-    for (let i = 0; i < stored.rows.length; i++) {
-      const row = stored.rows[i];
-      index.set(`${row.table}:${row.id}`, i);
-    }
+  private mergeRows(incomingRows: Row[]): number {
+    this.ensureTable();
 
     for (const row of incomingRows) {
-      const rowKey = `${row.table}:${row.id}`;
-      const existingIdx = index.get(rowKey);
-
-      if (existingIdx !== undefined) {
-        if (row.updated_at > stored.rows[existingIdx].updated_at) {
-          stored.rows[existingIdx] = row;
-        }
-      } else {
-        index.set(rowKey, stored.rows.length);
-        stored.rows.push(row);
-      }
+      this.state.storage.sql.exec(
+        `INSERT INTO sync_rows (tbl, row_id, data, updated_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT (tbl, row_id) DO UPDATE
+         SET data = excluded.data, updated_at = excluded.updated_at
+         WHERE excluded.updated_at > sync_rows.updated_at`,
+        row.table,
+        row.id,
+        JSON.stringify(row.data),
+        row.updated_at,
+      );
     }
 
-    const body = JSON.stringify(stored);
-
-    if (body.length > MAX_SIZE_BYTES) {
-      throw new Error("Storage limit exceeded (100MB)");
-    }
-
-    await this.env.BUCKET.put(`${this.storageHash}/changes.json`, body, {
-      httpMetadata: { contentType: "application/json" },
-    });
-
-    return stored.rows.length;
+    const result = this.state.storage.sql.exec("SELECT COUNT(*) as cnt FROM sync_rows");
+    const first = [...result][0] as { cnt: number } | undefined;
+    return first?.cnt ?? 0;
   }
 
-  private async getRowsSince(since: number): Promise<Row[]> {
-    if (!this.storageHash) return [];
+  private getRowsSince(since: number): Row[] {
+    this.ensureTable();
 
-    const stored = await this.getR2Object();
-    return stored.rows.filter((r) => r.updated_at > since);
+    const cursor = this.state.storage.sql.exec(
+      "SELECT tbl, row_id, data, updated_at FROM sync_rows WHERE updated_at > ?",
+      since,
+    );
+
+    const rows: Row[] = [];
+    for (const row of cursor) {
+      const r = row as { tbl: string; row_id: string; data: string; updated_at: number };
+      rows.push({
+        table: r.tbl,
+        id: r.row_id,
+        data: JSON.parse(r.data),
+        updated_at: r.updated_at,
+      });
+    }
+    return rows;
   }
 
   private broadcast(msg: Record<string, unknown>, exclude?: WebSocket): void {
