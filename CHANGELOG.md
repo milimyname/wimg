@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.25 (2026-03-22)
+
+- fix: skip xcstrings generation in CI when bun unavailable
+
 ## v0.6.24 (2026-03-22)
 
 - feat: compile-time i18n with custom Vite plugin (German default, English)
