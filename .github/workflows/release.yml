@@ -242,7 +242,7 @@ jobs:
     needs: [check, build-and-deploy-web]
     if: |
       always() && !failure() && !cancelled() &&
-      needs.build-and-deploy-web.result == 'success' &&
+      (needs.build-and-deploy-web.result == 'success' || needs.build-and-deploy-web.result == 'skipped') &&
       (needs.check.outputs.sync == 'true' || needs.check.outputs.libwimg == 'true')
     runs-on: ubuntu-latest
     steps:
@@ -251,6 +251,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       - name: Download WASM artifacts
+        if: needs.build-and-deploy-web.result == 'success'
         uses: actions/download-artifact@v8
         with:
           name: libwimg-wasm
