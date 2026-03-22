@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.27 (2026-03-22)
+
+- fix: allow sync deploy when web build is skipped
+
 ## v0.6.26 (2026-03-22)
 
 - feat: replace R2 JSON blob with DO SQLite for sync storage
