@@ -1,6 +1,6 @@
 # wimg — Local-First Personal Finance
 
-> libwimg (Zig) · Svelte 5 web · SwiftUI iOS
+> libwimg (Zig) · Svelte 5 web · SwiftUI iOS · Kotlin Android (planned)
 
 Last updated: March 2026
 
