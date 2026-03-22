@@ -60,7 +60,7 @@ struct MoreView: View {
                                                 .foregroundStyle(item.color)
                                         }
 
-                                    Text(item.title)
+                                    TText(item.title)
                                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                                         .foregroundStyle(WimgTheme.text)
                                 }

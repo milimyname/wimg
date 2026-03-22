@@ -1,6 +1,6 @@
 <script lang="ts">
   import { data } from "$lib/data.svelte";
-  import { formatEur } from "$lib/format";
+  import { formatEur, formatDate } from "$lib/format";
   import {
     TAX_CATEGORIES,
     DEFAULT_TAX_CONFIG,
@@ -477,7 +477,7 @@
                 {tx.taxCategory.label}
               </span>
               <span class="text-[10px] text-(--color-text-secondary)">
-                {new Date(tx.date + "T00:00:00").toLocaleDateString("de-DE", { day: "numeric", month: "short", year: "numeric" })}
+                {formatDate(tx.date)}
               </span>
             </div>
           </div>

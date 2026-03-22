@@ -33,6 +33,7 @@ export const LS_FEATURES = "wimg_features";
 export const LS_LAST_SNAPSHOT_MONTH = "wimg_last_snapshot_month";
 export const LS_CHANGELOG = "wimg_changelog";
 export const LS_COACHMARK_PREFIX = "wimg_coachmark_";
+export const LS_LOCALE = "wimg_locale";
 
 // --- Feature Flags (default: all ON for existing users) ---
 export const DEFAULT_FEATURES: Record<string, boolean> = {

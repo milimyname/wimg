@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { getActions, type PaletteAction } from "$lib/actions";
+  import { getActions, type PaletteAction } from "$lib/actions.svelte";
   import { paletteStore } from "$lib/commandPalette.svelte";
   import { searchTransactions, setCategory, setExcluded, CATEGORIES, type Transaction } from "$lib/wasm";
   import { formatAmountSigned, formatDateShort } from "$lib/format";

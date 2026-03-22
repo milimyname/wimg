@@ -6,7 +6,7 @@
     undo,
     type Goal,
   } from "$lib/wasm";
-  import { formatEur } from "$lib/format";
+  import { formatEur, formatDate } from "$lib/format";
   import { data } from "$lib/data.svelte";
   import { toastStore } from "$lib/toast.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
@@ -261,7 +261,7 @@
               <h4 class="font-extrabold text-lg">{goal.name}</h4>
               {#if goal.deadline}
                 <p class="text-sm font-medium text-(--color-text-secondary) mt-0.5">
-                  Bis {new Date(goal.deadline).toLocaleDateString("de-DE", { day: "numeric", month: "short", year: "numeric" })}
+                  Bis {formatDate(goal.deadline)}
                 </p>
               {/if}
             </div>

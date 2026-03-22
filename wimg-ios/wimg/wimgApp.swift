@@ -42,7 +42,12 @@ struct ContentView: View {
     @State private var selectedAccount: String?
     @State private var accounts: [Account] = []
     @AppStorage("wimg_onboarding_completed") private var onboardingCompleted = false
+    @AppStorage("wimg_locale") private var currentLocale = "de"
     private var themeManager = ThemeManager.shared
+
+    private var appLocale: Locale {
+        Locale(identifier: currentLocale == "en" ? "en" : "de")
+    }
 
     var body: some View {
         TabView {
@@ -67,6 +72,7 @@ struct ContentView: View {
                 }
         }
         .tint(WimgTheme.text)
+        .environment(\.locale, appLocale)
         .preferredColorScheme(themeManager.mode.colorScheme)
         .onAppear {
             accounts = LibWimg.getAccounts()

@@ -4,6 +4,13 @@ options:
   deploymentTarget:
     iOS: "17.0"
   xcodeVersion: "16.0"
+  defaultConfig: Release
+settings:
+  base:
+    SWIFT_EMIT_LOC_STRINGS: "YES"
+localizations:
+  - de
+  - en
 
 targets:
   wimg:

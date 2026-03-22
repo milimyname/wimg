@@ -11,6 +11,7 @@
   import { feedbackStore } from "$lib/feedback.svelte";
   import { themeStore } from "$lib/theme.svelte";
   import { LS_ONBOARDING_COMPLETED, LS_LAST_SNAPSHOT_MONTH } from "$lib/config";
+  import { i18n } from "$lib/i18n.svelte";
   import BottomNav from "../../components/BottomNav.svelte";
   import Toast from "../../components/Toast.svelte";
   import UpdateBanner from "../../components/UpdateBanner.svelte";
@@ -58,6 +59,9 @@
   }
 
   onMount(async () => {
+    // Load locale before anything renders
+    i18n.init();
+
     try {
       await init();
       accountStore.reload();

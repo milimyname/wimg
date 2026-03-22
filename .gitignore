@@ -78,6 +78,13 @@ npm-debug.log*
 
 docs/wimg-full.md
 
+# i18n — .xcstrings is committed (Apple needs it in the Xcode project)
+
+# Root-level (no deps here, everything lives in wimg-web/ or wimg-sync/)
+/node_modules/
+/package.json
+/bun.lock
+
 wimg-sync/.dev.vars
 
 # Generated reports

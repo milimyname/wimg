@@ -5,7 +5,7 @@
     CATEGORIES,
     type RecurringPattern,
   } from "$lib/wasm";
-  import { formatEur, formatEurCompact } from "$lib/format";
+  import { formatEur, formatEurCompact, formatDateShort } from "$lib/format";
   import { data } from "$lib/data.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
 
@@ -64,7 +64,7 @@
     if (diffDays === 0) return "Heute";
     if (diffDays === 1) return "Morgen";
     if (diffDays <= 7) return `In ${diffDays} Tagen`;
-    return d.toLocaleDateString("de-DE", { day: "2-digit", month: "short" });
+    return formatDateShort(d.toISOString().slice(0, 10));
   }
 
   function getCategoryColor(cat: number): string {
@@ -231,7 +231,7 @@
                 {#if pattern.next_due}
                   {formatNextDue(pattern.next_due)} ·
                 {/if}
-                Zuletzt: {new Date(pattern.last_seen + "T00:00:00").toLocaleDateString("de-DE", { day: "2-digit", month: "short" })}
+                Zuletzt: {formatDateShort(pattern.last_seen)}
               </p>
             </div>
 

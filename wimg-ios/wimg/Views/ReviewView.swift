@@ -249,7 +249,7 @@ struct ReviewView: View {
 
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
-                                Text(cat.name)
+                                TText(cat.name)
                                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                                     .foregroundStyle(WimgTheme.text)
                                 Spacer()

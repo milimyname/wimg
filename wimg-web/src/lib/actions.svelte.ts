@@ -31,6 +31,7 @@ import { data } from "$lib/data.svelte";
 import { dateNav } from "$lib/dateNav.svelte";
 import { themeStore } from "$lib/theme.svelte";
 import { feedbackStore } from "$lib/feedback.svelte";
+import { i18n } from "$lib/i18n.svelte";
 
 export interface PaletteAction {
   id: string;
@@ -701,6 +702,21 @@ const STATIC_ACTIONS: PaletteAction[] = [
       themeStore.toggle();
       const labels = { light: "Hell", dark: "Dunkel", system: "System" };
       toastStore.show(`Design: ${labels[themeStore.mode]}`);
+    },
+  },
+
+  // --- Language ---
+  {
+    id: "lang-toggle",
+    label: "Sprache wechseln",
+    group: "App",
+    icon: "🌐",
+    keywords: ["language", "sprache", "english", "deutsch", "lang", "i18n", "translation"],
+    handler: () => {
+      const next = i18n.locale === "de" ? "en" : "de";
+      i18n.setLocale(next);
+      const labels: Record<string, string> = { de: "Deutsch", en: "English" };
+      toastStore.show(`Sprache: ${labels[next]}`);
     },
   },
 

@@ -11,6 +11,8 @@
     opfsSave,
   } from "$lib/wasm";
   import { LS_DEMO_LOADED, LS_ONBOARDING_COMPLETED } from "$lib/config";
+  import { localeTag } from "$lib/format";
+  import { i18n } from "$lib/i18n.svelte";
   import { featureStore } from "$lib/features.svelte";
   import Drawer from "../../../components/Drawer.svelte";
   import { pushState, replaceState } from "$app/navigation";
@@ -92,9 +94,8 @@
 
   function loadRules() {
     try {
-      const result = queryRaw(
-        "SELECT rowid, pattern, category, priority FROM rules ORDER BY priority DESC, pattern ASC",
-      );
+      const sql = "SELECT rowid, pattern, category, priority FROM rules ORDER BY priority DESC, pattern ASC";
+      const result = queryRaw(sql);
       rules = result.rows.map((r) => ({
         rowid: r[0] as number,
         pattern: r[1] as string,
@@ -113,6 +114,11 @@
   }
 
   // Demo state
+  const localeOptions = [
+    { code: "de", label: "Deutsch" },
+    { code: "en", label: "English" },
+  ];
+
   let demoLoaded = $state(false);
 
   const maskedKey = $derived(
@@ -283,9 +289,9 @@
     if (ts === 0) return "Noch nie";
     const d = new Date(ts);
     return (
-      d.toLocaleDateString("de-DE") +
+      d.toLocaleDateString(localeTag()) +
       " " +
-      d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })
+      d.toLocaleTimeString(localeTag(), { hour: "2-digit", minute: "2-digit" })
     );
   }
 
@@ -671,6 +677,49 @@
         />
       </label>
     {/each}
+  </div>
+
+  <!-- Language Section -->
+  <div class="bg-white rounded-3xl p-5 shadow-sm space-y-4">
+    <div class="flex items-center gap-3">
+      <div
+        class="w-10 h-10 rounded-2xl bg-sky-100 flex items-center justify-center"
+      >
+        <svg
+          class="w-5 h-5 text-sky-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+            d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+          />
+        </svg>
+      </div>
+      <div>
+        <h3 class="font-bold text-(--color-text)">Sprache</h3>
+        <p class="text-xs text-(--color-text-secondary)">
+          Language / Sprache
+        </p>
+      </div>
+    </div>
+
+    <div class="flex gap-2">
+      {#each localeOptions as lang}
+        <button
+          onclick={() => i18n.setLocale(lang.code)}
+          class="flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors {i18n.locale ===
+          lang.code
+            ? 'bg-(--color-text) text-white'
+            : 'bg-(--color-bg) text-(--color-text-secondary) hover:text-(--color-text)'}"
+        >
+          {lang.label}
+        </button>
+      {/each}
+    </div>
   </div>
 
   <!-- Rules Section -->

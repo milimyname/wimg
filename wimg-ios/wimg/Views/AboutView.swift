@@ -271,12 +271,12 @@ struct AboutView: View {
                                     set: { expandedFAQ = $0 ? faq.q : nil }
                                 )
                             ) {
-                                Text(faq.a)
+                                TText(faq.a)
                                     .font(.subheadline)
                                     .foregroundStyle(WimgTheme.textSecondary)
                                     .padding(.bottom, 4)
                             } label: {
-                                Text(faq.q)
+                                TText(faq.q)
                                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
                                     .foregroundStyle(WimgTheme.text)
                                     .multilineTextAlignment(.leading)

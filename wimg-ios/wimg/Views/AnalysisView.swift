@@ -88,7 +88,7 @@ struct AnalysisView: View {
                                         Image(systemName: wmCat.icon)
                                             .font(.system(size: 16))
                                             .foregroundStyle(wmCat.color)
-                                        Text(sel.name)
+                                        TText(sel.name)
                                             .font(.system(size: 11, weight: .bold, design: .rounded))
                                             .foregroundStyle(WimgTheme.text)
                                         Text(formatAmountShort(sel.amount))
@@ -176,7 +176,7 @@ struct AnalysisView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text(cat.name)
+                    TText(cat.name)
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(WimgTheme.text)
                     Spacer()

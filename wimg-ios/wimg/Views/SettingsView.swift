@@ -18,6 +18,13 @@ struct SettingsView: View {
         ("tax", "Steuern", "Steuerlich absetzbare Ausgaben erkennen"),
     ]
 
+    // Locale
+    @State private var currentLocale: String = UserDefaults.standard.string(forKey: "wimg_locale") ?? "de"
+    private let localeOptions: [(code: String, label: String)] = [
+        ("de", "Deutsch"),
+        ("en", "English"),
+    ]
+
     // Export
     @State private var showExportSheet = false
 
@@ -228,6 +235,41 @@ struct SettingsView: View {
                 .wimgCard(radius: WimgTheme.radiusMedium)
                 .padding(.horizontal)
 
+                // MARK: - Language Section
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 12) {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.cyan.opacity(0.15))
+                            .frame(width: 40, height: 40)
+                            .overlay {
+                                Image(systemName: "globe")
+                                    .foregroundStyle(.cyan)
+                            }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Sprache")
+                                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.text)
+                            Text("Language / Sprache")
+                                .font(.caption2)
+                                .foregroundStyle(WimgTheme.textSecondary)
+                        }
+                    }
+
+                    Picker("Sprache", selection: $currentLocale) {
+                        ForEach(localeOptions, id: \.code) { lang in
+                            Text(lang.label).tag(lang.code)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: currentLocale) { _, newValue in
+                        UserDefaults.standard.set(newValue, forKey: "wimg_locale")
+                    }
+                }
+                .padding(20)
+                .wimgCard(radius: WimgTheme.radiusMedium)
+                .padding(.horizontal)
+
                 // MARK: - Features Section
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(spacing: 12) {
@@ -255,9 +297,9 @@ struct SettingsView: View {
                             set: { _ in FeatureFlags.shared.toggle(feat.key) }
                         )) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(feat.label)
+                                TText(feat.label)
                                     .font(.system(.subheadline, weight: .semibold))
-                                Text(feat.description)
+                                TText(feat.description)
                                     .font(.caption)
                                     .foregroundStyle(WimgTheme.textSecondary)
                             }
@@ -562,7 +604,8 @@ struct SettingsView: View {
         if ts == 0 { return "Noch nie" }
         let date = Date(timeIntervalSince1970: TimeInterval(ts) / 1000)
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "de_DE")
+        let loc = UserDefaults.standard.string(forKey: "wimg_locale") ?? "de"
+        formatter.locale = Locale(identifier: loc == "en" ? "en_US" : "de_DE")
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter.string(from: date)

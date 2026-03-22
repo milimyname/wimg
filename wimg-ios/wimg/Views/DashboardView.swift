@@ -282,7 +282,7 @@ struct DashboardView: View {
                         Circle()
                             .fill(WimgCategory.from(cat.id).color)
                             .frame(width: 10, height: 10)
-                        Text(cat.name)
+                        TText(cat.name)
                             .font(.system(.subheadline, design: .rounded, weight: .medium))
                             .foregroundStyle(WimgTheme.text)
                         Spacer()

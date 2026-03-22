@@ -3,13 +3,14 @@
   import { changelogStore } from "$lib/changelog.svelte";
   import { APP_VERSION } from "$lib/version";
   import { RELEASES_URL } from "$lib/config";
+  import { localeTag } from "$lib/format";
 
   onMount(() => {
     changelogStore.load();
   });
 
   function formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString("de-DE", {
+    return new Date(iso).toLocaleDateString(localeTag(), {
       day: "numeric",
       month: "short",
       year: "numeric",

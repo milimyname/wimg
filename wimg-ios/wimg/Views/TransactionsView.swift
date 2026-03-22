@@ -233,7 +233,7 @@ struct TransactionsView: View {
                                 .font(.system(size: 18))
                                 .foregroundStyle(cat.color)
                         }
-                        Text(cat.name)
+                        TText(cat.name)
                             .font(.system(size: 10, weight: active ? .bold : .medium, design: .rounded))
                             .foregroundStyle(active ? WimgTheme.text : WimgTheme.textSecondary)
                     }
@@ -465,7 +465,7 @@ struct CategoryEditorSheet: View {
                         .foregroundStyle(cat.color)
                 }
 
-                Text(cat.name)
+                TText(cat.name)
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(WimgTheme.text)
 
@@ -650,7 +650,7 @@ struct AdvancedFilterSheet: View {
                         .font(.system(size: 18))
                         .foregroundStyle(cat.color)
                 }
-                Text(cat.name)
+                TText(cat.name)
                     .font(.system(size: 10, weight: active ? .bold : .medium, design: .rounded))
                     .foregroundStyle(active ? WimgTheme.text : WimgTheme.textSecondary)
                     .lineLimit(1)

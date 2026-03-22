@@ -29,6 +29,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 | Search          | SQL LIKE (planned: FTS5 if needed at scale)        |
 | FinTS           | Pure Zig (native-only, iOS)                        |
 | MCP server      | CF Worker DO + libwimg-compact.wasm                |
+| i18n            | Custom Vite plugin (compile-time) + .xcstrings (iOS) |
 
 ---
 
@@ -44,12 +45,13 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 - **Build iOS:** `scripts/build-ios.sh` — XCFramework
 - **CI:** `.github/workflows/release.yml` — check → build → GitHub release (TestFlight upload commented out — manual via Xcode)
 - **Feedback CI:** `.github/workflows/feedback-triage.yml` — Claude Code Action triages user-feedback issues
+- **i18n:** custom Vite plugin (`vite-plugin-i18n.ts`) — compile-time string replacement, `src/lib/translations/en.ts` source of truth, `scripts/i18n-xcstrings.ts` for iOS `.xcstrings`
 
 ---
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8, 7.1 all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8, 7.1, 7.2 all **done**.
 
 Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules +
 auto-learn), summaries, debts, recurring detection, multi-account, undo/redo,
@@ -75,8 +77,18 @@ All Svelte stores use class-based reactive pattern (`class Store { #v = $state(.
 No chat UI — Claude Desktop + MCP replaces it.
 
 BottomNav has 3 tabs (Home, Umsätze, Mehr). Analyse moved to More page.
-Landing page (`+page.svelte`) is German. Import and About pages redesigned
+Landing page (`+page.svelte`) is German default. Import and About pages redesigned
 with card-based layouts, border styling, and project design tokens.
+
+i18n via custom Vite plugin (`vite-plugin-i18n.ts`, ~200 lines). Compile-time
+string replacement — source stays German, plugin wraps with `__t$()` at build.
+Handles template text, attributes, `.name`/`.label`/`.description` expressions,
+ternaries, script string literals, template literals, and `.svelte.ts` files.
+German default, English first (~392 keys). Auto-detects browser language.
+Reactive switching via `$state` — no page reload. `format.ts` locale-aware.
+Translations in `src/lib/translations/en.ts` (single source of truth).
+iOS: `scripts/i18n-xcstrings.ts` generates `.xcstrings` from `en.ts`.
+`Category.swift` uses `String(localized:)` for 16 category names.
 
 Conventional commits enforced by lefthook `commit-msg` hook.
 

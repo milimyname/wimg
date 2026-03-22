@@ -8,7 +8,7 @@
     CATEGORIES,
     type Transaction,
   } from "$lib/wasm";
-  import { formatAmountSigned, formatDateHeading } from "$lib/format";
+  import { formatAmountSigned, formatDateHeading, localeTag } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
   import { data } from "$lib/data.svelte";
   import { toastStore } from "$lib/toast.svelte";
@@ -712,7 +712,7 @@
             {txn.description}
           </h2>
           <p class="text-(--color-text-secondary) text-sm mt-1.5 font-medium">
-            {new Date(txn.date + "T00:00:00").toLocaleDateString("de-DE", {
+            {new Date(txn.date + "T00:00:00").toLocaleDateString(localeTag(), {
               weekday: "long",
               day: "numeric",
               month: "long",

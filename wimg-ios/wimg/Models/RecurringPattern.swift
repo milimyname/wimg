@@ -41,7 +41,7 @@ struct RecurringPattern: Codable, Identifiable {
 
         let display = DateFormatter()
         display.dateFormat = "dd. MMM"
-        display.locale = Locale(identifier: "de_DE")
+        display.locale = Locale(identifier: UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE")
         return display.string(from: date)
     }
 
@@ -51,7 +51,7 @@ struct RecurringPattern: Codable, Identifiable {
         guard let date = formatter.date(from: last_seen) else { return last_seen }
         let display = DateFormatter()
         display.dateFormat = "dd. MMM"
-        display.locale = Locale(identifier: "de_DE")
+        display.locale = Locale(identifier: UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE")
         return display.string(from: date)
     }
 }

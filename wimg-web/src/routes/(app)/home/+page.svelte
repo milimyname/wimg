@@ -1,6 +1,6 @@
 <script lang="ts">
   import { CATEGORIES, type Transaction } from "$lib/wasm";
-  import { formatEur, formatEurCompact } from "$lib/format";
+  import { formatEur, formatEurCompact, formatDateShort } from "$lib/format";
   import { accountStore } from "$lib/account.svelte";
   import { data } from "$lib/data.svelte";
   import { loadDemoData } from "$lib/demo";
@@ -313,10 +313,7 @@
             <div class="flex-1 min-w-0">
               <p class="text-base font-bold truncate">{txn.description}</p>
               <p class="text-xs text-(--color-text-secondary) font-medium mt-0.5">
-                {new Date(txn.date + "T00:00:00").toLocaleDateString("de-DE", {
-                  day: "numeric",
-                  month: "short",
-                })} &middot; {CATEGORIES[txn.category]?.name ?? "Sonstiges"}
+                {formatDateShort(txn.date)} &middot; {CATEGORIES[txn.category]?.name ?? "Sonstiges"}
               </p>
             </div>
             <p

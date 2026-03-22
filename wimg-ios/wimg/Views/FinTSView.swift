@@ -632,11 +632,11 @@ struct FinTSView: View {
             VStack(spacing: 12) {
                 DatePicker("Von", selection: $dateFrom, displayedComponents: .date)
                     .font(.system(.subheadline, design: .rounded))
-                    .environment(\.locale, Locale(identifier: "de_DE"))
+                    .environment(\.locale, Locale(identifier: UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE"))
 
                 DatePicker("Bis", selection: $dateTo, displayedComponents: .date)
                     .font(.system(.subheadline, design: .rounded))
-                    .environment(\.locale, Locale(identifier: "de_DE"))
+                    .environment(\.locale, Locale(identifier: UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE"))
             }
             .padding(12)
             .background(WimgTheme.bg)
