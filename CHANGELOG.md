@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.24 (2026-03-22)
+
+- feat: compile-time i18n with custom Vite plugin (German default, English)
+
 ## v0.6.23 (2026-03-21)
 
 - feat: contextual onboarding, dark mode fixes, and iOS donut interaction
