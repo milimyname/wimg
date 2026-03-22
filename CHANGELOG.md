@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.26 (2026-03-22)
+
+- feat: replace R2 JSON blob with DO SQLite for sync storage
+- fix: add workflow_dispatch for manual CI re-runs after failed releases
+
 ## v0.6.25 (2026-03-22)
 
 - fix: skip xcstrings generation in CI when bun unavailable
