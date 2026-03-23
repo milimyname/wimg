@@ -13,7 +13,8 @@ Management, Sync (enable/link/manual/copy key), Real-time WebSocket, E2E
 Encryption, Settings (+ dark mode picker), More page, About page, Data
 Export, Monthly Snapshots, Undo toast, Onboarding (4 cards), Empty state
 CTAs (all screens), Post-import next steps, Coachmarks (3 first-visit
-tooltips), Spending Heatmap tap-to-select (iOS).
+tooltips), Spending Heatmap tap-to-select (iOS), Renewals Calendar
+(12-month forecast, segmented tab on recurring page).
 
 ## iOS Missing
 
