@@ -151,6 +151,12 @@ tooltips: donut chart, transaction list, category breakdown). iOS
 SpendingHeatmap tap-to-select with inline amount label. CoachmarkManager
 (iOS, UserDefaults) + coachmarks.svelte.ts (web, localStorage).
 
+Planned: Phase 7.3 (Vertragsmanagement) — contract lifecycle tracking on
+recurring payments. `contracts` table (pattern, start date, duration,
+intro/full price), end-date badges, dashboard warning card (90 days),
+iOS local notifications at month 21, web banner on app open. One-time
+manual entry per contract, then automatic warnings.
+
 Deferred: Phase 5.2 (Notifications) — TBD.
 Deferred: Phase 6.1 (Annual Review / "Geld-Wrapped") — planned for end of year.
 

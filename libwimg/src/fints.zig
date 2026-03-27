@@ -56,8 +56,6 @@ pub const FintsSession = struct {
     wait_before_first_poll: u8,
     wait_before_next_poll: u8,
     automated_polling_allowed: bool,
-    include_empty_parameter_challenge_class: bool, // python-fints v6/v7 process-4 parity
-
     challenge: [512]u8,
     challenge_len: u16,
     challenge_hhduc: [8192]u8, // photoTAN PNG image (Base64 or binary)
@@ -126,7 +124,6 @@ pub const FintsSession = struct {
         s.wait_before_first_poll = 4;
         s.wait_before_next_poll = 2;
         s.automated_polling_allowed = true;
-        s.include_empty_parameter_challenge_class = false;
         s.has_pending_tan = false;
         s.has_active_dialog = false;
         s.decoupled = false;
@@ -352,13 +349,12 @@ fn writeHktanProcess4V6Like(session: *const FintsSession, buf: []u8, offset: usi
         pos += 1;
     }
 
-    // de10 parameter_challenge_class (DEG). python-fints sends an empty group for v6 init.
+    // de10 parameter_challenge_class (DEG).
+    // For HKTAN v6/v7 process-4, strict banks expect an explicit empty DEG (":").
     buf[pos] = '+';
     pos += 1;
-    if (session.include_empty_parameter_challenge_class) {
-        buf[pos] = ':';
-        pos += 1;
-    }
+    buf[pos] = ':';
+    pos += 1;
 
     // de11 tan_medium_name: python-fints sends this for process 4 when required.
     if (session.tan_medium_name_len > 0 or session.tan_medium_required) {
@@ -756,13 +752,19 @@ pub fn buildFetchStatements(session: *const FintsSession, from: []const u8, to: 
     @memcpy(inner_buf[inner_pos .. inner_pos + kaz_pos], kaz_buf[0..kaz_pos]);
     inner_pos += kaz_pos;
 
-    // HKTAN process-4 for the concrete business segment.
-    inner_pos += buildHktanProcess4(session, &inner_buf, inner_pos, 4, "HKKAZ") orelse return null;
+    const is_one_step = std.mem.eql(u8, session.tanSecFuncSlice(), "999");
+    if (!is_one_step) {
+        // HKTAN process-4 for the concrete business segment (two-step methods only).
+        inner_pos += buildHktanProcess4(session, &inner_buf, inner_pos, 4, "HKKAZ") orelse return null;
+        // HNSHA (seg 5)
+        inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 5, sec_ref, session.pinSlice(), "") orelse return null;
+        return writeAuthEnvelope(session, session.tanSecFuncSlice(), buf, inner_buf[0..inner_pos], 5);
+    }
 
-    // HNSHA (seg 5)
-    inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 5, sec_ref, session.pinSlice(), "") orelse return null;
-
-    return writeAuthEnvelope(session, session.tanSecFuncSlice(), buf, inner_buf[0..inner_pos], 5);
+    // One-step mode does not use HKTAN around business segments.
+    // Segment numbering: HNSHK=2, HKKAZ=3, HNSHA=4.
+    inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 4, sec_ref, session.pinSlice(), "") orelse return null;
+    return writeAuthEnvelope(session, session.tanSecFuncSlice(), buf, inner_buf[0..inner_pos], 4);
 }
 
 /// Build HKCAZ (fetch bank statements CAMT XML) message.
@@ -858,13 +860,19 @@ pub fn buildFetchStatementsCamt(session: *const FintsSession, from: []const u8, 
     @memcpy(inner_buf[inner_pos .. inner_pos + camt_pos], camt_buf[0..camt_pos]);
     inner_pos += camt_pos;
 
-    // HKTAN process-4 for the concrete business segment.
-    inner_pos += buildHktanProcess4(session, &inner_buf, inner_pos, 4, "HKCAZ") orelse return null;
+    const is_one_step = std.mem.eql(u8, session.tanSecFuncSlice(), "999");
+    if (!is_one_step) {
+        // HKTAN process-4 for the concrete business segment (two-step methods only).
+        inner_pos += buildHktanProcess4(session, &inner_buf, inner_pos, 4, "HKCAZ") orelse return null;
+        // HNSHA (seg 5)
+        inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 5, sec_ref, session.pinSlice(), "") orelse return null;
+        return writeAuthEnvelope(session, session.tanSecFuncSlice(), buf, inner_buf[0..inner_pos], 5);
+    }
 
-    // HNSHA (seg 5)
-    inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 5, sec_ref, session.pinSlice(), "") orelse return null;
-
-    return writeAuthEnvelope(session, session.tanSecFuncSlice(), buf, inner_buf[0..inner_pos], 5);
+    // One-step mode does not use HKTAN around business segments.
+    // Segment numbering: HNSHK=2, HKCAZ=3, HNSHA=4.
+    inner_pos += writeSignatureFooter(&inner_buf, inner_pos, 4, sec_ref, session.pinSlice(), "") orelse return null;
+    return writeAuthEnvelope(session, session.tanSecFuncSlice(), buf, inner_buf[0..inner_pos], 4);
 }
 
 /// Build HKTAB message to fetch available TAN media for the user.
@@ -1196,8 +1204,6 @@ pub fn parseResponse(session: *FintsSession, data: []const u8, out: *ParsedRespo
                             if (wait_before_first_poll > 0) session.wait_before_first_poll = wait_before_first_poll;
                             if (wait_before_next_poll > 0) session.wait_before_next_poll = wait_before_next_poll;
                             session.automated_polling_allowed = automated_polling_allowed;
-                            // python-fints HKTAN6 process-4 includes empty parameter_challenge_class DEG.
-                            session.include_empty_parameter_challenge_class = (session.hitan_version >= 6);
                             break;
                         }
                     }
