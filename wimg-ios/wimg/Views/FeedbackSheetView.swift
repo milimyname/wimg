@@ -103,7 +103,7 @@ struct FeedbackSheetView: View {
                         } label: {
                             Text(fbSending ? "Sende..." : "Feedback senden")
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(WimgTheme.bg)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
                                 .background(WimgTheme.text)

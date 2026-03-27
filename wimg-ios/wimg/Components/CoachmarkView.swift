@@ -35,7 +35,7 @@ struct CoachmarkModifier: ViewModifier {
                             } label: {
                                 Text("OK")
                                     .font(.system(.caption2, design: .rounded, weight: .bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(WimgTheme.bg)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 4)
                                     .background(WimgTheme.text)

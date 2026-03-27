@@ -84,7 +84,7 @@ struct TaxView: View {
                             NavigationLink(destination: ImportView()) {
                                 Text("CSV importieren")
                                     .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(WimgTheme.bg)
                                     .padding(.horizontal, 20)
                                     .padding(.vertical, 10)
                                     .background(WimgTheme.text)

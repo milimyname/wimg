@@ -239,13 +239,23 @@ jobs:
       #       --apiIssuer "$ASC_ISSUER_ID"
 
   deploy-sync:
-    needs: check
-    if: needs.check.outputs.sync == 'true' || needs.check.outputs.libwimg == 'true'
+    needs: [check, build-and-deploy-web]
+    if: |
+      always() &&
+      (needs.check.outputs.sync == 'true' || needs.check.outputs.libwimg == 'true') &&
+      (needs.build-and-deploy-web.result == 'success' || needs.build-and-deploy-web.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
       - uses: oven-sh/setup-bun@v2
+
+      - name: Download compact WASM
+        if: needs.build-and-deploy-web.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: libwimg-wasm
+          path: .
 
       - name: Install dependencies
         working-directory: wimg-sync

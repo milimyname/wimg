@@ -153,13 +153,13 @@ struct SettingsView: View {
                                 HStack(spacing: 8) {
                                     if syncing {
                                         ProgressView()
-                                            .tint(.white)
+                                            .tint(WimgTheme.bg)
                                             .scaleEffect(0.8)
                                     }
                                     Text(syncing ? "Synchronisiere..." : "Jetzt synchronisieren")
                                 }
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(WimgTheme.bg)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
                                 .background(WimgTheme.text)
