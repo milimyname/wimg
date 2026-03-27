@@ -29,6 +29,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           trigger_phrase: ""
+          claude_args: '--allowedTools "Bash(gh issue comment *),Bash(gh issue edit *),Bash(gh label create *),Read,Glob,Grep"'
           prompt: |
             This is a user feedback issue submitted via the wimg in-app feedback form.
 
