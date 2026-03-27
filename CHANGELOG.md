@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.6.29 (2026-03-28)
+
+- fix: harden FinTS message structure for strict Sparkasse validators
+- feat: add renewals calendar tab to iOS RecurringView
+
 ## v0.6.28 (2026-03-22)
 
 - feat: add renewals calendar tab to recurring page (Phase 5.4)
