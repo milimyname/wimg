@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.30 (2026-03-28)
+
+- fix: dark mode white-on-white buttons in iOS + CI deploy-sync WASM dependency
+
 ## v0.6.29 (2026-03-28)
 
 - fix: harden FinTS message structure for strict Sparkasse validators
