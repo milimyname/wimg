@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.31 (2026-03-28)
+
+- fix: allow gh CLI tools in feedback triage Claude action
+
 ## v0.6.30 (2026-03-28)
 
 - fix: dark mode white-on-white buttons in iOS + CI deploy-sync WASM dependency
