@@ -105,7 +105,7 @@
   </section>
 
   <!-- Mobile Apps -->
-  <section class="pb-24">
+  <section id="download" class="pb-24">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
       <div
         class="bg-white rounded-3xl p-7 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-soft)] transition-shadow"

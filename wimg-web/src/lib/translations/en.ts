@@ -658,6 +658,7 @@ export const en: Record<string, string> = {
   "wimg ausprobieren": "Try wimg",
 
   // Mobile apps section
+  "Mobile Apps": "Mobile Apps",
   "iOS (TestFlight)": "iOS (TestFlight)",
   "Native SwiftUI-App. Teste die Beta via TestFlight.":
     "Native SwiftUI app. Test the beta via TestFlight.",

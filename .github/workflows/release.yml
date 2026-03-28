@@ -243,7 +243,6 @@ jobs:
 
   build-android:
     needs: check
-    if: needs.check.outputs.android == 'true' || needs.check.outputs.libwimg == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
