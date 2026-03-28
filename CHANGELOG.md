@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.3 (2026-03-28)
+
+- fix: always build Android in CI + landing page download anchor
+
 ## v0.7.2 (2026-03-28)
 
 - fix: CI JDK distribution typo + landing page i18n + Android icon
