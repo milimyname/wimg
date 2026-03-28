@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.4 (2026-03-28)
+
+- fix: flatten Android CI artifacts for reliable release attachment
+
 ## v0.7.3 (2026-03-28)
 
 - fix: always build Android in CI + landing page download anchor
