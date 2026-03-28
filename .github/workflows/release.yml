@@ -279,13 +279,17 @@ jobs:
           gradle wrapper
           ./gradlew assembleRelease
 
+      - name: Prepare Android artifacts
+        run: |
+          mkdir -p android-artifacts
+          cp libwimg/build-android/arm64-v8a/libwimg.so android-artifacts/libwimg.so
+          cp wimg-android/app/build/outputs/apk/release/app-release.apk android-artifacts/wimg.apk
+
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v7
         with:
           name: libwimg-android
-          path: |
-            libwimg/build-android/arm64-v8a/libwimg.so
-            wimg-android/app/build/outputs/apk/release/app-release.apk
+          path: android-artifacts/
 
   deploy-sync:
     needs: [check, build-and-deploy-web]
@@ -383,11 +387,8 @@ jobs:
           ASSETS=()
           [ -f artifacts/libwimg-wasm/wimg-web/static/libwimg.wasm ] && ASSETS+=(artifacts/libwimg-wasm/wimg-web/static/libwimg.wasm)
           [ -f artifacts/libwimg-ios/libwimg.xcframework.zip ] && ASSETS+=(artifacts/libwimg-ios/libwimg.xcframework.zip)
-          [ -f artifacts/libwimg-android/libwimg/build-android/arm64-v8a/libwimg.so ] && ASSETS+=(artifacts/libwimg-android/libwimg/build-android/arm64-v8a/libwimg.so)
-          if [ -f artifacts/libwimg-android/wimg-android/app/build/outputs/apk/release/app-release.apk ]; then
-            cp artifacts/libwimg-android/wimg-android/app/build/outputs/apk/release/app-release.apk artifacts/wimg.apk
-            ASSETS+=(artifacts/wimg.apk)
-          fi
+          [ -f artifacts/libwimg-android/libwimg.so ] && ASSETS+=(artifacts/libwimg-android/libwimg.so)
+          [ -f artifacts/libwimg-android/wimg.apk ] && ASSETS+=(artifacts/libwimg-android/wimg.apk)
 
           gh release create "$TAG" \
             --title "$TAG" \
