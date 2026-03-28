@@ -8,10 +8,13 @@ struct ReviewView: View {
     @State private var prevSummary: MonthlySummary?
     @State private var monthTransactions: [Transaction] = []
 
-    private let monthNames = [
-        "Januar", "Februar", "März", "April", "Mai", "Juni",
-        "Juli", "August", "September", "Oktober", "November", "Dezember",
-    ]
+    private var monthNames: [String] {
+        let isEn = UserDefaults.standard.string(forKey: "wimg_locale") == "en"
+        let locale = Locale(identifier: isEn ? "en_US" : "de_DE")
+        let fmt = DateFormatter()
+        fmt.locale = locale
+        return fmt.standaloneMonthSymbols
+    }
 
     init(selectedAccount: Binding<String?>) {
         _selectedAccount = selectedAccount
@@ -140,7 +143,7 @@ struct ReviewView: View {
                 .offset(x: 40, y: -40)
 
             VStack(spacing: 8) {
-                Text(saved >= 0 ? "Gespart" : "Defizit")
+                TText(saved >= 0 ? "Gespart" : "Defizit")
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.heroText.opacity(0.7))
                     .textCase(.uppercase)
@@ -181,9 +184,9 @@ struct ReviewView: View {
     }
 
     private var savingsMessage: String {
-        if saved > 0 { return "Dein Sparziel wurde erreicht. Super!" }
-        if saved == 0 { return "Einnahmen und Ausgaben waren ausgeglichen." }
-        return "Diesen Monat hast du mehr ausgegeben als eingenommen."
+        if saved > 0 { return String(localized: "Dein Sparziel wurde erreicht. Super!") }
+        if saved == 0 { return String(localized: "Einnahmen und Ausgaben waren ausgeglichen.") }
+        return String(localized: "Diesen Monat hast du mehr ausgegeben als eingenommen.")
     }
 
     // MARK: - Income / Expenses
@@ -438,7 +441,7 @@ struct ReviewView: View {
 
     private func statTile(title: String, value: String, color: Color? = nil) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title)
+            TText(title)
                 .font(.system(.caption, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.textSecondary)
                 .textCase(.uppercase)

@@ -66,12 +66,12 @@ struct OnboardingView: View {
                         }
 
                         VStack(spacing: 12) {
-                            Text(cards[i].title)
+                            TText(cards[i].title)
                                 .font(.system(.title2, design: .rounded, weight: .bold))
                                 .multilineTextAlignment(.center)
                                 .foregroundStyle(WimgTheme.text)
 
-                            Text(cards[i].subtitle)
+                            TText(cards[i].subtitle)
                                 .font(.system(.body, design: .rounded))
                                 .multilineTextAlignment(.center)
                                 .foregroundStyle(WimgTheme.textSecondary)
@@ -94,7 +94,7 @@ struct OnboardingView: View {
                     complete()
                 }
             } label: {
-                Text(step < cards.count - 1 ? "Weiter" : "Los geht's")
+                TText(step < cards.count - 1 ? "Weiter" : "Los geht's")
                     .font(.system(.body, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.heroText)
                     .frame(maxWidth: .infinity)

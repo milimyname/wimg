@@ -252,7 +252,7 @@ struct DebtsView: View {
                         .textCase(.uppercase)
                         .tracking(0.5)
                     Spacer()
-                    Text(String(format: "%.0f%% erledigt", pct * 100))
+                    Text("\(Int(pct * 100))% \(String(localized: "erledigt"))")
                         .font(.system(.caption, design: .rounded, weight: .bold))
                         .foregroundStyle(WimgTheme.text)
                 }

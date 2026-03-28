@@ -202,7 +202,7 @@ struct TransactionsView: View {
     private var segmentedFilter: some View {
         Picker("Filter", selection: $filter) {
             ForEach(TxFilter.allCases, id: \.self) { f in
-                Text(f.rawValue).tag(f)
+                TText(f.rawValue).tag(f)
             }
         }
         .pickerStyle(.segmented)
@@ -357,14 +357,15 @@ struct TransactionsView: View {
         let parts = dateStr.split(separator: "-")
         guard parts.count == 3 else { return dateStr }
 
-        let monthNames = [
-            "Januar", "Februar", "März", "April", "Mai", "Juni",
-            "Juli", "August", "September", "Oktober", "November", "Dezember",
-        ]
+        let isEn = UserDefaults.standard.string(forKey: "wimg_locale") == "en"
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: isEn ? "en_US" : "de_DE")
+        let monthNames = fmt.standaloneMonthSymbols ?? []
+
         if let day = Int(parts[2]),
            let monthIdx = Int(parts[1]),
-           monthIdx >= 1, monthIdx <= 12 {
-            return "\(day). \(monthNames[monthIdx - 1]) \(parts[0])"
+           monthIdx >= 1, monthIdx <= 12, monthIdx <= monthNames.count {
+            return isEn ? "\(monthNames[monthIdx - 1]) \(day), \(parts[0])" : "\(day). \(monthNames[monthIdx - 1]) \(parts[0])"
         }
         return dateStr
     }
@@ -752,7 +753,7 @@ struct AdvancedFilterSheet: View {
                 dateTo = nil
             }
         } label: {
-            Text(label)
+            TText(label)
                 .font(.system(.caption, design: .rounded, weight: .bold))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)

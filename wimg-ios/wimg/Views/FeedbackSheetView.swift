@@ -101,7 +101,7 @@ struct FeedbackSheetView: View {
                         Button {
                             Task { await submitFeedback() }
                         } label: {
-                            Text(fbSending ? "Sende..." : "Feedback senden")
+                            TText(fbSending ? "Sende..." : "Feedback senden")
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(WimgTheme.bg)
                                 .frame(maxWidth: .infinity)

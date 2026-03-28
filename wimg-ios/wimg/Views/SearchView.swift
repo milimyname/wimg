@@ -370,7 +370,7 @@ struct SearchView: View {
 
     private func actionSection(_ title: String, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
+            TText(title)
                 .font(.system(.caption, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.textSecondary)
                 .textCase(.uppercase)
@@ -402,7 +402,7 @@ struct SearchView: View {
                             .foregroundStyle(color)
                     }
 
-                    Text(label)
+                    TText(label)
                         .font(.system(.subheadline, design: .rounded, weight: .medium))
                         .foregroundStyle(WimgTheme.text)
                         .multilineTextAlignment(.leading)
@@ -434,7 +434,7 @@ struct SearchView: View {
                         .foregroundStyle(color)
                 }
 
-                Text(label)
+                TText(label)
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(WimgTheme.text)
 

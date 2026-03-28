@@ -466,10 +466,10 @@ struct ImportView: View {
                     .foregroundStyle(color)
             }
             VStack(alignment: .leading, spacing: 3) {
-                Text(name)
+                TText(name)
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
-                Text(detail)
+                TText(detail)
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(WimgTheme.textSecondary)
             }

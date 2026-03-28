@@ -65,7 +65,7 @@ struct DashboardView: View {
                                 loadingDemo = false
                                 reload()
                             } label: {
-                                Text(loadingDemo ? "Lade..." : "Beispieldaten laden")
+                                TText(loadingDemo ? "Lade..." : "Beispieldaten laden")
                                     .font(.system(.body, design: .rounded, weight: .bold))
                                     .foregroundStyle(WimgTheme.text)
                                     .frame(maxWidth: .infinity)
@@ -221,7 +221,7 @@ struct DashboardView: View {
                 Image(systemName: icon)
                     .font(.system(size: 16))
                     .foregroundStyle(iconColor)
-                Text(title)
+                TText(title)
                     .font(.system(.caption, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.textSecondary)
                     .textCase(.uppercase)

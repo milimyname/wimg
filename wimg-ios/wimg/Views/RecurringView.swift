@@ -202,7 +202,7 @@ struct RecurringView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .font(.system(size: 12, weight: .bold))
-                    Text(detecting ? "Erkennung..." : "Erkennen")
+                    TText(detecting ? "Erkennung..." : "Erkennen")
                 }
                 .font(.system(.caption, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.heroText)
@@ -231,7 +231,7 @@ struct RecurringView: View {
         } else {
             ForEach(grouped, id: \.0) { interval, items in
                 VStack(alignment: .leading, spacing: 12) {
-                    Text(intervalLabels[interval] ?? interval)
+                    TText(intervalLabels[interval] ?? interval)
                         .font(.system(.caption, design: .rounded, weight: .bold))
                         .foregroundStyle(WimgTheme.textSecondary)
                         .textCase(.uppercase)
@@ -484,7 +484,7 @@ struct RecurringView: View {
                             .font(.system(.caption2, design: .rounded, weight: .medium))
                             .foregroundStyle(WimgTheme.textSecondary)
                     }
-                    Text("· Zuletzt: \(pattern.lastSeenFormatted)")
+                    Text("· \(String(localized: "Zuletzt")): \(pattern.lastSeenFormatted)")
                         .font(.system(.caption2, design: .rounded, weight: .medium))
                         .foregroundStyle(WimgTheme.textSecondary)
                 }
@@ -536,7 +536,7 @@ struct RecurringView: View {
                     Text("·")
                         .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(WimgTheme.textSecondary.opacity(0.5))
-                    Text(intervalLabels[payment.interval] ?? payment.interval)
+                    TText(intervalLabels[payment.interval] ?? payment.interval)
                         .font(.system(.caption2, design: .rounded, weight: .medium))
                         .foregroundStyle(WimgTheme.textSecondary)
                 }
@@ -562,9 +562,9 @@ struct RecurringView: View {
             to: Calendar.current.startOfDay(for: date)
         ).day ?? 0
 
-        if days == 0 { return "Heute" }
-        if days == 1 { return "Morgen" }
-        if days <= 7 { return "In \(days) Tagen" }
+        if days == 0 { return String(localized: "Heute") }
+        if days == 1 { return String(localized: "Morgen") }
+        if days <= 7 { return String(localized: "In \(days) Tagen") }
 
         let df = DateFormatter()
         df.dateFormat = "d. MMM"

@@ -153,7 +153,7 @@ struct GoalsView: View {
                     .foregroundStyle(WimgTheme.heroText)
                     .tracking(-1)
 
-                Text("von \(formatAmountShort(totalTarget)) gespart")
+                Text("\(String(localized: "von")) \(formatAmountShort(totalTarget)) \(String(localized: "gespart"))")
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(WimgTheme.heroText.opacity(0.7))
 
@@ -206,7 +206,7 @@ struct GoalsView: View {
                             .font(.system(.headline, design: .rounded, weight: .bold))
                             .foregroundStyle(WimgTheme.text)
                         if let deadlineDate = goal.deadlineDate {
-                            Text("Bis \(deadlineDate, format: .dateTime.day().month(.abbreviated).year())")
+                            Text("\(String(localized: "Bis")) \(deadlineDate, format: .dateTime.day().month(.abbreviated).year())")
                                 .font(.system(.caption, design: .rounded, weight: .medium))
                                 .foregroundStyle(WimgTheme.textSecondary)
                         }
@@ -248,7 +248,7 @@ struct GoalsView: View {
             // Progress
             VStack(spacing: 6) {
                 HStack {
-                    Text("\(formatAmountShort(goal.current)) von \(formatAmountShort(goal.target))")
+                    Text("\(formatAmountShort(goal.current)) \(String(localized: "von")) \(formatAmountShort(goal.target))")
                         .font(.system(.caption, design: .rounded, weight: .bold))
                         .foregroundStyle(WimgTheme.textSecondary)
                         .textCase(.uppercase)

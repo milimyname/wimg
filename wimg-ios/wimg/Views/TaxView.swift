@@ -179,7 +179,7 @@ struct TaxView: View {
 
     private func statBox(_ label: String, value: Double) -> some View {
         VStack(spacing: 4) {
-            Text(label)
+            TText(label)
                 .font(.system(size: 9, weight: .bold, design: .rounded))
                 .foregroundStyle(WimgTheme.textSecondary)
                 .textCase(.uppercase)
@@ -344,7 +344,7 @@ struct TaxView: View {
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .foregroundStyle(WimgTheme.text)
                             .lineLimit(1)
-                        Text(item.label)
+                        TText(item.label)
                             .font(.system(size: 9, weight: .bold, design: .rounded))
                             .foregroundStyle(item.color)
                             .textCase(.uppercase)

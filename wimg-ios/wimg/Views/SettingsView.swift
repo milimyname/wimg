@@ -95,7 +95,7 @@ struct SettingsView: View {
                         Button {
                             Task { await handleEnableSync() }
                         } label: {
-                            Text(syncing ? "Aktiviere..." : "Sync aktivieren")
+                            TText(syncing ? "Aktiviere..." : "Sync aktivieren")
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(WimgTheme.bg)
                                 .frame(maxWidth: .infinity)
@@ -156,7 +156,7 @@ struct SettingsView: View {
                                             .tint(WimgTheme.bg)
                                             .scaleEffect(0.8)
                                     }
-                                    Text(syncing ? "Synchronisiere..." : "Jetzt synchronisieren")
+                                    TText(syncing ? "Synchronisiere..." : "Jetzt synchronisieren")
                                 }
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(WimgTheme.bg)
@@ -226,7 +226,7 @@ struct SettingsView: View {
                         set: { ThemeManager.shared.mode = $0 }
                     )) {
                         ForEach(ThemeMode.allCases, id: \.self) { mode in
-                            Text(mode.label).tag(mode)
+                            TText(mode.label).tag(mode)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -258,7 +258,7 @@ struct SettingsView: View {
 
                     Picker("Sprache", selection: $currentLocale) {
                         ForEach(localeOptions, id: \.code) { lang in
-                            Text(lang.label).tag(lang.code)
+                            TText(lang.label).tag(lang.code)
                         }
                     }
                     .pickerStyle(.segmented)

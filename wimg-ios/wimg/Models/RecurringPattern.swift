@@ -18,12 +18,20 @@ struct RecurringPattern: Codable, Identifiable {
 
     var intervalLabel: String {
         switch interval {
-        case "weekly": "Wöchentlich"
-        case "monthly": "Monatlich"
-        case "quarterly": "Vierteljährlich"
-        case "annual": "Jährlich"
+        case "weekly": String(localized: "Wöchentlich")
+        case "monthly": String(localized: "Monatlich")
+        case "quarterly": String(localized: "Vierteljährlich")
+        case "annual": String(localized: "Jährlich")
         default: interval
         }
+    }
+
+    private static var isEnglish: Bool {
+        UserDefaults.standard.string(forKey: "wimg_locale") == "en"
+    }
+
+    private static var displayLocale: Locale {
+        Locale(identifier: isEnglish ? "en_US" : "de_DE")
     }
 
     var nextDueFormatted: String? {
@@ -34,14 +42,14 @@ struct RecurringPattern: Codable, Identifiable {
 
         let days = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: Date()), to: Calendar.current.startOfDay(for: date)).day ?? 0
 
-        if days < 0 { return "\(abs(days))T überfällig" }
-        if days == 0 { return "Heute" }
-        if days == 1 { return "Morgen" }
-        if days <= 7 { return "In \(days) Tagen" }
+        if days < 0 { return String(localized: "\(abs(days))T überfällig") }
+        if days == 0 { return String(localized: "Heute") }
+        if days == 1 { return String(localized: "Morgen") }
+        if days <= 7 { return String(localized: "In \(days) Tagen") }
 
         let display = DateFormatter()
-        display.dateFormat = "dd. MMM"
-        display.locale = Locale(identifier: UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE")
+        display.dateFormat = Self.isEnglish ? "MMM d" : "d. MMM"
+        display.locale = Self.displayLocale
         return display.string(from: date)
     }
 
@@ -50,8 +58,8 @@ struct RecurringPattern: Codable, Identifiable {
         formatter.dateFormat = "yyyy-MM-dd"
         guard let date = formatter.date(from: last_seen) else { return last_seen }
         let display = DateFormatter()
-        display.dateFormat = "dd. MMM"
-        display.locale = Locale(identifier: UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE")
+        display.dateFormat = Self.isEnglish ? "MMM d" : "d. MMM"
+        display.locale = Self.displayLocale
         return display.string(from: date)
     }
 }

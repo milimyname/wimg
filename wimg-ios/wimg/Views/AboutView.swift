@@ -326,10 +326,10 @@ struct AboutView: View {
                 .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                TText(title)
                     .font(.system(.caption, design: .rounded, weight: .semibold))
                     .foregroundStyle(WimgTheme.text)
-                Text(detail)
+                TText(detail)
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(WimgTheme.textSecondary)
             }
@@ -346,10 +346,10 @@ struct AboutView: View {
                 .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                TText(title)
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
                     .foregroundStyle(WimgTheme.text)
-                Text(detail)
+                TText(detail)
                     .font(.caption)
                     .foregroundStyle(WimgTheme.textSecondary)
             }
