@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.2 (2026-03-28)
+
+- fix: CI JDK distribution typo + landing page i18n + Android icon
+
 ## v0.7.1 (2026-03-28)
 
 - Version bump
