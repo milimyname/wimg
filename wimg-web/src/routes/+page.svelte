@@ -124,7 +124,7 @@
           Native SwiftUI-App. Teste die Beta via TestFlight.
         </p>
         <a
-          href="https://testflight.apple.com/join/wimg"
+          href="https://testflight.apple.com/join/v5FhHpt5"
           class="text-sm font-bold text-(--color-text) bg-(--color-accent) px-5 py-2 rounded-full hover:bg-(--color-accent-hover) transition-colors inline-block"
           target="_blank"
           rel="noopener noreferrer"
@@ -138,8 +138,14 @@
         <div
           class="w-14 h-14 rounded-2xl bg-green-50 flex items-center justify-center mb-4"
         >
-          <svg class="w-7 h-7 text-green-600" viewBox="0 0 256 256" fill="currentColor">
-            <path d="M191.83,51.48l13.83-13.82a8,8,0,0,0-11.32-11.32L179.79,40.9a87.81,87.81,0,0,0-103.58,0L61.66,26.34A8,8,0,0,0,50.34,37.66L64.17,51.48A87.72,87.72,0,0,0,40,112v40a88,88,0,0,0,176,0V112A87.72,87.72,0,0,0,191.83,51.48ZM128,40a72.08,72.08,0,0,1,72,72v8H56v-8A72.08,72.08,0,0,1,128,40Zm0,184a72.08,72.08,0,0,1-72-72V136H200v16A72.08,72.08,0,0,1,128,224ZM144,92a12,12,0,1,1,12,12A12,12,0,0,1,144,92ZM88,92a12,12,0,1,1,12,12A12,12,0,0,1,88,92Z"/>
+          <svg
+            class="w-7 h-7 text-green-600"
+            viewBox="0 0 256 256"
+            fill="currentColor"
+          >
+            <path
+              d="M176,148a12,12,0,1,1-12-12A12,12,0,0,1,176,148ZM92,136a12,12,0,1,0,12,12A12,12,0,0,0,92,136Zm148,24v24a16,16,0,0,1-16,16H32a16,16,0,0,1-16-16V161.13A113.38,113.38,0,0,1,51.4,78.72L26.34,53.66A8,8,0,0,1,37.66,42.34L63.82,68.5a111.43,111.43,0,0,1,128.55-.19l26-26a8,8,0,0,1,11.32,11.32L204.82,78.5c.75.71,1.5,1.43,2.24,2.17A111.25,111.25,0,0,1,240,160Zm-16,0a96,96,0,0,0-96-96h-.34C74.91,64.18,32,107.75,32,161.13V184H224Z"
+            />
           </svg>
         </div>
         <h3

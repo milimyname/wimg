@@ -3,6 +3,7 @@ libwimg/zig-out/
 libwimg/zig-cache/
 libwimg/.zig-cache/
 libwimg/build-ios/
+libwimg/build-android/
 libwimg/ZIG_LEARNING_PLAN.md
 
 # SQLite amalgamation (large, downloaded)

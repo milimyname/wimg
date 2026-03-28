@@ -4,6 +4,7 @@
 /.idea
 /build
 /app/build
+/app/.cxx/
 /app/src/main/jniLibs/
 *.apk
 *.aab
