@@ -39,6 +39,10 @@
 - **Phase 8.0** — Android App (Planned): Kotlin + Jetpack Compose shell over libwimg. Same architecture as iOS: Zig core library linked via JNI/NDK (C ABI → JNI bridge). SQLite file on disk, same schema. Google Play Store ($25 one-time). Key steps: (1) NDK build target in `build.zig` (`aarch64-linux-android`, `x86_64-linux-android`), (2) JNI wrapper (`LibWimg.kt` mirroring `LibWimg.swift`), (3) Compose UI shell (Dashboard, Transactions, Analysis, Settings, etc.), (4) Sync via same CF Worker API, (5) i18n via Android string resources generated from `en.ts`, (6) FinTS support (same Zig engine, HTTP callback via OkHttp). No Kotlin business logic — all in libwimg. Material 3 design matching wimg's fintech aesthetic.
 - **Phase 7.0** — Sync: R2 → DO SQLite (Done): Replaced R2 JSON blob with DO SQLite storage (`sync_rows` table). Indexed LWW upserts via `INSERT ... ON CONFLICT DO UPDATE WHERE excluded.updated_at > sync_rows.updated_at`. Eliminates O(n) full-blob read/write on every push, removes R2 binding dependency. SyncRoom no longer needs `syncKey`/`storageHash` persistence or `hashForStorage()`. No client changes — push/pull API unchanged.
 
+## Optional / Considered
+
+- **GitHub → Codeberg Migration** — Move primary repo to Codeberg (Forgejo-based, EU-hosted, privacy-focused). Codeberg web UI migrates repo + issues + labels + releases + wiki from GitHub via access token. Steps: (1) Generate GitHub PAT with repo scope, (2) Codeberg → New Migration → GitHub, (3) Select metadata to import, (4) Update CI (Codeberg CI uses Woodpecker, not GitHub Actions — `.woodpecker.yml`), (5) Update wrangler deploy secrets, (6) Optional: keep GitHub mirror as read-only. Motivation: align hosting with wimg's local-first, privacy-first values. Blocker: CI pipeline rewrite (Woodpecker vs GitHub Actions), CF Pages deploy integration.
+
 ## FinTS Product Registration (Done)
 
 Registration ID: `F7C4049477F6136957A46EC28` (25 chars, goes in HKVVB Produktbezeichnung).
