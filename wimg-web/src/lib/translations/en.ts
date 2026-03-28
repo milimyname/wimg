@@ -657,6 +657,18 @@ export const en: Record<string, string> = {
     "Checking, savings and investment accounts in one place. Filter or view all together.",
   "wimg ausprobieren": "Try wimg",
 
+  // Mobile apps section
+  "iOS (TestFlight)": "iOS (TestFlight)",
+  "Native SwiftUI-App. Teste die Beta via TestFlight.":
+    "Native SwiftUI app. Test the beta via TestFlight.",
+  "TestFlight beitreten": "Join TestFlight",
+  "Android (APK)": "Android (APK)",
+  "Native Kotlin-App. APK herunterladen und installieren.":
+    "Native Kotlin app. Download and install the APK.",
+  "APK herunterladen": "Download APK",
+  "Einstellungen → Apps → Unbekannte Quellen erlauben, dann APK antippen.":
+    "Settings → Apps → Allow unknown sources, then tap APK to install.",
+
   // About page
   Privatsphäre: "Privacy",
   "Keine Werbung. Kein Tracking. Niemals.": "No ads. No tracking. Ever.",
