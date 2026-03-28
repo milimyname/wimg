@@ -51,7 +51,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8, 7.0, 7.1, 7.2 all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8, 6.9, 7.0, 7.1, 7.2 all **done**.
 
 Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules +
 auto-learn), summaries, debts, recurring detection, multi-account, undo/redo,
@@ -91,6 +91,12 @@ Reactive switching via `$state` — no page reload. `format.ts` locale-aware.
 Translations in `src/lib/translations/en.ts` (single source of truth).
 iOS: `scripts/i18n-xcstrings.ts` generates `.xcstrings` from `en.ts`.
 `Category.swift` uses `String(localized:)` for 16 category names.
+**iOS i18n rule:** `Text("literal")` auto-localizes via `.xcstrings`, but
+`Text(variable)` does NOT. Always use `TText(variable)` (custom wrapper
+using `LocalizedStringKey`) for any string passed as a variable, ternary,
+or computed property. For programmatic strings use `String(localized:)`.
+For dates use `DateFormatter` with locale from `wimg_locale` UserDefaults.
+Never hardcode German month/day names — use `DateFormatter.standaloneMonthSymbols`.
 
 Conventional commits enforced by lefthook `commit-msg` hook.
 
@@ -150,6 +156,15 @@ steps (dashboard/transactions nav buttons), coachmarks system (3 first-visit
 tooltips: donut chart, transaction list, category breakdown). iOS
 SpendingHeatmap tap-to-select with inline amount label. CoachmarkManager
 (iOS, UserDefaults) + coachmarks.svelte.ts (web, localStorage).
+
+FinTS Quick Refresh (Phase 6.9 v1, done): opt-in PIN storage in Keychain
+(`fints_pin`, `kSecAttrAccessibleAfterFirstUnlock`), "PIN merken" toggle on
+credentials screen, TAN medium name persisted (`fints_tan_medium`).
+Quick refresh card ("Schnellabfrage") with one-tap "Aktualisieren" when
+saved credentials exist — auto-connects, auto-restores TAN medium, skips
+to TAN challenge if needed, silent fetch (last 90 days) for no-TAN paths.
+On auth failure clears stored PIN and falls back to manual form.
+v2 (deferred): `BGAppRefreshTask` for background fetch.
 
 Planned: Phase 7.3 (Vertragsmanagement) — contract lifecycle tracking on
 recurring payments. `contracts` table (pattern, start date, duration,
