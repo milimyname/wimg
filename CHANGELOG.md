@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.5 (2026-03-28)
+
+- fix: use debug APK in CI — release APK needs signing config
+
 ## v0.7.4 (2026-03-28)
 
 - fix: flatten Android CI artifacts for reliable release attachment
