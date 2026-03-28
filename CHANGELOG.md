@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.6.32 (2026-03-28)
+
+- docs: add Codeberg migration as optional/considered in phases
+- docs: add iOS i18n rule, update Phase 6.9 status, add TText decision
+- fix: smooth PWA update — wait for SW install instead of hard reload
+- fix: iOS i18n — use TText(variable) for localization across all views
+- feat: add FinTS quick refresh with opt-in PIN storage (Phase 6.9)
+
 ## v0.6.31 (2026-03-28)
 
 - fix: allow gh CLI tools in feedback triage Claude action
