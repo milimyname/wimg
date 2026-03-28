@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.1 (2026-03-28)
+
+- Version bump
+
 ## v0.7.0 (2026-03-28)
 
 - feat: add Android app MVP (Phase 8.0a) — Kotlin + Compose + JNI over libwimg
