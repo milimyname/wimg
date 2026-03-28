@@ -65,4 +65,21 @@ enum KeychainService {
     static let syncKey = "sync_key"
     static let fintsBLZ = "fints_blz"
     static let fintsKennung = "fints_kennung"
+    static let fintsPIN = "fints_pin"
+    static let fintsTanMedium = "fints_tan_medium"
+
+    /// Whether the user has opted in to storing their FinTS PIN.
+    static var hasSavedPIN: Bool {
+        return Self.get(fintsPIN) != nil
+    }
+
+    /// Whether full quick-refresh credentials are available (BLZ + kennung + PIN).
+    static var hasFintsCredentials: Bool {
+        return Self.get(fintsBLZ) != nil && Self.get(fintsKennung) != nil && Self.get(fintsPIN) != nil
+    }
+
+    /// Clear all FinTS credentials (PIN, TAN medium — keeps BLZ + kennung for prefill).
+    static func clearFintsPIN() {
+        delete(fintsPIN)
+    }
 }

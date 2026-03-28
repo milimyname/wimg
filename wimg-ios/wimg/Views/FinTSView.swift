@@ -25,7 +25,9 @@ struct FinTSView: View {
     // Credentials
     @State private var kennung = ""
     @State private var pin = ""
+    @State private var rememberPIN = false
     @State private var connecting = false
+    @State private var refreshing = false
 
     // TAN
     @State private var challengeText = ""
@@ -122,6 +124,10 @@ struct FinTSView: View {
                     {
                         selectedBank = bank
                         kennung = KeychainService.get(KeychainService.fintsKennung) ?? ""
+                        if let savedPIN = KeychainService.get(KeychainService.fintsPIN) {
+                            pin = savedPIN
+                            rememberPIN = true
+                        }
                         stage = .credentials
                     }
                 }
@@ -240,6 +246,11 @@ struct FinTSView: View {
 
     private var credentialsSection: some View {
         VStack(spacing: 16) {
+            // Quick refresh card (when saved PIN exists)
+            if KeychainService.hasSavedPIN, let bank = selectedBank {
+                quickRefreshCard(bank: bank)
+            }
+
             VStack(spacing: 16) {
                 ZStack {
                     Circle()
@@ -304,6 +315,19 @@ struct FinTSView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
             }
+
+            // Remember PIN toggle
+            Toggle(isOn: $rememberPIN) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("PIN merken")
+                        .font(.system(.subheadline, design: .rounded, weight: .medium))
+                        .foregroundStyle(WimgTheme.text)
+                    Text("Verschlüsselt im Schlüsselbund gespeichert")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                }
+            }
+            .tint(.teal)
 
             // Lockout warning
             HStack(alignment: .top, spacing: 10) {
@@ -416,7 +440,7 @@ struct FinTSView: View {
                                     Text(medium.name)
                                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                                         .foregroundStyle(WimgTheme.text)
-                                    Text(medium.status == 1 ? "Aktiv" : "Inaktiv")
+                                    TText(medium.status == 1 ? "Aktiv" : "Inaktiv")
                                         .font(.system(.caption, design: .rounded))
                                         .foregroundStyle(medium.status == 1 ? .green : WimgTheme.textSecondary)
                                 }
@@ -483,7 +507,7 @@ struct FinTSView: View {
                         .foregroundStyle(.orange)
                 }
 
-                Text(isDecoupledChallenge ? "Freigabe in Banking-App" : "TAN-Eingabe")
+                TText(isDecoupledChallenge ? "Freigabe in Banking-App" : "TAN-Eingabe")
                     .font(.system(.title3, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
             }
@@ -587,7 +611,7 @@ struct FinTSView: View {
                         ProgressView()
                             .tint(WimgTheme.bg)
                     } else {
-                        Text(isDecoupledChallenge ? "Status prüfen" : "TAN senden")
+                        TText(isDecoupledChallenge ? "Status prüfen" : "TAN senden")
                     }
                 }
                 .font(.system(.headline, design: .rounded, weight: .bold))
@@ -780,6 +804,69 @@ struct FinTSView: View {
         }
     }
 
+    // MARK: - Quick Refresh
+
+    private func quickRefreshCard(bank: BankInfo) -> some View {
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color.teal.opacity(0.2))
+                    .frame(width: 64, height: 64)
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.teal)
+            }
+
+            VStack(spacing: 6) {
+                Text("Schnellabfrage")
+                    .font(.system(.title3, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text)
+                Text(bank.name)
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundStyle(WimgTheme.textSecondary)
+            }
+
+            Button {
+                Task { await handleQuickRefresh() }
+            } label: {
+                Group {
+                    if refreshing {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .tint(WimgTheme.bg)
+                                .scaleEffect(0.8)
+                            Text("Verbinde...")
+                        }
+                    } else {
+                        Label("Aktualisieren", systemImage: "arrow.down.doc")
+                    }
+                }
+                .font(.system(.headline, design: .rounded, weight: .bold))
+                .frame(maxWidth: .infinity)
+                .padding(16)
+                .background(WimgTheme.text)
+                .foregroundStyle(WimgTheme.bg)
+                .clipShape(Capsule())
+            }
+            .disabled(refreshing || connecting)
+
+            Button {
+                // Clear saved PIN and show manual form
+                KeychainService.clearFintsPIN()
+                pin = ""
+                rememberPIN = false
+            } label: {
+                Text("Manuell anmelden")
+                    .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    .foregroundStyle(WimgTheme.textSecondary)
+            }
+            .disabled(refreshing)
+        }
+        .padding(24)
+        .wimgCard(radius: WimgTheme.radiusLarge)
+        .padding(.horizontal)
+    }
+
     // MARK: - Error Card
 
     private func errorCard(_ error: String) -> some View {
@@ -798,6 +885,142 @@ struct FinTSView: View {
     }
 
     // MARK: - Actions
+
+    private func handleQuickRefresh() async {
+        guard let bank = selectedBank else { return }
+        guard let savedPIN = KeychainService.get(KeychainService.fintsPIN) else { return }
+        refreshing = true
+        errorMessage = nil
+
+        do {
+            let result: FintsStatusResult = try await withCheckedThrowingContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        let r = try LibWimg.fintsConnect(blz: bank.blz, user: kennung, pin: savedPIN)
+                        continuation.resume(returning: r)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+            await MainActor.run {
+                if result.isOk {
+                    // Restore saved TAN medium if bank requires it
+                    if result.tan_medium_required == true {
+                        if let savedMedium = KeychainService.get(KeychainService.fintsTanMedium) {
+                            Task {
+                                let _ = try? await withCheckedThrowingContinuation { (continuation: CheckedContinuation<FintsStatusResult, Error>) in
+                                    DispatchQueue.global(qos: .userInitiated).async {
+                                        do {
+                                            let r = try LibWimg.fintsSetTanMedium(name: savedMedium)
+                                            continuation.resume(returning: r)
+                                        } catch {
+                                            continuation.resume(throwing: error)
+                                        }
+                                    }
+                                }
+                                await handleQuickFetch()
+                            }
+                        } else {
+                            // No saved TAN medium — fall through to manual selection
+                            refreshing = false
+                            stage = .tanMediumSelect
+                            Task { await handleFetchTanMedia() }
+                        }
+                    } else {
+                        Task { await handleQuickFetch() }
+                    }
+                } else if result.needsTan {
+                    // TAN required during connect — show TAN screen
+                    refreshing = false
+                    isDecoupledChallenge = result.decoupled ?? false
+                    challengeText = result.challenge ?? "TAN erforderlich"
+                    if let b64 = result.phototan, let data = Data(base64Encoded: b64) {
+                        photoTanData = data
+                        showInvertedPhotoTan = false
+                    } else {
+                        photoTanData = nil
+                    }
+                    tanInput = ""
+                    stage = .tanChallenge
+                    if isDecoupledChallenge {
+                        Task { await handleSendTan() }
+                    }
+                } else {
+                    // Auth failed — clear stored PIN, fall back to manual
+                    refreshing = false
+                    KeychainService.clearFintsPIN()
+                    pin = ""
+                    rememberPIN = false
+                    errorMessage = result.message ?? "Anmeldung fehlgeschlagen. Bitte erneut manuell anmelden."
+                }
+            }
+        } catch {
+            await MainActor.run {
+                refreshing = false
+                KeychainService.clearFintsPIN()
+                pin = ""
+                rememberPIN = false
+                errorMessage = friendlyError(error)
+            }
+        }
+    }
+
+    private func handleQuickFetch() async {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let fromStr = formatter.string(from: Calendar.current.date(byAdding: .day, value: -90, to: Date())!)
+        let toStr = formatter.string(from: Date())
+
+        do {
+            let result: FintsFetchResult = try await withCheckedThrowingContinuation { continuation in
+                let thread = Thread {
+                    do {
+                        let r = try LibWimg.fintsFetch(from: fromStr, to: toStr)
+                        continuation.resume(returning: r)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+                thread.stackSize = 2 * 1024 * 1024
+                thread.qualityOfService = .userInitiated
+                thread.start()
+            }
+            await MainActor.run {
+                refreshing = false
+                if result.needsTan {
+                    // TAN required for fetch — show TAN screen
+                    isDecoupledChallenge = result.decoupled ?? false
+                    challengeText = result.challenge ?? "TAN erforderlich"
+                    if let b64 = result.phototan, let data = Data(base64Encoded: b64) {
+                        photoTanData = data
+                        showInvertedPhotoTan = false
+                    } else {
+                        photoTanData = nil
+                    }
+                    tanInput = ""
+                    stage = .tanChallenge
+                    if isDecoupledChallenge {
+                        Task { await handleSendTan() }
+                    }
+                } else if result.isError {
+                    errorMessage = result.message ?? "Abruf fehlgeschlagen"
+                } else {
+                    importedCount = result.imported ?? 0
+                    duplicateCount = result.duplicates ?? 0
+                    stage = .result
+                    if importedCount > 0 {
+                        NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+                    }
+                }
+            }
+        } catch {
+            await MainActor.run {
+                refreshing = false
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
 
     private func handleConnect() async {
         guard let bank = selectedBank else { return }
@@ -821,9 +1044,14 @@ struct FinTSView: View {
             await MainActor.run {
                 connecting = false
                 if result.isOk {
-                    // Save credentials for next time (not PIN)
+                    // Save credentials for next time
                     KeychainService.set(KeychainService.fintsBLZ, value: bank.blz)
                     KeychainService.set(KeychainService.fintsKennung, value: kennung)
+                    if rememberPIN {
+                        KeychainService.set(KeychainService.fintsPIN, value: pin)
+                    } else {
+                        KeychainService.clearFintsPIN()
+                    }
                     if result.tan_medium_required == true {
                         // Bank requires TAN medium selection — fetch media list
                         stage = .tanMediumSelect
@@ -979,6 +1207,7 @@ struct FinTSView: View {
             }
             await MainActor.run {
                 if result.isOk {
+                    KeychainService.set(KeychainService.fintsTanMedium, value: name)
                     stage = .dateRange
                 } else {
                     errorMessage = result.message ?? "TAN-Medium konnte nicht gesetzt werden"
@@ -1054,6 +1283,7 @@ struct FinTSView: View {
         selectedBank = nil
         kennung = ""
         pin = ""
+        rememberPIN = false
         tanInput = ""
         challengeText = ""
         isDecoupledChallenge = false
@@ -1061,6 +1291,7 @@ struct FinTSView: View {
         errorMessage = nil
         importedCount = 0
         duplicateCount = 0
+        refreshing = false
         tanMedia = []
         loadingTanMedia = false
         dateFrom = Calendar.current.date(byAdding: .day, value: -90, to: Date())!
