@@ -78,17 +78,7 @@ class UpdateStore {
 
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       setLastVersion(APP_VERSION);
-      // Smooth fade-out before reload to avoid white flash
-      const overlay = document.createElement("div");
-      overlay.style.cssText =
-        "position:fixed;inset:0;z-index:9999;background:var(--color-bg,#faf9f6);opacity:0;transition:opacity 300ms ease";
-      document.body.appendChild(overlay);
-      requestAnimationFrame(() => {
-        overlay.style.opacity = "1";
-        overlay.addEventListener("transitionend", () => window.location.reload());
-        // Fallback if transition doesn't fire
-        setTimeout(() => window.location.reload(), 400);
-      });
+      this.#fadeAndReload();
     });
   }
 
@@ -98,13 +88,42 @@ class UpdateStore {
   }
 
   activateUpdate() {
-    if (!this.#waitingSW) {
-      // SvelteKit detected update but SW hasn't installed yet — hard reload
-      window.location.reload();
+    if (this.#waitingSW) {
+      // eslint-disable-next-line unicorn/require-post-message-target-origin -- Worker.postMessage has no targetOrigin
+      this.#waitingSW.postMessage({ type: "SKIP_WAITING" });
       return;
     }
-    // eslint-disable-next-line unicorn/require-post-message-target-origin -- Worker.postMessage has no targetOrigin
-    this.#waitingSW.postMessage({ type: "SKIP_WAITING" });
+    // SvelteKit detected update but SW hasn't installed yet — wait for it
+    navigator.serviceWorker.ready.then((reg) => {
+      if (reg.waiting) {
+        reg.waiting.postMessage({ type: "SKIP_WAITING" });
+        return;
+      }
+      // SW still installing — listen for it to finish
+      const installing = reg.installing;
+      if (installing) {
+        installing.addEventListener("statechange", () => {
+          if (installing.state === "installed") {
+            installing.postMessage({ type: "SKIP_WAITING" });
+          }
+        });
+        return;
+      }
+      // Fallback: fade out then reload
+      this.#fadeAndReload();
+    });
+  }
+
+  #fadeAndReload() {
+    const overlay = document.createElement("div");
+    overlay.style.cssText =
+      "position:fixed;inset:0;z-index:9999;background:var(--color-bg,#faf9f6);opacity:0;transition:opacity 300ms ease";
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => {
+      overlay.style.opacity = "1";
+      overlay.addEventListener("transitionend", () => window.location.reload());
+      setTimeout(() => window.location.reload(), 400);
+    });
   }
 
   dismiss() {
