@@ -61,13 +61,14 @@ changelog entry. `feat: add monthly spending chart` reads better than
 Triggered on tag push (`v*`):
 
 ```
-check        → zig fmt, zig test, oxfmt, oxlint, svelte-check, tsc
+check          → zig fmt, zig test, oxfmt, oxlint, svelte-check, tsc
   ↓
-build-web    → WASM build, SvelteKit build, deploy to CF Pages
-build-ios    → XCFramework build
-deploy-sync  → CF Worker deploy (after web, uses compact WASM)
+build-web      → WASM build, SvelteKit build, deploy to CF Pages
+build-ios      → XCFramework build
+build-android  → libwimg.so (arm64) via NDK
+deploy-sync    → CF Worker deploy (after web, uses compact WASM)
   ↓
-release      → GitHub Release with WASM + XCFramework artifacts
+release        → GitHub Release with WASM + XCFramework + .so artifacts
 ```
 
 ## Breaking Releases

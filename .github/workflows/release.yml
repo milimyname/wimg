@@ -21,6 +21,7 @@ jobs:
       libwimg: ${{ steps.changes.outputs.libwimg }}
       web: ${{ steps.changes.outputs.web }}
       ios: ${{ steps.changes.outputs.ios }}
+      android: ${{ steps.changes.outputs.android }}
       sync: ${{ steps.changes.outputs.sync }}
     steps:
       - uses: actions/checkout@v6
@@ -36,6 +37,7 @@ jobs:
             echo "libwimg=true" >> $GITHUB_OUTPUT
             echo "web=true" >> $GITHUB_OUTPUT
             echo "ios=true" >> $GITHUB_OUTPUT
+            echo "android=true" >> $GITHUB_OUTPUT
             echo "sync=true" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -49,6 +51,7 @@ jobs:
           echo "libwimg=$(echo "$CHANGED" | grep -q '^libwimg/' && echo true || echo false)" >> $GITHUB_OUTPUT
           echo "web=$(echo "$CHANGED" | grep -q '^wimg-web/' && echo true || echo false)" >> $GITHUB_OUTPUT
           echo "ios=$(echo "$CHANGED" | grep -q '^wimg-ios/' && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "android=$(echo "$CHANGED" | grep -q '^wimg-android/' && echo true || echo false)" >> $GITHUB_OUTPUT
           echo "sync=$(echo "$CHANGED" | grep -q '^wimg-sync/' && echo true || echo false)" >> $GITHUB_OUTPUT
 
       - uses: mlugg/setup-zig@v2
@@ -238,6 +241,39 @@ jobs:
       #       --apiKey "$ASC_KEY_ID" \
       #       --apiIssuer "$ASC_ISSUER_ID"
 
+  build-android:
+    needs: check
+    if: needs.check.outputs.android == 'true' || needs.check.outputs.libwimg == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - name: Setup Android NDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ndk;27.2.12479018
+
+      - name: Download SQLite amalgamation
+        working-directory: libwimg/vendor
+        run: |
+          curl -fsSL https://www.sqlite.org/2026/sqlite-amalgamation-3520000.zip -o sqlite.zip
+          unzip -o sqlite.zip
+          cp sqlite-amalgamation-3520000/sqlite3.c sqlite3.c
+          cp sqlite-amalgamation-3520000/sqlite3.h sqlite3.h
+
+      - name: Build Android .so
+        run: ./scripts/build-android.sh
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: libwimg-android
+          path: libwimg/build-android/arm64-v8a/libwimg.so
+
   deploy-sync:
     needs: [check, build-and-deploy-web]
     if: |
@@ -269,7 +305,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   release:
-    needs: [check, build-and-deploy-web, build-ios]
+    needs: [check, build-and-deploy-web, build-ios, build-android]
     if: always() && !failure() && !cancelled()
     runs-on: ubuntu-latest
     steps:
@@ -290,6 +326,13 @@ jobs:
         with:
           name: libwimg-ios
           path: artifacts/libwimg-ios
+
+      - name: Download Android artifacts
+        if: needs.build-android.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: libwimg-android
+          path: artifacts/libwimg-android
 
       - name: Create GitHub Release
         env:
@@ -327,6 +370,7 @@ jobs:
           ASSETS=()
           [ -f artifacts/libwimg-wasm/wimg-web/static/libwimg.wasm ] && ASSETS+=(artifacts/libwimg-wasm/wimg-web/static/libwimg.wasm)
           [ -f artifacts/libwimg-ios/libwimg.xcframework.zip ] && ASSETS+=(artifacts/libwimg-ios/libwimg.xcframework.zip)
+          [ -f artifacts/libwimg-android/libwimg.so ] && ASSETS+=(artifacts/libwimg-android/libwimg.so)
 
           gh release create "$TAG" \
             --title "$TAG" \

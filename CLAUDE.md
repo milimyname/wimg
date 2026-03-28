@@ -24,10 +24,11 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 | Web UI          | Svelte 5 + TailwindCSS + LayerChart                |
 | Web persistence | OPFS (offline SQLite in browser)                   |
 | iOS UI          | SwiftUI + C ABI (libwimg.a)                        |
+| Android UI      | Kotlin + Jetpack Compose + JNI (libwimg.so)        |
 | Sync            | CF Durable Objects + WebSocket + LWW               |
 | Categorization  | Keyword rules (~80%) + learned rules + MCP (long tail) |
 | Search          | SQL LIKE (planned: FTS5 if needed at scale)        |
-| FinTS           | Pure Zig (native-only, iOS)                        |
+| FinTS           | Pure Zig (native-only, iOS + Android)              |
 | MCP server      | CF Worker DO + libwimg-compact.wasm                |
 | i18n            | Custom Vite plugin (compile-time) + .xcstrings (iOS) |
 
@@ -51,7 +52,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8, 6.9, 7.0, 7.1, 7.2 all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8, 6.9, 7.0, 7.1, 7.2, 8.0a all **done**.
 
 Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules +
 auto-learn), summaries, debts, recurring detection, multi-account, undo/redo,
@@ -165,6 +166,16 @@ saved credentials exist — auto-connects, auto-restores TAN medium, skips
 to TAN challenge if needed, silent fetch (last 90 days) for no-TAN paths.
 On auth failure clears stored PIN and falls back to manual form.
 v2 (deferred): `BGAppRefreshTask` for background fetch.
+
+Phase 8.0a (Android MVP, done): Kotlin + Jetpack Compose shell over
+libwimg.so. JNI C shim (`wimg_jni.c`, ~250 lines) compiled by NDK CMake,
+bridges length-prefixed C ABI to Java strings. `build.zig` `-Dshared=true`
+for .so output, `scripts/build-android.sh` handles NDK sysroot via
+`--libc` flag. MVP screens: Dashboard (hero + categories), Transactions
+(list + category editor bottom sheet), Import (file picker + result),
+More (grid). Material 3 theme matching iOS design tokens (accent `#FFE97D`,
+light/dark adaptive). 3-tab bottom nav. kotlinx-serialization for JSON.
+Sideload APK distribution. Landing page updated with Android download card.
 
 Planned: Phase 7.3 (Vertragsmanagement) — contract lifecycle tracking on
 recurring payments. `contracts` table (pattern, start date, duration,

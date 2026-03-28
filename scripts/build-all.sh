@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Full rebuild: WASM + iOS XCFramework + regenerate Xcode project
+# Full rebuild: WASM + iOS XCFramework + Android .so + regenerate Xcode project
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "==============================="
@@ -17,7 +17,17 @@ echo "==============================="
 
 echo ""
 echo "==============================="
-echo "  Step 3: Regenerate Xcode project"
+echo "  Step 3: Build Android .so"
+echo "==============================="
+if command -v zig &>/dev/null && [ -d "${ANDROID_NDK_HOME:-${ANDROID_HOME:-$HOME/Library/Android/sdk}/ndk}" ]; then
+    "$ROOT/scripts/build-android.sh"
+else
+    echo "  Skipped (Android NDK not found)"
+fi
+
+echo ""
+echo "==============================="
+echo "  Step 4: Regenerate Xcode project"
 echo "==============================="
 "$ROOT/scripts/gen-xcodeproj.sh"
 

@@ -121,13 +121,16 @@ pub fn build(b: *std.Build) void {
         install_to_web.step.dependOn(&wasm_lib.step);
         b.getInstallStep().dependOn(&install_to_web.step);
     } else {
-        // --- Native library (for testing / iOS / macOS) ---
+        // --- Native library (for testing / iOS / macOS / Android) ---
         const options = b.addOptions();
         options.addOption(bool, "compact", false);
 
+        // Android needs shared library (.so) for System.loadLibrary()
+        const shared = b.option(bool, "shared", "Build shared library (.so) instead of static (.a)") orelse false;
+
         const lib = b.addLibrary(.{
             .name = "wimg",
-            .linkage = .static,
+            .linkage = if (shared) .dynamic else .static,
             .root_module = b.createModule(.{
                 .root_source_file = b.path("src/root.zig"),
                 .target = target,
@@ -141,7 +144,8 @@ pub fn build(b: *std.Build) void {
             .flags = native_sqlite_flags,
         });
 
-        // Apple targets: use findNative to detect SDK via xcrun (Ghostty pattern)
+        // Apple targets: use findNative to detect SDK via xcrun (Ghostty pattern).
+        // Android: use --libc flag with NDK sysroot (see scripts/build-android.sh).
         if (target.result.os.tag.isDarwin()) {
             addAppleSdkPaths(b, lib) catch @panic("Apple SDK not found — is Xcode installed?");
         } else {
@@ -150,7 +154,7 @@ pub fn build(b: *std.Build) void {
 
         b.installArtifact(lib);
 
-        // Install C header for Swift bridging
+        // Install C header for Swift/JNI bridging
         b.installFile("include/libwimg.h", "include/libwimg.h");
     }
 
