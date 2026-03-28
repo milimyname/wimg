@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.0 (2026-03-28)
+
+- feat: add Android app MVP (Phase 8.0a) — Kotlin + Compose + JNI over libwimg
+
 ## v0.6.32 (2026-03-28)
 
 - docs: add Codeberg migration as optional/considered in phases
