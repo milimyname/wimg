@@ -87,7 +87,7 @@ fun WimgNavigation() {
             startDestination = "dashboard",
             modifier = Modifier.padding(padding),
         ) {
-            composable("search") { SearchScreen(selectedAccount = selectedAccount) }
+            composable("search") { SearchScreen(selectedAccount = selectedAccount, navController = navController) }
             composable("dashboard") { DashboardScreen(selectedAccount = selectedAccount) }
             composable("transactions") { TransactionsScreen(selectedAccount = selectedAccount) }
             composable("more") { MoreScreen(navController = navController) }
