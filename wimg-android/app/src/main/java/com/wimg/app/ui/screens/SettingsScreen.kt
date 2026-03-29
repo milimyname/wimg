@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -157,6 +158,48 @@ fun SettingsScreen() {
                             ) {
                                 Text(if (syncing) "Synchronisiere..." else "Jetzt synchronisieren", fontWeight = FontWeight.Bold)
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Features section
+        item {
+            Spacer(Modifier.height(8.dp))
+            Text("Features", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        item {
+            val featureToggles = listOf(
+                Triple("debts", "Schulden", "Schulden-Tracking mit Fortschritt"),
+                Triple("recurring", "Wiederkehrend", "Abo- und Mustererkennung"),
+                Triple("review", "Rückblick", "Monatlicher Finanzrückblick"),
+                Triple("goals", "Sparziele", "Sparziele setzen und verfolgen"),
+                Triple("tax", "Steuern", "Anlage N Assistent"),
+            )
+            val featurePrefs = context.getSharedPreferences("wimg_features", 0)
+
+            Card(shape = WimgShapes.small, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    featureToggles.forEach { (key, label, desc) ->
+                        var enabled by remember { mutableStateOf(featurePrefs.getBoolean(key, true)) }
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(
+                                checked = enabled,
+                                onCheckedChange = {
+                                    enabled = it
+                                    featurePrefs.edit().putBoolean(key, it).apply()
+                                },
+                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFFFF9500)),
+                            )
                         }
                     }
                 }
