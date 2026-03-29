@@ -51,6 +51,21 @@ private data class FintsResult(
 
 private val json = Json { ignoreUnknownKeys = true }
 
+/** Run a block on a thread with 2MB stack (FinTS needs large buffers for Base64/MT940). */
+private suspend fun <T> withFintsThread(block: () -> T): T {
+    return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+        val thread = Thread(null, {
+            try {
+                val result = block()
+                cont.resumeWith(Result.success(result))
+            } catch (e: Throwable) {
+                cont.resumeWith(Result.failure(e))
+            }
+        }, "fints-worker", 2 * 1024 * 1024) // 2MB stack
+        thread.start()
+    }
+}
+
 @Composable
 fun FinTSScreen() {
     var stage by remember { mutableStateOf("banks") } // banks, credentials, tan, dateRange, fetching, result
@@ -75,7 +90,7 @@ fun FinTSScreen() {
         // Register HTTP callback
         WimgJni.nativeSetHttpCallback(FintsHttpCallback())
 
-        withContext(Dispatchers.IO) {
+        withFintsThread {
             val result = WimgJni.nativeFintsGetBanks()
             if (result != null) {
                 banks = json.decodeFromString(result)
@@ -138,10 +153,10 @@ fun FinTSScreen() {
                                 onClick = {
                                     connecting = true; errorMessage = null
                                     scope.launch {
-                                        val result = withContext(Dispatchers.IO) {
-                                            val bank = selectedBank ?: return@withContext null
+                                        val result = withFintsThread {
+                                            val bank = selectedBank ?: return@withFintsThread null
                                             val input = """{"blz":"${bank.blz}","user":"$kennung","pin":"$pin","product":"F7C4049477F6136957A46EC28"}"""
-                                            val r = WimgJni.nativeFintsConnect(input) ?: return@withContext null
+                                            val r = WimgJni.nativeFintsConnect(input) ?: return@withFintsThread null
                                             json.decodeFromString<FintsResult>(r)
                                         }
                                         connecting = false
@@ -174,15 +189,17 @@ fun FinTSScreen() {
                                 Spacer(Modifier.height(8.dp))
                                 Text(challengeText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            photoTanB64?.let { b64 ->
-                                try {
-                                    val bytes = Base64.decode(b64, Base64.DEFAULT)
-                                    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                                    if (bitmap != null) {
-                                        Spacer(Modifier.height(12.dp))
-                                        Image(bitmap.asImageBitmap(), "photoTAN", modifier = Modifier.size(240.dp).clip(RoundedCornerShape(16.dp)))
-                                    }
-                                } catch (_: Exception) {}
+                            val photoTanBitmap = remember(photoTanB64) {
+                                photoTanB64?.let { b64 ->
+                                    try {
+                                        val bytes = Base64.decode(b64, Base64.DEFAULT)
+                                        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                    } catch (_: Exception) { null }
+                                }
+                            }
+                            if (photoTanBitmap != null) {
+                                Spacer(Modifier.height(12.dp))
+                                Image(photoTanBitmap.asImageBitmap(), "photoTAN", modifier = Modifier.size(240.dp).clip(RoundedCornerShape(16.dp)))
                             }
                             if (!isDecoupled) {
                                 Spacer(Modifier.height(12.dp))
@@ -193,9 +210,9 @@ fun FinTSScreen() {
                                 onClick = {
                                     connecting = true
                                     scope.launch {
-                                        val result = withContext(Dispatchers.IO) {
+                                        val result = withFintsThread {
                                             val tan = if (isDecoupled) "" else tanInput
-                                            val r = WimgJni.nativeFintsSendTan("""{"tan":"$tan"}""") ?: return@withContext null
+                                            val r = WimgJni.nativeFintsSendTan("""{"tan":"$tan"}""") ?: return@withFintsThread null
                                             json.decodeFromString<FintsResult>(r)
                                         }
                                         connecting = false
@@ -236,8 +253,8 @@ fun FinTSScreen() {
                                         cal.add(java.util.Calendar.DAY_OF_YEAR, -90)
                                         val from = String.format("%04d-%02d-%02d", cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH) + 1, cal.get(java.util.Calendar.DAY_OF_MONTH))
 
-                                        val result = withContext(Dispatchers.IO) {
-                                            val r = WimgJni.nativeFintsFetch("""{"from":"$from","to":"$to"}""") ?: return@withContext null
+                                        val result = withFintsThread {
+                                            val r = WimgJni.nativeFintsFetch("""{"from":"$from","to":"$to"}""") ?: return@withFintsThread null
                                             json.decodeFromString<FintsResult>(r)
                                         }
                                         if (result == null) { errorMessage = "Abruf fehlgeschlagen"; stage = "dateRange"; return@launch }
