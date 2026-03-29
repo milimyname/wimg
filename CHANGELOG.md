@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.7.6 (2026-03-29)
+
+- fix: iOS performance — move LibWimg calls off main thread + fix tab navigation
+- fix: instant feature flag toggles via observable FeatureFlagsState
+- fix: reactive locale switching via observable LocaleState
+- fix: theme switching via observable ThemeState instead of AppCompatDelegate
+- fix: remove duplicate XML string resources — TText handles i18n at runtime
+- docs: update feature parity + CLAUDE.md — Android at full iOS parity
+- feat: add FinTS Quick Refresh for Android (Phase 6.9 port)
+- feat: wire TText into Settings, Tax, Feedback, Transactions, Analysis, Recurring
+- feat: add Android i18n — TText component + translation map + XML generator
+- feat: add renewals calendar tab to Android RecurringScreen
+- feat: wire undo snackbar, coachmarks, account switcher into navigation
+- docs: update feature parity — Android now at near-full parity
+- fix: limit category editor sheet to 85% height + update CLAUDE.md
+- fix: center hero card content across all screens
+- feat: add FAQ to About screen + feature toggles to Settings
+- feat: Search quick actions + Transactions advanced filter sheet
+- perf: iOS reload() via Task.detached + refilter() optimization
+- refactor: design polish across all Android screens
+- refactor: design polish — iOS-matching theme + Dashboard hero card
+- feat: add spending heatmap, coachmarks, feedback for Android
+- feat: show changelog in update banner before downloading
+- feat: add Feedback screen + fix back callback warning + dialog button color
+- fix: data reset with confirmation dialog + WAL/SHM cleanup
+- fix: use 2MB stack thread for FinTS calls on Android
+- feat: add Sync + FinTS for Android — full JNI bridge + OkHttp
+- fix: add missing account C extern declarations + make CategoryEditorSheet internal
+- feat: add Search, Onboarding, Account CRUD, Undo toast for Android
+- feat: add update checker for Android sideloading
+- feat: add Android feature parity — Analysis, Debts, Goals, Recurring, Review, Tax, Settings, About
+
 ## v0.7.5 (2026-03-28)
 
 - fix: use debug APK in CI — release APK needs signing config
