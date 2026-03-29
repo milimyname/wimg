@@ -3,36 +3,27 @@
 All platforms are thin shells over the same libwimg C ABI.
 FinTS is native-only (iOS + Android, browsers can't do FinTS due to CORS).
 
-## At Parity (iOS + Web)
+## At Parity (iOS + Web + Android)
 
-Dashboard (+ Sparquote savings rate), Transactions, Analysis (+ Net Worth
-chart + Spending Heatmap), Debts, Savings Goals, Tax Helper
-(Pendlerpauschale, Homeoffice, auto-tagged transactions), Monthly Review,
-CSV Import, Auto-categorization, Claude AI, Account Switcher, Account
-Management, Sync (enable/link/manual/copy key), Real-time WebSocket, E2E
-Encryption, Settings (+ dark mode picker), More page, About page, Data
-Export, Monthly Snapshots, Undo toast, Onboarding (4 cards), Empty state
-CTAs (all screens), Post-import next steps, Coachmarks (3 first-visit
-tooltips), Spending Heatmap tap-to-select (iOS), Renewals Calendar
-(12-month forecast, segmented tab on recurring page).
+Dashboard (+ Sparquote savings rate), Transactions (+ advanced filter sheet),
+Analysis (+ Net Worth + Spending Heatmap), Debts, Savings Goals, Tax Helper
+(Pendlerpauschale, Homeoffice), Monthly Review, CSV Import, Auto-categorization,
+Recurring (grouped by interval), Search (+ quick actions: nav, categorize,
+export, undo/redo), Settings (theme/language picker, feature toggles, sync,
+data export/reset), About (19 FAQ, privacy, GitHub), More page, Data Export,
+Monthly Snapshots, Onboarding (4 cards), FinTS (bank search, credentials,
+TAN handling, statement fetch), Sync (WebSocket + HTTP push/pull + E2E
+encryption), Feedback (POST to wimg-sync), Demo data.
 
-## Android (Phase 8.0a MVP)
+## Android Missing
 
-Dashboard, Transactions (with category editor), CSV Import, More page.
-Built with Kotlin + Jetpack Compose + JNI bridge to libwimg.so.
-Material 3 theme matching wimg design tokens. Sideload APK distribution.
-
-### Android Missing (planned for Phase 8.0b+)
-
-- Analysis (net worth chart, spending heatmap, category breakdown)
-- Debts, Savings Goals, Recurring, Tax Helper, Monthly Review
-- Search + advanced filters
-- Sync (WebSocket + HTTP push/pull + E2E encryption)
-- FinTS (HTTP callback via OkHttp, TAN screens)
-- Settings (theme, language, data export, reset)
-- About, Onboarding, Feedback, Coachmarks
-- Account switcher + account management
-- Undo toast
+- Renewals calendar tab on Recurring (iOS has 12-month forecast)
+- Spending Heatmap tap-to-select (iOS has inline amount label)
+- Account switcher UI (JNI bridged but no picker in top bar)
+- Coachmarks (component exists but not placed on screens)
+- Undo toast (component exists but not wired into mutations)
+- i18n (German only, no English translations yet)
+- FinTS Quick Refresh (iOS has PIN storage + one-tap fetch)
 
 ## iOS Missing
 
@@ -46,13 +37,13 @@ Material 3 theme matching wimg design tokens. Sideload APK distribution.
 | Feature                              | Platform      | Reason                         |
 | ------------------------------------ | ------------- | ------------------------------ |
 | FinTS bank connection + TAN medium   | iOS + Android | Browsers can't do FinTS (CORS) |
-| FinTS Quick Refresh (PIN storage)    | iOS only      | Android planned (Phase 8.0c)   |
+| FinTS Quick Refresh (PIN storage)    | iOS only      | Android planned                |
 | PWA install + service worker updates | Web only      | Native concept                 |
 | OPFS persistence                     | Web only      | Native uses file on disk       |
 | MCP server (AI agent access)         | Remote        | CF Worker DO, any MCP client   |
 | DevTools panel                       | Web only      | Native uses platform tools     |
 | Command Palette                      | Web only      | Native uses platform navigation|
-| Transaction search + advanced filter | Web + iOS     | Android planned (Phase 8.0b)   |
-| In-app Changelog                     | Web only      | Native uses store notes        |
+| In-app Changelog                     | Web only      | Native uses store notes / update checker |
 | Auto-learn rules                     | All           | Runs in libwimg (Zig)          |
 | Custom tax keywords                  | Web only      | localStorage, not synced       |
+| Update checker (GitHub Releases)     | Android only  | iOS uses TestFlight, Web uses SW |
