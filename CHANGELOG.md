@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.7 (2026-03-29)
+
+- Version bump
+
 ## v0.7.6 (2026-03-29)
 
 - fix: iOS performance — move LibWimg calls off main thread + fix tab navigation
