@@ -193,11 +193,40 @@ fun SettingsScreen() {
 
         item {
             Card(shape = WimgShapes.small, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                var showConfirm by remember { mutableStateOf(false) }
+
                 SettingsRow(icon = Icons.Outlined.DeleteForever, title = "Alle Daten löschen", isDestructive = true) {
-                    val dbFile = File(context.filesDir, "wimg.db")
-                    LibWimg.close()
-                    dbFile.delete()
-                    LibWimg.initialize(context)
+                    showConfirm = true
+                }
+
+                if (showConfirm) {
+                    AlertDialog(
+                        onDismissRequest = { showConfirm = false },
+                        title = { Text("Alle Daten löschen?") },
+                        text = { Text("Diese Aktion kann nicht rückgängig gemacht werden.") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showConfirm = false
+                                try {
+                                    LibWimg.close()
+                                    val dbFile = File(context.filesDir, "wimg.db")
+                                    val walFile = File(context.filesDir, "wimg.db-wal")
+                                    val shmFile = File(context.filesDir, "wimg.db-shm")
+                                    dbFile.delete()
+                                    walFile.delete()
+                                    shmFile.delete()
+                                    LibWimg.initialize(context)
+                                } catch (_: Exception) {}
+                            }) {
+                                Text("Löschen", color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showConfirm = false }) {
+                                Text("Abbrechen")
+                            }
+                        },
+                    )
                 }
             }
         }
