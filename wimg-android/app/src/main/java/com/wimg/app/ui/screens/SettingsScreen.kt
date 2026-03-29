@@ -223,7 +223,7 @@ fun SettingsScreen() {
                         },
                         dismissButton = {
                             TextButton(onClick = { showConfirm = false }) {
-                                Text("Abbrechen")
+                                Text("Abbrechen", color = MaterialTheme.colorScheme.onSurface)
                             }
                         },
                     )

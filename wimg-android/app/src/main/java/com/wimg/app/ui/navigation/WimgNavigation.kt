@@ -99,6 +99,7 @@ fun WimgNavigation() {
             composable("review") { ReviewScreen(selectedAccount = selectedAccount) }
             composable("tax") { TaxScreen() }
             composable("fints") { FinTSScreen() }
+            composable("feedback") { FeedbackScreen() }
             composable("settings") { SettingsScreen() }
             composable("about") { AboutScreen() }
         }

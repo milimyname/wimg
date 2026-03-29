@@ -40,6 +40,7 @@ fun MoreScreen(navController: NavController) {
         MoreItem("Bankverbindung", Icons.Outlined.AccountBalance, Color(0xFF5AC8FA), "fints"),
         MoreItem("Import", Icons.Outlined.FileUpload, Color(0xFF007AFF), "import"),
         MoreItem("Einstellungen", Icons.Outlined.Settings, Color(0xFF8E8E93), "settings"),
+        MoreItem("Feedback", Icons.Outlined.ChatBubbleOutline, Color(0xFF5856D6), "feedback"),
         MoreItem("Über wimg", Icons.Outlined.Info, Color(0xFF8E8E93), "about"),
     )
 

@@ -8,6 +8,7 @@
         android:allowBackup="true"
         android:label="wimg"
         android:supportsRtl="true"
+        android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.Wimg">
 
         <activity
