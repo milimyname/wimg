@@ -63,9 +63,6 @@ dependencies {
     // JSON parsing for C ABI results
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
-    // AppCompat for theme switching
-    implementation("androidx.appcompat:appcompat:1.7.0")
-
     // OkHttp for sync + FinTS HTTP callback
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 

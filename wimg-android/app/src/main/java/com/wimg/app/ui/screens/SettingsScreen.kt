@@ -2,7 +2,6 @@ package com.wimg.app.ui.screens
 import com.wimg.app.ui.components.TText
 
 import android.content.Intent
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,17 +21,17 @@ import com.wimg.app.bridge.LibWimg
 import com.wimg.app.ui.theme.WimgShapes
 import java.io.File
 
-private enum class ThemeMode(val label: String, val nightMode: Int) {
-    SYSTEM("System", AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM),
-    LIGHT("Hell", AppCompatDelegate.MODE_NIGHT_NO),
-    DARK("Dunkel", AppCompatDelegate.MODE_NIGHT_YES),
+private enum class ThemeMode(val label: String, val value: Int) {
+    SYSTEM("System", -1),
+    LIGHT("Hell", 1),
+    DARK("Dunkel", 2),
 }
 
 @Composable
 fun SettingsScreen() {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("wimg", 0)
-    var theme by remember { mutableStateOf(ThemeMode.entries.find { it.nightMode == prefs.getInt("wimg_theme", AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM) } ?: ThemeMode.SYSTEM) }
+    var theme by remember { mutableStateOf(ThemeMode.entries.find { it.value == prefs.getInt("wimg_theme", -1) } ?: ThemeMode.SYSTEM) }
     var locale by remember { mutableStateOf(prefs.getString("wimg_locale", "de") ?: "de") }
 
     LazyColumn(
@@ -61,8 +60,8 @@ fun SettingsScreen() {
                                 selected = theme == mode,
                                 onClick = {
                                     theme = mode
-                                    prefs.edit().putInt("wimg_theme", mode.nightMode).apply()
-                                    AppCompatDelegate.setDefaultNightMode(mode.nightMode)
+                                    prefs.edit().putInt("wimg_theme", mode.value).apply()
+                                    com.wimg.app.ui.theme.ThemeState.mode = mode.value
                                 },
                             )
                             Text(mode.label, style = MaterialTheme.typography.bodyMedium)

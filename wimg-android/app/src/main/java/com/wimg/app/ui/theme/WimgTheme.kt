@@ -5,8 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -111,11 +110,27 @@ private val WimgTypography = Typography(
     labelSmall = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 0.5.sp),
 )
 
+/** Global theme state — mutate from Settings to trigger recomposition */
+object ThemeState {
+    var mode by mutableIntStateOf(-1) // -1=system, 1=light, 2=dark
+}
+
 @Composable
 fun WimgTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
+    // Read stored theme on first composition
+    val context = LocalView.current.context
+    LaunchedEffect(Unit) {
+        val stored = context.getSharedPreferences("wimg", 0).getInt("wimg_theme", -1)
+        if (ThemeState.mode != stored) ThemeState.mode = stored
+    }
+
+    val darkTheme = when (ThemeState.mode) {
+        1 -> false  // Hell
+        2 -> true   // Dunkel
+        else -> isSystemInDarkTheme() // System
+    }
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     val view = LocalView.current
