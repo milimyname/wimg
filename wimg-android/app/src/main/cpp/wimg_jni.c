@@ -38,6 +38,27 @@ extern int32_t wimg_delete_goal(const uint8_t *id, uint32_t id_len);
 extern const uint8_t *wimg_export_csv(void);
 extern const uint8_t *wimg_export_db(void);
 
+// Sync
+extern const uint8_t *wimg_get_changes(int64_t since_ts);
+extern int32_t wimg_apply_changes(const uint8_t *data, uint32_t len);
+extern const uint8_t *wimg_derive_key(const uint8_t *sync_key, uint32_t sync_key_len);
+extern const uint8_t *wimg_encrypt_field(const uint8_t *plaintext, uint32_t plaintext_len,
+                                         const uint8_t *key, const uint8_t *nonce);
+extern const uint8_t *wimg_decrypt_field(const uint8_t *ciphertext, uint32_t ciphertext_len,
+                                         const uint8_t *key);
+
+// FinTS
+typedef int32_t (*wimg_http_callback_t)(const uint8_t *url, uint32_t url_len,
+                                        const uint8_t *body, uint32_t body_len,
+                                        uint8_t *out, uint32_t out_len);
+extern void wimg_set_http_callback(wimg_http_callback_t callback);
+extern const uint8_t *wimg_fints_connect(const uint8_t *data, uint32_t len);
+extern const uint8_t *wimg_fints_send_tan(const uint8_t *data, uint32_t len);
+extern const uint8_t *wimg_fints_fetch(const uint8_t *data, uint32_t len);
+extern const uint8_t *wimg_fints_get_banks(void);
+extern const uint8_t *wimg_fints_get_tan_media(void);
+extern const uint8_t *wimg_fints_set_tan_medium(const uint8_t *data, uint32_t len);
+
 // Helper: read 4-byte LE length-prefixed data and create a Java string, then free
 static jstring ptr_to_jstring(JNIEnv *env, const uint8_t *ptr) {
     if (!ptr) return NULL;
@@ -266,4 +287,158 @@ JNIEXPORT jstring JNICALL JNI_FN(nativeExportCsv)(JNIEnv *env, jobject obj) {
 
 JNIEXPORT jstring JNICALL JNI_FN(nativeExportDb)(JNIEnv *env, jobject obj) {
     return ptr_to_jstring(env, wimg_export_db());
+}
+
+// --- Sync ---
+
+JNIEXPORT jstring JNICALL JNI_FN(nativeGetChanges)(JNIEnv *env, jobject obj, jlong sinceTs) {
+    return ptr_to_jstring(env, wimg_get_changes(sinceTs));
+}
+
+JNIEXPORT jint JNICALL JNI_FN(nativeApplyChanges)(JNIEnv *env, jobject obj, jstring json) {
+    const char *data = (*env)->GetStringUTFChars(env, json, NULL);
+    jsize len = (*env)->GetStringUTFLength(env, json);
+    int32_t rc = wimg_apply_changes((const uint8_t *)data, len);
+    (*env)->ReleaseStringUTFChars(env, json, data);
+    return rc;
+}
+
+JNIEXPORT jbyteArray JNICALL JNI_FN(nativeDeriveKey)(JNIEnv *env, jobject obj, jstring syncKey) {
+    const char *key = (*env)->GetStringUTFChars(env, syncKey, NULL);
+    jsize len = (*env)->GetStringUTFLength(env, syncKey);
+    const uint8_t *ptr = wimg_derive_key((const uint8_t *)key, len);
+    (*env)->ReleaseStringUTFChars(env, syncKey, key);
+    if (!ptr) return NULL;
+    uint32_t dlen = ptr[0] | (ptr[1] << 8) | (ptr[2] << 16) | (ptr[3] << 24);
+    jbyteArray result = (*env)->NewByteArray(env, dlen);
+    (*env)->SetByteArrayRegion(env, result, 0, dlen, (const jbyte *)(ptr + 4));
+    wimg_free(ptr, 0);
+    return result;
+}
+
+JNIEXPORT jstring JNICALL JNI_FN(nativeEncryptField)(JNIEnv *env, jobject obj, jstring plaintext, jbyteArray key, jbyteArray nonce) {
+    const char *pt = (*env)->GetStringUTFChars(env, plaintext, NULL);
+    jsize pt_len = (*env)->GetStringUTFLength(env, plaintext);
+    jbyte *k = (*env)->GetByteArrayElements(env, key, NULL);
+    jbyte *n = (*env)->GetByteArrayElements(env, nonce, NULL);
+    const uint8_t *ptr = wimg_encrypt_field((const uint8_t *)pt, pt_len, (const uint8_t *)k, (const uint8_t *)n);
+    (*env)->ReleaseStringUTFChars(env, plaintext, pt);
+    (*env)->ReleaseByteArrayElements(env, key, k, JNI_ABORT);
+    (*env)->ReleaseByteArrayElements(env, nonce, n, JNI_ABORT);
+    return ptr_to_jstring(env, ptr);
+}
+
+JNIEXPORT jstring JNICALL JNI_FN(nativeDecryptField)(JNIEnv *env, jobject obj, jstring ciphertext, jbyteArray key) {
+    const char *ct = (*env)->GetStringUTFChars(env, ciphertext, NULL);
+    jsize ct_len = (*env)->GetStringUTFLength(env, ciphertext);
+    jbyte *k = (*env)->GetByteArrayElements(env, key, NULL);
+    const uint8_t *ptr = wimg_decrypt_field((const uint8_t *)ct, ct_len, (const uint8_t *)k);
+    (*env)->ReleaseStringUTFChars(env, ciphertext, ct);
+    (*env)->ReleaseByteArrayElements(env, key, k, JNI_ABORT);
+    return ptr_to_jstring(env, ptr);
+}
+
+// --- FinTS ---
+
+// Global references for HTTP callback
+static JavaVM *g_jvm = NULL;
+static jobject g_http_callback = NULL;
+static jmethodID g_http_method = NULL;
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    g_jvm = vm;
+    return JNI_VERSION_1_6;
+}
+
+static int32_t jni_http_callback(const uint8_t *url, uint32_t url_len,
+                                  const uint8_t *body, uint32_t body_len,
+                                  uint8_t *out, uint32_t out_len) {
+    if (!g_jvm || !g_http_callback) return -1;
+
+    JNIEnv *env;
+    int attached = 0;
+    if ((*g_jvm)->GetEnv(g_jvm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
+        if ((*g_jvm)->AttachCurrentThread(g_jvm, &env, NULL) != JNI_OK) return -1;
+        attached = 1;
+    }
+
+    // Create URL string
+    char *url_buf = malloc(url_len + 1);
+    memcpy(url_buf, url, url_len);
+    url_buf[url_len] = '\0';
+    jstring jurl = (*env)->NewStringUTF(env, url_buf);
+    free(url_buf);
+
+    // Create body byte array
+    jbyteArray jbody = (*env)->NewByteArray(env, body_len);
+    (*env)->SetByteArrayRegion(env, jbody, 0, body_len, (const jbyte *)body);
+
+    // Call Java: byte[] result = callback.execute(url, body)
+    jbyteArray jresult = (jbyteArray)(*env)->CallObjectMethod(env, g_http_callback, g_http_method, jurl, jbody);
+
+    int32_t written = -1;
+    if (jresult) {
+        jsize rlen = (*env)->GetArrayLength(env, jresult);
+        if ((uint32_t)rlen <= out_len) {
+            (*env)->GetByteArrayRegion(env, jresult, 0, rlen, (jbyte *)out);
+            written = rlen;
+        }
+        (*env)->DeleteLocalRef(env, jresult);
+    }
+
+    (*env)->DeleteLocalRef(env, jurl);
+    (*env)->DeleteLocalRef(env, jbody);
+
+    if (attached) (*g_jvm)->DetachCurrentThread(g_jvm);
+    return written;
+}
+
+JNIEXPORT void JNICALL JNI_FN(nativeSetHttpCallback)(JNIEnv *env, jobject obj, jobject callback) {
+    if (g_http_callback) (*env)->DeleteGlobalRef(env, g_http_callback);
+    g_http_callback = (*env)->NewGlobalRef(env, callback);
+
+    jclass cls = (*env)->GetObjectClass(env, callback);
+    g_http_method = (*env)->GetMethodID(env, cls, "execute", "(Ljava/lang/String;[B)[B");
+
+    wimg_set_http_callback(jni_http_callback);
+}
+
+JNIEXPORT jstring JNICALL JNI_FN(nativeFintsConnect)(JNIEnv *env, jobject obj, jstring json) {
+    const char *data = (*env)->GetStringUTFChars(env, json, NULL);
+    jsize len = (*env)->GetStringUTFLength(env, json);
+    const uint8_t *ptr = wimg_fints_connect((const uint8_t *)data, len);
+    (*env)->ReleaseStringUTFChars(env, json, data);
+    return ptr_to_jstring(env, ptr);
+}
+
+JNIEXPORT jstring JNICALL JNI_FN(nativeFintsSendTan)(JNIEnv *env, jobject obj, jstring json) {
+    const char *data = (*env)->GetStringUTFChars(env, json, NULL);
+    jsize len = (*env)->GetStringUTFLength(env, json);
+    const uint8_t *ptr = wimg_fints_send_tan((const uint8_t *)data, len);
+    (*env)->ReleaseStringUTFChars(env, json, data);
+    return ptr_to_jstring(env, ptr);
+}
+
+JNIEXPORT jstring JNICALL JNI_FN(nativeFintsFetch)(JNIEnv *env, jobject obj, jstring json) {
+    const char *data = (*env)->GetStringUTFChars(env, json, NULL);
+    jsize len = (*env)->GetStringUTFLength(env, json);
+    const uint8_t *ptr = wimg_fints_fetch((const uint8_t *)data, len);
+    (*env)->ReleaseStringUTFChars(env, json, data);
+    return ptr_to_jstring(env, ptr);
+}
+
+JNIEXPORT jstring JNICALL JNI_FN(nativeFintsGetBanks)(JNIEnv *env, jobject obj) {
+    return ptr_to_jstring(env, wimg_fints_get_banks());
+}
+
+JNIEXPORT jstring JNICALL JNI_FN(nativeFintsGetTanMedia)(JNIEnv *env, jobject obj) {
+    return ptr_to_jstring(env, wimg_fints_get_tan_media());
+}
+
+JNIEXPORT jstring JNICALL JNI_FN(nativeFintsSetTanMedium)(JNIEnv *env, jobject obj, jstring json) {
+    const char *data = (*env)->GetStringUTFChars(env, json, NULL);
+    jsize len = (*env)->GetStringUTFLength(env, json);
+    const uint8_t *ptr = wimg_fints_set_tan_medium((const uint8_t *)data, len);
+    (*env)->ReleaseStringUTFChars(env, json, data);
+    return ptr_to_jstring(env, ptr);
 }

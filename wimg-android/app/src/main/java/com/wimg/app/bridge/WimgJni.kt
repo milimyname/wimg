@@ -63,4 +63,20 @@ object WimgJni {
     // Export
     external fun nativeExportCsv(): String?
     external fun nativeExportDb(): String?
+
+    // Sync
+    external fun nativeGetChanges(sinceTs: Long): String?
+    external fun nativeApplyChanges(json: String): Int
+    external fun nativeDeriveKey(syncKey: String): ByteArray?
+    external fun nativeEncryptField(plaintext: String, key: ByteArray, nonce: ByteArray): String?
+    external fun nativeDecryptField(ciphertext: String, key: ByteArray): String?
+
+    // FinTS
+    external fun nativeSetHttpCallback(callback: Any)
+    external fun nativeFintsConnect(json: String): String?
+    external fun nativeFintsSendTan(json: String): String?
+    external fun nativeFintsFetch(json: String): String?
+    external fun nativeFintsGetBanks(): String?
+    external fun nativeFintsGetTanMedia(): String?
+    external fun nativeFintsSetTanMedium(json: String): String?
 }

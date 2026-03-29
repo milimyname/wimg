@@ -37,6 +37,7 @@ fun MoreScreen(navController: NavController) {
         MoreItem("Wiederkehrend", Icons.Outlined.Refresh, Color(0xFF30D158), "recurring"),
         MoreItem("Steuern", Icons.Outlined.Description, Color(0xFFFF9500), "tax"),
         MoreItem("Rückblick", Icons.Outlined.CalendarMonth, Color(0xFFAF52DE), "review"),
+        MoreItem("Bankverbindung", Icons.Outlined.AccountBalance, Color(0xFF5AC8FA), "fints"),
         MoreItem("Import", Icons.Outlined.FileUpload, Color(0xFF007AFF), "import"),
         MoreItem("Einstellungen", Icons.Outlined.Settings, Color(0xFF8E8E93), "settings"),
         MoreItem("Über wimg", Icons.Outlined.Info, Color(0xFF8E8E93), "about"),

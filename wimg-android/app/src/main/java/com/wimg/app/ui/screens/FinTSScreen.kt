@@ -1,0 +1,304 @@
+package com.wimg.app.ui.screens
+
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.wimg.app.bridge.WimgJni
+import com.wimg.app.services.FintsHttpCallback
+import com.wimg.app.ui.theme.WimgColors
+import com.wimg.app.ui.theme.WimgShapes
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+@Serializable
+private data class BankInfo(val blz: String, val name: String, val url: String)
+
+@Serializable
+private data class FintsResult(
+    val status: String? = null,
+    val challenge: String? = null,
+    val phototan: String? = null,
+    val decoupled: Boolean? = null,
+    val message: String? = null,
+    val tan_medium_required: Boolean? = null,
+    val imported: Int? = null,
+    val duplicates: Int? = null,
+)
+
+private val json = Json { ignoreUnknownKeys = true }
+
+@Composable
+fun FinTSScreen() {
+    var stage by remember { mutableStateOf("banks") } // banks, credentials, tan, dateRange, fetching, result
+    var banks by remember { mutableStateOf<List<BankInfo>>(emptyList()) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedBank by remember { mutableStateOf<BankInfo?>(null) }
+    var kennung by remember { mutableStateOf("") }
+    var pin by remember { mutableStateOf("") }
+    var connecting by remember { mutableStateOf(false) }
+    var tanInput by remember { mutableStateOf("") }
+    var challengeText by remember { mutableStateOf("") }
+    var photoTanB64 by remember { mutableStateOf<String?>(null) }
+    var isDecoupled by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var importedCount by remember { mutableIntStateOf(0) }
+    var duplicateCount by remember { mutableIntStateOf(0) }
+
+    val scope = rememberCoroutineScope()
+
+    // Load banks on first appear
+    LaunchedEffect(Unit) {
+        // Register HTTP callback
+        WimgJni.nativeSetHttpCallback(FintsHttpCallback())
+
+        withContext(Dispatchers.IO) {
+            val result = WimgJni.nativeFintsGetBanks()
+            if (result != null) {
+                banks = json.decodeFromString(result)
+            }
+        }
+    }
+
+    val filteredBanks = if (searchQuery.isBlank()) banks.take(50) else {
+        val q = searchQuery.lowercase()
+        banks.filter { it.name.lowercase().contains(q) || it.blz.contains(q) }.take(50)
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        when (stage) {
+            "banks" -> {
+                item {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.size(80.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.AccountBalance, contentDescription = null, modifier = Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary)
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Text("Bank verbinden", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    }
+                }
+                item {
+                    OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, placeholder = { Text("Bank suchen...") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                }
+                items(filteredBanks) { bank ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surface).clickable { selectedBank = bank; stage = "credentials" }.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Outlined.AccountBalance, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(bank.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, maxLines = 1)
+                            Text("BLZ: ${bank.blz}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+
+            "credentials" -> {
+                item {
+                    Card(modifier = Modifier.fillMaxWidth(), shape = WimgShapes.large, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                        Column(modifier = Modifier.padding(24.dp)) {
+                            Text("Anmeldung", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            selectedBank?.let { Text(it.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                            Spacer(Modifier.height(16.dp))
+                            OutlinedTextField(value = kennung, onValueChange = { kennung = it }, label = { Text("Kennung") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedTextField(value = pin, onValueChange = { pin = it }, label = { Text("PIN") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
+                            Spacer(Modifier.height(16.dp))
+                            Button(
+                                onClick = {
+                                    connecting = true; errorMessage = null
+                                    scope.launch {
+                                        val result = withContext(Dispatchers.IO) {
+                                            val bank = selectedBank ?: return@withContext null
+                                            val input = """{"blz":"${bank.blz}","user":"$kennung","pin":"$pin","product":"F7C4049477F6136957A46EC28"}"""
+                                            val r = WimgJni.nativeFintsConnect(input) ?: return@withContext null
+                                            json.decodeFromString<FintsResult>(r)
+                                        }
+                                        connecting = false
+                                        if (result == null) { errorMessage = "Verbindung fehlgeschlagen"; return@launch }
+                                        when (result.status) {
+                                            "ok" -> stage = "dateRange"
+                                            "tan_required" -> { challengeText = result.challenge ?: ""; photoTanB64 = result.phototan; isDecoupled = result.decoupled ?: false; stage = "tan" }
+                                            else -> errorMessage = result.message ?: "Fehler"
+                                        }
+                                    }
+                                },
+                                enabled = !connecting && kennung.isNotBlank() && pin.isNotBlank(),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onBackground, contentColor = MaterialTheme.colorScheme.background),
+                            ) {
+                                Text(if (connecting) "Verbinde..." else "Verbinden", fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 4.dp))
+                            }
+                            TextButton(onClick = { stage = "banks" }) { Text("Andere Bank wählen") }
+                        }
+                    }
+                }
+            }
+
+            "tan" -> {
+                item {
+                    Card(modifier = Modifier.fillMaxWidth(), shape = WimgShapes.large, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(if (isDecoupled) "Freigabe in Banking-App" else "TAN-Eingabe", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            if (challengeText.isNotBlank()) {
+                                Spacer(Modifier.height(8.dp))
+                                Text(challengeText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            photoTanB64?.let { b64 ->
+                                try {
+                                    val bytes = Base64.decode(b64, Base64.DEFAULT)
+                                    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                    if (bitmap != null) {
+                                        Spacer(Modifier.height(12.dp))
+                                        Image(bitmap.asImageBitmap(), "photoTAN", modifier = Modifier.size(240.dp).clip(RoundedCornerShape(16.dp)))
+                                    }
+                                } catch (_: Exception) {}
+                            }
+                            if (!isDecoupled) {
+                                Spacer(Modifier.height(12.dp))
+                                OutlinedTextField(value = tanInput, onValueChange = { tanInput = it }, label = { Text("TAN") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            Button(
+                                onClick = {
+                                    connecting = true
+                                    scope.launch {
+                                        val result = withContext(Dispatchers.IO) {
+                                            val tan = if (isDecoupled) "" else tanInput
+                                            val r = WimgJni.nativeFintsSendTan("""{"tan":"$tan"}""") ?: return@withContext null
+                                            json.decodeFromString<FintsResult>(r)
+                                        }
+                                        connecting = false
+                                        if (result == null) { errorMessage = "TAN fehlgeschlagen"; return@launch }
+                                        when (result.status) {
+                                            "ok" -> stage = "dateRange"
+                                            "tan_required" -> { challengeText = result.challenge ?: ""; photoTanB64 = result.phototan; tanInput = "" }
+                                            else -> errorMessage = result.message ?: "Fehler"
+                                        }
+                                    }
+                                },
+                                enabled = !connecting && (isDecoupled || tanInput.isNotBlank()),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onBackground, contentColor = MaterialTheme.colorScheme.background),
+                            ) {
+                                Text(if (isDecoupled) "Status prüfen" else "TAN senden", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            "dateRange" -> {
+                item {
+                    Card(modifier = Modifier.fillMaxWidth(), shape = WimgShapes.large, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Outlined.CalendarMonth, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.height(12.dp))
+                            Text("Kontoauszüge abrufen", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text("Letzte 90 Tage", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(16.dp))
+                            Button(
+                                onClick = {
+                                    stage = "fetching"; errorMessage = null
+                                    scope.launch {
+                                        val cal = java.util.Calendar.getInstance()
+                                        val to = String.format("%04d-%02d-%02d", cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH) + 1, cal.get(java.util.Calendar.DAY_OF_MONTH))
+                                        cal.add(java.util.Calendar.DAY_OF_YEAR, -90)
+                                        val from = String.format("%04d-%02d-%02d", cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH) + 1, cal.get(java.util.Calendar.DAY_OF_MONTH))
+
+                                        val result = withContext(Dispatchers.IO) {
+                                            val r = WimgJni.nativeFintsFetch("""{"from":"$from","to":"$to"}""") ?: return@withContext null
+                                            json.decodeFromString<FintsResult>(r)
+                                        }
+                                        if (result == null) { errorMessage = "Abruf fehlgeschlagen"; stage = "dateRange"; return@launch }
+                                        if (result.status == "tan_required") {
+                                            challengeText = result.challenge ?: ""; photoTanB64 = result.phototan; isDecoupled = result.decoupled ?: false; tanInput = ""; stage = "tan"
+                                        } else {
+                                            importedCount = result.imported ?: 0; duplicateCount = result.duplicates ?: 0; stage = "result"
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onBackground, contentColor = MaterialTheme.colorScheme.background),
+                            ) {
+                                Text("Abrufen", fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 4.dp))
+                            }
+                        }
+                    }
+                }
+            }
+
+            "fetching" -> {
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(Modifier.height(16.dp))
+                            Text("Lade Kontoauszüge...", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            "result" -> {
+                item {
+                    Card(modifier = Modifier.fillMaxWidth(), shape = WimgShapes.large, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(modifier = Modifier.size(64.dp).clip(CircleShape).background(com.wimg.app.models.WimgCategory.INCOME.color.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
+                                Text("✓", fontSize = 28.sp, color = com.wimg.app.models.WimgCategory.INCOME.color)
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            Text("Abruf erfolgreich!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Spacer(Modifier.height(8.dp))
+                            Text("$importedCount importiert", style = MaterialTheme.typography.bodySmall)
+                            if (duplicateCount > 0) Text("$duplicateCount Duplikate", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(16.dp))
+                            OutlinedButton(onClick = { stage = "banks"; kennung = ""; pin = "" }, modifier = Modifier.fillMaxWidth(), shape = WimgShapes.small) {
+                                Text("Weitere Bank verbinden")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Error
+        if (errorMessage != null) {
+            item {
+                Card(shape = WimgShapes.small, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                    Text(errorMessage!!, modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+    }
+}

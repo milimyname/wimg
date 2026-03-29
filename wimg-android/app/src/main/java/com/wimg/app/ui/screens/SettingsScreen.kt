@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.launch
 import com.wimg.app.bridge.LibWimg
 import com.wimg.app.ui.theme.WimgShapes
 import java.io.File
@@ -87,6 +88,75 @@ fun SettingsScreen() {
                                 },
                             )
                             Text(label, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Sync section
+        item {
+            Spacer(Modifier.height(8.dp))
+            Text("Synchronisierung", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        item {
+            val syncEnabled = com.wimg.app.services.SyncService.isEnabled(context)
+            val syncKey = com.wimg.app.services.SyncService.getSyncKey(context)
+            var linkInput by remember { mutableStateOf("") }
+            var syncing by remember { mutableStateOf(false) }
+            val scope = rememberCoroutineScope()
+
+            Card(shape = WimgShapes.small, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    if (!syncEnabled) {
+                        Button(
+                            onClick = {
+                                com.wimg.app.services.SyncService.enableSync(context)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onBackground, contentColor = MaterialTheme.colorScheme.background),
+                        ) {
+                            Text("Sync aktivieren", fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = linkInput,
+                            onValueChange = { linkInput = it },
+                            label = { Text("Sync-Schlüssel einfügen") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        if (linkInput.isNotBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedButton(onClick = {
+                                com.wimg.app.services.SyncService.setSyncKey(context, linkInput.trim())
+                                linkInput = ""
+                            }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Verknüpfen")
+                            }
+                        }
+                    } else {
+                        Text("Sync aktiv", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(4.dp))
+                        Text(syncKey ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    syncing = true
+                                    scope.launch {
+                                        com.wimg.app.services.SyncService.push(context)
+                                        com.wimg.app.services.SyncService.pull(context)
+                                        syncing = false
+                                    }
+                                },
+                                enabled = !syncing,
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onBackground, contentColor = MaterialTheme.colorScheme.background),
+                            ) {
+                                Text(if (syncing) "Synchronisiere..." else "Jetzt synchronisieren", fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }

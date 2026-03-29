@@ -2,14 +2,17 @@ package com.wimg.app
 
 import android.app.Application
 import com.wimg.app.bridge.LibWimg
+import com.wimg.app.bridge.WimgJni
+import com.wimg.app.services.FintsHttpCallback
 
 class WimgApp : Application() {
     override fun onCreate() {
         super.onCreate()
         try {
             LibWimg.initialize(this)
+            // Register FinTS HTTP callback (OkHttp for bank HTTPS requests)
+            WimgJni.nativeSetHttpCallback(FintsHttpCallback())
         } catch (e: Exception) {
-            // Store error for display in MainActivity
             initError = e.message
         }
     }
