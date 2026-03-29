@@ -18,6 +18,9 @@ extern const uint8_t *wimg_get_summary_filtered(uint32_t year, uint32_t month, c
 extern const uint8_t *wimg_parse_csv(const uint8_t *data, uint32_t len);
 extern const uint8_t *wimg_import_csv(const uint8_t *data, uint32_t len);
 extern const uint8_t *wimg_get_accounts(void);
+extern int32_t wimg_add_account(const uint8_t *data, uint32_t len);
+extern int32_t wimg_update_account(const uint8_t *data, uint32_t len);
+extern int32_t wimg_delete_account(const uint8_t *id, uint32_t id_len);
 extern const uint8_t *wimg_get_recurring(void);
 extern int32_t wimg_detect_recurring(void);
 extern int32_t wimg_take_snapshot(uint32_t year, uint32_t month);

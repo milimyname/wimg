@@ -187,7 +187,7 @@ private fun TransactionRow(tx: Transaction, onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CategoryEditorSheet(transaction: Transaction, onDismiss: () -> Unit) {
+internal fun CategoryEditorSheet(transaction: Transaction, onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState()
 
     val categories = listOf(
@@ -236,7 +236,7 @@ private fun CategoryEditorSheet(transaction: Transaction, onDismiss: () -> Unit)
 }
 
 @Composable
-private fun CategoryOption(category: WimgCategory, selected: Boolean, onClick: () -> Unit) {
+internal fun CategoryOption(category: WimgCategory, selected: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
