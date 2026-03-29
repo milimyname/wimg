@@ -63,5 +63,8 @@ dependencies {
     // JSON parsing for C ABI results
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
+    // AppCompat for theme switching
+    implementation("androidx.appcompat:appcompat:1.7.0")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

@@ -20,6 +20,8 @@ import com.wimg.app.bridge.LibWimg
 import com.wimg.app.models.CategoryBreakdown
 import com.wimg.app.models.MonthlySummary
 import com.wimg.app.models.WimgCategory
+import com.wimg.app.services.DemoDataService
+import com.wimg.app.ui.components.MonthPicker
 import com.wimg.app.ui.components.formatAmountShort
 import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
@@ -43,6 +45,11 @@ fun DashboardScreen(selectedAccount: String?) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // Month picker
+        item {
+            MonthPicker(year = year, month = month, onChanged = { y, m -> year = y; month = m })
+        }
+
         // Hero card
         item {
             Card(
@@ -66,6 +73,17 @@ fun DashboardScreen(selectedAccount: String?) {
                         fontWeight = FontWeight.Black,
                         color = WimgColors.heroText,
                     )
+                    val income = summary?.income ?: 0.0
+                    if (income > 0) {
+                        val sparquote = ((income + (summary?.expenses ?: 0.0)) / income * 100).toInt()
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Sparquote: $sparquote%",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = WimgColors.heroText.copy(alpha = 0.6f),
+                        )
+                    }
                 }
             }
         }
@@ -112,6 +130,9 @@ fun DashboardScreen(selectedAccount: String?) {
         // Empty state
         if (summary == null || (summary?.tx_count ?: 0) == 0) {
             item {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                var loadingDemo by remember { mutableStateOf(false) }
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -130,6 +151,27 @@ fun DashboardScreen(selectedAccount: String?) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    Spacer(Modifier.height(16.dp))
+                    Button(
+                        onClick = {
+                            loadingDemo = true
+                            DemoDataService.loadDemoData(context)
+                            summary = LibWimg.getSummaryFiltered(year, month, selectedAccount)
+                            loadingDemo = false
+                        },
+                        enabled = !loadingDemo,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.onBackground,
+                            contentColor = MaterialTheme.colorScheme.background,
+                        ),
+                        shape = WimgShapes.small,
+                    ) {
+                        Text(
+                            if (loadingDemo) "Lade..." else "Beispieldaten laden",
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(vertical = 4.dp),
+                        )
+                    }
                 }
             }
         }

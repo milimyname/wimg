@@ -21,19 +21,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 
-data class MoreItem(
+private data class MoreItem(
     val title: String,
     val icon: ImageVector,
     val color: Color,
-    val route: String?,
+    val route: String,
 )
 
 @Composable
 fun MoreScreen(navController: NavController) {
     val items = listOf(
+        MoreItem("Analyse", Icons.Outlined.BarChart, Color(0xFF5856D6), "analysis"),
+        MoreItem("Schulden", Icons.Outlined.CreditCard, Color(0xFFFF2D55), "debts"),
+        MoreItem("Sparziele", Icons.Outlined.Flag, Color(0xFFFFD60A), "goals"),
+        MoreItem("Wiederkehrend", Icons.Outlined.Refresh, Color(0xFF30D158), "recurring"),
+        MoreItem("Steuern", Icons.Outlined.Description, Color(0xFFFF9500), "tax"),
+        MoreItem("Rückblick", Icons.Outlined.CalendarMonth, Color(0xFFAF52DE), "review"),
         MoreItem("Import", Icons.Outlined.FileUpload, Color(0xFF007AFF), "import"),
-        MoreItem("Einstellungen", Icons.Outlined.Settings, Color(0xFF8E8E93), null),
-        MoreItem("Über wimg", Icons.Outlined.Info, Color(0xFF8E8E93), null),
+        MoreItem("Einstellungen", Icons.Outlined.Settings, Color(0xFF8E8E93), "settings"),
+        MoreItem("Über wimg", Icons.Outlined.Info, Color(0xFF8E8E93), "about"),
     )
 
     Column(
@@ -59,11 +65,7 @@ fun MoreScreen(navController: NavController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1.4f)
-                        .then(
-                            if (item.route != null) Modifier.clickable {
-                                navController.navigate(item.route)
-                            } else Modifier
-                        ),
+                        .clickable { navController.navigate(item.route) },
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 ) {

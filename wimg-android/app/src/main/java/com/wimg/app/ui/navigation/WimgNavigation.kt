@@ -11,10 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.wimg.app.ui.screens.DashboardScreen
-import com.wimg.app.ui.screens.ImportScreen
-import com.wimg.app.ui.screens.MoreScreen
-import com.wimg.app.ui.screens.TransactionsScreen
+import com.wimg.app.ui.screens.*
 
 enum class WimgTab(val label: String) {
     DASHBOARD("Home"),
@@ -74,18 +71,18 @@ fun WimgNavigation() {
             startDestination = "dashboard",
             modifier = Modifier.padding(padding),
         ) {
-            composable("dashboard") {
-                DashboardScreen(selectedAccount = selectedAccount)
-            }
-            composable("transactions") {
-                TransactionsScreen(selectedAccount = selectedAccount)
-            }
-            composable("more") {
-                MoreScreen(navController = navController)
-            }
-            composable("import") {
-                ImportScreen(navController = navController)
-            }
+            composable("dashboard") { DashboardScreen(selectedAccount = selectedAccount) }
+            composable("transactions") { TransactionsScreen(selectedAccount = selectedAccount) }
+            composable("more") { MoreScreen(navController = navController) }
+            composable("import") { ImportScreen(navController = navController) }
+            composable("analysis") { AnalysisScreen(selectedAccount = selectedAccount) }
+            composable("debts") { DebtsScreen() }
+            composable("goals") { GoalsScreen() }
+            composable("recurring") { RecurringScreen() }
+            composable("review") { ReviewScreen(selectedAccount = selectedAccount) }
+            composable("tax") { TaxScreen() }
+            composable("settings") { SettingsScreen() }
+            composable("about") { AboutScreen() }
         }
     }
 }
