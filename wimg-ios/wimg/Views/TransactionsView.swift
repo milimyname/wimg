@@ -34,6 +34,12 @@ struct TransactionsView: View {
         case income = "Einnahmen"
     }
 
+    @State private var filteredGrouped: [(String, [Transaction])] = []
+
+    private var filterKey: String {
+        "\(filter)|\(searchText)|\(selectedCategory ?? -1)|\(showExcluded)|\(filterCategorySet.sorted())|\(dateQuick ?? "")|\(dateFrom?.timeIntervalSince1970 ?? 0)|\(dateTo?.timeIntervalSince1970 ?? 0)|\(amountMin)|\(amountMax)"
+    }
+
     private var activeFilterCount: Int {
         (dateQuick != nil || dateFrom != nil || dateTo != nil ? 1 : 0)
             + (amountMin > 0 || amountMax < 1000 ? 1 : 0)
@@ -41,78 +47,68 @@ struct TransactionsView: View {
             + (!searchText.isEmpty ? 1 : 0)
     }
 
-    private var filtered: [Transaction] {
-        var result = transactions
-
-        if !showExcluded {
-            result = result.filter { !$0.isExcluded }
-        }
-
-        switch filter {
-        case .all: break
-        case .expenses: result = result.filter { $0.isExpense }
-        case .income: result = result.filter { $0.isIncome }
-        }
-
-        // Single quick category OR multi-select from filter sheet
-        if !filterCategorySet.isEmpty {
-            result = result.filter { filterCategorySet.contains($0.category) }
-        } else if let cat = selectedCategory {
-            result = result.filter { $0.category == cat }
-        }
-
-        if !searchText.isEmpty {
-            result = result.filter {
-                $0.description.localizedCaseInsensitiveContains(searchText)
+    private func refilter() {
+        let txs = transactions
+        let excluded = showExcluded
+        let f = filter
+        let catSet = filterCategorySet
+        let cat = selectedCategory
+        let search = searchText
+        let dq = dateQuick
+        let dfrom = dateFrom
+        let dto = dateTo
+        let minAmt = amountMin
+        let maxAmt = amountMax
+        Task.detached {
+            var result = txs
+            if !excluded { result = result.filter { !$0.isExcluded } }
+            switch f {
+            case .all: break
+            case .expenses: result = result.filter { $0.isExpense }
+            case .income: result = result.filter { $0.isIncome }
             }
+            if !catSet.isEmpty {
+                result = result.filter { catSet.contains($0.category) }
+            } else if let cat {
+                result = result.filter { $0.category == cat }
+            }
+            if !search.isEmpty {
+                result = result.filter { $0.description.localizedCaseInsensitiveContains(search) }
+            }
+            let fmt = DateFormatter()
+            fmt.dateFormat = "yyyy-MM-dd"
+            if let dq {
+                let today = Date()
+                let calendar = Calendar.current
+                let fromDate: Date? = switch dq {
+                case "30d": calendar.date(byAdding: .day, value: -30, to: today)
+                case "month": calendar.date(from: calendar.dateComponents([.year, .month], from: today))
+                case "quarter": calendar.date(byAdding: .month, value: -3, to: today)
+                default: nil
+                }
+                if let fromDate {
+                    let fromStr = fmt.string(from: fromDate)
+                    result = result.filter { $0.date >= fromStr }
+                }
+            } else {
+                if let dfrom {
+                    let fromStr = fmt.string(from: dfrom)
+                    result = result.filter { $0.date >= fromStr }
+                }
+                if let dto {
+                    let toStr = fmt.string(from: dto)
+                    result = result.filter { $0.date <= toStr }
+                }
+            }
+            if minAmt > 0 || maxAmt < 1000 {
+                result = result.filter {
+                    let abs = Swift.abs($0.amount)
+                    return abs >= minAmt && (maxAmt >= 1000 || abs <= maxAmt)
+                }
+            }
+            let grouped = Dictionary(grouping: result) { $0.date }.sorted { $0.key > $1.key }
+            await MainActor.run { filteredGrouped = grouped }
         }
-
-        // Date range filter
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd"
-        if let dateQuick {
-            let today = Date()
-            let calendar = Calendar.current
-            let fromDate: Date?
-            switch dateQuick {
-            case "30d":
-                fromDate = calendar.date(byAdding: .day, value: -30, to: today)
-            case "month":
-                fromDate = calendar.date(from: calendar.dateComponents([.year, .month], from: today))
-            case "quarter":
-                fromDate = calendar.date(byAdding: .month, value: -3, to: today)
-            default:
-                fromDate = nil
-            }
-            if let fromDate {
-                let fromStr = fmt.string(from: fromDate)
-                result = result.filter { $0.date >= fromStr }
-            }
-        } else {
-            if let dateFrom {
-                let fromStr = fmt.string(from: dateFrom)
-                result = result.filter { $0.date >= fromStr }
-            }
-            if let dateTo {
-                let toStr = fmt.string(from: dateTo)
-                result = result.filter { $0.date <= toStr }
-            }
-        }
-
-        // Amount range filter
-        if amountMin > 0 || amountMax < 1000 {
-            result = result.filter {
-                let abs = Swift.abs($0.amount)
-                return abs >= amountMin && (amountMax >= 1000 || abs <= amountMax)
-            }
-        }
-
-        return result
-    }
-
-    private var grouped: [(String, [Transaction])] {
-        let dict = Dictionary(grouping: filtered) { $0.date }
-        return dict.sorted { $0.key > $1.key }
     }
 
     var body: some View {
@@ -123,6 +119,7 @@ struct TransactionsView: View {
                 .toolbar { filterToolbar }
                 .searchable(text: $searchText, prompt: "Suchen...")
                 .onChange(of: selectedAccount) { reload() }
+                .onChange(of: filterKey) { refilter() }
                 .onAppear { reload() }
                 .refreshable { reload() }
                 .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
@@ -168,7 +165,7 @@ struct TransactionsView: View {
 
             if let loadError {
                 errorView(loadError)
-            } else if grouped.isEmpty {
+            } else if filteredGrouped.isEmpty {
                 Spacer()
                 VStack(spacing: 8) {
                     Text("📋")
@@ -261,7 +258,7 @@ struct TransactionsView: View {
 
     private var transactionList: some View {
         List {
-            ForEach(grouped, id: \.0) { date, txs in
+            ForEach(filteredGrouped, id: \.0) { date, txs in
                 Section {
                     ForEach(txs) { tx in
                         transactionRow(tx)
@@ -321,12 +318,23 @@ struct TransactionsView: View {
     // MARK: - Actions
 
     private func reload() {
-        do {
-            loadError = nil
-            transactions = try LibWimg.getTransactionsFiltered(account: selectedAccount).sorted { $0.date > $1.date }
-        } catch {
-            loadError = error.localizedDescription
-            transactions = []
+        let account = selectedAccount
+        Task.detached {
+            do {
+                let tx = try LibWimg.getTransactionsFiltered(account: account).sorted { $0.date > $1.date }
+                await MainActor.run {
+                    loadError = nil
+                    transactions = tx
+                    refilter()
+                }
+            } catch {
+                let msg = error.localizedDescription
+                await MainActor.run {
+                    loadError = msg
+                    transactions = []
+                    refilter()
+                }
+            }
         }
     }
 

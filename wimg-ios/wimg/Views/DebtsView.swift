@@ -296,7 +296,10 @@ struct DebtsView: View {
     }
 
     private func reload() {
-        debts = LibWimg.getDebts()
+        Task.detached {
+            let d = LibWimg.getDebts()
+            await MainActor.run { debts = d }
+        }
     }
 
     private func showUndo(_ message: String) {

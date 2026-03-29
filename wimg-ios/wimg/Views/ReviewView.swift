@@ -468,15 +468,21 @@ struct ReviewView: View {
     // MARK: - Data
 
     private func reload() {
-        summary = LibWimg.getSummaryFiltered(year: year, month: month, account: selectedAccount)
-
-        let pm = month == 1 ? 12 : month - 1
-        let py = month == 1 ? year - 1 : year
-        prevSummary = LibWimg.getSummaryFiltered(year: py, month: pm, account: selectedAccount)
-
-        let all = (try? LibWimg.getTransactionsFiltered(account: selectedAccount)) ?? []
-        let prefix = String(format: "%04d-%02d", year, month)
-        monthTransactions = all.filter { $0.date.hasPrefix(prefix) }
+        let y = year, m = month, account = selectedAccount
+        Task.detached {
+            let s = LibWimg.getSummaryFiltered(year: y, month: m, account: account)
+            let pm = m == 1 ? 12 : m - 1
+            let py = m == 1 ? y - 1 : y
+            let ps = LibWimg.getSummaryFiltered(year: py, month: pm, account: account)
+            let all = (try? LibWimg.getTransactionsFiltered(account: account)) ?? []
+            let prefix = String(format: "%04d-%02d", y, m)
+            let mtx = all.filter { $0.date.hasPrefix(prefix) }
+            await MainActor.run {
+                summary = s
+                prevSummary = ps
+                monthTransactions = mtx
+            }
+        }
     }
 
     private func formatDateShort(_ dateStr: String) -> String {

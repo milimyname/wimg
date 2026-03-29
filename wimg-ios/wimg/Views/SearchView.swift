@@ -15,6 +15,7 @@ struct SearchView: View {
     @State private var amountMin: Double = 0
     @State private var amountMax: Double = 1000
     @State private var filterCategories: Set<Int> = []
+    @State private var filteredGrouped: [(String, [Transaction])] = []
 
     private static let isoFormatter: DateFormatter = {
         let fmt = DateFormatter()
@@ -28,49 +29,48 @@ struct SearchView: View {
         .travel, .education, .cash, .transfer, .income, .other,
     ]
 
-    private var filtered: [Transaction] {
-        var result = transactions
-
-        if !debouncedSearch.isEmpty {
-            result = result.filter {
-                $0.description.localizedCaseInsensitiveContains(debouncedSearch)
-            }
-        }
-
-        if !filterCategories.isEmpty {
-            result = result.filter { filterCategories.contains($0.category) }
-        }
-
-        if let dateFrom {
-            let fromStr = Self.isoFormatter.string(from: dateFrom)
-            result = result.filter { $0.date >= fromStr }
-        }
-        if let dateTo {
-            let toStr = Self.isoFormatter.string(from: dateTo)
-            result = result.filter { $0.date <= toStr }
-        }
-
-        if amountMin > 0 || amountMax < 1000 {
-            result = result.filter {
-                let abs = Swift.abs($0.amount)
-                return abs >= amountMin && (amountMax >= 1000 || abs <= amountMax)
-            }
-        }
-
-        return result
-    }
-
-    private var grouped: [(String, [Transaction])] {
-        Dictionary(grouping: filtered) { $0.date }
-            .sorted { $0.key > $1.key }
-    }
-
     private var hasActiveFilters: Bool {
         dateFrom != nil || dateTo != nil || amountMin > 0 || amountMax < 1000 || !filterCategories.isEmpty
     }
 
     private var isSearching: Bool {
         !debouncedSearch.isEmpty || hasActiveFilters
+    }
+
+    private func refilter() {
+        let txs = transactions
+        let search = debouncedSearch
+        let cats = filterCategories
+        let from = dateFrom.map { Self.isoFormatter.string(from: $0) }
+        let to = dateTo.map { Self.isoFormatter.string(from: $0) }
+        let minAmt = amountMin
+        let maxAmt = amountMax
+        Task.detached {
+            var result = txs
+            if !search.isEmpty {
+                result = result.filter {
+                    $0.description.localizedCaseInsensitiveContains(search)
+                }
+            }
+            if !cats.isEmpty {
+                result = result.filter { cats.contains($0.category) }
+            }
+            if let from {
+                result = result.filter { $0.date >= from }
+            }
+            if let to {
+                result = result.filter { $0.date <= to }
+            }
+            if minAmt > 0 || maxAmt < 1000 {
+                result = result.filter {
+                    let abs = Swift.abs($0.amount)
+                    return abs >= minAmt && (maxAmt >= 1000 || abs <= maxAmt)
+                }
+            }
+            let grouped = Dictionary(grouping: result) { $0.date }
+                .sorted { $0.key > $1.key }
+            await MainActor.run { filteredGrouped = grouped }
+        }
     }
 
     var body: some View {
@@ -105,7 +105,7 @@ struct SearchView: View {
 
                 if isSearching {
                     // Search results
-                    if filtered.isEmpty {
+                    if filteredGrouped.isEmpty {
                         if loadingTransactions {
                             VStack(spacing: 10) {
                                 ProgressView()
@@ -119,7 +119,7 @@ struct SearchView: View {
                         }
                     } else {
                         List {
-                            ForEach(grouped, id: \.0) { date, txs in
+                            ForEach(filteredGrouped, id: \.0) { date, txs in
                                 Section {
                                     ForEach(txs) { tx in
                                         TransactionCard(transaction: tx) {
@@ -152,7 +152,13 @@ struct SearchView: View {
                 try? await Task.sleep(for: .milliseconds(300))
                 guard !Task.isCancelled else { return }
                 debouncedSearch = searchText
+                refilter()
             }
+            .onChange(of: filterCategories) { refilter() }
+            .onChange(of: dateFrom) { refilter() }
+            .onChange(of: dateTo) { refilter() }
+            .onChange(of: amountMin) { refilter() }
+            .onChange(of: amountMax) { refilter() }
             .toolbar { filterToolbar }
             .onAppear { reload() }
             .onChange(of: selectedAccount) { reload() }
@@ -564,6 +570,7 @@ struct SearchView: View {
                 guard reloadToken == token else { return }
                 transactions = loaded
                 loadingTransactions = false
+                refilter()
             }
         }
     }

@@ -1004,6 +1004,23 @@
         }
       }
     },
+    "Android (APK)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android (APK)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android (APK)"
+          }
+        }
+      }
+    },
     "Anmeldung" : {
       "localizations" : {
         "de" : {
@@ -1066,6 +1083,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Number of home office days"
+          }
+        }
+      }
+    },
+    "APK herunterladen" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "APK herunterladen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download APK"
           }
         }
       }
@@ -3157,6 +3191,23 @@
         }
       }
     },
+    "Einstellungen → Apps → Unbekannte Quellen erlauben, dann APK antippen." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einstellungen → Apps → Unbekannte Quellen erlauben, dann APK antippen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings → Apps → Allow unknown sources, then tap APK to install."
+          }
+        }
+      }
+    },
     "Einzahlen" : {
       "localizations" : {
         "de" : {
@@ -4722,6 +4773,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inverted View"
+          }
+        }
+      }
+    },
+    "iOS (TestFlight)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS (TestFlight)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS (TestFlight)"
           }
         }
       }
@@ -6587,6 +6655,23 @@
         }
       }
     },
+    "Mobile Apps" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mobile Apps"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mobile Apps"
+          }
+        }
+      }
+    },
     "Monat" : {
       "localizations" : {
         "de" : {
@@ -6860,6 +6945,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Name (e.g. Electricity bill)"
+          }
+        }
+      }
+    },
+    "Native Kotlin-App. APK herunterladen und installieren." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Native Kotlin-App. APK herunterladen und installieren."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Native Kotlin app. Download and install the APK."
+          }
+        }
+      }
+    },
+    "Native SwiftUI-App. Teste die Beta via TestFlight." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Native SwiftUI-App. Teste die Beta via TestFlight."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Native SwiftUI app. Test the beta via TestFlight."
           }
         }
       }
@@ -9060,6 +9179,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choose TAN Medium"
+          }
+        }
+      }
+    },
+    "TestFlight beitreten" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "TestFlight beitreten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Join TestFlight"
           }
         }
       }

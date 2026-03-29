@@ -583,13 +583,21 @@ struct RecurringView: View {
     }
 
     private func reload() {
-        patterns = LibWimg.getRecurring()
+        Task.detached {
+            let p = LibWimg.getRecurring()
+            await MainActor.run { patterns = p }
+        }
     }
 
     private func handleDetect() {
         detecting = true
-        LibWimg.detectRecurring()
-        reload()
-        detecting = false
+        Task.detached {
+            LibWimg.detectRecurring()
+            let p = LibWimg.getRecurring()
+            await MainActor.run {
+                patterns = p
+                detecting = false
+            }
+        }
     }
 }

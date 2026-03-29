@@ -30,6 +30,20 @@ struct wimgApp: App {
         // Migrate credentials from UserDefaults to Keychain (one-time on update)
         SyncService.shared.migrateIfNeeded()
 
+        // Log main thread hangs > 50ms
+        #if DEBUG
+        let observer = CFRunLoopObserverCreateWithHandler(nil, CFRunLoopActivity.beforeWaiting.rawValue | CFRunLoopActivity.afterWaiting.rawValue, true, 0) { _, activity in
+            struct S { static var ts: CFAbsoluteTime = 0 }
+            if activity.rawValue == CFRunLoopActivity.afterWaiting.rawValue {
+                S.ts = CFAbsoluteTimeGetCurrent()
+            } else if S.ts > 0 {
+                let ms = (CFAbsoluteTimeGetCurrent() - S.ts) * 1000
+                if ms > 50 { print("⚠️ Main thread blocked \(Int(ms))ms") }
+            }
+        }
+        CFRunLoopAddObserver(CFRunLoopGetMain(), observer, .commonModes)
+        #endif
+
         do {
             try LibWimg.initialize()
         } catch {
@@ -75,7 +89,19 @@ struct ContentView: View {
         .environment(\.locale, appLocale)
         .preferredColorScheme(themeManager.mode.colorScheme)
         .onAppear {
-            accounts = LibWimg.getAccounts()
+            Task.detached {
+                let accs = LibWimg.getAccounts()
+                // Auto-snapshot: take monthly snapshot if we haven't this month
+                let now = Date()
+                let cal = Calendar.current
+                let currentMonth = String(format: "%04d-%02d", cal.component(.year, from: now), cal.component(.month, from: now))
+                let lastSnapshot = UserDefaults.standard.string(forKey: "wimg_last_snapshot_month")
+                if lastSnapshot != currentMonth {
+                    try? LibWimg.takeSnapshot(year: cal.component(.year, from: now), month: cal.component(.month, from: now))
+                    UserDefaults.standard.set(currentMonth, forKey: "wimg_last_snapshot_month")
+                }
+                await MainActor.run { accounts = accs }
+            }
             // Connect real-time sync WebSocket + initial pull
             Task {
                 let sync = SyncService.shared
@@ -84,18 +110,12 @@ struct ContentView: View {
                     _ = try? await sync.pull()
                 }
             }
-            // Auto-snapshot: take monthly snapshot if we haven't this month
-            let now = Date()
-            let cal = Calendar.current
-            let currentMonth = String(format: "%04d-%02d", cal.component(.year, from: now), cal.component(.month, from: now))
-            let lastSnapshot = UserDefaults.standard.string(forKey: "wimg_last_snapshot_month")
-            if lastSnapshot != currentMonth {
-                try? LibWimg.takeSnapshot(year: cal.component(.year, from: now), month: cal.component(.month, from: now))
-                UserDefaults.standard.set(currentMonth, forKey: "wimg_last_snapshot_month")
-            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
-            accounts = LibWimg.getAccounts()
+            Task.detached {
+                let accs = LibWimg.getAccounts()
+                await MainActor.run { accounts = accs }
+            }
         }
         .fullScreenCover(isPresented: Binding(
             get: { !onboardingCompleted },

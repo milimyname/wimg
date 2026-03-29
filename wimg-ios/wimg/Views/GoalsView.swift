@@ -298,7 +298,10 @@ struct GoalsView: View {
     }
 
     private func reload() {
-        goals = LibWimg.getGoals()
+        Task.detached {
+            let g = LibWimg.getGoals()
+            await MainActor.run { goals = g }
+        }
     }
 
     private func showUndo(_ message: String) {

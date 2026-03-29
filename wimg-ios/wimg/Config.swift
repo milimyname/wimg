@@ -4,7 +4,7 @@ import Foundation
 enum WimgConfig {
     // MARK: - Sync API
 
-    #if DEBUG
+    #if DEBUG && targetEnvironment(simulator)
     static let syncBaseURL = "http://localhost:8787"
     #else
     static let syncBaseURL = "https://wimg-sync.mili-my.name"

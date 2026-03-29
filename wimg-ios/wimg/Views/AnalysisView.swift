@@ -225,8 +225,15 @@ struct AnalysisView: View {
     }
 
     private func reload() {
-        hasAnyData = ((try? LibWimg.getTransactions()) ?? []).count > 0
-        summary = LibWimg.getSummaryFiltered(year: year, month: month, account: selectedAccount)
-        selectedAngle = nil
+        let y = year, m = month, account = selectedAccount
+        Task.detached {
+            let anyData = ((try? LibWimg.getTransactions()) ?? []).count > 0
+            let s = LibWimg.getSummaryFiltered(year: y, month: m, account: account)
+            await MainActor.run {
+                hasAnyData = anyData
+                summary = s
+                selectedAngle = nil
+            }
+        }
     }
 }

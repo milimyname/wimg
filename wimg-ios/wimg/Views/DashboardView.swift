@@ -331,13 +331,20 @@ struct DashboardView: View {
     // MARK: - Data
 
     private func reload() {
-        let allTx = (try? LibWimg.getTransactions()) ?? []
-        hasAnyData = !allTx.isEmpty
-        summary = LibWimg.getSummaryFiltered(year: year, month: month, account: selectedAccount)
-        let all = (try? LibWimg.getTransactionsFiltered(account: selectedAccount)) ?? []
-        let monthStr = String(format: "%04d-%02d", year, month)
-        recentTransactions = all
-            .filter { $0.date.hasPrefix(monthStr) }
-            .sorted { $0.date > $1.date }
+        let y = year, m = month, account = selectedAccount
+        Task.detached {
+            let allTx = (try? LibWimg.getTransactions()) ?? []
+            let s = LibWimg.getSummaryFiltered(year: y, month: m, account: account)
+            let all = (try? LibWimg.getTransactionsFiltered(account: account)) ?? []
+            let monthStr = String(format: "%04d-%02d", y, m)
+            let recent = all
+                .filter { $0.date.hasPrefix(monthStr) }
+                .sorted { $0.date > $1.date }
+            await MainActor.run {
+                hasAnyData = !allTx.isEmpty
+                summary = s
+                recentTransactions = recent
+            }
+        }
     }
 }
