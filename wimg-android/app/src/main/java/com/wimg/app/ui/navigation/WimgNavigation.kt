@@ -1,8 +1,6 @@
 package com.wimg.app.ui.navigation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
@@ -13,9 +11,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.wimg.app.bridge.LibWimg
+import com.wimg.app.ui.components.AccountPicker
+import com.wimg.app.ui.components.Coachmark
 import com.wimg.app.ui.screens.*
 
 private const val ONBOARDING_KEY = "wimg_onboarding_done"
@@ -38,7 +40,43 @@ fun WimgNavigation() {
     var selectedTab by remember { mutableIntStateOf(1) }
     var selectedAccount by remember { mutableStateOf<String?>(null) }
 
+    // Global undo snackbar
+    val snackbarHostState = remember { SnackbarHostState() }
+    var undoMessage by remember { mutableStateOf<String?>(null) }
+
+    // Show undo snackbar
+    LaunchedEffect(undoMessage) {
+        val msg = undoMessage ?: return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = msg,
+            actionLabel = "Rückgängig",
+            duration = SnackbarDuration.Short,
+        )
+        if (result == SnackbarResult.ActionPerformed) {
+            LibWimg.undo()
+        }
+        undoMessage = null
+    }
+
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = MaterialTheme.colorScheme.onBackground,
+                    contentColor = MaterialTheme.colorScheme.background,
+                    actionColor = MaterialTheme.colorScheme.primary,
+                )
+            }
+        },
+        topBar = {
+            // Account picker in top bar (only shows when >1 account)
+            AccountPicker(
+                selectedAccount = selectedAccount,
+                onAccountChanged = { selectedAccount = it },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        },
         bottomBar = {
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.background,
@@ -82,26 +120,41 @@ fun WimgNavigation() {
             }
         },
     ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = "dashboard",
-            modifier = Modifier.padding(padding),
-        ) {
-            composable("search") { SearchScreen(selectedAccount = selectedAccount, navController = navController) }
-            composable("dashboard") { DashboardScreen(selectedAccount = selectedAccount) }
-            composable("transactions") { TransactionsScreen(selectedAccount = selectedAccount) }
-            composable("more") { MoreScreen(navController = navController) }
-            composable("import") { ImportScreen(navController = navController) }
-            composable("analysis") { AnalysisScreen(selectedAccount = selectedAccount) }
-            composable("debts") { DebtsScreen() }
-            composable("goals") { GoalsScreen() }
-            composable("recurring") { RecurringScreen() }
-            composable("review") { ReviewScreen(selectedAccount = selectedAccount) }
-            composable("tax") { TaxScreen() }
-            composable("fints") { FinTSScreen() }
-            composable("feedback") { FeedbackScreen() }
-            composable("settings") { SettingsScreen() }
-            composable("about") { AboutScreen() }
+        Box(modifier = Modifier.padding(padding)) {
+            NavHost(
+                navController = navController,
+                startDestination = "dashboard",
+            ) {
+                composable("search") { SearchScreen(selectedAccount = selectedAccount, navController = navController) }
+                composable("dashboard") { DashboardScreen(selectedAccount = selectedAccount) }
+                composable("transactions") { TransactionsScreen(selectedAccount = selectedAccount) }
+                composable("more") { MoreScreen(navController = navController) }
+                composable("import") { ImportScreen(navController = navController) }
+                composable("analysis") { AnalysisScreen(selectedAccount = selectedAccount) }
+                composable("debts") { DebtsScreen() }
+                composable("goals") { GoalsScreen() }
+                composable("recurring") { RecurringScreen() }
+                composable("review") { ReviewScreen(selectedAccount = selectedAccount) }
+                composable("tax") { TaxScreen() }
+                composable("fints") { FinTSScreen() }
+                composable("feedback") { FeedbackScreen() }
+                composable("settings") { SettingsScreen() }
+                composable("about") { AboutScreen() }
+            }
+
+            // Coachmarks (first-visit tooltips)
+            when (selectedTab) {
+                1 -> Coachmark(
+                    key = "dashboard_hero",
+                    text = "Hier siehst du dein verfügbares Einkommen für den Monat",
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 120.dp),
+                )
+                2 -> Coachmark(
+                    key = "transactions_categorize",
+                    text = "Tippe auf eine Buchung zum Kategorisieren",
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 80.dp),
+                )
+            }
         }
     }
 }
