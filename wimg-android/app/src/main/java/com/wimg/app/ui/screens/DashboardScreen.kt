@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wimg.app.bridge.LibWimg
@@ -26,6 +27,8 @@ import com.wimg.app.ui.components.MonthPicker
 import com.wimg.app.ui.components.formatAmountShort
 import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
+import com.wimg.app.ui.theme.wimgCard
+import com.wimg.app.ui.theme.wimgHero
 import java.util.Calendar
 
 @Composable
@@ -151,38 +154,88 @@ fun DashboardScreen(selectedAccount: String?) {
             MonthPicker(year = year, month = month, onChanged = { y, m -> year = y; month = m })
         }
 
-        // Hero card
+        // Hero card — matching iOS availableCard
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = WimgShapes.large,
-                colors = CardDefaults.cardColors(containerColor = WimgColors.accent),
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wimgHero(),
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 28.dp, horizontal = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        "Verfügbares Einkommen",
-                        style = MaterialTheme.typography.labelMedium,
+                        "VERFÜGBAR",
+                        style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.sp),
+                        fontWeight = FontWeight.Bold,
                         color = WimgColors.heroText.copy(alpha = 0.7f),
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(6.dp))
                     Text(
                         formatAmountShort(summary?.available ?: 0.0),
-                        fontSize = 36.sp,
+                        fontSize = 40.sp,
                         fontWeight = FontWeight.Black,
                         color = WimgColors.heroText,
+                        letterSpacing = (-1).sp,
                     )
-                    val income = summary?.income ?: 0.0
-                    if (income > 0) {
-                        val sparquote = ((income + (summary?.expenses ?: 0.0)) / income * 100).toInt()
-                        Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "${summary?.tx_count ?: 0} Transaktionen",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = WimgColors.heroText.copy(alpha = 0.6f),
+                    )
+                }
+            }
+        }
+
+        // Sparquote card — matching iOS ring + label pattern
+        val income = summary?.income ?: 0.0
+        if (income > 0) {
+            item {
+                val sparquote = ((income + (summary?.expenses ?: 0.0)) / income * 100).toInt().coerceIn(-100, 100)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wimgCard()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Ring indicator
+                    Box(
+                        modifier = Modifier.size(52.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(
+                            progress = { (sparquote.coerceAtLeast(0) / 100f) },
+                            modifier = Modifier.size(52.dp),
+                            color = when {
+                                sparquote >= 20 -> Color(0xFF34C759)
+                                sparquote >= 0 -> Color(0xFFFF9500)
+                                else -> Color(0xFFFF3B30)
+                            },
+                            trackColor = MaterialTheme.colorScheme.outline,
+                            strokeWidth = 4.dp,
+                        )
                         Text(
-                            "Sparquote: $sparquote%",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = WimgColors.heroText.copy(alpha = 0.6f),
+                            "$sparquote%",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Black,
+                        )
+                    }
+                    Spacer(Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            "Sparquote",
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Text(
+                            "Du sparst ${formatAmountShort(summary?.available ?: 0.0)} von ${formatAmountShort(income)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -287,12 +340,11 @@ private fun SummaryCard(
     iconColor: androidx.compose.ui.graphics.Color,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = modifier,
-        shape = WimgShapes.small,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    Column(
+        modifier = modifier
+            .wimgCard(WimgShapes.small)
+            .padding(16.dp),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     icon,
@@ -302,8 +354,8 @@ private fun SummaryCard(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    title,
-                    style = MaterialTheme.typography.labelSmall,
+                    title.uppercase(),
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.5.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -313,7 +365,6 @@ private fun SummaryCard(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
-        }
     }
 }
 
@@ -323,8 +374,7 @@ private fun CategoryRow(cat: CategoryBreakdown) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .wimgCard(WimgShapes.small)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
