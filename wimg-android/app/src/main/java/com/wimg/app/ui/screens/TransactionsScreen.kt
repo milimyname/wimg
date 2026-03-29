@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -238,7 +240,7 @@ private fun TransactionRow(tx: Transaction, onClick: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun CategoryEditorSheet(transaction: Transaction, onDismiss: () -> Unit) {
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     val categories = listOf(
         WimgCategory.GROCERIES, WimgCategory.DINING, WimgCategory.TRANSPORT,
@@ -253,7 +255,12 @@ internal fun CategoryEditorSheet(transaction: Transaction, onDismiss: () -> Unit
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxHeight(0.85f)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .verticalScroll(rememberScrollState()),
+        ) {
             Text(
                 transaction.description,
                 style = MaterialTheme.typography.titleSmall,

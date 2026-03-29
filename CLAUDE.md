@@ -167,15 +167,23 @@ to TAN challenge if needed, silent fetch (last 90 days) for no-TAN paths.
 On auth failure clears stored PIN and falls back to manual form.
 v2 (deferred): `BGAppRefreshTask` for background fetch.
 
-Phase 8.0a (Android MVP, done): Kotlin + Jetpack Compose shell over
-libwimg.so. JNI C shim (`wimg_jni.c`, ~250 lines) compiled by NDK CMake,
-bridges length-prefixed C ABI to Java strings. `build.zig` `-Dshared=true`
-for .so output, `scripts/build-android.sh` handles NDK sysroot via
-`--libc` flag. MVP screens: Dashboard (hero + categories), Transactions
-(list + category editor bottom sheet), Import (file picker + result),
-More (grid). Material 3 theme matching iOS design tokens (accent `#FFE97D`,
-light/dark adaptive). 3-tab bottom nav. kotlinx-serialization for JSON.
-Sideload APK distribution. Landing page updated with Android download card.
+Phase 8.0 (Android, done): Kotlin + Jetpack Compose shell over libwimg.so.
+JNI C shim (`wimg_jni.c`, 44 functions) compiled by NDK CMake. 15 screens:
+Dashboard (hero + Sparquote ring + categories), Transactions (list +
+category editor + advanced filter sheet with amount/category/search),
+Analysis (category breakdown + net worth + spending heatmap), Debts (CRUD
++ progress), Goals (icon picker + contribute), Recurring (grouped by
+interval), Review (monthly savings/deficit), Tax (Pendlerpauschale +
+Homeoffice), Import (file picker), Search (quick actions: nav links,
+auto-categorize, export, undo/redo), Settings (theme/language picker,
+feature toggles, sync enable/link, data export/reset), About (19 FAQ,
+privacy, GitHub), FinTS (bank search, credentials, TAN, statement fetch,
+2MB stack thread), Feedback (POST to wimg-sync), Onboarding (4 cards),
+More (grid). Sync via OkHttp WebSocket + HTTP push/pull + E2E encryption.
+Update checker with changelog from GitHub Releases API. Demo data service.
+Material 3 theme with `wimgCard()`/`wimgHero()` modifiers, custom
+Typography. 4-tab bottom nav (Search, Home, Umsätze, Mehr). Sideload APK.
+CI builds debug APK + attaches to GitHub Release.
 
 Planned: Phase 7.3 (Vertragsmanagement) — contract lifecycle tracking on
 recurring payments. `contracts` table (pattern, start date, duration,
