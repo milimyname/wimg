@@ -184,7 +184,7 @@ fun SettingsScreen() {
             Card(shape = WimgShapes.small, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     featureToggles.forEach { (key, label, desc) ->
-                        var enabled by remember { mutableStateOf(featurePrefs.getBoolean(key, true)) }
+                        val enabled = com.wimg.app.ui.theme.FeatureFlagsState.isEnabled(key)
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -196,8 +196,8 @@ fun SettingsScreen() {
                             Switch(
                                 checked = enabled,
                                 onCheckedChange = {
-                                    enabled = it
-                                    featurePrefs.edit().putBoolean(key, it).apply()
+                                    com.wimg.app.ui.theme.FeatureFlagsState.toggle(key)
+                                    featurePrefs.edit().putBoolean(key, !enabled).apply()
                                 },
                                 colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFFFF9500)),
                             )

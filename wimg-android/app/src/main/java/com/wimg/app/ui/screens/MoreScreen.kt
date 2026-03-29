@@ -26,23 +26,26 @@ private data class MoreItem(
     val icon: ImageVector,
     val color: Color,
     val route: String,
+    val feature: String? = null,
 )
 
 @Composable
 fun MoreScreen(navController: NavController) {
     val items = listOf(
         MoreItem("Analyse", Icons.Outlined.BarChart, Color(0xFF5856D6), "analysis"),
-        MoreItem("Schulden", Icons.Outlined.CreditCard, Color(0xFFFF2D55), "debts"),
-        MoreItem("Sparziele", Icons.Outlined.Flag, Color(0xFFFFD60A), "goals"),
-        MoreItem("Wiederkehrend", Icons.Outlined.Refresh, Color(0xFF30D158), "recurring"),
-        MoreItem("Steuern", Icons.Outlined.Description, Color(0xFFFF9500), "tax"),
-        MoreItem("Rückblick", Icons.Outlined.CalendarMonth, Color(0xFFAF52DE), "review"),
+        MoreItem("Schulden", Icons.Outlined.CreditCard, Color(0xFFFF2D55), "debts", feature = "debts"),
+        MoreItem("Sparziele", Icons.Outlined.Flag, Color(0xFFFFD60A), "goals", feature = "goals"),
+        MoreItem("Wiederkehrend", Icons.Outlined.Refresh, Color(0xFF30D158), "recurring", feature = "recurring"),
+        MoreItem("Steuern", Icons.Outlined.Description, Color(0xFFFF9500), "tax", feature = "tax"),
+        MoreItem("Rückblick", Icons.Outlined.CalendarMonth, Color(0xFFAF52DE), "review", feature = "review"),
         MoreItem("Bankverbindung", Icons.Outlined.AccountBalance, Color(0xFF5AC8FA), "fints"),
         MoreItem("Import", Icons.Outlined.FileUpload, Color(0xFF007AFF), "import"),
         MoreItem("Einstellungen", Icons.Outlined.Settings, Color(0xFF8E8E93), "settings"),
         MoreItem("Feedback", Icons.Outlined.ChatBubbleOutline, Color(0xFF5856D6), "feedback"),
         MoreItem("Über wimg", Icons.Outlined.Info, Color(0xFF8E8E93), "about"),
     )
+
+    val visibleItems = items.filter { it.feature == null || com.wimg.app.ui.theme.FeatureFlagsState.isEnabled(it.feature) }
 
     Column(
         modifier = Modifier
@@ -62,7 +65,7 @@ fun MoreScreen(navController: NavController) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(items) { item ->
+            items(visibleItems) { item ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()

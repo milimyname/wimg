@@ -119,6 +119,22 @@ object LocaleState {
     var locale by mutableStateOf("de") // "de" or "en"
 }
 
+object FeatureFlagsState {
+    var flags by mutableStateOf(mapOf(
+        "debts" to true,
+        "recurring" to true,
+        "review" to true,
+        "goals" to true,
+        "tax" to true,
+    ))
+
+    fun isEnabled(key: String): Boolean = flags[key] ?: true
+
+    fun toggle(key: String) {
+        flags = flags.toMutableMap().apply { this[key] = !(this[key] ?: true) }
+    }
+}
+
 @Composable
 fun WimgTheme(
     content: @Composable () -> Unit,
@@ -131,6 +147,10 @@ fun WimgTheme(
         if (ThemeState.mode != storedTheme) ThemeState.mode = storedTheme
         val storedLocale = prefs.getString("wimg_locale", "de") ?: "de"
         if (LocaleState.locale != storedLocale) LocaleState.locale = storedLocale
+        // Load feature flags
+        val featurePrefs = context.getSharedPreferences("wimg_features", 0)
+        val loaded = FeatureFlagsState.flags.keys.associateWith { featurePrefs.getBoolean(it, true) }
+        if (FeatureFlagsState.flags != loaded) FeatureFlagsState.flags = loaded
     }
 
     val darkTheme = when (ThemeState.mode) {
