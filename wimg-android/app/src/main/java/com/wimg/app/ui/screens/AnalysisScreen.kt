@@ -19,6 +19,7 @@ import com.wimg.app.models.MonthlySummary
 import com.wimg.app.models.Snapshot
 import com.wimg.app.models.WimgCategory
 import com.wimg.app.ui.components.MonthPicker
+import com.wimg.app.ui.components.SpendingHeatmap
 import com.wimg.app.ui.components.formatAmountShort
 import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
@@ -80,6 +81,22 @@ fun AnalysisScreen(selectedAccount: String?) {
                         "${summary?.tx_count ?: 0} Transaktionen",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        // Spending heatmap
+        if (snapshots.size >= 2) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = WimgShapes.medium,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                ) {
+                    SpendingHeatmap(
+                        snapshots = snapshots,
+                        modifier = Modifier.padding(16.dp),
                     )
                 }
             }
