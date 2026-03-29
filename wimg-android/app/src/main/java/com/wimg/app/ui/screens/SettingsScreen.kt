@@ -86,6 +86,7 @@ fun SettingsScreen() {
                                 onClick = {
                                     locale = code
                                     prefs.edit().putString("wimg_locale", code).apply()
+                                    com.wimg.app.ui.theme.LocaleState.locale = code
                                 },
                             )
                             Text(label, style = MaterialTheme.typography.bodyMedium)

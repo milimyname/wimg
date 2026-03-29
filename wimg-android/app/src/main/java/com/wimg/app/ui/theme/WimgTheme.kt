@@ -110,20 +110,27 @@ private val WimgTypography = Typography(
     labelSmall = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 0.5.sp),
 )
 
-/** Global theme state — mutate from Settings to trigger recomposition */
+/** Global app state — mutate from Settings to trigger recomposition */
 object ThemeState {
     var mode by mutableIntStateOf(-1) // -1=system, 1=light, 2=dark
+}
+
+object LocaleState {
+    var locale by mutableStateOf("de") // "de" or "en"
 }
 
 @Composable
 fun WimgTheme(
     content: @Composable () -> Unit,
 ) {
-    // Read stored theme on first composition
+    // Read stored theme + locale on first composition
     val context = LocalView.current.context
     LaunchedEffect(Unit) {
-        val stored = context.getSharedPreferences("wimg", 0).getInt("wimg_theme", -1)
-        if (ThemeState.mode != stored) ThemeState.mode = stored
+        val prefs = context.getSharedPreferences("wimg", 0)
+        val storedTheme = prefs.getInt("wimg_theme", -1)
+        if (ThemeState.mode != storedTheme) ThemeState.mode = storedTheme
+        val storedLocale = prefs.getString("wimg_locale", "de") ?: "de"
+        if (LocaleState.locale != storedLocale) LocaleState.locale = storedLocale
     }
 
     val darkTheme = when (ThemeState.mode) {

@@ -1,17 +1,16 @@
 package com.wimg.app.ui.components
 
-import android.content.Context
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import com.wimg.app.ui.theme.LocaleState
 
 /**
  * Translated Text — looks up English translation at runtime based on
- * wimg_locale SharedPreferences. German is the source/default.
+ * LocaleState.locale (observable). German is the source/default.
  * Mirrors iOS TText component.
  */
 @Composable
@@ -23,8 +22,7 @@ fun TText(
     color: Color = Color.Unspecified,
     maxLines: Int = Int.MAX_VALUE,
 ) {
-    val context = LocalContext.current
-    val translated = translateIfNeeded(context, text)
+    val translated = if (LocaleState.locale == "en") TranslationMap.get(text) ?: text else text
     Text(
         text = translated,
         modifier = modifier,
@@ -33,12 +31,6 @@ fun TText(
         color = color,
         maxLines = maxLines,
     )
-}
-
-private fun translateIfNeeded(context: Context, text: String): String {
-    val locale = context.getSharedPreferences("wimg", 0).getString("wimg_locale", "de") ?: "de"
-    if (locale == "de") return text
-    return TranslationMap.get(text) ?: text
 }
 
 /**
