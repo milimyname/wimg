@@ -21,6 +21,7 @@ import com.wimg.app.models.CategoryBreakdown
 import com.wimg.app.models.MonthlySummary
 import com.wimg.app.models.WimgCategory
 import com.wimg.app.services.DemoDataService
+import com.wimg.app.services.UpdateChecker
 import com.wimg.app.ui.components.MonthPicker
 import com.wimg.app.ui.components.formatAmountShort
 import com.wimg.app.ui.theme.WimgColors
@@ -33,9 +34,17 @@ fun DashboardScreen(selectedAccount: String?) {
     var year by remember { mutableIntStateOf(calendar.get(Calendar.YEAR)) }
     var month by remember { mutableIntStateOf(calendar.get(Calendar.MONTH) + 1) }
     var summary by remember { mutableStateOf<MonthlySummary?>(null) }
+    var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(year, month, selectedAccount) {
         summary = LibWimg.getSummaryFiltered(year, month, selectedAccount)
+    }
+
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            updateInfo = UpdateChecker.check(context)
+        }
     }
 
     LazyColumn(
@@ -45,6 +54,46 @@ fun DashboardScreen(selectedAccount: String?) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // Update banner
+        val update = updateInfo
+        if (update != null && update.hasUpdate) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = WimgShapes.medium,
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Neue Version verfügbar",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                "v${update.latestVersion}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Button(
+                            onClick = { UpdateChecker.openDownload(context) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = WimgColors.accent,
+                                contentColor = WimgColors.heroText,
+                            ),
+                            shape = WimgShapes.small,
+                        ) {
+                            Text("Update", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
         // Month picker
         item {
             MonthPicker(year = year, month = month, onChanged = { y, m -> year = y; month = m })
