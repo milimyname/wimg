@@ -82,7 +82,7 @@ fun GoalsScreen() {
                 // Hero
                 item {
                     Box(modifier = Modifier.fillMaxWidth().wimgHero()) {
-                        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(formatAmountShort(totalSaved), fontSize = 32.sp, fontWeight = FontWeight.Black, color = WimgColors.heroText)
                             Text("von ${formatAmountShort(totalTarget)} gespart", style = MaterialTheme.typography.bodySmall, color = WimgColors.heroText.copy(alpha = 0.7f))
                             if (totalTarget > 0) {

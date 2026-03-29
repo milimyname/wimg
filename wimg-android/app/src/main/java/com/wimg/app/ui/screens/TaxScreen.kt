@@ -53,7 +53,7 @@ fun TaxScreen() {
         // Summary hero
         item {
             Box(modifier = Modifier.fillMaxWidth().wimgHero()) {
-                Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Gesamtabzug", style = MaterialTheme.typography.labelMedium, color = WimgColors.heroText.copy(alpha = 0.7f))
                     Spacer(Modifier.height(4.dp))
                     Text(formatAmountShort(total), fontSize = 32.sp, fontWeight = FontWeight.Black, color = WimgColors.heroText)
