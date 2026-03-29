@@ -141,6 +141,30 @@ JNIEXPORT jstring JNICALL JNI_FN(nativeGetAccounts)(JNIEnv *env, jobject obj) {
     return ptr_to_jstring(env, wimg_get_accounts());
 }
 
+JNIEXPORT jint JNICALL JNI_FN(nativeAddAccount)(JNIEnv *env, jobject obj, jstring json) {
+    const char *data = (*env)->GetStringUTFChars(env, json, NULL);
+    jsize len = (*env)->GetStringUTFLength(env, json);
+    int32_t rc = wimg_add_account((const uint8_t *)data, len);
+    (*env)->ReleaseStringUTFChars(env, json, data);
+    return rc;
+}
+
+JNIEXPORT jint JNICALL JNI_FN(nativeUpdateAccount)(JNIEnv *env, jobject obj, jstring json) {
+    const char *data = (*env)->GetStringUTFChars(env, json, NULL);
+    jsize len = (*env)->GetStringUTFLength(env, json);
+    int32_t rc = wimg_update_account((const uint8_t *)data, len);
+    (*env)->ReleaseStringUTFChars(env, json, data);
+    return rc;
+}
+
+JNIEXPORT jint JNICALL JNI_FN(nativeDeleteAccount)(JNIEnv *env, jobject obj, jstring id) {
+    const char *cid = (*env)->GetStringUTFChars(env, id, NULL);
+    jsize len = (*env)->GetStringUTFLength(env, id);
+    int32_t rc = wimg_delete_account((const uint8_t *)cid, len);
+    (*env)->ReleaseStringUTFChars(env, id, cid);
+    return rc;
+}
+
 // --- Recurring ---
 
 JNIEXPORT jstring JNICALL JNI_FN(nativeGetRecurring)(JNIEnv *env, jobject obj) {

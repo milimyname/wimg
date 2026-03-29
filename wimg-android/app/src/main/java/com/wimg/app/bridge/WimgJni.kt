@@ -32,6 +32,9 @@ object WimgJni {
 
     // Accounts
     external fun nativeGetAccounts(): String?
+    external fun nativeAddAccount(json: String): Int
+    external fun nativeUpdateAccount(json: String): Int
+    external fun nativeDeleteAccount(id: String): Int
 
     // Recurring
     external fun nativeGetRecurring(): String?
