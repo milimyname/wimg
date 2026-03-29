@@ -2,6 +2,8 @@ import SwiftUI
 
 struct MoreView: View {
     @Binding var selectedAccount: String?
+    var popToRoot: UUID
+    @State private var path = NavigationPath()
 
     private let allItems: [(title: String, icon: String, color: Color, destination: Destination)] = [
         ("Analyse", "chart.bar", .indigo, .analysis),
@@ -29,12 +31,12 @@ struct MoreView: View {
         }
     }
 
-    enum Destination {
+    enum Destination: String, Hashable {
         case analysis, debts, recurring, goals, tax, import_, fints, review, settings, about
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollView {
                 VStack(spacing: 20) {
                     Text("Mehr")
@@ -47,9 +49,7 @@ struct MoreView: View {
                         GridItem(.flexible(), spacing: 16),
                     ], spacing: 16) {
                         ForEach(items, id: \.title) { item in
-                            NavigationLink {
-                                destinationView(for: item.destination)
-                            } label: {
+                            NavigationLink(value: item.destination) {
                                 VStack(spacing: 12) {
                                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                                         .fill(item.color.opacity(0.15))
@@ -76,6 +76,10 @@ struct MoreView: View {
                 .padding(.top, 8)
             }
             .background(WimgTheme.bg)
+            .navigationDestination(for: Destination.self) { dest in
+                destinationView(for: dest)
+            }
+            .onChange(of: popToRoot) { path = NavigationPath() }
         }
     }
 

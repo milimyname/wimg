@@ -24,7 +24,6 @@ struct DebtsView: View {
     }
 
     var body: some View {
-        NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     // Overall progress hero
@@ -133,7 +132,6 @@ struct DebtsView: View {
                     .padding(.bottom, 8)
                 }
             }
-        }
     }
 
     // MARK: - Hero Card

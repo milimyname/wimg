@@ -2,6 +2,8 @@ import SwiftUI
 
 struct SearchView: View {
     @Binding var selectedAccount: String?
+    var popToRoot: UUID
+    @State private var path = NavigationPath()
     @State private var searchText = ""
     @State private var debouncedSearch = ""
     @State private var transactions: [Transaction] = []
@@ -74,7 +76,7 @@ struct SearchView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 // Active filter chips
                 if hasActiveFilters {
@@ -161,6 +163,7 @@ struct SearchView: View {
             .onChange(of: amountMax) { refilter() }
             .toolbar { filterToolbar }
             .onAppear { reload() }
+            .onChange(of: popToRoot) { path = NavigationPath() }
             .onChange(of: selectedAccount) { reload() }
             .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
                 reload()

@@ -35,9 +35,12 @@ struct TransactionsView: View {
     }
 
     @State private var filteredGrouped: [(String, [Transaction])] = []
+    @State private var displayLimit = 30
+    @State private var refilterToken = UUID()
 
+    /// Filter key excludes searchText (debounced separately).
     private var filterKey: String {
-        "\(filter)|\(searchText)|\(selectedCategory ?? -1)|\(showExcluded)|\(filterCategorySet.sorted())|\(dateQuick ?? "")|\(dateFrom?.timeIntervalSince1970 ?? 0)|\(dateTo?.timeIntervalSince1970 ?? 0)|\(amountMin)|\(amountMax)"
+        "\(filter)|\(selectedCategory ?? -1)|\(showExcluded)|\(filterCategorySet.sorted())|\(dateQuick ?? "")|\(dateFrom?.timeIntervalSince1970 ?? 0)|\(dateTo?.timeIntervalSince1970 ?? 0)|\(amountMin)|\(amountMax)"
     }
 
     private var activeFilterCount: Int {
@@ -47,7 +50,15 @@ struct TransactionsView: View {
             + (!searchText.isEmpty ? 1 : 0)
     }
 
+    private static let isoDateFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        return fmt
+    }()
+
     private func refilter() {
+        let token = UUID()
+        refilterToken = token
         let txs = transactions
         let excluded = showExcluded
         let f = filter
@@ -59,6 +70,7 @@ struct TransactionsView: View {
         let dto = dateTo
         let minAmt = amountMin
         let maxAmt = amountMax
+        let fmt = Self.isoDateFormatter
         Task.detached {
             var result = txs
             if !excluded { result = result.filter { !$0.isExcluded } }
@@ -75,8 +87,6 @@ struct TransactionsView: View {
             if !search.isEmpty {
                 result = result.filter { $0.description.localizedCaseInsensitiveContains(search) }
             }
-            let fmt = DateFormatter()
-            fmt.dateFormat = "yyyy-MM-dd"
             if let dq {
                 let today = Date()
                 let calendar = Calendar.current
@@ -107,7 +117,10 @@ struct TransactionsView: View {
                 }
             }
             let grouped = Dictionary(grouping: result) { $0.date }.sorted { $0.key > $1.key }
-            await MainActor.run { filteredGrouped = grouped }
+            await MainActor.run {
+                guard refilterToken == token else { return }
+                filteredGrouped = grouped
+            }
         }
     }
 
@@ -118,8 +131,14 @@ struct TransactionsView: View {
                 .navigationTitle("Umsätze")
                 .toolbar { filterToolbar }
                 .searchable(text: $searchText, prompt: "Suchen...")
+                .task(id: searchText) {
+                    try? await Task.sleep(for: .milliseconds(300))
+                    guard !Task.isCancelled else { return }
+                    displayLimit = 30
+                    refilter()
+                }
                 .onChange(of: selectedAccount) { reload() }
-                .onChange(of: filterKey) { refilter() }
+                .onChange(of: filterKey) { displayLimit = 30; refilter() }
                 .onAppear { reload() }
                 .refreshable { reload() }
                 .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
@@ -256,9 +275,26 @@ struct TransactionsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private var limitedGroups: [(String, [Transaction])] {
+        var count = 0
+        var result: [(String, [Transaction])] = []
+        for (date, txs) in filteredGrouped {
+            if count >= displayLimit { break }
+            let remaining = displayLimit - count
+            let slice = remaining >= txs.count ? txs : Array(txs.prefix(remaining))
+            result.append((date, slice))
+            count += slice.count
+        }
+        return result
+    }
+
+    private var totalFilteredCount: Int {
+        filteredGrouped.reduce(0) { $0 + $1.1.count }
+    }
+
     private var transactionList: some View {
         List {
-            ForEach(filteredGrouped, id: \.0) { date, txs in
+            ForEach(limitedGroups, id: \.0) { date, txs in
                 Section {
                     ForEach(txs) { tx in
                         transactionRow(tx)
@@ -270,6 +306,18 @@ struct TransactionsView: View {
                         .textCase(.uppercase)
                         .tracking(0.8)
                 }
+            }
+
+            if displayLimit < totalFilteredCount {
+                Button {
+                    displayLimit += 30
+                } label: {
+                    Text("Mehr laden (\(totalFilteredCount - displayLimit) weitere)")
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                }
+                .listRowBackground(Color.clear)
             }
         }
         .listStyle(.insetGrouped)
@@ -361,14 +409,19 @@ struct TransactionsView: View {
         withAnimation { undoMessage = nil }
     }
 
+    private static let dateHeaderFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        let isEn = UserDefaults.standard.string(forKey: "wimg_locale") == "en"
+        fmt.locale = Locale(identifier: isEn ? "en_US" : "de_DE")
+        return fmt
+    }()
+
     private func formatDateHeader(_ dateStr: String) -> String {
         let parts = dateStr.split(separator: "-")
         guard parts.count == 3 else { return dateStr }
 
         let isEn = UserDefaults.standard.string(forKey: "wimg_locale") == "en"
-        let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: isEn ? "en_US" : "de_DE")
-        let monthNames = fmt.standaloneMonthSymbols ?? []
+        let monthNames = Self.dateHeaderFormatter.standaloneMonthSymbols ?? []
 
         if let day = Int(parts[2]),
            let monthIdx = Int(parts[1]),

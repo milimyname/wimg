@@ -42,7 +42,6 @@ struct ImportView: View {
     }
 
     var body: some View {
-        NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     if fileQueue.count > 1 {
@@ -84,7 +83,6 @@ struct ImportView: View {
             ) { result in
                 handleFileImport(result)
             }
-        }
     }
 
     // MARK: - File Picker Card

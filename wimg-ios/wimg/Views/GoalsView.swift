@@ -20,7 +20,6 @@ struct GoalsView: View {
     }
 
     var body: some View {
-        NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     if !goals.isEmpty {
@@ -128,7 +127,6 @@ struct GoalsView: View {
                     .padding(.bottom, 8)
                 }
             }
-        }
     }
 
     // MARK: - Hero Card

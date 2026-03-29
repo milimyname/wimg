@@ -18,7 +18,6 @@ struct AnalysisView: View {
     }
 
     var body: some View {
-        NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     if !hasAnyData {
@@ -157,7 +156,6 @@ struct AnalysisView: View {
             .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
                 reload()
             }
-        }
     }
 
     private func categoryRow(_ cat: CategoryBreakdown, total: Double) -> some View {

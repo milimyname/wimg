@@ -66,7 +66,6 @@ struct TaxView: View {
     }
 
     var body: some View {
-        NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     if transactions.isEmpty {
@@ -117,7 +116,6 @@ struct TaxView: View {
             }
             .background(WimgTheme.bg)
             .navigationTitle("Steuern")
-        }
     }
 
     // MARK: - Hero

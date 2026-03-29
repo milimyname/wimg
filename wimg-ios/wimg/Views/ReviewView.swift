@@ -72,7 +72,6 @@ struct ReviewView: View {
     }
 
     var body: some View {
-        NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     MonthPicker(year: $year, month: $month)
@@ -129,7 +128,6 @@ struct ReviewView: View {
             .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
                 reload()
             }
-        }
     }
 
     // MARK: - Savings Card

@@ -30,6 +30,11 @@ struct wimgApp: App {
         // Migrate credentials from UserDefaults to Keychain (one-time on update)
         SyncService.shared.migrateIfNeeded()
 
+        // Opaque tab bar — prevent transparent flicker on navigation transitions
+        let tabAppearance = UITabBarAppearance()
+        tabAppearance.configureWithDefaultBackground()
+        UITabBar.appearance().scrollEdgeAppearance = tabAppearance
+
         // Log main thread hangs > 50ms
         #if DEBUG
         let observer = CFRunLoopObserverCreateWithHandler(nil, CFRunLoopActivity.beforeWaiting.rawValue | CFRunLoopActivity.afterWaiting.rawValue, true, 0) { _, activity in
@@ -57,38 +62,64 @@ struct ContentView: View {
     @State private var accounts: [Account] = []
     @AppStorage("wimg_onboarding_completed") private var onboardingCompleted = false
     @AppStorage("wimg_locale") private var currentLocale = "de"
+    @State private var selectedTab = 1
+    @State private var popToRoot = UUID()
     private var themeManager = ThemeManager.shared
 
     private var appLocale: Locale {
         Locale(identifier: currentLocale == "en" ? "en" : "de")
     }
 
+    private var tabSelection: Binding<Int> {
+        Binding {
+            selectedTab
+        } set: { newTab in
+            if newTab == selectedTab {
+                popToRoot = UUID()
+            }
+            selectedTab = newTab
+        }
+    }
+
     var body: some View {
-        TabView {
-            SearchView(selectedAccount: $selectedAccount)
+        TabView(selection: tabSelection) {
+            SearchView(selectedAccount: $selectedAccount, popToRoot: popToRoot)
                 .tabItem {
                     Label("Suche", systemImage: "magnifyingglass")
                 }
+                .tag(0)
 
             DashboardView(selectedAccount: $selectedAccount, accounts: $accounts)
                 .tabItem {
                     Label("Home", systemImage: "house")
                 }
+                .tag(1)
 
             TransactionsView(selectedAccount: $selectedAccount)
                 .tabItem {
                     Label("Umsätze", systemImage: "list.bullet")
                 }
+                .tag(2)
 
-            MoreView(selectedAccount: $selectedAccount)
+            MoreView(selectedAccount: $selectedAccount, popToRoot: popToRoot)
                 .tabItem {
                     Label("Mehr", systemImage: "square.grid.2x2")
                 }
+                .tag(3)
         }
         .tint(WimgTheme.text)
         .environment(\.locale, appLocale)
         .preferredColorScheme(themeManager.mode.colorScheme)
         .onAppear {
+            // Pre-warm keyboard to avoid ~300ms cold-start on first search tap
+            let warmup = UITextField()
+            UIApplication.shared.connectedScenes
+                .compactMap { ($0 as? UIWindowScene)?.keyWindow }
+                .first?.addSubview(warmup)
+            warmup.becomeFirstResponder()
+            warmup.resignFirstResponder()
+            warmup.removeFromSuperview()
+
             Task.detached {
                 let accs = LibWimg.getAccounts()
                 // Auto-snapshot: take monthly snapshot if we haven't this month
