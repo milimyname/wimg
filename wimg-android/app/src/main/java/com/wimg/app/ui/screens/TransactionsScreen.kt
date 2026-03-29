@@ -1,4 +1,5 @@
 package com.wimg.app.ui.screens
+import com.wimg.app.ui.components.TText
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -367,7 +368,7 @@ private fun AdvancedFilterSheet(
             // Amount
             Column {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Betrag", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    TText("Betrag", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text("${amountMin.toInt()} – ${if (amountMax >= 1000) "∞" else amountMax.toInt().toString()} €", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text("Min", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -379,7 +380,7 @@ private fun AdvancedFilterSheet(
             // Categories grid
             Column {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Kategorien", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    TText("Kategorien", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     if (filterCategories.isNotEmpty()) {
                         TextButton(onClick = { onFilterCategoriesChange(emptySet()) }) { Text("Zurücksetzen", style = MaterialTheme.typography.labelSmall) }
                     }

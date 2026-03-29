@@ -1,4 +1,5 @@
 package com.wimg.app.ui.screens
+import com.wimg.app.ui.components.TText
 
 import android.content.Intent
 import androidx.appcompat.app.AppCompatDelegate
@@ -43,13 +44,13 @@ fun SettingsScreen() {
     ) {
         // Appearance
         item {
-            Text("Darstellung", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TText("Darstellung", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         item {
             Card(shape = WimgShapes.small, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Design", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    TText("Design", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     ThemeMode.entries.forEach { mode ->
                         Row(
@@ -74,7 +75,7 @@ fun SettingsScreen() {
         item {
             Card(shape = WimgShapes.small, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Sprache", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    TText("Sprache", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     listOf("de" to "Deutsch", "en" to "English").forEach { (code, label) ->
                         Row(
@@ -98,7 +99,7 @@ fun SettingsScreen() {
         // Sync section
         item {
             Spacer(Modifier.height(8.dp))
-            Text("Synchronisierung", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TText("Synchronisierung", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         item {
@@ -118,7 +119,7 @@ fun SettingsScreen() {
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onBackground, contentColor = MaterialTheme.colorScheme.background),
                         ) {
-                            Text("Sync aktivieren", fontWeight = FontWeight.Bold)
+                            TText("Sync aktivieren", fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
@@ -138,7 +139,7 @@ fun SettingsScreen() {
                             }
                         }
                     } else {
-                        Text("Sync aktiv", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        TText("Sync aktiv", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(4.dp))
                         Text(syncKey ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(12.dp))
@@ -167,7 +168,7 @@ fun SettingsScreen() {
         // Features section
         item {
             Spacer(Modifier.height(8.dp))
-            Text("Features", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TText("Features", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         item {
@@ -209,7 +210,7 @@ fun SettingsScreen() {
         // Data section
         item {
             Spacer(Modifier.height(8.dp))
-            Text("Daten", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TText("Daten", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         item {
@@ -231,7 +232,7 @@ fun SettingsScreen() {
         // Danger zone
         item {
             Spacer(Modifier.height(8.dp))
-            Text("Danger Zone", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+            TText("Danger Zone", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
         }
 
         item {

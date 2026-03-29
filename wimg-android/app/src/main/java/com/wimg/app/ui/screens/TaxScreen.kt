@@ -1,4 +1,5 @@
 package com.wimg.app.ui.screens
+import com.wimg.app.ui.components.TText
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -54,7 +55,7 @@ fun TaxScreen() {
         item {
             Box(modifier = Modifier.fillMaxWidth().wimgHero()) {
                 Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Gesamtabzug", style = MaterialTheme.typography.labelMedium, color = WimgColors.heroText.copy(alpha = 0.7f))
+                    TText("Gesamtabzug", style = MaterialTheme.typography.labelMedium, color = WimgColors.heroText.copy(alpha = 0.7f))
                     Spacer(Modifier.height(4.dp))
                     Text(formatAmountShort(total), fontSize = 32.sp, fontWeight = FontWeight.Black, color = WimgColors.heroText)
                 }
@@ -74,7 +75,7 @@ fun TaxScreen() {
         item {
             Card(shape = WimgShapes.medium, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("Pendlerpauschale", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    TText("Pendlerpauschale", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text("§9 EStG — Entfernungspauschale", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(
@@ -110,7 +111,7 @@ fun TaxScreen() {
         item {
             Card(shape = WimgShapes.medium, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("Homeoffice-Pauschale", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    TText("Homeoffice-Pauschale", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text("§4 Abs. 5 Nr. 6c EStG", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(16.dp))
                     OutlinedTextField(

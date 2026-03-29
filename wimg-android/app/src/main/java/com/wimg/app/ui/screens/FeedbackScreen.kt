@@ -1,4 +1,5 @@
 package com.wimg.app.ui.screens
+import com.wimg.app.ui.components.TText
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -47,7 +48,7 @@ fun FeedbackScreen() {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("✅", fontSize = 48.sp)
                     Spacer(Modifier.height(12.dp))
-                    Text("Feedback gesendet!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    TText("Feedback gesendet!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text("Danke für dein Feedback.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(24.dp))
                     OutlinedButton(onClick = { success = false; message = "" }) {
@@ -56,7 +57,7 @@ fun FeedbackScreen() {
                 }
             }
         } else {
-            Text("Feedback", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            TText("Feedback", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(16.dp))
 
             // Type selector
