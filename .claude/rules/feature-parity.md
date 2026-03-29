@@ -15,15 +15,10 @@ Monthly Snapshots, Onboarding (4 cards), FinTS (bank search, credentials,
 TAN handling, statement fetch), Sync (WebSocket + HTTP push/pull + E2E
 encryption), Feedback (POST to wimg-sync), Demo data.
 
-## Android Missing
+## Android Minor Gaps
 
-- Renewals calendar tab on Recurring (iOS has 12-month forecast)
-- Spending Heatmap tap-to-select (iOS has inline amount label)
-- Account switcher UI (JNI bridged but no picker in top bar)
-- Coachmarks (component exists but not placed on screens)
-- Undo toast (component exists but not wired into mutations)
-- i18n (German only, no English translations yet)
-- FinTS Quick Refresh (iOS has PIN storage + one-tap fetch)
+- Spending Heatmap tap-to-select (iOS has inline amount label on tap)
+- TText not yet wired into all remaining Text() calls (partial coverage)
 
 ## iOS Missing
 
@@ -37,7 +32,7 @@ encryption), Feedback (POST to wimg-sync), Demo data.
 | Feature                              | Platform      | Reason                         |
 | ------------------------------------ | ------------- | ------------------------------ |
 | FinTS bank connection + TAN medium   | iOS + Android | Browsers can't do FinTS (CORS) |
-| FinTS Quick Refresh (PIN storage)    | iOS only      | Android planned                |
+| FinTS Quick Refresh (PIN storage)    | iOS + Android | Keychain (iOS), SharedPrefs (Android) |
 | PWA install + service worker updates | Web only      | Native concept                 |
 | OPFS persistence                     | Web only      | Native uses file on disk       |
 | MCP server (AI agent access)         | Remote        | CF Worker DO, any MCP client   |

@@ -167,22 +167,27 @@ to TAN challenge if needed, silent fetch (last 90 days) for no-TAN paths.
 On auth failure clears stored PIN and falls back to manual form.
 v2 (deferred): `BGAppRefreshTask` for background fetch.
 
-Phase 8.0 (Android, done): Kotlin + Jetpack Compose shell over libwimg.so.
-JNI C shim (`wimg_jni.c`, 44 functions) compiled by NDK CMake. 15 screens:
-Dashboard (hero + Sparquote ring + categories), Transactions (list +
-category editor + advanced filter sheet with amount/category/search),
-Analysis (category breakdown + net worth + spending heatmap), Debts (CRUD
-+ progress), Goals (icon picker + contribute), Recurring (grouped by
-interval), Review (monthly savings/deficit), Tax (Pendlerpauschale +
-Homeoffice), Import (file picker), Search (quick actions: nav links,
+Phase 8.0 (Android, done — full parity with iOS): Kotlin + Jetpack Compose
+shell over libwimg.so. JNI C shim (`wimg_jni.c`, 44 functions) compiled by
+NDK CMake. 15 screens at full feature parity: Dashboard (hero + Sparquote
+ring + categories), Transactions (list + category editor + advanced filter
+sheet with amount/category/search), Analysis (category breakdown + net worth
++ spending heatmap), Debts (CRUD + progress), Goals (icon picker +
+contribute), Recurring (grouped by interval + renewals calendar tab with
+12-month forecast), Review (monthly savings/deficit), Tax (Pendlerpauschale
++ Homeoffice), Import (file picker), Search (quick actions: nav links,
 auto-categorize, export, undo/redo), Settings (theme/language picker,
-feature toggles, sync enable/link, data export/reset), About (19 FAQ,
-privacy, GitHub), FinTS (bank search, credentials, TAN, statement fetch,
-2MB stack thread), Feedback (POST to wimg-sync), Onboarding (4 cards),
-More (grid). Sync via OkHttp WebSocket + HTTP push/pull + E2E encryption.
-Update checker with changelog from GitHub Releases API. Demo data service.
-Material 3 theme with `wimgCard()`/`wimgHero()` modifiers, custom
-Typography. 4-tab bottom nav (Search, Home, Umsätze, Mehr). Sideload APK.
+feature toggles, sync enable/link, data export/reset with confirmation),
+About (19 FAQ with expandable answers, privacy, GitHub), FinTS (bank
+search, credentials, TAN, statement fetch, 2MB stack thread, Quick Refresh
+with PIN storage), Feedback (POST to wimg-sync), Onboarding (4-card
+carousel), More (grid). Sync via OkHttp WebSocket + HTTP push/pull + E2E
+encryption. Undo snackbar wired globally. Coachmarks (2 first-visit
+tooltips). Account switcher in top bar. i18n via TText component (runtime
+German→English, 150+ translated strings). Update checker with changelog
+from GitHub Releases API. Demo data service. Material 3 theme with
+`wimgCard()`/`wimgHero()` modifiers, custom Typography, subtle shadows.
+4-tab bottom nav (Search, Home, Umsätze, Mehr). Sideload APK distribution.
 CI builds debug APK + attaches to GitHub Release.
 
 Planned: Phase 7.3 (Vertragsmanagement) — contract lifecycle tracking on
