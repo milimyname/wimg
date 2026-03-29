@@ -28,6 +28,7 @@ import com.wimg.app.bridge.WimgJni
 import com.wimg.app.services.FintsHttpCallback
 import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
+import com.wimg.app.ui.theme.wimgHero
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -66,14 +67,25 @@ private suspend fun <T> withFintsThread(block: () -> T): T {
     }
 }
 
+private const val PREFS = "wimg_fints"
+private const val KEY_BLZ = "fints_blz"
+private const val KEY_KENNUNG = "fints_kennung"
+private const val KEY_PIN = "fints_pin"
+private const val KEY_TAN_MEDIUM = "fints_tan_medium"
+
 @Composable
 fun FinTSScreen() {
-    var stage by remember { mutableStateOf("banks") } // banks, credentials, tan, dateRange, fetching, result
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val fintsPrefs = context.getSharedPreferences(PREFS, 0)
+
+    var stage by remember { mutableStateOf("banks") }
     var banks by remember { mutableStateOf<List<BankInfo>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedBank by remember { mutableStateOf<BankInfo?>(null) }
     var kennung by remember { mutableStateOf("") }
     var pin by remember { mutableStateOf("") }
+    var rememberPIN by remember { mutableStateOf(fintsPrefs.getString(KEY_PIN, null) != null) }
+    var refreshing by remember { mutableStateOf(false) }
     var connecting by remember { mutableStateOf(false) }
     var tanInput by remember { mutableStateOf("") }
     var challengeText by remember { mutableStateOf("") }
@@ -85,15 +97,30 @@ fun FinTSScreen() {
 
     val scope = rememberCoroutineScope()
 
-    // Load banks on first appear
+    // Load banks + restore saved credentials
     LaunchedEffect(Unit) {
-        // Register HTTP callback
         WimgJni.nativeSetHttpCallback(FintsHttpCallback())
 
         withFintsThread {
             val result = WimgJni.nativeFintsGetBanks()
             if (result != null) {
                 banks = json.decodeFromString(result)
+            }
+        }
+
+        // Restore saved bank + kennung + PIN
+        val savedBLZ = fintsPrefs.getString(KEY_BLZ, null)
+        if (savedBLZ != null) {
+            val bank = banks.find { it.blz == savedBLZ }
+            if (bank != null) {
+                selectedBank = bank
+                kennung = fintsPrefs.getString(KEY_KENNUNG, null) ?: ""
+                val savedPIN = fintsPrefs.getString(KEY_PIN, null)
+                if (savedPIN != null) {
+                    pin = savedPIN
+                    rememberPIN = true
+                }
+                stage = "credentials"
             }
         }
     }
@@ -139,6 +166,66 @@ fun FinTSScreen() {
             }
 
             "credentials" -> {
+                // Quick Refresh card (when saved PIN exists)
+                if (rememberPIN && fintsPrefs.getString(KEY_PIN, null) != null) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().wimgHero()) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Outlined.Refresh, null, modifier = Modifier.size(48.dp), tint = WimgColors.heroText)
+                                Spacer(Modifier.height(12.dp))
+                                Text("Schnellabfrage", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = WimgColors.heroText)
+                                selectedBank?.let { Text(it.name, style = MaterialTheme.typography.bodySmall, color = WimgColors.heroText.copy(alpha = 0.7f)) }
+                                Spacer(Modifier.height(16.dp))
+                                Button(
+                                    onClick = {
+                                        refreshing = true; errorMessage = null
+                                        scope.launch {
+                                            val result = withFintsThread {
+                                                val bank = selectedBank ?: return@withFintsThread null
+                                                val savedPIN = fintsPrefs.getString(KEY_PIN, null) ?: return@withFintsThread null
+                                                val input = """{"blz":"${bank.blz}","user":"$kennung","pin":"$savedPIN","product":"F7C4049477F6136957A46EC28"}"""
+                                                val r = WimgJni.nativeFintsConnect(input) ?: return@withFintsThread null
+                                                json.decodeFromString<FintsResult>(r)
+                                            }
+                                            if (result?.status == "ok") {
+                                                // Auto-fetch last 90 days
+                                                val cal = java.util.Calendar.getInstance()
+                                                val to = String.format("%04d-%02d-%02d", cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH) + 1, cal.get(java.util.Calendar.DAY_OF_MONTH))
+                                                cal.add(java.util.Calendar.DAY_OF_YEAR, -90)
+                                                val from = String.format("%04d-%02d-%02d", cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH) + 1, cal.get(java.util.Calendar.DAY_OF_MONTH))
+                                                val fetchResult = withFintsThread {
+                                                    val r = WimgJni.nativeFintsFetch("""{"from":"$from","to":"$to"}""") ?: return@withFintsThread null
+                                                    json.decodeFromString<FintsResult>(r)
+                                                }
+                                                refreshing = false
+                                                if (fetchResult?.status == "tan_required") {
+                                                    challengeText = fetchResult.challenge ?: ""; photoTanB64 = fetchResult.phototan; isDecoupled = fetchResult.decoupled ?: false; tanInput = ""; stage = "tan"
+                                                } else {
+                                                    importedCount = fetchResult?.imported ?: 0; duplicateCount = fetchResult?.duplicates ?: 0; stage = "result"
+                                                }
+                                            } else if (result?.status == "tan_required") {
+                                                refreshing = false; challengeText = result.challenge ?: ""; photoTanB64 = result.phototan; isDecoupled = result.decoupled ?: false; tanInput = ""; stage = "tan"
+                                            } else {
+                                                refreshing = false
+                                                fintsPrefs.edit().remove(KEY_PIN).apply(); rememberPIN = false; pin = ""
+                                                errorMessage = result?.message ?: "Anmeldung fehlgeschlagen"
+                                            }
+                                        }
+                                    },
+                                    enabled = !refreshing,
+                                    colors = ButtonDefaults.buttonColors(containerColor = WimgColors.heroText, contentColor = WimgColors.accent),
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(if (refreshing) "Verbinde..." else "Aktualisieren", fontWeight = FontWeight.Bold)
+                                }
+                                TextButton(onClick = { fintsPrefs.edit().remove(KEY_PIN).apply(); rememberPIN = false; pin = "" }) {
+                                    Text("Manuell anmelden", color = WimgColors.heroText.copy(alpha = 0.7f))
+                                }
+                            }
+                        }
+                    }
+                }
+
                 item {
                     Card(modifier = Modifier.fillMaxWidth(), shape = WimgShapes.large, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                         Column(modifier = Modifier.padding(24.dp)) {
@@ -148,6 +235,14 @@ fun FinTSScreen() {
                             OutlinedTextField(value = kennung, onValueChange = { kennung = it }, label = { Text("Kennung") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                             Spacer(Modifier.height(8.dp))
                             OutlinedTextField(value = pin, onValueChange = { pin = it }, label = { Text("PIN") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
+                            Spacer(Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = rememberPIN, onCheckedChange = { rememberPIN = it })
+                                Column {
+                                    Text("PIN merken", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                    Text("Verschlüsselt auf dem Gerät gespeichert", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
                             Spacer(Modifier.height(16.dp))
                             Button(
                                 onClick = {
@@ -162,7 +257,19 @@ fun FinTSScreen() {
                                         connecting = false
                                         if (result == null) { errorMessage = "Verbindung fehlgeschlagen"; return@launch }
                                         when (result.status) {
-                                            "ok" -> stage = "dateRange"
+                                            "ok" -> {
+                                                // Save credentials
+                                                fintsPrefs.edit()
+                                                    .putString(KEY_BLZ, selectedBank?.blz)
+                                                    .putString(KEY_KENNUNG, kennung)
+                                                    .apply()
+                                                if (rememberPIN) {
+                                                    fintsPrefs.edit().putString(KEY_PIN, pin).apply()
+                                                } else {
+                                                    fintsPrefs.edit().remove(KEY_PIN).apply()
+                                                }
+                                                stage = "dateRange"
+                                            }
                                             "tan_required" -> { challengeText = result.challenge ?: ""; photoTanB64 = result.phototan; isDecoupled = result.decoupled ?: false; stage = "tan" }
                                             else -> errorMessage = result.message ?: "Fehler"
                                         }
