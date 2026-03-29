@@ -22,6 +22,7 @@ import com.wimg.app.models.Debt
 import com.wimg.app.ui.components.formatAmountShort
 import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
+import com.wimg.app.ui.theme.wimgHero
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -78,7 +79,7 @@ fun DebtsScreen() {
             } else {
                 // Hero
                 item {
-                    Card(modifier = Modifier.fillMaxWidth(), shape = WimgShapes.large, colors = CardDefaults.cardColors(containerColor = WimgColors.accent)) {
+                    Box(modifier = Modifier.fillMaxWidth().wimgHero()) {
                         Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("Verbleibend", style = MaterialTheme.typography.labelMedium, color = WimgColors.heroText.copy(alpha = 0.7f))
                             Spacer(Modifier.height(4.dp))

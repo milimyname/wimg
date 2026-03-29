@@ -23,6 +23,8 @@ import com.wimg.app.ui.components.MonthPicker
 import com.wimg.app.ui.components.formatAmountShort
 import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
+import com.wimg.app.ui.theme.wimgCard
+import com.wimg.app.ui.theme.wimgHero
 import java.text.DateFormatSymbols
 import java.util.Calendar
 import kotlin.math.abs
@@ -57,7 +59,7 @@ fun ReviewScreen(selectedAccount: String?) {
 
         // Savings hero
         item {
-            Card(modifier = Modifier.fillMaxWidth(), shape = WimgShapes.large, colors = CardDefaults.cardColors(containerColor = WimgColors.accent)) {
+            Box(modifier = Modifier.fillMaxWidth().wimgHero()) {
                 Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         if (saved >= 0) "Gespart" else "Defizit",
@@ -102,7 +104,7 @@ fun ReviewScreen(selectedAccount: String?) {
             items(categories) { cat ->
                 val category = WimgCategory.fromId(cat.id)
                 Row(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surface).padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().wimgCard(WimgShapes.small).padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(category.icon, contentDescription = null, tint = category.color, modifier = Modifier.size(20.dp))
@@ -134,8 +136,7 @@ private fun StatCard(
     isCount: Boolean = false,
     suffix: String = "",
 ) {
-    Card(shape = WimgShapes.small, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), modifier = modifier) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = modifier.wimgCard(WimgShapes.small).padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (icon != null) {
                     Icon(icon, contentDescription = null, tint = iconColor ?: MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(16.dp))
@@ -149,6 +150,5 @@ private fun StatCard(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
-        }
     }
 }

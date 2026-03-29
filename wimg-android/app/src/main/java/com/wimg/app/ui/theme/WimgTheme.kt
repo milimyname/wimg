@@ -54,19 +54,19 @@ object WimgShapes {
 @Composable
 fun Modifier.wimgCard(radius: RoundedCornerShape = WimgShapes.medium): Modifier {
     return this
-        .shadow(elevation = 2.dp, shape = radius, ambientColor = Color.Black.copy(alpha = 0.04f))
+        .shadow(elevation = 0.5.dp, shape = radius, ambientColor = Color.Black.copy(alpha = 0.03f))
         .clip(radius)
         .background(MaterialTheme.colorScheme.surface)
 }
 
 /**
  * Hero card style matching iOS .wimgHero():
- * accent background + larger shadow + XL radius.
+ * accent background + subtle shadow + XL radius.
  */
 @Composable
 fun Modifier.wimgHero(): Modifier {
     return this
-        .shadow(elevation = 8.dp, shape = WimgShapes.xl, ambientColor = Color.Black.copy(alpha = 0.08f))
+        .shadow(elevation = 2.dp, shape = WimgShapes.xl, ambientColor = Color.Black.copy(alpha = 0.06f))
         .clip(WimgShapes.xl)
         .background(WimgColors.accent)
 }

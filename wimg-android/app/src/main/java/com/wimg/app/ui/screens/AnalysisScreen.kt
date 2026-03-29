@@ -23,6 +23,7 @@ import com.wimg.app.ui.components.SpendingHeatmap
 import com.wimg.app.ui.components.formatAmountShort
 import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
+import com.wimg.app.ui.theme.wimgCard
 import java.util.Calendar
 import kotlin.math.abs
 
@@ -181,8 +182,7 @@ private fun CategoryBreakdownRow(cat: CategoryBreakdown, total: Double) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .wimgCard(WimgShapes.small)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

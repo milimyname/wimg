@@ -19,6 +19,7 @@ import com.wimg.app.models.Transaction
 import com.wimg.app.models.WimgCategory
 import com.wimg.app.ui.components.formatAmountShort
 import com.wimg.app.ui.theme.WimgShapes
+import com.wimg.app.ui.theme.wimgCard
 
 enum class TxFilter(val label: String) {
     ALL("Alle"),
@@ -136,8 +137,7 @@ private fun TransactionRow(tx: Transaction, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .wimgCard(WimgShapes.small)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,

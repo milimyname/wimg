@@ -27,6 +27,7 @@ import com.wimg.app.models.WimgCategory
 import com.wimg.app.ui.components.formatAmountShort
 import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
+import com.wimg.app.ui.theme.wimgCard
 import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -183,8 +184,7 @@ fun SearchScreen(selectedAccount: String?) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(MaterialTheme.colorScheme.surface)
+                                .wimgCard(WimgShapes.small)
                                 .clickable { selectedTx = tx }
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,

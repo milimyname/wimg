@@ -19,6 +19,8 @@ import com.wimg.app.models.WimgCategory
 import com.wimg.app.ui.components.formatAmountShort
 import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
+import com.wimg.app.ui.theme.wimgCard
+import com.wimg.app.ui.theme.wimgHero
 import kotlin.math.abs
 
 private val INTERVAL_LABELS = mapOf(
@@ -74,7 +76,7 @@ fun RecurringScreen() {
         } else {
             // Hero
             item {
-                Card(modifier = Modifier.fillMaxWidth(), shape = WimgShapes.large, colors = CardDefaults.cardColors(containerColor = WimgColors.accent)) {
+                Box(modifier = Modifier.fillMaxWidth().wimgHero()) {
                     Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Monatliche Fixkosten", style = MaterialTheme.typography.labelMedium, color = WimgColors.heroText.copy(alpha = 0.7f))
                         Spacer(Modifier.height(4.dp))
@@ -125,8 +127,7 @@ private fun PatternRow(pattern: RecurringPattern) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .wimgCard(WimgShapes.small)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
