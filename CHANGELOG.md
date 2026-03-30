@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.7.8 (2026-03-31)
+
+- fix: prevent FOUC by loading Google Fonts via <link> instead of CSS @import
+- docs: add Phase 8.1 (Home Screen Widgets) + mark Phase 8.0 done
+
 ## v0.7.7 (2026-03-29)
 
 - Version bump
