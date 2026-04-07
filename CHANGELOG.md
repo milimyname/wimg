@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.7.9 (2026-04-07)
+
+- feat: add Android home screen widgets, running balance bar, consolidate iOS widgets
+- feat: add Large + Lock Screen widgets, include recent transactions
+
 ## v0.7.8 (2026-03-31)
 
 - fix: prevent FOUC by loading Google Fonts via <link> instead of CSS @import
