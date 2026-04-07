@@ -131,6 +131,7 @@ struct ContentView: View {
                     try? LibWimg.takeSnapshot(year: cal.component(.year, from: now), month: cal.component(.month, from: now))
                     UserDefaults.standard.set(currentMonth, forKey: "wimg_last_snapshot_month")
                 }
+                WidgetDataWriter.writeSummary()
                 await MainActor.run { accounts = accs }
             }
             // Connect real-time sync WebSocket + initial pull
@@ -145,6 +146,7 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .wimgDataChanged)) { _ in
             Task.detached {
                 let accs = LibWimg.getAccounts()
+                WidgetDataWriter.writeSummary()
                 await MainActor.run { accounts = accs }
             }
         }

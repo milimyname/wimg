@@ -52,7 +52,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 
 ## Current Status (March 2026)
 
-Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8, 6.9, 7.0, 7.1, 7.2, 8.0a all **done**.
+Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8, 6.9, 7.0, 7.1, 7.2, 8.0, 8.1 all **done**.
 
 Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules +
 auto-learn), summaries, debts, recurring detection, multi-account, undo/redo,
@@ -69,7 +69,11 @@ tax helper (Pendlerpauschale + Homeoffice calculators, auto-tagged
 tax-relevant transactions, CSV export), Sparquote (savings rate) on
 dashboard hero card, spending heatmap (GitHub contribution graph style),
 renewals calendar (12-month payment forecast with monthly totals, upcoming
-payments timeline, next-30-days hero card — tab on recurring page).
+payments timeline, next-30-days hero card — tab on recurring page),
+running balance bar on transactions list (Comdirect-style: sticky header
+showing cumulative total of all transactions from the topmost visible row
+back through history, web via IntersectionObserver + SvelteSet, iOS via
+onAppear/onDisappear tracking).
 
 Embeddings were built (Phase 5.5) then removed (Phase 5.9) — 4,400 lines
 deleted. Keyword rules cover ~80% of categorization, MCP + Claude handles
@@ -189,6 +193,27 @@ from GitHub Releases API. Demo data service. Material 3 theme with
 `wimgCard()`/`wimgHero()` modifiers, custom Typography, subtle shadows.
 4-tab bottom nav (Search, Home, Umsätze, Mehr). Sideload APK distribution.
 CI builds debug APK + attaches to GitHub Release.
+
+Phase 8.1 (Home Screen Widgets, done): iOS WidgetKit + Android Glance.
+iOS: single `WimgWidget` declaring all four families (`systemSmall`,
+`systemMedium`, `systemLarge`, `accessoryRectangular`) so users get
+size variants in one gallery entry; `WimgWidgetEntryView` switches by
+`@Environment(\.widgetFamily)`. Small (2×2): available + Sparquote.
+Medium (4×2): available + Sparquote + next recurring. Large (4×4):
+header + Einnahmen/Ausgaben + 5 most recent transactions. Lock screen
+rectangular accessory. All widgets use
+`frame(maxWidth: .infinity, maxHeight: .infinity)` to fill the
+container — `containerBackground` alone doesn't size content on
+iOS 17+. Data sharing via App Groups (`group.com.wimg.app`).
+Android: Glance app widgets at parity (Small/Medium/Large), data
+shared via SharedPreferences (`wimg_widget`). Glance 1.1 API requires
+single-arg `ColorProvider(color)` (no day/night named args), no
+`GlanceTheme` / `ColorProviders` — direct `background(Color)`.
+Each receiver registered separately in AndroidManifest with its own
+`appwidget-provider` XML (resizable, `targetCellWidth/Height`).
+`WidgetDataWriter` writes summary + recurring + recent transactions
+JSON, calls `updateAll(context)` on all three Glance widgets after
+every dashboard reload. iOS uses `WidgetCenter.shared.reloadAllTimelines()`.
 
 Planned: Phase 7.3 (Vertragsmanagement) — contract lifecycle tracking on
 recurring payments. `contracts` table (pattern, start date, duration,

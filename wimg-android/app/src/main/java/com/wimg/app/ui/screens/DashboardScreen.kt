@@ -42,6 +42,7 @@ fun DashboardScreen(selectedAccount: String?) {
 
     LaunchedEffect(year, month, selectedAccount) {
         summary = LibWimg.getSummaryFiltered(year, month, selectedAccount)
+        com.wimg.app.services.WidgetDataWriter.writeSummary(context)
     }
 
     LaunchedEffect(Unit) {

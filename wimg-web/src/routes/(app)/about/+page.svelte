@@ -97,6 +97,16 @@
       a: "Ja, vollständig. wimg ist eine PWA (Progressive Web App) und kann über den Browser installiert werden. Alle Daten liegen lokal in SQLite (OPFS). Du brauchst kein Internet für Import, Kategorisierung, Analyse oder irgendeine Kernfunktion. Sync ist optional und funktioniert nur bei Internetverbindung.",
     },
     {
+      id: "faq-ios",
+      q: "Gibt es eine iOS-App?",
+      a: "Ja! wimg gibt es als native SwiftUI-App für iPhone. Tritt der TestFlight-Beta bei unter testflight.apple.com/join/v5FhHpt5. Die iOS-App hat volle Feature-Parität mit der Web-App inklusive FinTS-Bankverbindung, Sync und Dark Mode.",
+    },
+    {
+      id: "faq-android",
+      q: "Gibt es eine Android-App?",
+      a: "Ja! Die native Kotlin/Compose-App kann als APK von der GitHub Releases-Seite heruntergeladen werden. Unter Einstellungen \u2192 Unbekannte Quellen erlauben, dann die APK installieren. Volle Feature-Parität mit iOS und Web.",
+    },
+    {
       id: "faq-darkmode",
       q: "Gibt es einen Dark Mode?",
       a: "Ja! Über die Command Palette (Cmd+K → \"Design wechseln\") kannst du zwischen Hell, Dunkel und System wählen. Der Dark Mode hat ein Premium-Design mit dunklem Hintergrund und dezenten Akzenten. Die Einstellung wird gespeichert und beim nächsten Start automatisch angewendet.",

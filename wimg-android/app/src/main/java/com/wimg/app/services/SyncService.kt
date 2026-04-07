@@ -144,6 +144,7 @@ object SyncService {
         if (applied > 0) {
             val maxTs = payload.rows.maxOfOrNull { it.updated_at } ?: lastTs
             if (maxTs > lastTs) setLastTs(context, maxTs)
+            WidgetDataWriter.writeSummary(context)
         }
         applied
     }

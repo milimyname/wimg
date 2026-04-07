@@ -403,6 +403,22 @@ const STATIC_ACTIONS: PaletteAction[] = [
     keywords: ["faq", "heatmap", "ausgaben", "grid", "muster", "saisonal"],
     handler: () => gotoHash("/about#faq-heatmap"),
   },
+  {
+    id: "faq-ios",
+    label: "Gibt es eine iOS-App?",
+    group: "Hilfe",
+    icon: "❓",
+    keywords: ["faq", "ios", "iphone", "apple", "testflight", "app"],
+    handler: () => gotoHash("/about#faq-ios"),
+  },
+  {
+    id: "faq-android",
+    label: "Gibt es eine Android-App?",
+    group: "Hilfe",
+    icon: "❓",
+    keywords: ["faq", "android", "apk", "handy", "app", "download"],
+    handler: () => gotoHash("/about#faq-android"),
+  },
 
   // --- Categorization ---
   {

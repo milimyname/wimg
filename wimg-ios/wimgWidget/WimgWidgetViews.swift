@@ -56,7 +56,8 @@ struct WimgSmallWidgetView: View {
                     .foregroundStyle(heroText.opacity(0.5))
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .containerBackground(accent.gradient, for: .widget)
     }
 }
@@ -67,21 +68,25 @@ struct WimgLockScreenWidgetView: View {
     let entry: WimgEntry
 
     var body: some View {
-        if entry.data.hasData {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("wimg")
-                    .font(.system(.caption2, design: .rounded, weight: .bold))
-                    .widgetAccentable()
-                Text(formatAmount(entry.data.available))
-                    .font(.system(.headline, design: .rounded, weight: .black))
-                Text("Sparquote \(entry.data.savingsRate)%")
-                    .font(.system(.caption2, design: .rounded, weight: .medium))
-                    .foregroundStyle(.secondary)
+        Group {
+            if entry.data.hasData {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("wimg")
+                        .font(.system(.caption2, design: .rounded, weight: .bold))
+                        .widgetAccentable()
+                    Text(formatAmount(entry.data.available))
+                        .font(.system(.headline, design: .rounded, weight: .black))
+                    Text("Sparquote \(entry.data.savingsRate)%")
+                        .font(.system(.caption2, design: .rounded, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Text("wimg — Öffne App")
+                    .font(.system(.caption, design: .rounded))
             }
-        } else {
-            Text("wimg — Öffne App")
-                .font(.system(.caption, design: .rounded))
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .containerBackground(.clear, for: .widget)
     }
 }
 
@@ -166,6 +171,8 @@ struct WimgMediumWidgetView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .containerBackground(accent.gradient, for: .widget)
     }
 }
@@ -256,6 +263,8 @@ struct WimgLargeWidgetView: View {
 
             Spacer(minLength: 0)
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .containerBackground(accent.gradient, for: .widget)
     }
 }

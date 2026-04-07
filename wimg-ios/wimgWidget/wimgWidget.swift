@@ -1,64 +1,42 @@
 import SwiftUI
 import WidgetKit
 
-struct WimgSmallWidget: Widget {
-    let kind = "WimgSmallWidget"
+struct WimgWidgetEntryView: View {
+    @Environment(\.widgetFamily) var family
+    let entry: WimgEntry
 
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: WimgTimelineProvider()) { entry in
+    var body: some View {
+        switch family {
+        case .systemSmall:
+            WimgSmallWidgetView(entry: entry)
+        case .systemMedium:
+            WimgMediumWidgetView(entry: entry)
+        case .systemLarge:
+            WimgLargeWidgetView(entry: entry)
+        case .accessoryRectangular:
+            WimgLockScreenWidgetView(entry: entry)
+        default:
             WimgSmallWidgetView(entry: entry)
         }
-        .configurationDisplayName("wimg")
-        .description("Verfügbares Einkommen und Sparquote")
-        .supportedFamilies([.systemSmall])
     }
 }
 
-struct WimgMediumWidget: Widget {
-    let kind = "WimgMediumWidget"
+struct WimgWidget: Widget {
+    let kind = "WimgWidget"
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: WimgTimelineProvider()) { entry in
-            WimgMediumWidgetView(entry: entry)
+            WimgWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("wimg")
-        .description("Einkommen, Sparquote und nächste Zahlung")
-        .supportedFamilies([.systemMedium])
-    }
-}
-
-struct WimgLargeWidget: Widget {
-    let kind = "WimgLargeWidget"
-
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: WimgTimelineProvider()) { entry in
-            WimgLargeWidgetView(entry: entry)
-        }
-        .configurationDisplayName("wimg")
-        .description("Übersicht mit letzten Transaktionen")
-        .supportedFamilies([.systemLarge])
-    }
-}
-
-struct WimgLockScreenWidget: Widget {
-    let kind = "WimgLockScreenWidget"
-
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: WimgTimelineProvider()) { entry in
-            WimgLockScreenWidgetView(entry: entry)
-        }
-        .configurationDisplayName("wimg")
-        .description("Verfügbar auf dem Sperrbildschirm")
-        .supportedFamilies([.accessoryRectangular])
+        .description("Verfügbares Einkommen, Sparquote & letzte Buchungen")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
     }
 }
 
 @main
 struct wimgWidgetBundle: WidgetBundle {
     var body: some Widget {
-        WimgSmallWidget()
-        WimgMediumWidget()
-        WimgLargeWidget()
-        WimgLockScreenWidget()
+        WimgWidget()
     }
 }

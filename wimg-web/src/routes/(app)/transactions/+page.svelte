@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
+  import { SvelteSet } from "svelte/reactivity";
   import {
     getTransactionById,
     setCategory,
@@ -231,6 +232,52 @@
     }
   }
 
+  // Running balance: track which rows are on-screen, sum from topmost visible
+  // back through history (older transactions). Mirrors Comdirect mobile.
+  let visibleIds = new SvelteSet<string>();
+  const observer =
+    typeof IntersectionObserver !== "undefined"
+      ? new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              const id = (e.target as HTMLElement).dataset.txnId;
+              if (!id) continue;
+              if (e.isIntersecting) visibleIds.add(id);
+              else visibleIds.delete(id);
+            }
+          },
+          { root: null, threshold: 0 },
+        )
+      : null;
+
+  function observeRow(node: HTMLElement) {
+    observer?.observe(node);
+    return {
+      destroy() {
+        observer?.unobserve(node);
+        const id = node.dataset.txnId;
+        if (id) visibleIds.delete(id);
+      },
+    };
+  }
+
+  let flatTxns = $derived(filtered);
+
+  let runningBalance = $derived.by(() => {
+    if (!flatTxns.length || visibleIds.size === 0) return { sum: 0, count: 0 };
+    let topIdx = flatTxns.length;
+    for (let i = 0; i < flatTxns.length; i++) {
+      if (visibleIds.has(flatTxns[i].id) && i < topIdx) {
+        topIdx = i;
+        break;
+      }
+    }
+    if (topIdx >= flatTxns.length) return { sum: 0, count: 0 };
+    let sum = 0;
+    for (let i = topIdx; i < flatTxns.length; i++) sum += flatTxns[i].amount;
+    return { sum, count: flatTxns.length - topIdx };
+  });
+
   function clearAllFilters() {
     searchQuery = "";
     dateQuick = null;
@@ -392,6 +439,20 @@
     <p class="text-sm mt-1">Versuche einen anderen Filter</p>
   </div>
 {:else}
+  <div
+    class="sticky top-16 z-10 -mx-1 mt-4 mb-3 flex items-center justify-between rounded-2xl bg-white/90 backdrop-blur px-4 py-2.5 shadow-[var(--shadow-card)] border border-gray-100/80"
+  >
+    <div class="flex items-center gap-2">
+      <span class="text-[11px] font-bold uppercase tracking-wider text-(--color-text-secondary)">Saldo</span>
+      <span class="text-xs font-medium text-(--color-text-secondary)">({runningBalance.count})</span>
+    </div>
+    <span
+      class="text-sm font-display font-extrabold tabular-nums"
+      class:text-emerald-600={runningBalance.sum > 0}
+    >
+      {formatAmountSigned(runningBalance.sum)}
+    </span>
+  </div>
   {#each [...grouped.entries()] as [date, txns]}
     <h3
       class="text-xs font-bold text-(--color-text-secondary) uppercase tracking-wider mt-6 mb-3"
@@ -402,6 +463,8 @@
     {#each txns as txn}
       <button
         id={txn.id}
+        data-txn-id={txn.id}
+        use:observeRow
         class="bg-white w-full p-4 rounded-2xl shadow-[var(--shadow-card)] border border-gray-100/80 flex items-center justify-between mb-2.5 cursor-pointer hover:shadow-[var(--shadow-soft)] transition-shadow text-left"
         class:opacity-40={!!txn.excluded}
         onclick={() => openDetail(txn)}

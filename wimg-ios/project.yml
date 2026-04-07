@@ -20,6 +20,11 @@ targets:
       - path: wimg
         excludes:
           - "**/.DS_Store"
+    entitlements:
+      path: wimg/wimg.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.wimg.app
     settings:
       base:
         SWIFT_VERSION: "5.10"
@@ -44,6 +49,7 @@ targets:
     dependencies:
       - framework: Frameworks/libwimg.xcframework
         embed: false
+      - target: wimgWidget
     info:
       path: wimg/Info.plist
       properties:
@@ -57,3 +63,47 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+
+  wimgWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: wimgWidget
+    entitlements:
+      path: wimgWidget/wimgWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.wimg.app
+    settings:
+      base:
+        SWIFT_VERSION: "5.10"
+        PRODUCT_BUNDLE_IDENTIFIER: com.wimg.app.widget
+        MARKETING_VERSION: "0.7.8"
+        CURRENT_PROJECT_VERSION: 1
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: W5N395VNYH
+    info:
+      path: wimgWidget/Info.plist
+      properties:
+        CFBundleDisplayName: wimg
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+schemes:
+  wimg:
+    build:
+      targets:
+        wimg: all
+    run:
+      config: Debug
+  wimgWidget:
+    build:
+      targets:
+        wimgWidget: all
+    run:
+      config: Debug
+      environmentVariables:
+        - variable: _XCWidgetKind
+          value: WimgWidget
+          isEnabled: true

@@ -40,6 +40,9 @@
     "„%@“ wird entfernt. Transaktionen bleiben erhalten." : {
 
     },
+    "(%lld)" : {
+
+    },
     "{\n  \"mcpServers\": {\n    \"wimg\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"mcp-remote\",\n        \"https://wimg-sync.mili-my.name/mcp\",\n        \"--header\",\n        \"Authorization: Bearer DEIN-SYNC-SCHLÜSSEL\"\n      ]\n    }\n  }\n}" : {
 
     },

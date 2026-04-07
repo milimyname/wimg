@@ -37,6 +37,7 @@ struct TransactionsView: View {
     @State private var filteredGrouped: [(String, [Transaction])] = []
     @State private var displayLimit = 30
     @State private var refilterToken = UUID()
+    @State private var visibleTxIds: Set<String> = []
 
     /// Filter key excludes searchText (debounced separately).
     private var filterKey: String {
@@ -209,10 +210,69 @@ struct TransactionsView: View {
                 }
                 Spacer()
             } else {
+                visibleSumBar
                 transactionList
                     .coachmark(key: "transactions_categorize", text: "Tippe auf eine Buchung zum Kategorisieren")
             }
         }
+    }
+
+    private var flatTransactions: [Transaction] {
+        filteredGrouped.flatMap { $0.1 }
+    }
+
+    private var visibleSumStats: (sum: Double, count: Int) {
+        let flat = flatTransactions
+        guard !flat.isEmpty, !visibleTxIds.isEmpty else { return (0, 0) }
+        // Find topmost visible row (smallest index — list is newest-first).
+        // Running balance = sum of all transactions from that point back through history (older).
+        var topIdx = flat.count
+        for (i, tx) in flat.enumerated() where visibleTxIds.contains(tx.id) {
+            if i < topIdx { topIdx = i }
+        }
+        guard topIdx < flat.count else { return (0, 0) }
+        var total: Double = 0
+        for i in topIdx..<flat.count {
+            total += flat[i].amount
+        }
+        return (total, flat.count - topIdx)
+    }
+
+    private var visibleSumBar: some View {
+        let stats = visibleSumStats
+        return HStack {
+            TText("Sichtbar")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundStyle(WimgTheme.textSecondary)
+                .textCase(.uppercase)
+                .tracking(0.8)
+            Text("(\(stats.count))")
+                .font(.system(.caption, design: .rounded, weight: .medium))
+                .foregroundStyle(WimgTheme.textSecondary)
+            Spacer()
+            Text(formatAmount(stats.sum))
+                .font(.system(.subheadline, design: .rounded, weight: .black))
+                .foregroundStyle(stats.sum >= 0 ? .green : WimgTheme.text)
+                .contentTransition(.numericText(value: stats.sum))
+                .animation(.easeInOut(duration: 0.2), value: stats.sum)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(WimgTheme.cardBg)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.gray.opacity(0.15))
+                .frame(height: 0.5)
+        }
+    }
+
+    private func formatAmount(_ amount: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "EUR"
+        let isEn = UserDefaults.standard.string(forKey: "wimg_locale") == "en"
+        formatter.locale = Locale(identifier: isEn ? "en_US" : "de_DE")
+        return formatter.string(from: NSNumber(value: amount)) ?? "\(amount) €"
     }
 
     private var segmentedFilter: some View {
@@ -330,6 +390,8 @@ struct TransactionsView: View {
         }
         .listRowInsets(EdgeInsets())
         .opacity(tx.isExcluded ? 0.4 : 1.0)
+        .onAppear { visibleTxIds.insert(tx.id) }
+        .onDisappear { visibleTxIds.remove(tx.id) }
         .swipeActions(edge: .trailing) {
             Button {
                 toggleExcluded(tx)

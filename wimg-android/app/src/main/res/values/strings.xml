@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">wimg</string>
+    <string name="widget_small_desc">Verfügbares Einkommen und Sparquote</string>
+    <string name="widget_medium_desc">Einkommen, Sparquote und nächste Zahlung</string>
+    <string name="widget_large_desc">Übersicht mit letzten Buchungen</string>
+</resources>
