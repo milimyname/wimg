@@ -770,8 +770,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
       m.devtoolsStore.enable();
       m.devtoolsStore.open = true;
     },
-    enabled: () =>
-      import.meta.env.DEV || new URLSearchParams(window.location.search).has("devtools"),
   },
   {
     id: "devtools-sql",
@@ -785,8 +783,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
       m.devtoolsStore.open = true;
       m.devtoolsStore.activeTab = "sql";
     },
-    enabled: () =>
-      import.meta.env.DEV || new URLSearchParams(window.location.search).has("devtools"),
   },
 
   // --- Danger Zone ---

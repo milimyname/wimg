@@ -12,6 +12,7 @@
   import { themeStore } from "$lib/theme.svelte";
   import { LS_ONBOARDING_COMPLETED, LS_LAST_SNAPSHOT_MONTH } from "$lib/config";
   import { i18n } from "$lib/i18n.svelte";
+  import { devtoolsStore } from "$lib/devtools.svelte";
   import BottomNav from "../../components/BottomNav.svelte";
   import Toast from "../../components/Toast.svelte";
   import UpdateBanner from "../../components/UpdateBanner.svelte";
@@ -203,7 +204,7 @@
 
 <Toast />
 
-{#if showDevTools}
+{#if showDevTools || devtoolsStore.open}
   {#await import("../../components/DevTools.svelte") then DevTools}
     <DevTools.default />
   {/await}
@@ -246,9 +247,13 @@
         openPalette();
       }
     }
-    if (showDevTools && e.ctrlKey && e.shiftKey && e.key === "D") {
+    if (e.ctrlKey && e.shiftKey && e.key === "D") {
       e.preventDefault();
-      import("$lib/devtools.svelte").then((m) => m.devtoolsStore.toggle());
+      showDevTools = true;
+      import("$lib/devtools.svelte").then((m) => {
+        m.devtoolsStore.enable();
+        m.devtoolsStore.toggle();
+      });
     }
   }}
 />
