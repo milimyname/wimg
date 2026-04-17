@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.10 (2026-04-17)
+
+- feat: enable DevTools in prod via Ctrl+Shift+D and command palette
+
 ## v0.7.9 (2026-04-07)
 
 - feat: add Android home screen widgets, running balance bar, consolidate iOS widgets
