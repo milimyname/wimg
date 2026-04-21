@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.11 (2026-04-21)
+
+- feat: enhance Drawer component gesture handling and improve tax page layout
+
 ## v0.7.10 (2026-04-17)
 
 - feat: enable DevTools in prod via Ctrl+Shift+D and command palette
