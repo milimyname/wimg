@@ -56,7 +56,10 @@
   let lastY = 0;
   let lastTime = 0;
   let velocity = 0;
-  let isDraggingSheet = false;
+  let isDraggingSheet = $state(false);
+  // Whether the content was already scrolled to the top when this gesture began.
+  // If not, the whole gesture is a content-scroll — we never hand it to the sheet.
+  let gestureStartedAtTop = false;
 
   // Wheel state
   let wheelSnapTimer: ReturnType<typeof setTimeout> | undefined;
@@ -329,6 +332,7 @@
     startHeight = height.current;
     isDragging = true;
     isDraggingSheet = false;
+    gestureStartedAtTop = (contentRef?.scrollTop ?? 0) <= 1;
 
     const isHandle = handleRef?.contains(e.target as Node);
     const isContent = contentRef?.contains(e.target as Node);
@@ -360,9 +364,12 @@
 
     if (!isDraggingSheet && contentRef) {
       if (isExpanded) {
-        const isAtTop = contentRef.scrollTop <= 1;
-        if (isAtTop && velocity < -0.05) {
-          takeOverDrag(currentY);
+        // Only hand the gesture to the sheet if it began at the top of content.
+        if (gestureStartedAtTop) {
+          const isAtTop = contentRef.scrollTop <= 1;
+          if (isAtTop && velocity < -0.05) {
+            takeOverDrag(currentY);
+          }
         }
       } else {
         takeOverDrag(currentY);
@@ -384,7 +391,12 @@
   }
 
   function onTouchEnd() {
-    performSnap();
+    // Only snap if the sheet itself was being dragged. If the gesture was a
+    // pure content scroll, the velocity tracked in onTouchMove belongs to the
+    // content — feeding it to performSnap() would collapse the drawer a step.
+    if (isDraggingSheet) {
+      performSnap();
+    }
     isDragging = false;
     isDraggingSheet = false;
     velocity = 0;

@@ -246,8 +246,8 @@
       </svg>
     </div>
   </div>
-  <div class="space-y-1 relative z-10">
-    <p class="font-display font-extrabold text-4xl text-(--color-text)">
+  <div class="space-y-1 relative z-10 min-w-0">
+    <p class="font-display font-extrabold text-3xl sm:text-4xl text-(--color-text) tabular-nums break-words">
       {formatEur(gesamtabzug)}
     </p>
     <p class="text-sm text-(--color-text)/70">Geschätztes Steuerjahr {config.year}</p>
@@ -267,17 +267,17 @@
 
 <!-- Summary Grid -->
 <div class="grid grid-cols-3 gap-3 mb-5">
-  <div class="bg-white rounded-2xl p-3 shadow-[var(--shadow-card)] text-center">
-    <p class="text-[10px] uppercase font-bold text-(--color-text-secondary) mb-1">Werbung</p>
-    <p class="font-bold text-sm">{formatEur(werbungskosten)}</p>
+  <div class="bg-white rounded-2xl p-3 shadow-[var(--shadow-card)] text-center min-w-0">
+    <p class="text-[10px] uppercase font-bold text-(--color-text-secondary) mb-1 truncate">Werbung</p>
+    <p class="font-bold text-sm truncate tabular-nums">{formatEur(werbungskosten)}</p>
   </div>
-  <div class="bg-white rounded-2xl p-3 shadow-[var(--shadow-card)] text-center">
-    <p class="text-[10px] uppercase font-bold text-(--color-text-secondary) mb-1">Pauschalen</p>
-    <p class="font-bold text-sm">{formatEur(pauschalen)}</p>
+  <div class="bg-white rounded-2xl p-3 shadow-[var(--shadow-card)] text-center min-w-0">
+    <p class="text-[10px] uppercase font-bold text-(--color-text-secondary) mb-1 truncate">Pauschalen</p>
+    <p class="font-bold text-sm truncate tabular-nums">{formatEur(pauschalen)}</p>
   </div>
-  <div class="bg-white rounded-2xl p-3 shadow-[var(--shadow-card)] text-center">
-    <p class="text-[10px] uppercase font-bold text-(--color-text-secondary) mb-1">Gesamt</p>
-    <p class="font-bold text-sm">{formatEur(gesamtabzug)}</p>
+  <div class="bg-white rounded-2xl p-3 shadow-[var(--shadow-card)] text-center min-w-0">
+    <p class="text-[10px] uppercase font-bold text-(--color-text-secondary) mb-1 truncate">Gesamt</p>
+    <p class="font-bold text-sm truncate tabular-nums">{formatEur(gesamtabzug)}</p>
   </div>
 </div>
 
@@ -315,12 +315,12 @@
     </label>
   </div>
   {#if pendlerpauschale > 0}
-    <div class="bg-gray-50 rounded-2xl p-4 flex justify-between items-center">
-      <div>
-        <p class="text-xs text-(--color-text-secondary) italic">{pendlerFormula}</p>
-        <p class="font-display font-extrabold text-xl mt-0.5">{formatEur(pendlerpauschale)}</p>
+    <div class="bg-gray-50 rounded-2xl p-4 flex justify-between items-center gap-3">
+      <div class="min-w-0 flex-1">
+        <p class="text-xs text-(--color-text-secondary) italic break-words">{pendlerFormula}</p>
+        <p class="font-display font-extrabold text-xl mt-0.5 tabular-nums truncate">{formatEur(pendlerpauschale)}</p>
       </div>
-      <div class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-bold">Aktiv</div>
+      <div class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-bold shrink-0">Aktiv</div>
     </div>
   {/if}
 </div>
@@ -383,38 +383,40 @@
   {#if showKeywords}
     <div class="mt-5 space-y-4">
       <!-- Add form -->
-      <div class="flex gap-2">
+      <div class="flex flex-col sm:flex-row gap-2">
         <input
           type="text"
           placeholder="z.B. amazon, bücher.de"
           bind:value={newKeyword}
           onkeydown={(e) => e.key === "Enter" && addCustomKeyword()}
-          class="flex-1 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-(--color-accent) text-sm py-2.5 px-4"
+          class="w-full sm:flex-1 min-w-0 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-(--color-accent) text-sm py-2.5 px-4"
         />
-        <select
-          bind:value={newKeywordCat}
-          class="appearance-none bg-gray-50 border-none rounded-xl text-xs font-bold py-2.5 px-3 pr-7 focus:ring-2 focus:ring-(--color-accent)"
-        >
-          {#each TAX_CATEGORIES as cat}
-            <option value={cat.id}>{cat.icon} {cat.label}</option>
-          {/each}
-        </select>
-        <button
-          onclick={addCustomKeyword}
-          class="px-4 py-2.5 bg-(--color-accent) rounded-xl text-sm font-bold cursor-pointer hover:bg-(--color-accent-hover) transition-colors"
-          aria-label="Schlüsselwort hinzufügen"
-        >
-          +
-        </button>
+        <div class="flex gap-2">
+          <select
+            bind:value={newKeywordCat}
+            class="appearance-none flex-1 sm:flex-none min-w-0 bg-gray-50 border-none rounded-xl text-xs font-bold py-2.5 px-3 pr-7 focus:ring-2 focus:ring-(--color-accent)"
+          >
+            {#each TAX_CATEGORIES as cat}
+              <option value={cat.id}>{cat.icon} {cat.label}</option>
+            {/each}
+          </select>
+          <button
+            onclick={addCustomKeyword}
+            class="shrink-0 px-4 py-2.5 bg-(--color-accent) rounded-xl text-sm font-bold cursor-pointer hover:bg-(--color-accent-hover) transition-colors"
+            aria-label="Schlüsselwort hinzufügen"
+          >
+            +
+          </button>
+        </div>
       </div>
 
       <!-- Existing custom keywords -->
       {#if allCustomKeywords.length > 0}
         <div class="flex flex-wrap gap-2">
           {#each allCustomKeywords as { catId, catLabel, keyword }}
-            <span class="inline-flex items-center gap-1.5 bg-gray-50 rounded-full pl-3 pr-1.5 py-1.5 text-xs font-medium">
-              <span class="text-(--color-text-secondary)">{catLabel}:</span>
-              <span class="font-bold">{keyword}</span>
+            <span class="inline-flex items-center gap-1.5 bg-gray-50 rounded-full pl-3 pr-1.5 py-1.5 text-xs font-medium max-w-full min-w-0">
+              <span class="text-(--color-text-secondary) shrink-0">{catLabel}:</span>
+              <span class="font-bold truncate">{keyword}</span>
               <button
                 onclick={() => removeCustomKeyword(catId, keyword)}
                 aria-label="Keyword {keyword} entfernen"
@@ -472,17 +474,17 @@
           </div>
           <div class="flex-1 min-w-0">
             <h4 class="font-bold text-sm truncate" class:opacity-40={!tx.included}>{tx.description}</h4>
-            <div class="flex items-center gap-2 mt-1">
-              <span class="{tx.taxCategory.color} {tx.taxCategory.textColor} text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+              <span class="{tx.taxCategory.color} {tx.taxCategory.textColor} text-[9px] font-bold px-2 py-0.5 rounded-full uppercase whitespace-nowrap shrink-0">
                 {tx.taxCategory.label}
               </span>
-              <span class="text-[10px] text-(--color-text-secondary)">
+              <span class="text-[10px] text-(--color-text-secondary) whitespace-nowrap">
                 {formatDate(tx.date)}
               </span>
             </div>
           </div>
-          <div class="text-right flex flex-col items-end gap-2 shrink-0">
-            <p class="font-bold" class:opacity-40={!tx.included}>{formatEur(tx.amount)}</p>
+          <div class="text-right flex flex-col items-end gap-2 shrink-0 min-w-0 max-w-[35%]">
+            <p class="font-bold truncate tabular-nums" class:opacity-40={!tx.included}>{formatEur(tx.amount)}</p>
             <label class="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
