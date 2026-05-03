@@ -109,8 +109,28 @@ function getMcpSession(env: Bindings, key: string) {
   return env.MCP_SESSION.get(id);
 }
 
-// MCP: SSE not supported — reject GET
-app.get("/mcp", (c) => c.text("Method Not Allowed", 405));
+// MCP: GET opens a no-op SSE stream. Responses come back on POST directly,
+// but clients (Jan, mcp-remote) require the stream to exist per Streamable HTTP spec.
+app.get("/mcp", (c) => {
+  const syncKey = extractBearerToken(c.req.header("Authorization"));
+  if (!syncKey) {
+    return c.text("Missing Authorization", 401);
+  }
+
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(": connected\n\n"));
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+});
 
 // MCP JSON-RPC endpoint (Streamable HTTP transport)
 app.post("/mcp", async (c) => {
