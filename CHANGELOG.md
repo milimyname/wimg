@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.13 (2026-05-03)
+
+- Version bump
+
 ## v0.7.12 (2026-05-03)
 
 - Add no-op SSE on GET /mcp + fix lefthook in worktrees (#4)
