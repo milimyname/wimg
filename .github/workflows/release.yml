@@ -17,42 +17,11 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    outputs:
-      libwimg: ${{ steps.changes.outputs.libwimg }}
-      web: ${{ steps.changes.outputs.web }}
-      ios: ${{ steps.changes.outputs.ios }}
-      android: ${{ steps.changes.outputs.android }}
-      sync: ${{ steps.changes.outputs.sync }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
-
-      - name: Detect changed paths
-        id: changes
-        run: |
-          # On manual dispatch, build everything (retrying a failed release)
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "libwimg=true" >> $GITHUB_OUTPUT
-            echo "web=true" >> $GITHUB_OUTPUT
-            echo "ios=true" >> $GITHUB_OUTPUT
-            echo "android=true" >> $GITHUB_OUTPUT
-            echo "sync=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          PREV_TAG=$(git tag -l --sort=-v:refname | sed -n '2p')
-          if [ -n "$PREV_TAG" ]; then
-            CHANGED=$(git diff --name-only "$PREV_TAG"..HEAD -- . ':(exclude)CHANGELOG.md' ':(exclude)wimg-web/package.json' ':(exclude)wimg-ios/project.yml')
-          else
-            CHANGED=$(git diff --name-only HEAD~1 -- . ':(exclude)CHANGELOG.md' ':(exclude)wimg-web/package.json' ':(exclude)wimg-ios/project.yml')
-          fi
-          echo "libwimg=$(echo "$CHANGED" | grep -q '^libwimg/' && echo true || echo false)" >> $GITHUB_OUTPUT
-          echo "web=$(echo "$CHANGED" | grep -q '^wimg-web/' && echo true || echo false)" >> $GITHUB_OUTPUT
-          echo "ios=$(echo "$CHANGED" | grep -q '^wimg-ios/' && echo true || echo false)" >> $GITHUB_OUTPUT
-          echo "android=$(echo "$CHANGED" | grep -q '^wimg-android/' && echo true || echo false)" >> $GITHUB_OUTPUT
-          echo "sync=$(echo "$CHANGED" | grep -q '^wimg-sync/' && echo true || echo false)" >> $GITHUB_OUTPUT
 
       - uses: mlugg/setup-zig@v2
         with:
@@ -106,7 +75,6 @@ jobs:
 
   build-and-deploy-web:
     needs: check
-    if: needs.check.outputs.web == 'true' || needs.check.outputs.libwimg == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -153,7 +121,6 @@ jobs:
 
   build-ios:
     needs: check
-    if: needs.check.outputs.ios == 'true' || needs.check.outputs.libwimg == 'true'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
@@ -293,10 +260,6 @@ jobs:
 
   deploy-sync:
     needs: [check, build-and-deploy-web]
-    if: |
-      always() &&
-      (needs.check.outputs.sync == 'true' || needs.check.outputs.libwimg == 'true') &&
-      (needs.build-and-deploy-web.result == 'success' || needs.build-and-deploy-web.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -304,7 +267,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       - name: Download compact WASM
-        if: needs.build-and-deploy-web.result == 'success'
         uses: actions/download-artifact@v8
         with:
           name: libwimg-wasm
@@ -331,21 +293,18 @@ jobs:
           fetch-depth: 0
 
       - name: Download WASM artifacts
-        if: needs.build-and-deploy-web.result == 'success'
         uses: actions/download-artifact@v8
         with:
           name: libwimg-wasm
           path: artifacts/libwimg-wasm
 
       - name: Download iOS artifacts
-        if: needs.build-ios.result == 'success'
         uses: actions/download-artifact@v8
         with:
           name: libwimg-ios
           path: artifacts/libwimg-ios
 
       - name: Download Android artifacts
-        if: needs.build-android.result == 'success'
         uses: actions/download-artifact@v8
         with:
           name: libwimg-android
