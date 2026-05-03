@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.7.12 (2026-05-03)
+
+- Add no-op SSE on GET /mcp + fix lefthook in worktrees (#4)
+
 ## v0.7.11 (2026-04-21)
 
 - feat: enhance Drawer component gesture handling and improve tax page layout
