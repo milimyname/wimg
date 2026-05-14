@@ -3,7 +3,14 @@ import SwiftUI
 struct SpendingHeatmap: View {
     @State private var selectedCell: (year: Int, month: Int)?
 
-    private let months = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
+    // Use the user's locale instead of a hardcoded German array — keeps
+    // month labels in sync with the wimg_locale setting (de/en).
+    private var months: [String] {
+        let fmt = DateFormatter()
+        let isEn = UserDefaults.standard.string(forKey: "wimg_locale") == "en"
+        fmt.locale = Locale(identifier: isEn ? "en_US" : "de_DE")
+        return fmt.shortStandaloneMonthSymbols ?? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    }
     private let cellSize: CGFloat = 28
     private let gap: CGFloat = 3
 

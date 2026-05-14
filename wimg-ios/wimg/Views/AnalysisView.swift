@@ -217,7 +217,9 @@ struct AnalysisView: View {
                 .frame(height: 6)
 
                 HStack {
-                    Text("\(cat.count) Umsätze")
+                    Text(RecurringPattern.isEnglish
+                        ? "\(cat.count) transactions"
+                        : "\(cat.count) Umsätze")
                         .font(.system(.caption2, design: .rounded, weight: .medium))
                         .foregroundStyle(WimgTheme.textSecondary)
                     Spacer()
