@@ -9,6 +9,7 @@
   import EmptyState from "../../../components/EmptyState.svelte";
   import NetWorthChart from "../../../components/NetWorthChart.svelte";
   import SpendingHeatmap from "../../../components/SpendingHeatmap.svelte";
+  import InfoTooltip from "../../../components/InfoTooltip.svelte";
 
   let expandedCategory = $state<number | null>(null);
 
@@ -75,7 +76,10 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
       </svg>
     </a>
-    <h2 class="text-xl font-display font-extrabold">Insights</h2>
+    <div class="flex items-center gap-2">
+      <h2 class="text-xl font-display font-extrabold">Insights</h2>
+      <InfoTooltip text="Übersicht deiner Ausgaben für den gewählten Monat: Verteilung nach Kategorie, Nettovermögen über die Zeit und Ausgaben-Heatmap." />
+    </div>
 </div>
 
 {#if !hasAnyData}
@@ -103,6 +107,12 @@
 <MonthPicker bind:year={dateNav.year} bind:month={dateNav.month} />
 
 {#if summary.by_category.length > 0}
+  <!-- Section header with tooltip for donut -->
+  <div class="flex items-center gap-2 mb-4 px-1">
+    <h3 class="text-xl font-display font-extrabold">Ausgaben nach Kategorie</h3>
+    <InfoTooltip text="Zeigt deine Ausgaben des Monats aufgeschlüsselt nach Kategorie. Tippe ein Segment für Details." />
+  </div>
+
   <!-- Donut Chart Hero Card -->
   <div class="bg-white rounded-[2rem] shadow-[var(--shadow-soft)] p-8 mb-6 flex flex-col items-center">
     <!-- Chart with center text overlay -->
@@ -160,7 +170,10 @@
 
   <!-- Categories Header -->
   <div id="categories" class="flex items-center justify-between px-1 mb-4 relative">
-    <a href="#categories" class="text-2xl font-display font-extrabold">Kategorien</a>
+    <div class="flex items-center gap-2">
+      <a href="#categories" class="text-2xl font-display font-extrabold">Kategorien</a>
+      <InfoTooltip text="Alle Ausgabenkategorien dieses Monats, absteigend nach Betrag. Tippe eine Kategorie für ihre Transaktionen." />
+    </div>
     <div class="flex items-center gap-1 text-sm text-(--color-text-secondary) font-medium bg-white px-3 py-1.5 rounded-full shadow-[var(--shadow-card)]">
       <span>vs. Vormonat</span>
     </div>

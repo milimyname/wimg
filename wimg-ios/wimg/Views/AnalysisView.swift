@@ -63,6 +63,17 @@ struct AnalysisView: View {
                         .padding(.top, 8)
 
                     if let cats = summary?.by_category, !cats.isEmpty {
+                        // Section header for donut
+                        HStack(spacing: 8) {
+                            Text("Ausgaben nach Kategorie")
+                                .font(.system(.title3, design: .rounded, weight: .black))
+                                .foregroundStyle(WimgTheme.text)
+                            InfoTooltip(text: "Zeigt deine Ausgaben des Monats aufgeschlüsselt nach Kategorie. Tippe ein Segment für Details.")
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 4)
+
                         // Donut chart card
                         VStack(spacing: 16) {
                             ZStack {
@@ -122,6 +133,17 @@ struct AnalysisView: View {
 
                         // Spending Heatmap
                         SpendingHeatmap()
+
+                        // Section header for categories
+                        HStack(spacing: 8) {
+                            Text("Kategorien")
+                                .font(.system(.title3, design: .rounded, weight: .black))
+                                .foregroundStyle(WimgTheme.text)
+                            InfoTooltip(text: "Alle Ausgabenkategorien dieses Monats, absteigend nach Betrag. Tippe eine Kategorie für ihre Transaktionen.")
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 8)
 
                         // Category breakdown
                         VStack(spacing: 0) {
