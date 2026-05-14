@@ -123,52 +123,25 @@
 
 <MonthPicker bind:year={dateNav.year} bind:month={dateNav.month} />
 
-<!-- Combined balance hero: Gesamtsaldo + Einnahmen/Ausgaben in one robust card -->
-<section class="bg-white rounded-3xl p-6 mb-5 shadow-[var(--shadow-soft)]">
-  <div class="flex flex-col items-center text-center pb-6 mb-6 border-b border-gray-100">
-    <div class="flex items-center gap-1.5 mb-2">
-      <svg class="w-4 h-4 text-(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-      </svg>
-      <p class="text-[10px] text-(--color-text-secondary) font-bold uppercase tracking-widest">
-        Gesamtsaldo
-      </p>
-    </div>
-    <h1
-      class="text-5xl font-display font-black tracking-tight tabular-nums"
-      class:text-emerald-600={totalBalance > 0}
-      class:text-rose-500={totalBalance < 0}
-      class:text-(--color-text)={totalBalance === 0}
-    >
-      {Math.abs(totalBalance) >= 100000 ? formatEurCompact(totalBalance) : formatEur(totalBalance)}
-    </h1>
+<!-- Gesamtsaldo — centered, no card chrome -->
+<div class="flex flex-col items-center text-center pt-2 mb-6">
+  <div class="flex items-center gap-1.5 mb-2">
+    <svg class="w-4 h-4 text-(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+    </svg>
+    <p class="text-[10px] text-(--color-text-secondary) font-bold uppercase tracking-widest">
+      Gesamtsaldo
+    </p>
   </div>
-
-  <div class="grid grid-cols-2 gap-4">
-    <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-        </svg>
-      </div>
-      <div class="min-w-0">
-        <p class="text-[10px] text-(--color-text-secondary) font-bold uppercase tracking-wider">Einnahmen</p>
-        <p class="text-sm font-display font-bold text-emerald-700 truncate">+ {formatEurCompact(summary.income)}</p>
-      </div>
-    </div>
-    <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
-        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-        </svg>
-      </div>
-      <div class="min-w-0">
-        <p class="text-[10px] text-(--color-text-secondary) font-bold uppercase tracking-wider">Ausgaben</p>
-        <p class="text-sm font-display font-bold text-rose-700 truncate">- {formatEurCompact(Math.abs(summary.expenses))}</p>
-      </div>
-    </div>
-  </div>
-</section>
+  <h1
+    class="text-5xl font-display font-black tracking-tight tabular-nums"
+    class:text-emerald-600={totalBalance > 0}
+    class:text-rose-500={totalBalance < 0}
+    class:text-(--color-text)={totalBalance === 0}
+  >
+    {Math.abs(totalBalance) >= 100000 ? formatEurCompact(totalBalance) : formatEur(totalBalance)}
+  </h1>
+</div>
 
 <!-- Verfügbares Einkommen — compact highlight card -->
 <div class="bg-(--color-accent) rounded-3xl p-6 mb-5 shadow-[var(--shadow-soft)] relative overflow-hidden" style="color: #1a1a1a">
@@ -202,6 +175,32 @@
           {delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
         </span>
       {/if}
+    </div>
+  </div>
+</div>
+
+<!-- Einnahmen / Ausgaben — 2-col grid (original placement) -->
+<div class="grid grid-cols-2 gap-4 mb-5">
+  <div class="bg-white rounded-[1.75rem] p-5 shadow-[var(--shadow-card)] flex flex-col gap-3">
+    <div class="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-500">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+      </svg>
+    </div>
+    <div>
+      <p class="text-xs text-(--color-text-secondary) font-bold uppercase tracking-wide mb-1">Einnahmen</p>
+      <p class="text-lg font-display font-extrabold text-emerald-600">+ {formatEurCompact(summary.income)}</p>
+    </div>
+  </div>
+  <div class="bg-white rounded-[1.75rem] p-5 shadow-[var(--shadow-card)] flex flex-col gap-3">
+    <div class="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+      </svg>
+    </div>
+    <div>
+      <p class="text-xs text-(--color-text-secondary) font-bold uppercase tracking-wide mb-1">Ausgaben</p>
+      <p class="text-lg font-display font-extrabold text-rose-600">- {formatEurCompact(Math.abs(summary.expenses))}</p>
     </div>
   </div>
 </div>
