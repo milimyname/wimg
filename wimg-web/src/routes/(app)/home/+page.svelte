@@ -123,81 +123,85 @@
 
 <MonthPicker bind:year={dateNav.year} bind:month={dateNav.month} />
 
-<!-- Hero: Verfügbares Einkommen -->
-<div class="bg-(--color-accent) rounded-[2rem] p-7 mb-5 shadow-[var(--shadow-soft)] relative overflow-hidden" style="color: #1a1a1a">
-  <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/25 rounded-full blur-2xl pointer-events-none"></div>
-  <div class="flex justify-between items-start mb-3 relative z-10">
-    <div class="flex items-center gap-2">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<!-- Combined balance hero: big Gesamtsaldo + Einnahmen/Ausgaben mini cards -->
+<section class="mb-5 pt-2">
+  <div class="flex flex-col items-center text-center mb-6">
+    <div class="flex items-center gap-1.5 mb-2">
+      <svg class="w-4 h-4 text-(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
       </svg>
-      <p class="text-sm font-bold uppercase tracking-wide" style="opacity: 0.8">Verfügbares Einkommen</p>
-      <InfoTooltip text="Einnahmen minus Ausgaben in diesem Monat. Was dir zum Sparen oder Investieren bleibt." />
-    </div>
-  </div>
-  <p class="text-[2.75rem] font-display font-black tracking-tight leading-tight relative z-10 mb-4">
-    {Math.abs(summary.available) >= 10000 ? formatEurCompact(summary.available) : formatEur(summary.available)}
-  </p>
-  {#if delta !== null}
-    <div class="relative z-10">
-      <span
-        class="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold shadow-sm" style="background: rgba(255,255,255,0.5); color: #1a1a1a"
-      >
-        {#if delta >= 0}
-          <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" />
-          </svg>
-        {:else}
-          <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" />
-          </svg>
-        {/if}
-        {delta >= 0 ? "+" : ""}{delta.toFixed(1)}% vs. Vormonat
-      </span>
-    </div>
-  {/if}
-</div>
-
-<!-- Gesamt / Einnahmen / Ausgaben stacked rows -->
-<div class="flex flex-col gap-3 mb-5">
-  <div class="bg-white rounded-[1.5rem] p-4 shadow-[var(--shadow-card)] flex items-center gap-4">
-    <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 shrink-0">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-      </svg>
-    </div>
-    <div class="flex-1 min-w-0 flex items-center justify-between gap-3">
-      <p class="text-xs text-(--color-text-secondary) font-bold uppercase tracking-wide">Gesamt</p>
-      <p
-        class="font-display font-extrabold text-lg tabular-nums truncate"
-        class:text-emerald-600={totalBalance > 0}
-        class:text-rose-500={totalBalance < 0}
-        class:text-(--color-text)={totalBalance === 0}
-      >
-        {formatEur(totalBalance)}
+      <p class="text-[10px] text-(--color-text-secondary) font-bold uppercase tracking-widest">
+        Gesamtsaldo
       </p>
     </div>
+    <h1
+      class="text-5xl font-display font-black tracking-tight tabular-nums"
+      class:text-emerald-600={totalBalance > 0}
+      class:text-rose-500={totalBalance < 0}
+      class:text-(--color-text)={totalBalance === 0}
+    >
+      {Math.abs(totalBalance) >= 100000 ? formatEurCompact(totalBalance) : formatEur(totalBalance)}
+    </h1>
   </div>
-  <div class="bg-white rounded-[1.5rem] p-4 shadow-[var(--shadow-card)] flex items-center gap-4">
-    <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-      </svg>
+
+  <div class="grid grid-cols-2 gap-3">
+    <div class="flex items-center gap-3 bg-white rounded-3xl p-4 shadow-[var(--shadow-card)]">
+      <div class="w-9 h-9 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+        </svg>
+      </div>
+      <div class="min-w-0">
+        <p class="text-[10px] text-(--color-text-secondary) font-bold uppercase tracking-wider">Einnahmen</p>
+        <p class="text-sm font-display font-bold text-emerald-700 truncate">+ {formatEurCompact(summary.income)}</p>
+      </div>
     </div>
-    <div class="flex-1 min-w-0 flex items-center justify-between gap-3">
-      <p class="text-xs text-(--color-text-secondary) font-bold uppercase tracking-wide">Einnahmen</p>
-      <p class="font-display font-extrabold text-lg text-emerald-600 tabular-nums truncate">+ {formatEur(summary.income)}</p>
+    <div class="flex items-center gap-3 bg-white rounded-3xl p-4 shadow-[var(--shadow-card)]">
+      <div class="w-9 h-9 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+      </div>
+      <div class="min-w-0">
+        <p class="text-[10px] text-(--color-text-secondary) font-bold uppercase tracking-wider">Ausgaben</p>
+        <p class="text-sm font-display font-bold text-rose-700 truncate">- {formatEurCompact(Math.abs(summary.expenses))}</p>
+      </div>
     </div>
   </div>
-  <div class="bg-white rounded-[1.5rem] p-4 shadow-[var(--shadow-card)] flex items-center gap-4">
-    <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 shrink-0">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+</section>
+
+<!-- Verfügbares Einkommen — compact highlight card -->
+<div class="bg-(--color-accent) rounded-3xl p-6 mb-5 shadow-[var(--shadow-soft)] relative overflow-hidden" style="color: #1a1a1a">
+  <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/25 rounded-full blur-2xl pointer-events-none"></div>
+  <div class="relative z-10">
+    <div class="flex items-center gap-1.5 mb-1">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25a2.25 2.25 0 000 4.5h13.5A2.25 2.25 0 0021 12zM4 7.5A2.5 2.5 0 016.5 5h11a2.5 2.5 0 010 5h-11A2.5 2.5 0 014 7.5zM18 14.5v.01" />
       </svg>
+      <p class="text-[10px] font-bold uppercase tracking-widest" style="opacity: 0.8">Verfügbares Einkommen</p>
+      <InfoTooltip text="Einnahmen minus Ausgaben in diesem Monat. Was dir zum Sparen oder Investieren bleibt." />
     </div>
-    <div class="flex-1 min-w-0 flex items-center justify-between gap-3">
-      <p class="text-xs text-(--color-text-secondary) font-bold uppercase tracking-wide">Ausgaben</p>
-      <p class="font-display font-extrabold text-lg text-rose-600 tabular-nums truncate">- {formatEur(Math.abs(summary.expenses))}</p>
+    <div class="flex items-baseline justify-between gap-3">
+      <h2 class="text-3xl font-display font-black tracking-tight tabular-nums">
+        {Math.abs(summary.available) >= 10000 ? formatEurCompact(summary.available) : formatEur(summary.available)}
+      </h2>
+      {#if delta !== null}
+        <span
+          class="shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black backdrop-blur-sm border border-white/20"
+          style="background: rgba(255,255,255,0.4); color: #1a1a1a"
+        >
+          {#if delta >= 0}
+            <svg class="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" />
+            </svg>
+          {:else}
+            <svg class="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" />
+            </svg>
+          {/if}
+          {delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
+        </span>
+      {/if}
     </div>
   </div>
 </div>
@@ -285,18 +289,31 @@
     </div>
   </div>
 
-  <!-- Quick Link: Review -->
-  <a
-    href="/review"
-    class="bg-white rounded-[1.75rem] p-5 shadow-[var(--shadow-card)] flex items-center gap-3 hover:shadow-[var(--shadow-soft)] transition-shadow mb-5"
-  >
-    <div class="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-      </svg>
-    </div>
-    <span class="text-sm font-bold">Rückblick</span>
-  </a>
+  <!-- Quick Links -->
+  <div class="grid grid-cols-2 gap-4 mb-5">
+    <a
+      href="/review"
+      class="bg-white rounded-[1.75rem] p-5 shadow-[var(--shadow-card)] flex items-center gap-3 hover:shadow-[var(--shadow-soft)] transition-shadow"
+    >
+      <div class="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        </svg>
+      </div>
+      <span class="text-sm font-bold">Rückblick</span>
+    </a>
+    <a
+      href="/recurring"
+      class="bg-white rounded-[1.75rem] p-5 shadow-[var(--shadow-card)] flex items-center gap-3 hover:shadow-[var(--shadow-soft)] transition-shadow"
+    >
+      <div class="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </div>
+      <span class="text-sm font-bold">Wiederkehrend</span>
+    </a>
+  </div>
 
   <!-- Letzte Transaktionen -->
   {#if recentTransactions.length > 0}
