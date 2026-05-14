@@ -138,14 +138,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
     handler: () => goto("/recurring"),
   },
   {
-    id: "nav-renewals",
-    label: "Zahlungskalender",
-    group: "Navigation",
-    icon: "📆",
-    keywords: ["kalender", "calendar", "renewals", "anstehend", "upcoming", "fällig"],
-    handler: () => goto("/recurring?tab=calendar"),
-  },
-  {
     id: "nav-review",
     label: "Rückblick",
     group: "Navigation",

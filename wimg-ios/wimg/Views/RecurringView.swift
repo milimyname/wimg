@@ -3,21 +3,12 @@ import SwiftUI
 struct RecurringView: View {
     @State private var patterns: [RecurringPattern] = []
     @State private var detecting = false
-    @State private var tab = 0 // 0 = subscriptions, 1 = calendar
 
     // Derived state — recomputed only when `patterns` changes via .onChange.
-    // Previously these were computed properties: every tab switch re-ran all of
-    // them on the main thread, creating fresh DateFormatters per access.
     @State private var activePatterns: [RecurringPattern] = []
     @State private var priceAlerts: [RecurringPattern] = []
     @State private var monthlyTotal: Double = 0
     @State private var grouped: [(String, [RecurringPattern])] = []
-    @State private var futurePayments: [FuturePayment] = []
-    @State private var paymentsByMonth: [(String, [FuturePayment])] = []
-    @State private var next30DaysPayments: [FuturePayment] = []
-    @State private var next30DaysTotal: Double = 0
-    @State private var monthlyOverview: [MonthOverview] = []
-    @State private var maxMonthlyTotal: Double = 1
 
     private let intervalLabels: [String: String] = [
         "weekly": "Wöchentlich",
@@ -26,39 +17,8 @@ struct RecurringView: View {
         "annual": "Jährlich",
     ]
 
-    // MARK: - Calendar Data
-
-    private struct FuturePayment: Identifiable {
-        let id = UUID()
-        let date: Date
-        let dateStr: String
-        let merchant: String
-        let amount: Double
-        let category: Int
-        let interval: String
-    }
-
-    private struct MonthOverview: Identifiable {
-        let id: String // "2026-04"
-        let label: String
-        let total: Double
-    }
-
-    private static func addInterval(_ date: Date, _ interval: String) -> Date {
-        let cal = Calendar.current
-        switch interval {
-        case "weekly": return cal.date(byAdding: .day, value: 7, to: date) ?? date
-        case "monthly": return cal.date(byAdding: .month, value: 1, to: date) ?? date
-        case "quarterly": return cal.date(byAdding: .month, value: 3, to: date) ?? date
-        case "annual": return cal.date(byAdding: .year, value: 1, to: date) ?? date
-        default: return cal.date(byAdding: .month, value: 1, to: date) ?? date
-        }
-    }
-
-    /// Recompute all derived state from `patterns`. Single DateFormatter per
-    /// invocation, one main-thread pass. Called from .onChange(of: patterns).
+    /// Recompute derived state from `patterns`. Called via .onChange.
     private func recompute() {
-        // --- activePatterns + cheap derivations ---
         let active = patterns.filter(\.isActive)
         activePatterns = active
         priceAlerts = active.filter(\.hasPriceChange)
@@ -71,95 +31,12 @@ struct RecurringView: View {
             guard let items = groupDict[key], !items.isEmpty else { return nil }
             return (key, items)
         }
-
-        // --- futurePayments (single DateFormatter, single pass) ---
-        let now = Date()
-        let cal = Calendar.current
-        let isoFmt = DateFormatter()
-        isoFmt.dateFormat = "yyyy-MM-dd"
-
-        guard let end = cal.date(byAdding: .year, value: 1, to: now) else {
-            futurePayments = []
-            paymentsByMonth = []
-            next30DaysPayments = []
-            next30DaysTotal = 0
-            monthlyOverview = []
-            maxMonthlyTotal = 1
-            return
-        }
-
-        var payments: [FuturePayment] = []
-        for p in active {
-            guard let nextDue = p.next_due, let startDate = isoFmt.date(from: nextDue) else { continue }
-            var d = startDate
-            while d < now { d = Self.addInterval(d, p.interval) }
-            while d <= end {
-                payments.append(FuturePayment(
-                    date: d,
-                    dateStr: isoFmt.string(from: d),
-                    merchant: p.merchant,
-                    amount: p.amount,
-                    category: p.category,
-                    interval: p.interval
-                ))
-                d = Self.addInterval(d, p.interval)
-            }
-        }
-        payments.sort { $0.date < $1.date }
-        futurePayments = payments
-
-        // --- paymentsByMonth (single DateFormatter) ---
-        let monthKeyFmt = DateFormatter()
-        monthKeyFmt.dateFormat = "yyyy-MM"
-        var byMonth: [String: [FuturePayment]] = [:]
-        for p in payments {
-            let key = monthKeyFmt.string(from: p.date)
-            byMonth[key, default: []].append(p)
-        }
-        paymentsByMonth = byMonth.sorted { $0.key < $1.key }
-
-        // --- next30Days ---
-        let limit30 = cal.date(byAdding: .day, value: 30, to: now) ?? now
-        let next30 = payments.filter { $0.date >= now && $0.date <= limit30 }
-        next30DaysPayments = next30
-        next30DaysTotal = next30.reduce(0) { $0 + abs($1.amount) }
-
-        // --- monthlyOverview (single label formatter, reused) ---
-        let locale = Locale(identifier: UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE")
-        let labelFmt = DateFormatter()
-        labelFmt.locale = locale
-
-        var months: [MonthOverview] = []
-        for i in 0..<12 {
-            guard let monthDate = cal.date(byAdding: .month, value: i, to: now) else { continue }
-            let key = monthKeyFmt.string(from: monthDate)
-            labelFmt.dateFormat = (i == 0 || cal.component(.month, from: monthDate) == 1) ? "MMM yy" : "MMM"
-            let label = labelFmt.string(from: monthDate)
-            let total = byMonth[key]?.reduce(0) { $0 + abs($1.amount) } ?? 0
-            months.append(MonthOverview(id: key, label: label, total: total))
-        }
-        monthlyOverview = months
-        maxMonthlyTotal = max(months.map(\.total).max() ?? 1, 1)
     }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Segmented control
-                if !activePatterns.isEmpty {
-                    Picker("Tab", selection: $tab) {
-                        Text("Abonnements").tag(0)
-                        Text("Kalender").tag(1)
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal)
-                }
-
-                if tab == 0 {
-                    subscriptionsTab
-                } else {
-                    calendarTab
-                }
+                subscriptionsTab
             }
             .padding(.bottom, 24)
         }
@@ -241,105 +118,6 @@ struct RecurringView: View {
         }
     }
 
-    // MARK: - Calendar Tab
-
-    @ViewBuilder
-    private var calendarTab: some View {
-        // Hero card: Next 30 days
-        calendarHeroCard
-
-        // 12-month overview
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Text("12-Monats-Übersicht")
-                    .font(.system(.headline, design: .rounded, weight: .bold))
-                    .foregroundStyle(WimgTheme.text)
-                InfoTooltip(text: "Hochrechnung deiner Fixkosten für die nächsten 12 Monate, basierend auf erkannten wiederkehrenden Mustern.")
-            }
-            .padding(.horizontal)
-
-            VStack(spacing: 8) {
-                ForEach(Array(monthlyOverview.enumerated()), id: \.element.id) { i, month in
-                    HStack(spacing: 8) {
-                        Text(month.label)
-                            .font(.system(.caption, design: .rounded, weight: .bold))
-                            .foregroundStyle(WimgTheme.textSecondary)
-                            .frame(width: 50, alignment: .leading)
-
-                        GeometryReader { geo in
-                            let barWidth = month.total > 0
-                                ? max(geo.size.width * month.total / maxMonthlyTotal, 4)
-                                : 0
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .fill(i == 0 ? Color.orange : WimgTheme.accent)
-                                .frame(width: barWidth)
-                        }
-                        .frame(height: 20)
-
-                        Text(month.total > 0 ? formatAmountShort(month.total) : "–")
-                            .font(.system(.caption, design: .rounded, weight: .bold))
-                            .foregroundStyle(WimgTheme.text)
-                            .frame(width: 60, alignment: .trailing)
-                    }
-                }
-            }
-            .padding(16)
-            .wimgCard(radius: WimgTheme.radiusMedium)
-            .padding(.horizontal)
-        }
-
-        // Timeline
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Anstehende Zahlungen")
-                .font(.system(.headline, design: .rounded, weight: .bold))
-                .foregroundStyle(WimgTheme.text)
-                .padding(.horizontal)
-
-            if futurePayments.isEmpty {
-                VStack(spacing: 8) {
-                    Text("📆")
-                        .font(.system(size: 48))
-                    Text("Keine anstehenden Zahlungen")
-                        .font(.system(.title3, design: .rounded, weight: .bold))
-                        .foregroundStyle(WimgTheme.text)
-                    Text("Erkenne zuerst wiederkehrende Muster im Abonnements-Tab.")
-                        .font(.system(.subheadline, design: .rounded))
-                        .foregroundStyle(WimgTheme.textSecondary)
-                        .multilineTextAlignment(.center)
-
-                    Button {
-                        tab = 0
-                    } label: {
-                        Text("Zu Abonnements")
-                            .font(.system(.subheadline, design: .rounded, weight: .bold))
-                            .foregroundStyle(WimgTheme.heroText)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(WimgTheme.accent)
-                            .clipShape(Capsule())
-                    }
-                    .padding(.top, 4)
-                }
-                .padding(.vertical, 40)
-            } else {
-                ForEach(paymentsByMonth, id: \.0) { monthKey, payments in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(formatMonthHeading(monthKey))
-                            .font(.system(.caption, design: .rounded, weight: .bold))
-                            .foregroundStyle(WimgTheme.textSecondary)
-                            .textCase(.uppercase)
-                            .tracking(0.5)
-                            .padding(.horizontal)
-
-                        ForEach(payments) { payment in
-                            paymentCard(payment)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     // MARK: - Hero Card
 
     private var heroCard: some View {
@@ -374,42 +152,6 @@ struct RecurringView: View {
             .padding(24)
         }
         .background(Color.green.opacity(0.75))
-        .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusXL, style: .continuous))
-        .shadow(color: .black.opacity(0.08), radius: 16, y: 4)
-        .padding(.horizontal)
-    }
-
-    // MARK: - Calendar Hero Card
-
-    private var calendarHeroCard: some View {
-        ZStack(alignment: .topTrailing) {
-            Circle()
-                .fill(.white.opacity(0.25))
-                .frame(width: 140, height: 140)
-                .blur(radius: 30)
-                .offset(x: 40, y: -40)
-
-            VStack(spacing: 12) {
-                Text("Nächste 30 Tage")
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.8))
-                    .textCase(.uppercase)
-                    .tracking(1)
-
-                Text(formatAmountShort(next30DaysTotal))
-                    .font(.system(size: 36, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                    .tracking(-1)
-
-                let count = next30DaysPayments.count
-                Text("\(count) \(count == 1 ? "Zahlung" : "Zahlungen")")
-                    .font(.system(.subheadline, design: .rounded, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.7))
-            }
-            .frame(maxWidth: .infinity)
-            .padding(24)
-        }
-        .background(Color.orange)
         .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusXL, style: .continuous))
         .shadow(color: .black.opacity(0.08), radius: 16, y: 4)
         .padding(.horizontal)
@@ -514,78 +256,7 @@ struct RecurringView: View {
         .padding(.horizontal)
     }
 
-    // MARK: - Payment Card
-
-    private func paymentCard(_ payment: FuturePayment) -> some View {
-        let cat = WimgCategory.from(payment.category)
-
-        return HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(cat.color.opacity(0.15))
-                .frame(width: 44, height: 44)
-                .overlay {
-                    Image(systemName: cat.icon)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(cat.color)
-                }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(payment.merchant)
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .foregroundStyle(WimgTheme.text)
-                    .lineLimit(1)
-                HStack(spacing: 4) {
-                    Text(formatDayLabel(payment.date))
-                        .font(.system(.caption2, design: .rounded, weight: .medium))
-                        .foregroundStyle(WimgTheme.textSecondary)
-                    Text("·")
-                        .font(.system(.caption2, design: .rounded))
-                        .foregroundStyle(WimgTheme.textSecondary.opacity(0.5))
-                    TText(intervalLabels[payment.interval] ?? payment.interval)
-                        .font(.system(.caption2, design: .rounded, weight: .medium))
-                        .foregroundStyle(WimgTheme.textSecondary)
-                }
-            }
-
-            Spacer()
-
-            Text(formatAmountShort(abs(payment.amount)))
-                .font(.system(.subheadline, design: .rounded, weight: .bold))
-                .foregroundStyle(WimgTheme.text)
-        }
-        .padding(16)
-        .wimgCard(radius: WimgTheme.radiusMedium)
-        .padding(.horizontal)
-    }
-
-    // MARK: - Helpers
-
-    private func formatDayLabel(_ date: Date) -> String {
-        let days = Calendar.current.dateComponents(
-            [.day],
-            from: Calendar.current.startOfDay(for: Date()),
-            to: Calendar.current.startOfDay(for: date)
-        ).day ?? 0
-
-        if days == 0 { return String(localized: "Heute") }
-        if days == 1 { return String(localized: "Morgen") }
-        if days <= 7 { return String(localized: "In \(days) Tagen") }
-
-        let df = DateFormatter()
-        df.dateFormat = "d. MMM"
-        df.locale = Locale(identifier: UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE")
-        return df.string(from: date)
-    }
-
-    private func formatMonthHeading(_ key: String) -> String {
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM"
-        guard let date = df.date(from: key) else { return key }
-        let display = DateFormatter()
-        display.dateFormat = "LLLL yyyy"
-        display.locale = Locale(identifier: UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE")
-        return display.string(from: date)
-    }
+    // MARK: - Data
 
     private func reload() {
         Task.detached {
