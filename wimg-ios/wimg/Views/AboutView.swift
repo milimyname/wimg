@@ -3,9 +3,8 @@ import SwiftUI
 struct AboutView: View {
     var scrollToFAQ: String?
 
-    // General philosophy / how-it-works questions. Feature-specific
-    // explanations (Sparquote formula, "Verfügbar" meaning, 12-Monats-
-    // Übersicht) live in inline InfoTooltips on the cards themselves.
+    // FAQ list mirrors wimg-web/src/routes/(app)/about/+page.svelte (minus the
+    // web-only "DevTools" entry). Keep both in sync when adding entries.
     private let faqs: [(q: String, a: String)] = [
         ("Sind meine Daten sicher?",
          "Ja. Alle Finanzdaten werden lokal in einer SQLite-Datenbank auf deinem Gerät gespeichert. Sync ist Ende-zu-Ende verschlüsselt — der Server sieht nur Chiffretext."),
@@ -29,6 +28,12 @@ struct AboutView: View {
          "wimg analysiert deine Transaktionen automatisch und erkennt regelmäßige Muster (monatlich, vierteljährlich, jährlich). Unter Mehr → Wiederkehrend siehst du alle erkannten Abos mit Betrag, Intervall und dem nächsten Fälligkeitsdatum."),
         ("Funktioniert wimg offline?",
          "Ja, vollständig. Alle Daten liegen lokal in SQLite. Du brauchst kein Internet für Import, Kategorisierung, Analyse oder irgendeine Kernfunktion. Sync ist optional und funktioniert nur bei Internetverbindung."),
+        ("Gibt es eine iOS-App?",
+         "Ja! wimg gibt es als native SwiftUI-App für iPhone. Tritt der TestFlight-Beta bei. Die iOS-App hat volle Feature-Parität mit der Web-App inklusive FinTS-Bankverbindung, Sync und Dark Mode."),
+        ("Gibt es eine Android-App?",
+         "Ja! Die native Kotlin/Compose-App kann als APK von der GitHub Releases-Seite heruntergeladen werden. Unter Einstellungen → Unbekannte Quellen erlauben, dann die APK installieren. Volle Feature-Parität mit iOS und Web."),
+        ("Gibt es einen Dark Mode?",
+         "Ja! In den Einstellungen kannst du zwischen Hell, Dunkel und System wählen. Der Dark Mode hat ein Premium-Design mit dunklem Hintergrund und dezenten Akzenten."),
         ("Kann ich mehrere Konten verwalten?",
          "Ja. Über den Konto-Switcher oben rechts kannst du zwischen Konten wechseln oder alle anzeigen. Neue Konten werden beim CSV-Import automatisch erstellt oder können manuell in den Einstellungen angelegt werden."),
         ("Kann ich Änderungen rückgängig machen?",
