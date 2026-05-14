@@ -251,7 +251,6 @@ struct DashboardView: View {
                 .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal, 20)
-                .coachmark(key: "dashboard_donut", text: "Gehe zur Analyse für Details")
 
             ZStack {
                 Chart(categories) { cat in

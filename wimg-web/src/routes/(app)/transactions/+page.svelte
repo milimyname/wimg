@@ -14,7 +14,6 @@
   import { data } from "$lib/data.svelte";
   import { toastStore } from "$lib/toast.svelte";
   import Drawer from "../../../components/Drawer.svelte";
-  import Coachmark from "../../../components/Coachmark.svelte";
   import { pushState, replaceState } from "$app/navigation";
   import { page } from "$app/state";
 
@@ -416,7 +415,6 @@
 
 <!-- Transaction List -->
 <div class="relative">
-  <Coachmark key="transactions_categorize" text="Tippe auf eine Transaktion zum Kategorisieren" />
 </div>
 {#if loadError}
   <div class="bg-red-50 border border-red-200 rounded-2xl p-5 mb-4">

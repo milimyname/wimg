@@ -212,7 +212,6 @@ struct TransactionsView: View {
             } else {
                 visibleSumBar
                 transactionList
-                    .coachmark(key: "transactions_categorize", text: "Tippe auf eine Buchung zum Kategorisieren")
             }
         }
     }

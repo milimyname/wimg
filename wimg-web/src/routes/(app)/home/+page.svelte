@@ -9,7 +9,6 @@
   import MonthPicker from "../../../components/MonthPicker.svelte";
   import DonutChart from "../../../components/DonutChart.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
-  import Coachmark from "../../../components/Coachmark.svelte";
   import InfoTooltip from "../../../components/InfoTooltip.svelte";
   let loadingDemo = $state(false);
 
@@ -238,7 +237,6 @@
           <span class="text-[10px] text-(--color-text-secondary) font-bold uppercase tracking-wide">Total</span>
           <span class="text-base font-display font-extrabold">{formatEurCompact(Math.abs(summary.expenses))}</span>
         </div>
-        <Coachmark key="dashboard_donut" text="Tippe Details für die volle Analyse" />
       </div>
       <div class="flex flex-col gap-4 flex-1 min-w-0">
         {#each expenseCategories.slice(0, 4) as cat}
@@ -264,26 +262,11 @@
     </div>
   </div>
 
-  <!-- Quick Links -->
-  {#if featureStore.isEnabled("debts") || featureStore.isEnabled("review")}
-  <div class="grid grid-cols-2 gap-4 mb-5">
-    {#if featureStore.isEnabled("debts")}
-    <a
-      href="/debts"
-      class="bg-white rounded-[1.75rem] p-5 shadow-[var(--shadow-card)] flex items-center gap-3 hover:shadow-[var(--shadow-soft)] transition-shadow"
-    >
-      <div class="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </div>
-      <span class="text-sm font-bold">Schulden</span>
-    </a>
-    {/if}
-    {#if featureStore.isEnabled("review")}
+  <!-- Quick Link: Review -->
+  {#if featureStore.isEnabled("review")}
     <a
       href="/review"
-      class="bg-white rounded-[1.75rem] p-5 shadow-[var(--shadow-card)] flex items-center gap-3 hover:shadow-[var(--shadow-soft)] transition-shadow"
+      class="bg-white rounded-[1.75rem] p-5 shadow-[var(--shadow-card)] flex items-center gap-3 hover:shadow-[var(--shadow-soft)] transition-shadow mb-5"
     >
       <div class="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -292,8 +275,6 @@
       </div>
       <span class="text-sm font-bold">Rückblick</span>
     </a>
-    {/if}
-  </div>
   {/if}
 
   <!-- Letzte Transaktionen -->

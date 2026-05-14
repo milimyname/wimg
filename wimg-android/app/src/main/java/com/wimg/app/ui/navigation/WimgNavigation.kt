@@ -17,7 +17,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.wimg.app.bridge.LibWimg
 import com.wimg.app.ui.components.AccountPicker
-import com.wimg.app.ui.components.Coachmark
 import com.wimg.app.ui.screens.*
 
 private const val ONBOARDING_KEY = "wimg_onboarding_done"
@@ -137,20 +136,6 @@ fun WimgNavigation() {
                 composable("feedback") { FeedbackScreen() }
                 composable("settings") { SettingsScreen() }
                 composable("about") { AboutScreen() }
-            }
-
-            // Coachmarks (first-visit tooltips)
-            when (selectedTab) {
-                1 -> Coachmark(
-                    key = "dashboard_hero",
-                    text = "Hier siehst du dein verfügbares Einkommen für den Monat",
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 120.dp),
-                )
-                2 -> Coachmark(
-                    key = "transactions_categorize",
-                    text = "Tippe auf eine Buchung zum Kategorisieren",
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 80.dp),
-                )
             }
         }
     }

@@ -134,7 +134,6 @@ struct AnalysisView: View {
                         }
                         .wimgCard(radius: WimgTheme.radiusLarge)
                         .padding(.horizontal)
-                        .coachmark(key: "analysis_category", text: "Tippe auf das Diagramm oder eine Kategorie")
                     } else {
                         ContentUnavailableView(
                             "Keine Ausgaben",
