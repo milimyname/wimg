@@ -489,7 +489,7 @@ struct RecurringView: View {
                             .font(.system(.caption2, design: .rounded, weight: .medium))
                             .foregroundStyle(WimgTheme.textSecondary)
                     }
-                    Text("· \(String(localized: "Zuletzt")): \(pattern.lastSeenFormatted)")
+                    Text("· \(RecurringPattern.isEnglish ? "Last" : "Zuletzt"): \(pattern.lastSeenFormatted)")
                         .font(.system(.caption2, design: .rounded, weight: .medium))
                         .foregroundStyle(WimgTheme.textSecondary)
                 }

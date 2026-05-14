@@ -26,7 +26,7 @@ struct RecurringPattern: Codable, Identifiable, Equatable {
         }
     }
 
-    private static var isEnglish: Bool {
+    static var isEnglish: Bool {
         UserDefaults.standard.string(forKey: "wimg_locale") == "en"
     }
 
@@ -34,6 +34,11 @@ struct RecurringPattern: Codable, Identifiable, Equatable {
         Locale(identifier: isEnglish ? "en_US" : "de_DE")
     }
 
+    // Note: we don't use `String(localized: "\(days)T überfällig")` because
+    // string interpolation produces a runtime key (e.g. "5T überfällig") that
+    // doesn't exist in the .xcstrings catalog (only the static key
+    // "T überfällig" does). Branch on `isEnglish` manually so the dynamic
+    // values get the right surrounding text in each language.
     var nextDueFormatted: String? {
         guard let next_due else { return nil }
         let formatter = DateFormatter()
@@ -41,14 +46,19 @@ struct RecurringPattern: Codable, Identifiable, Equatable {
         guard let date = formatter.date(from: next_due) else { return nil }
 
         let days = Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: Date()), to: Calendar.current.startOfDay(for: date)).day ?? 0
+        let isEng = Self.isEnglish
 
-        if days < 0 { return String(localized: "\(abs(days))T überfällig") }
-        if days == 0 { return String(localized: "Heute") }
-        if days == 1 { return String(localized: "Morgen") }
-        if days <= 7 { return String(localized: "In \(days) Tagen") }
+        if days < 0 {
+            return isEng ? "\(abs(days))d overdue" : "\(abs(days))T überfällig"
+        }
+        if days == 0 { return isEng ? "Today" : "Heute" }
+        if days == 1 { return isEng ? "Tomorrow" : "Morgen" }
+        if days <= 7 {
+            return isEng ? "In \(days) days" : "In \(days) Tagen"
+        }
 
         let display = DateFormatter()
-        display.dateFormat = Self.isEnglish ? "MMM d" : "d. MMM"
+        display.dateFormat = isEng ? "MMM d" : "d. MMM"
         display.locale = Self.displayLocale
         return display.string(from: date)
     }
