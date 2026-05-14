@@ -306,39 +306,34 @@ struct SearchView: View {
     }
 
     @ViewBuilder
-    private func navLink<V: View>(_ label: String, icon: String, color: Color, feature: String? = nil, @ViewBuilder destination: @escaping () -> V) -> some View {
-        // `feature:` param kept for call-site compatibility; flag system was
-        // removed when only two flags remained (recurring/review), both now
-        // always on.
-        let _ = feature
+    private func navLink<V: View>(_ label: String, icon: String, color: Color, feature _: String? = nil, @ViewBuilder destination: @escaping () -> V) -> some View {
         NavigationLink {
             LazyDestination(destination)
         } label: {
-                HStack(spacing: 14) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(color.opacity(0.12))
-                            .frame(width: 36, height: 36)
-                        Image(systemName: icon)
-                            .font(.system(size: 15))
-                            .foregroundStyle(color)
-                    }
-
-                    TText(label)
-                        .font(.system(.subheadline, design: .rounded, weight: .medium))
-                        .foregroundStyle(WimgTheme.text)
-                        .multilineTextAlignment(.leading)
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(WimgTheme.textSecondary.opacity(0.4))
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(color.opacity(0.12))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: icon)
+                        .font(.system(size: 15))
+                        .foregroundStyle(color)
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .contentShape(Rectangle())
+
+                TText(label)
+                    .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    .foregroundStyle(WimgTheme.text)
+                    .multilineTextAlignment(.leading)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(WimgTheme.textSecondary.opacity(0.4))
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
         }
     }
 
