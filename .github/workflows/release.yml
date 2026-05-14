@@ -15,6 +15,43 @@ permissions:
   contents: write
 
 jobs:
+  detect-changes:
+    # Decide whether iOS / Android pipelines need to run for this tag.
+    # Tags that only touch web or sync code skip the native builds so
+    # TestFlight + APK aren't churned for no reason.
+    runs-on: ubuntu-latest
+    outputs:
+      ios: ${{ steps.filter.outputs.ios }}
+      android: ${{ steps.filter.outputs.android }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - id: filter
+        run: |
+          CURRENT=${GITHUB_REF#refs/tags/}
+          PREV=$(git tag -l --sort=-v:refname | grep -v "^${CURRENT}$" | head -1)
+          if [ -z "$PREV" ]; then
+            echo "No previous tag — running all native builds"
+            echo "ios=true" >> $GITHUB_OUTPUT
+            echo "android=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          CHANGED=$(git diff --name-only "$PREV..HEAD")
+          echo "Changed files since $PREV:"
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qE '^(libwimg/|wimg-ios/|scripts/build-ios|scripts/gen-xcodeproj|\.github/workflows/release\.yml)'; then
+            echo "ios=true" >> $GITHUB_OUTPUT
+          else
+            echo "ios=false" >> $GITHUB_OUTPUT
+          fi
+          if echo "$CHANGED" | grep -qE '^(libwimg/|wimg-android/|scripts/build-android|\.github/workflows/release\.yml)'; then
+            echo "android=true" >> $GITHUB_OUTPUT
+          else
+            echo "android=false" >> $GITHUB_OUTPUT
+          fi
+
   check:
     runs-on: ubuntu-latest
     steps:
@@ -123,7 +160,8 @@ jobs:
     # Zig 0.15.2's build runner can't link on macos-26 (missing
     # __availability_version_check in libSystem). Build the static
     # .a on macos-15 — XCFramework is portable across SDK versions.
-    needs: check
+    needs: [check, detect-changes]
+    if: needs.detect-changes.outputs.ios == 'true'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v6
@@ -154,7 +192,8 @@ jobs:
           path: libwimg/build-ios/libwimg.xcframework.zip
 
   build-ios:
-    needs: build-libwimg-ios
+    needs: [detect-changes, build-libwimg-ios]
+    if: needs.detect-changes.outputs.ios == 'true'
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v6
@@ -229,7 +268,8 @@ jobs:
             -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
 
   build-android:
-    needs: check
+    needs: [check, detect-changes]
+    if: needs.detect-changes.outputs.android == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -304,7 +344,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   release:
-    needs: [check, build-and-deploy-web, build-libwimg-ios, build-ios, build-android]
+    needs: [check, detect-changes, build-and-deploy-web, build-libwimg-ios, build-ios, build-android]
     if: always() && !failure() && !cancelled()
     runs-on: ubuntu-latest
     steps:
@@ -319,12 +359,14 @@ jobs:
           path: artifacts/libwimg-wasm
 
       - name: Download iOS artifacts
+        if: needs.detect-changes.outputs.ios == 'true'
         uses: actions/download-artifact@v8
         with:
           name: libwimg-ios
           path: artifacts/libwimg-ios
 
       - name: Download Android artifacts
+        if: needs.detect-changes.outputs.android == 'true'
         uses: actions/download-artifact@v8
         with:
           name: libwimg-android
