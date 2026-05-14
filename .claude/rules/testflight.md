@@ -1,26 +1,25 @@
 # TestFlight — wimg iOS
 
+> **Local Xcode archives no longer work.** Apple requires iOS 26 SDK
+> (Xcode 26 + macOS 26) for all App Store Connect uploads. Builds now run
+> on GitHub Actions `macos-26` runners — see [`ci-testflight.md`](ci-testflight.md).
+
 ## Prerequisites
 
 - Apple Developer account (paid, $99/year)
-- Xcode with signing configured (Team: W5N395VNYH)
 - App registered in App Store Connect (Bundle ID: `com.wimg.app`)
+- App Store Connect API key configured as GitHub secrets — see `ci-testflight.md`
 
-## Upload a New Build
+## Upload a New Build (via CI)
 
-1. Bump version in `project.yml`:
-   - `MARKETING_VERSION` for new releases (e.g. `0.6.15` → `0.7.0`)
-   - `CURRENT_PROJECT_VERSION` must increment for each upload with the same marketing version
-2. Regenerate the Xcode project:
-   ```
-   cd wimg-ios && xcodegen
-   ```
-3. In Xcode:
-   - **Shift+Cmd+K** — Clean Build Folder
-   - **Product → Archive**
-   - **Distribute App → TestFlight Internal Testing**
-4. Wait ~5-15 min for Apple to process the build
-5. In App Store Connect → TestFlight → your test group → Builds → **+** → select the new build
+1. Bump `MARKETING_VERSION` in `wimg-ios/project.yml` for user-visible releases
+   (e.g. `0.8.0` → `0.8.1`). The CI auto-bumps `CURRENT_PROJECT_VERSION` to
+   a Unix timestamp on every build, so you don't need to touch it.
+2. Run `./scripts/release.sh patch --push` (handles version bump + tag + push).
+3. Wait ~10-15 min for CI to archive + upload, then another 5-15 min for
+   Apple to process the build.
+4. App Store Connect → TestFlight → your test group → Builds → **+** → select
+   the new build.
 
 ## First-Time Setup (already done)
 
@@ -43,4 +42,4 @@ Apple-provided encryption (HTTPS/TLS).
 - App icon must be 1024x1024 PNG with no alpha channel
 - iPad builds require all 4 orientation entries in Info.plist
 - `release.sh` bumps `MARKETING_VERSION` in `project.yml` automatically
-- Build number (`CURRENT_PROJECT_VERSION`) must be bumped manually for each TestFlight upload
+- `CURRENT_PROJECT_VERSION` is auto-bumped by CI to `$(date +%s)`, so every CI run gets a unique build number
