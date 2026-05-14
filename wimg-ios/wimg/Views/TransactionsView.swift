@@ -276,6 +276,9 @@ struct TransactionsView: View {
         )
         .shadow(color: .black.opacity(0.04), radius: 12, y: 4)
         .padding(.horizontal, 16)
+        // Breathing room above the card — also keeps it off the nav-bar edge
+        // once it pins as a sticky section header.
+        .padding(.top, 8)
         .padding(.bottom, 12)
     }
 

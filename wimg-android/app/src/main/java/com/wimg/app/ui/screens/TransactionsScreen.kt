@@ -475,7 +475,9 @@ private fun GesamtsaldoCard(sum: Double, count: Int) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .padding(bottom = 12.dp)
+            // Breathing room above the card — also keeps it off the top edge
+            // once it pins as a sticky LazyColumn header.
+            .padding(top = 8.dp, bottom = 12.dp)
             .wimgCard()
             .padding(20.dp),
     ) {
