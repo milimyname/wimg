@@ -26,17 +26,21 @@
     popoverEl.style.left = `${clamped - HALF_W}px`;
   }
 
-  // Re-anchor on scroll/resize so the popover follows its trigger. Without
-  // this the popover sits at the viewport coords it was opened at while the
-  // button scrolls away under it. Use capture:true on the scroll listener
-  // because the (app) layout may scroll on a child container, not window.
-  function onMaybeReposition() {
+  // Auto-dismiss on scroll. The top-layer popover would otherwise float past
+  // the sticky app header as the trigger scrolls away — confusing UX. Resize
+  // re-anchors instead of dismissing (window dimensions change, not user
+  // intent). Use capture:true for scroll because the (app) layout may scroll
+  // on a child container, not window.
+  function onScroll() {
+    if (popoverEl?.matches(":popover-open")) popoverEl.hidePopover();
+  }
+  function onResize() {
     if (popoverEl?.matches(":popover-open")) positionPopover();
   }
 </script>
 
-<svelte:window onresize={onMaybeReposition} />
-<svelte:document onscrollcapture={onMaybeReposition} />
+<svelte:window onresize={onResize} />
+<svelte:document onscrollcapture={onScroll} />
 
 <button
   bind:this={buttonEl}
