@@ -55,9 +55,12 @@ struct SpendingHeatmap: View {
             VStack(alignment: .leading, spacing: 16) {
                 // Header
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Ausgaben-Heatmap")
-                        .font(.system(.title2, design: .rounded, weight: .black))
-                        .foregroundStyle(WimgTheme.text)
+                    HStack(spacing: 6) {
+                        Text("Ausgaben-Heatmap")
+                            .font(.system(.title2, design: .rounded, weight: .black))
+                            .foregroundStyle(WimgTheme.text)
+                        InfoTooltip(text: "Deine monatlichen Ausgaben als Farbgitter — inspiriert vom GitHub Contribution Graph. Dunklere Farben bedeuten höhere Ausgaben.")
+                    }
                     Text("Monatliche Ausgaben im Zeitverlauf")
                         .font(.system(.caption, design: .rounded, weight: .medium))
                         .foregroundStyle(WimgTheme.textSecondary)

@@ -275,14 +275,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
     handler: () => gotoHash("/about#faq-autolearn"),
   },
   {
-    id: "faq-vermoegen",
-    label: "Was zeigt das Vermögens-Diagramm?",
-    group: "Hilfe",
-    icon: "❓",
-    keywords: ["faq", "vermögen", "net worth", "chart", "diagramm", "snapshots"],
-    handler: () => gotoHash("/about#faq-vermoegen"),
-  },
-  {
     id: "faq-sync",
     label: "Wie synchronisiere ich zwischen Geräten?",
     group: "Hilfe",
@@ -337,14 +329,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
     icon: "❓",
     keywords: ["faq", "löschen", "daten", "reset", "zurücksetzen"],
     handler: () => gotoHash("/about#faq-datenloeschen"),
-  },
-  {
-    id: "faq-heatmap",
-    label: "Was zeigt die Ausgaben-Heatmap?",
-    group: "Hilfe",
-    icon: "❓",
-    keywords: ["faq", "heatmap", "ausgaben", "grid", "muster", "saisonal"],
-    handler: () => gotoHash("/about#faq-heatmap"),
   },
   {
     id: "faq-ios",

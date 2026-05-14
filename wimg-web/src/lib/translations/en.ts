@@ -339,6 +339,12 @@ export const en: Record<string, string> = {
     "Percent of your income you save: (income − expenses) ÷ income × 100. ≥20% is considered good.",
   "Hochrechnung deiner Fixkosten für die nächsten 12 Monate, basierend auf erkannten wiederkehrenden Mustern.":
     "Projection of your fixed costs for the next 12 months, based on detected recurring patterns.",
+  "Kumulatives Nettovermögen über die Zeit, berechnet aus monatlichen Snapshots (Einnahmen − Ausgaben). Mindestens 2 Snapshots erforderlich.":
+    "Cumulative net worth over time, calculated from monthly snapshots (income − expenses). Requires at least 2 snapshots.",
+  "Deine monatlichen Ausgaben als Farbgitter — inspiriert vom GitHub Contribution Graph. Dunklere Farben bedeuten höhere Ausgaben.":
+    "Your monthly expenses as a colored grid — inspired by the GitHub contribution graph. Darker colors mean higher spending.",
+  "Summe aller erkannten monatlichen Abos und Fixkosten. Quartals- und Jahresbeiträge werden nicht eingerechnet.":
+    "Sum of all detected monthly subscriptions and fixed costs. Quarterly and annual bills are excluded.",
 
   // Heatmap
   "Ausgaben-Heatmap": "Spending Heatmap",

@@ -350,11 +350,15 @@ struct RecurringView: View {
                 .offset(x: 40, y: -40)
 
             VStack(spacing: 12) {
-                Text("Monatliche Fixkosten")
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.8))
-                    .textCase(.uppercase)
-                    .tracking(1)
+                HStack(spacing: 6) {
+                    Text("Monatliche Fixkosten")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.8))
+                        .textCase(.uppercase)
+                        .tracking(1)
+                    InfoTooltip(text: "Summe aller erkannten monatlichen Abos und Fixkosten. Quartals- und Jahresbeiträge werden nicht eingerechnet.")
+                        .foregroundStyle(.white.opacity(0.8))
+                }
 
                 Text(formatAmountShort(monthlyTotal))
                     .font(.system(size: 36, weight: .black, design: .rounded))

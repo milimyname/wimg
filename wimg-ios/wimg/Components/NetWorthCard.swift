@@ -32,9 +32,12 @@ struct NetWorthCard: View {
                 // Header
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Vermögen")
-                            .font(.system(.title2, design: .rounded, weight: .black))
-                            .foregroundStyle(WimgTheme.text)
+                        HStack(spacing: 6) {
+                            Text("Vermögen")
+                                .font(.system(.title2, design: .rounded, weight: .black))
+                                .foregroundStyle(WimgTheme.text)
+                            InfoTooltip(text: "Kumulatives Nettovermögen über die Zeit, berechnet aus monatlichen Snapshots (Einnahmen − Ausgaben). Mindestens 2 Snapshots erforderlich.")
+                        }
                         Text(formatAmountShort(currentValue))
                             .font(.system(size: 32, weight: .black, design: .rounded))
                             .foregroundStyle(WimgTheme.text)

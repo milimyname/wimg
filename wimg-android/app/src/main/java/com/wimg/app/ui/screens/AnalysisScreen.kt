@@ -18,6 +18,7 @@ import com.wimg.app.models.CategoryBreakdown
 import com.wimg.app.models.MonthlySummary
 import com.wimg.app.models.Snapshot
 import com.wimg.app.models.WimgCategory
+import com.wimg.app.ui.components.InfoTooltip
 import com.wimg.app.ui.components.MonthPicker
 import com.wimg.app.ui.components.SpendingHeatmap
 import com.wimg.app.ui.components.formatAmountShort
@@ -122,11 +123,14 @@ fun AnalysisScreen(selectedAccount: String?) {
         if (snapshots.size >= 2) {
             item {
                 Spacer(Modifier.height(8.dp))
-                Text(
-                    "Vermögen",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Vermögen",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    InfoTooltip("Kumulatives Nettovermögen über die Zeit, berechnet aus monatlichen Snapshots (Einnahmen − Ausgaben). Mindestens 2 Snapshots erforderlich.")
+                }
             }
             item {
                 Card(

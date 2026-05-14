@@ -1,6 +1,7 @@
 <script lang="ts">
   import { formatEur, formatEurCompact } from "$lib/format";
   import type { Snapshot } from "$lib/wasm";
+  import InfoTooltip from "./InfoTooltip.svelte";
 
   const MONTH_SHORT = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
   const MONTH_NAMES = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
@@ -92,7 +93,10 @@
   <!-- Header -->
   <div class="flex justify-between items-start mb-2">
     <div class="space-y-1">
-      <h3 class="font-display font-extrabold text-2xl text-(--color-text) tracking-tight">Vermögen</h3>
+      <div class="flex items-center gap-2">
+        <h3 class="font-display font-extrabold text-2xl text-(--color-text) tracking-tight">Vermögen</h3>
+        <InfoTooltip text="Kumulatives Nettovermögen über die Zeit, berechnet aus monatlichen Snapshots (Einnahmen − Ausgaben). Mindestens 2 Snapshots erforderlich." />
+      </div>
       <p class="font-display font-extrabold text-4xl text-(--color-text)">
         {formatEur(currentValue)}
       </p>

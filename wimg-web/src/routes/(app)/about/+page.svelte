@@ -74,11 +74,6 @@
       a: 'Wenn du eine Transaktion manuell kategorisierst, lernt wimg automatisch das Schlüsselwort (z.B. "REWE" → Lebensmittel). Beim nächsten Import oder Auto-Kategorisieren werden ähnliche Transaktionen automatisch zugeordnet. Alle gelernten Regeln findest du unter Einstellungen → Regeln, wo du sie auch einzeln löschen kannst.',
     },
     {
-      id: "faq-vermoegen",
-      q: "Was zeigt das Vermögens-Diagramm?",
-      a: 'Das Vermögens-Diagramm auf der Analyse-Seite zeigt dein kumulatives Nettovermögen über die Zeit — basierend auf monatlichen Snapshots (Einnahmen minus Ausgaben). Du brauchst mindestens 2 Snapshots. Snapshots werden automatisch jeden Monat erstellt, oder manuell über die Command Palette ("Snapshot erstellen").',
-    },
-    {
       id: "faq-sync",
       q: "Wie synchronisiere ich zwischen Geräten?",
       a: "Gehe zu Einstellungen → Sync aktivieren. Dadurch wird ein einzigartiger Sync-Schlüssel erstellt. Kopiere diesen Schlüssel und füge ihn auf dem zweiten Gerät ein (Einstellungen → Gerät verknüpfen). Änderungen werden in Echtzeit per WebSocket synchronisiert — Ende-zu-Ende verschlüsselt. Ohne Sync funktioniert alles lokal weiter.",
@@ -122,11 +117,6 @@
       id: "faq-datenloeschen",
       q: "Wie lösche ich meine Daten?",
       a: 'Unter Einstellungen → Danger Zone kannst du die Datenbank zurücksetzen. Über die Command Palette findest du auch "Datenbank löschen" (löscht nur die SQLite-Datei) und "Vollständiger Reset" (löscht Datenbank, Sync-Schlüssel und alle Einstellungen). Diese Aktionen können nicht rückgängig gemacht werden.',
-    },
-    {
-      id: "faq-heatmap",
-      q: "Was zeigt die Ausgaben-Heatmap?",
-      a: "Die Heatmap auf der Analyse-Seite zeigt deine monatlichen Ausgaben als Farbgitter — inspiriert vom GitHub Contribution Graph. Jede Zelle ist ein Monat, dunklere Farben bedeuten höhere Ausgaben. So erkennst du auf einen Blick saisonale Muster (z.B. Dezember-Spitzen, günstige Sommermonate). Die Daten kommen aus deinen monatlichen Snapshots.",
     },
     {
       id: "faq-beitragen",

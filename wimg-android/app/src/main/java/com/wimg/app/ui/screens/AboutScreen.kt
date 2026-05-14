@@ -41,7 +41,6 @@ private val faqs = listOf(
     FAQ("Wo werden die Daten gespeichert?", "Auf Android: lokale SQLite-Datei. Deine Daten verlassen dein Gerät nur bei aktivierter Sync — dann Ende-zu-Ende verschlüsselt."),
     FAQ("Was ist der MCP-Server?", "Mit aktivierter Synchronisierung wird dein Sync-Schlüssel zum MCP-Zugang. Claude.ai oder andere KI-Tools können Ausgaben abfragen und Kategorien setzen — Ende-zu-Ende verschlüsselt."),
     FAQ("Wie funktioniert Auto-Learn?", "Wenn du eine Transaktion manuell kategorisierst, lernt wimg automatisch das Schlüsselwort. Beim nächsten Import oder Auto-Kategorisieren werden ähnliche Transaktionen automatisch zugeordnet."),
-    FAQ("Was zeigt das Vermögens-Diagramm?", "Das Vermögens-Diagramm auf der Analyse-Seite zeigt dein kumulatives Nettovermögen über die Zeit — basierend auf monatlichen Snapshots. Du brauchst mindestens 2 Snapshots."),
     FAQ("Wie synchronisiere ich zwischen Geräten?", "Gehe zu Einstellungen → Sync aktivieren. Kopiere den Sync-Schlüssel und füge ihn auf dem zweiten Gerät ein. Änderungen werden in Echtzeit per WebSocket synchronisiert."),
     FAQ("Wie erkennt wimg Abos?", "wimg analysiert deine Transaktionen automatisch und erkennt regelmäßige Muster (monatlich, vierteljährlich, jährlich). Unter Mehr → Wiederkehrend siehst du alle erkannten Abos."),
     FAQ("Funktioniert wimg offline?", "Ja, vollständig. Alle Daten liegen lokal in SQLite. Du brauchst kein Internet für Import, Kategorisierung, Analyse oder irgendeine Kernfunktion."),

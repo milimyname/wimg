@@ -127,7 +127,10 @@ private fun SubscriptionsTab(
             item {
                 Box(modifier = Modifier.fillMaxWidth().wimgHero()) {
                     Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Monatliche Fixkosten", style = MaterialTheme.typography.labelMedium, color = WimgColors.heroText.copy(alpha = 0.7f))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Monatliche Fixkosten", style = MaterialTheme.typography.labelMedium, color = WimgColors.heroText.copy(alpha = 0.7f))
+                            InfoTooltip("Summe aller erkannten monatlichen Abos und Fixkosten. Quartals- und Jahresbeiträge werden nicht eingerechnet.")
+                        }
                         Spacer(Modifier.height(4.dp))
                         Text(formatAmountShort(monthlyTotal), fontSize = 32.sp, fontWeight = FontWeight.Black, color = WimgColors.heroText)
                         Text("${active.size} aktive Muster", style = MaterialTheme.typography.bodySmall, color = WimgColors.heroText.copy(alpha = 0.7f))

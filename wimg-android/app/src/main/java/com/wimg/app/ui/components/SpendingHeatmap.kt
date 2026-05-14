@@ -31,12 +31,15 @@ fun SpendingHeatmap(
     val months = DateFormatSymbols().shortMonths
 
     Column(modifier = modifier) {
-        Text(
-            "Ausgaben-Heatmap",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold,
-        )
+        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Text(
+                "Ausgaben-Heatmap",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+            )
+            InfoTooltip("Deine monatlichen Ausgaben als Farbgitter — inspiriert vom GitHub Contribution Graph. Dunklere Farben bedeuten höhere Ausgaben.")
+        }
         Spacer(Modifier.height(8.dp))
 
         // Month labels

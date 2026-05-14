@@ -237,9 +237,14 @@
     <div class="bg-emerald-400 rounded-[2rem] p-7 mb-5 shadow-[var(--shadow-soft)] relative overflow-hidden">
       <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/20 rounded-full blur-2xl pointer-events-none"></div>
       <div class="flex flex-col gap-1 relative z-10">
-        <p class="font-bold text-sm uppercase tracking-wide text-white/80">
-          Monatliche Fixkosten
-        </p>
+        <div class="flex items-center gap-1.5">
+          <p class="font-bold text-sm uppercase tracking-wide text-white/80">
+            Monatliche Fixkosten
+          </p>
+          <span class="text-white/80">
+            <InfoTooltip text="Summe aller erkannten monatlichen Abos und Fixkosten. Quartals- und Jahresbeiträge werden nicht eingerechnet." />
+          </span>
+        </div>
         <p class="text-4xl font-display font-black tracking-tight text-white mt-1">
           {Math.abs(monthlyTotal) >= 10000 ? formatEurCompact(monthlyTotal) : formatEur(monthlyTotal)}
         </p>

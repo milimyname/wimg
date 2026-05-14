@@ -1,6 +1,7 @@
 <script lang="ts">
   import { formatEurCompact } from "$lib/format";
   import type { Snapshot } from "$lib/wasm";
+  import InfoTooltip from "./InfoTooltip.svelte";
 
   const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
@@ -53,7 +54,10 @@
 <div class="bg-white rounded-[2rem] shadow-[var(--shadow-soft)] p-8 mb-6 border border-gray-100">
   <div class="flex justify-between items-start mb-6">
     <div>
-      <h3 class="font-display font-extrabold text-2xl text-(--color-text) tracking-tight">Ausgaben-Heatmap</h3>
+      <div class="flex items-center gap-2">
+        <h3 class="font-display font-extrabold text-2xl text-(--color-text) tracking-tight">Ausgaben-Heatmap</h3>
+        <InfoTooltip text="Deine monatlichen Ausgaben als Farbgitter — inspiriert vom GitHub Contribution Graph. Dunklere Farben bedeuten höhere Ausgaben." />
+      </div>
       <p class="text-xs text-(--color-text-secondary) font-medium mt-1">Monatliche Ausgaben im Zeitverlauf</p>
     </div>
   </div>
