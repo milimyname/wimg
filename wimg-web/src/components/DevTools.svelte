@@ -3,7 +3,6 @@
   import { syncWS } from "$lib/sync-ws.svelte";
   import { getWasmMemoryBytes, getWasmDbSize, getTransactions, getAccounts, getRecurring, getSnapshots, close, queryRaw, type QueryResult } from "$lib/wasm";
   import { clearSyncKey, getSyncKey } from "$lib/sync";
-  import { featureStore } from "$lib/features.svelte";
 
   const TABS = ["wasm", "memory", "sync", "data", "sql"] as const;
   const TAB_LABELS: Record<(typeof TABS)[number], string> = {
@@ -170,12 +169,6 @@
       refreshLs();
     }
   });
-
-  // Feature flags
-  const featureToggles = [
-    { key: "recurring", label: "Wiederkehrend" },
-    { key: "review", label: "Rückblick" },
-  ];
 
   // OPFS file browser
   interface OpfsFile { name: string; size: number }
@@ -707,27 +700,6 @@
                 {/each}
               </div>
             {/if}
-
-            <!-- Feature Flags -->
-            <div class="mt-4 pt-3 border-t border-(--color-border)">
-              <span class="text-[11px] font-semibold text-(--color-text)">Feature Flags</span>
-              <div class="mt-2 space-y-1">
-                {#each featureToggles as feat}
-                  <div class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-(--color-bg)/50">
-                    <div class="flex items-center gap-2">
-                      <span class="text-[11px] font-mono font-medium text-(--color-text)">{feat.key}</span>
-                      <span class="text-[9px] text-(--color-text-secondary)">{feat.label}</span>
-                    </div>
-                    <button
-                      onclick={() => featureStore.toggle(feat.key)}
-                      class="text-[10px] font-bold px-2 py-0.5 rounded-full cursor-pointer transition-colors {featureStore.isEnabled(feat.key) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}"
-                    >
-                      {featureStore.isEnabled(feat.key) ? "ON" : "OFF"}
-                    </button>
-                  </div>
-                {/each}
-              </div>
-            </div>
 
             <!-- OPFS File Browser -->
             <div class="mt-4 pt-3 border-t border-(--color-border)">

@@ -2,7 +2,6 @@
   import { page } from "$app/state";
   import { pushState } from "$app/navigation";
   import { updateStore } from "$lib/update.svelte";
-  import { featureStore } from "$lib/features.svelte";
   import { paletteStore } from "$lib/commandPalette.svelte";
 
   const tabs = [
@@ -11,16 +10,7 @@
     { href: "/more", label: "Mehr", icon: "more" },
   ];
 
-  const featureRoutes: Record<string, string> = {
-    "/recurring": "recurring",
-    "/review": "review",
-  };
-
-  const moreSubRoutes = $derived(
-    ["/more", "/analysis", "/recurring", "/import", "/review", "/settings", "/about"].filter(
-      (r) => !featureRoutes[r] || featureStore.isEnabled(featureRoutes[r]),
-    ),
-  );
+  const moreSubRoutes = ["/more", "/analysis", "/recurring", "/import", "/review", "/settings", "/about"];
 
   function isActive(href: string): boolean {
     if (href === "/more") {

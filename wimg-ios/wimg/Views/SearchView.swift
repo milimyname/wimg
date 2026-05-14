@@ -307,12 +307,13 @@ struct SearchView: View {
 
     @ViewBuilder
     private func navLink<V: View>(_ label: String, icon: String, color: Color, feature: String? = nil, @ViewBuilder destination: @escaping () -> V) -> some View {
-        if let feature, !FeatureFlags.shared.isEnabled(feature) {
-            EmptyView()
-        } else {
-            NavigationLink {
-                LazyDestination(destination)
-            } label: {
+        // `feature:` param kept for call-site compatibility; flag system was
+        // removed when only two flags remained (recurring/review), both now
+        // always on.
+        let _ = feature
+        NavigationLink {
+            LazyDestination(destination)
+        } label: {
                 HStack(spacing: 14) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)

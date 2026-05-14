@@ -26,22 +26,19 @@ private data class MoreItem(
     val icon: ImageVector,
     val color: Color,
     val route: String,
-    val feature: String? = null,
 )
 
 @Composable
 fun MoreScreen(navController: NavController) {
-    val items = listOf(
+    val visibleItems = listOf(
         MoreItem("Analyse", Icons.Outlined.BarChart, Color(0xFF5856D6), "analysis"),
-        MoreItem("Wiederkehrend", Icons.Outlined.Refresh, Color(0xFF30D158), "recurring", feature = "recurring"),
-        MoreItem("Rückblick", Icons.Outlined.CalendarMonth, Color(0xFFAF52DE), "review", feature = "review"),
+        MoreItem("Wiederkehrend", Icons.Outlined.Refresh, Color(0xFF30D158), "recurring"),
+        MoreItem("Rückblick", Icons.Outlined.CalendarMonth, Color(0xFFAF52DE), "review"),
         MoreItem("Bankverbindung", Icons.Outlined.AccountBalance, Color(0xFF5AC8FA), "fints"),
         MoreItem("Import", Icons.Outlined.FileUpload, Color(0xFF007AFF), "import"),
         MoreItem("Einstellungen", Icons.Outlined.Settings, Color(0xFF8E8E93), "settings"),
         MoreItem("Über wimg", Icons.Outlined.Info, Color(0xFF8E8E93), "about"),
     )
-
-    val visibleItems = items.filter { it.feature == null || com.wimg.app.ui.theme.FeatureFlagsState.isEnabled(it.feature) }
 
     Column(
         modifier = Modifier

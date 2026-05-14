@@ -24,7 +24,6 @@ import {
   connectSync,
 } from "$lib/sync";
 import { accountStore } from "$lib/account.svelte";
-import { featureStore } from "$lib/features.svelte";
 import { updateStore } from "$lib/update.svelte";
 import { toastStore } from "$lib/toast.svelte";
 import { data } from "$lib/data.svelte";
@@ -137,7 +136,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
     icon: "🔄",
     keywords: ["recurring", "abo", "subscription"],
     handler: () => goto("/recurring"),
-    enabled: () => featureStore.isEnabled("recurring"),
   },
   {
     id: "nav-renewals",
@@ -146,7 +144,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
     icon: "📆",
     keywords: ["kalender", "calendar", "renewals", "anstehend", "upcoming", "fällig"],
     handler: () => goto("/recurring?tab=calendar"),
-    enabled: () => featureStore.isEnabled("recurring"),
   },
   {
     id: "nav-review",
@@ -155,7 +152,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
     icon: "📅",
     keywords: ["review", "monthly", "monat"],
     handler: () => goto("/review"),
-    enabled: () => featureStore.isEnabled("review"),
   },
   {
     id: "nav-settings",
@@ -361,7 +357,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
       data.bump();
       toastStore.show(n > 0 ? `${n} Muster erkannt` : "Keine neuen Muster");
     },
-    enabled: () => featureStore.isEnabled("recurring"),
   },
 
   // --- Data ---
@@ -538,30 +533,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
     handler: async () => {
       const r = await redo();
       if (r) toastStore.show(`Wiederhergestellt: ${r.op} ${r.table}`);
-    },
-  },
-
-  // --- Feature Flags ---
-  {
-    id: "toggle-recurring",
-    label: "Wiederkehrend ein/aus",
-    group: "Features",
-    icon: "🔄",
-    keywords: ["feature", "recurring", "wiederkehrend", "toggle"],
-    handler: () => {
-      featureStore.toggle("recurring");
-      toastStore.show(`Wiederkehrend: ${featureStore.isEnabled("recurring") ? "Ein" : "Aus"}`);
-    },
-  },
-  {
-    id: "toggle-review",
-    label: "Rückblick ein/aus",
-    group: "Features",
-    icon: "📅",
-    keywords: ["feature", "review", "rückblick", "toggle"],
-    handler: () => {
-      featureStore.toggle("review");
-      toastStore.show(`Rückblick: ${featureStore.isEnabled("review") ? "Ein" : "Aus"}`);
     },
   },
 

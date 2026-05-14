@@ -5,7 +5,7 @@ struct MoreView: View {
     var popToRoot: UUID
     @State private var path = NavigationPath()
 
-    private let allItems: [(title: String, icon: String, color: Color, destination: Destination)] = [
+    private let items: [(title: String, icon: String, color: Color, destination: Destination)] = [
         ("Analyse", "chart.bar", .indigo, .analysis),
         ("Wiederkehrend", "arrow.triangle.2.circlepath", .green, .recurring),
         ("Import", "square.and.arrow.down", .blue, .import_),
@@ -14,16 +14,6 @@ struct MoreView: View {
         ("Einstellungen", "gearshape", .orange, .settings),
         ("Über wimg", "info.circle", .gray, .about),
     ]
-
-    private var items: [(title: String, icon: String, color: Color, destination: Destination)] {
-        allItems.filter { item in
-            switch item.destination {
-            case .recurring: return FeatureFlags.shared.isEnabled("recurring")
-            case .review: return FeatureFlags.shared.isEnabled("review")
-            default: return true
-            }
-        }
-    }
 
     enum Destination: String, Hashable {
         case analysis, recurring, import_, fints, review, settings, about

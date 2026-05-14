@@ -4,7 +4,6 @@
   import { accountStore } from "$lib/account.svelte";
   import { data } from "$lib/data.svelte";
   import { loadDemoData } from "$lib/demo";
-  import { featureStore } from "$lib/features.svelte";
   import { dateNav } from "$lib/dateNav.svelte";
   import MonthPicker from "../../../components/MonthPicker.svelte";
   import DonutChart from "../../../components/DonutChart.svelte";
@@ -263,19 +262,17 @@
   </div>
 
   <!-- Quick Link: Review -->
-  {#if featureStore.isEnabled("review")}
-    <a
-      href="/review"
-      class="bg-white rounded-[1.75rem] p-5 shadow-[var(--shadow-card)] flex items-center gap-3 hover:shadow-[var(--shadow-soft)] transition-shadow mb-5"
-    >
-      <div class="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-        </svg>
-      </div>
-      <span class="text-sm font-bold">Rückblick</span>
-    </a>
-  {/if}
+  <a
+    href="/review"
+    class="bg-white rounded-[1.75rem] p-5 shadow-[var(--shadow-card)] flex items-center gap-3 hover:shadow-[var(--shadow-soft)] transition-shadow mb-5"
+  >
+    <div class="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+      </svg>
+    </div>
+    <span class="text-sm font-bold">Rückblick</span>
+  </a>
 
   <!-- Letzte Transaktionen -->
   {#if recentTransactions.length > 0}

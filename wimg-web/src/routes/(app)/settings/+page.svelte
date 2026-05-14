@@ -13,7 +13,6 @@
   import { LS_DEMO_LOADED, LS_ONBOARDING_COMPLETED } from "$lib/config";
   import { localeTag } from "$lib/format";
   import { i18n } from "$lib/i18n.svelte";
-  import { featureStore } from "$lib/features.svelte";
   import Drawer from "../../../components/Drawer.svelte";
   import { pushState, replaceState } from "$app/navigation";
   import { page } from "$app/state";
@@ -51,19 +50,6 @@
   let exportSuccess = $state("");
   let showExportSheet = $derived(page.state.sheet === "export");
 
-  // Feature toggles
-  const featureToggles = [
-    {
-      key: "recurring",
-      label: "Wiederkehrend",
-      description: "Abos und regelmäßige Zahlungen erkennen",
-    },
-    {
-      key: "review",
-      label: "Rückblick",
-      description: "Monatliche Zusammenfassung und Analyse",
-    },
-  ];
 
   // Rules state
   interface Rule {
@@ -612,56 +598,6 @@
         </div>
       </div>
     {/if}
-  </div>
-
-  <!-- Features Section -->
-  <div class="bg-white rounded-3xl p-5 shadow-sm space-y-4">
-    <div class="flex items-center gap-3">
-      <div
-        class="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center"
-      >
-        <svg
-          class="w-5 h-5 text-indigo-600"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="1.5"
-            d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"
-          />
-        </svg>
-      </div>
-      <div>
-        <h3 class="font-bold text-(--color-text)">Features</h3>
-        <p class="text-xs text-(--color-text-secondary)">
-          Funktionen ein- oder ausblenden
-        </p>
-      </div>
-    </div>
-
-    {#each featureToggles as feat}
-      <label class="flex items-center justify-between py-2 cursor-pointer">
-        <div>
-          <span class="font-semibold text-sm text-(--color-text)"
-            >{feat.label}</span
-          >
-          <p class="text-xs text-(--color-text-secondary)">
-            {feat.description}
-          </p>
-        </div>
-        <input
-          type="checkbox"
-          checked={featureStore.isEnabled(feat.key)}
-          onchange={() => featureStore.toggle(feat.key)}
-          class="w-10 h-6 rounded-full appearance-none bg-gray-200 checked:bg-amber-500 relative cursor-pointer transition-colors
-            before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-5 before:h-5 before:rounded-full before:bg-white before:shadow before:transition-transform
-            checked:before:translate-x-4"
-        />
-      </label>
-    {/each}
   </div>
 
   <!-- Language Section -->

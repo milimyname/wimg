@@ -1,56 +1,42 @@
 <script lang="ts">
-  import { featureStore } from "$lib/features.svelte";
-
-  const allItems = [
+  const items = [
     {
       href: "/analysis",
       label: "Analyse",
       icon: "chart",
       color: "bg-indigo-100 text-indigo-600",
-      feature: null,
     },
     {
       href: "/recurring",
       label: "Wiederkehrend",
       icon: "recurring",
       color: "bg-emerald-100 text-emerald-600",
-      feature: "recurring",
     },
     {
       href: "/import",
       label: "Import",
       icon: "upload",
       color: "bg-blue-100 text-blue-600",
-      feature: null,
     },
     {
       href: "/review",
       label: "Rückblick",
       icon: "review",
       color: "bg-violet-100 text-violet-600",
-      feature: "review",
     },
     {
       href: "/settings",
       label: "Einstellungen",
       icon: "settings",
       color: "bg-amber-100 text-amber-600",
-      feature: null,
     },
     {
       href: "/about",
       label: "Über wimg",
       icon: "info",
       color: "bg-gray-100 text-gray-600",
-      feature: null,
     },
   ];
-
-  const items = $derived(
-    allItems.filter(
-      (item) => !item.feature || featureStore.isEnabled(item.feature),
-    ),
-  );
 </script>
 
 <section class="space-y-5">

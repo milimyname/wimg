@@ -165,45 +165,6 @@ fun SettingsScreen() {
             }
         }
 
-        // Features section
-        item {
-            Spacer(Modifier.height(8.dp))
-            TText("Features", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-
-        item {
-            val featureToggles = listOf(
-                Triple("recurring", "Wiederkehrend", "Abo- und Mustererkennung"),
-                Triple("review", "Rückblick", "Monatlicher Finanzrückblick"),
-            )
-            val featurePrefs = context.getSharedPreferences("wimg_features", 0)
-
-            Card(shape = WimgShapes.small, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    featureToggles.forEach { (key, label, desc) ->
-                        val enabled = com.wimg.app.ui.theme.FeatureFlagsState.isEnabled(key)
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                                Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Switch(
-                                checked = enabled,
-                                onCheckedChange = {
-                                    com.wimg.app.ui.theme.FeatureFlagsState.toggle(key)
-                                    featurePrefs.edit().putBoolean(key, !enabled).apply()
-                                },
-                                colors = SwitchDefaults.colors(checkedTrackColor = Color(0xFFFF9500)),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
         // Data section
         item {
             Spacer(Modifier.height(8.dp))

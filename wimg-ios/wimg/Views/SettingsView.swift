@@ -9,12 +9,6 @@ struct SettingsView: View {
     @State private var syncSuccess = ""
     @State private var lastSync = 0
 
-    // Feature toggles
-    private let featureToggles: [(key: String, label: String, description: String)] = [
-        ("recurring", "Wiederkehrend", "Abos und regelmäßige Zahlungen erkennen"),
-        ("review", "Rückblick", "Monatliche Zusammenfassung und Analyse"),
-    ]
-
     // Locale
     @State private var currentLocale: String = UserDefaults.standard.string(forKey: "wimg_locale") ?? "de"
     private let localeOptions: [(code: String, label: String)] = [
@@ -266,46 +260,6 @@ struct SettingsView: View {
                 .padding(20)
                 .wimgCard(radius: WimgTheme.radiusMedium)
                 .padding(.horizontal)
-
-                // MARK: - Features Section
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack(spacing: 12) {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.indigo.opacity(0.15))
-                            .frame(width: 40, height: 40)
-                            .overlay {
-                                Image(systemName: "puzzlepiece")
-                                    .foregroundStyle(.indigo)
-                            }
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Features")
-                                .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                .foregroundStyle(WimgTheme.text)
-                            Text("Funktionen ein- oder ausblenden")
-                                .font(.caption2)
-                                .foregroundStyle(WimgTheme.textSecondary)
-                        }
-                    }
-
-                    ForEach(featureToggles, id: \.key) { feat in
-                        Toggle(isOn: Binding(
-                            get: { FeatureFlags.shared.isEnabled(feat.key) },
-                            set: { _ in FeatureFlags.shared.toggle(feat.key) }
-                        )) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                TText(feat.label)
-                                    .font(.system(.subheadline, weight: .semibold))
-                                TText(feat.description)
-                                    .font(.caption)
-                                    .foregroundStyle(WimgTheme.textSecondary)
-                            }
-                        }
-                        .tint(.orange)
-                    }
-                }
-                .padding(20)
-                .wimgCard()
 
                 // MARK: - About Section
                 VStack(alignment: .leading, spacing: 12) {
