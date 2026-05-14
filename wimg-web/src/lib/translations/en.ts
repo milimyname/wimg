@@ -13,6 +13,17 @@ export const en: Record<string, string> = {
   "Update verfügbar — jetzt aktualisieren": "Update available — update now",
   "Seite neu laden": "Reload page",
 
+  // Error / 404 page
+  "Ups! Seite nicht gefunden": "Oops! Page not found",
+  "Etwas ist schiefgelaufen": "Something went wrong",
+  "Der digitale Pfad endet hier. Vielleicht wurde die Seite verschoben oder du hast dich vertippt.":
+    "The digital path ends here. The page may have been moved or you mistyped the URL.",
+  "Wir konnten die Seite nicht laden. Bitte versuche es erneut.":
+    "We couldn't load the page. Please try again.",
+  "404 Error": "404 Error",
+  "Zurück zum Dashboard": "Back to Dashboard",
+  "Support kontaktieren": "Contact Support",
+
   // Dashboard
   "Willkommen zurück": "Welcome back",
   "Guten Morgen": "Good morning",
