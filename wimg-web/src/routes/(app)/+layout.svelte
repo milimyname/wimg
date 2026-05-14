@@ -8,7 +8,6 @@
   import { dropStore } from "$lib/drop.svelte";
   import { isSyncEnabled, connectSync, disconnectSync } from "$lib/sync";
   import { paletteStore } from "$lib/commandPalette.svelte";
-  import { feedbackStore } from "$lib/feedback.svelte";
   import { themeStore } from "$lib/theme.svelte";
   import { LS_ONBOARDING_COMPLETED, LS_LAST_SNAPSHOT_MONTH } from "$lib/config";
   import { i18n } from "$lib/i18n.svelte";
@@ -213,12 +212,6 @@
 {#if paletteStore.open}
   {#await import("../../components/CommandPalette.svelte") then Palette}
     <Palette.default />
-  {/await}
-{/if}
-
-{#if feedbackStore.open}
-  {#await import("../../components/FeedbackSheet.svelte") then FeedbackSheet}
-    <FeedbackSheet.default />
   {/await}
 {/if}
 

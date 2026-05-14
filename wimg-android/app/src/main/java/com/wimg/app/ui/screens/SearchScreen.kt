@@ -147,7 +147,6 @@ fun SearchScreen(selectedAccount: String?, navController: NavController) {
                         NavRow("Import", Icons.Outlined.FileUpload, Color(0xFF007AFF)) { navController.navigate("import") }
                         NavRow("Einstellungen", Icons.Outlined.Settings, Color(0xFF8E8E93)) { navController.navigate("settings") }
                         NavRow("Über wimg", Icons.Outlined.Info, Color(0xFF8E8E93)) { navController.navigate("about") }
-                        NavRow("Feedback senden", Icons.Outlined.ChatBubbleOutline, Color(0xFF5856D6)) { navController.navigate("feedback") }
                     }
                 }
 

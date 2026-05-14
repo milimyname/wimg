@@ -90,7 +90,6 @@ object TranslationMap {
         "Import" to "Import",
         "Einstellungen" to "Settings",
         "Über wimg" to "About wimg",
-        "Feedback" to "Feedback",
         "Hinzufügen" to "Add",
         "Löschen" to "Delete",
 
@@ -135,12 +134,6 @@ object TranslationMap {
         "Privatsphäre zuerst" to "Privacy First",
         "Keine Werbung. Kein Tracking. Niemals." to "No ads. No tracking. Ever.",
         "Open Source" to "Open Source",
-
-        // Feedback
-        "Feedback senden" to "Send Feedback",
-        "Feedback gesendet!" to "Feedback Sent!",
-        "Nachricht" to "Message",
-        "Sende..." to "Sending...",
 
         // Import
         "CSV-Datei importieren" to "Import CSV File",

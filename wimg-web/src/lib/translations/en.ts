@@ -362,19 +362,9 @@ export const en: Record<string, string> = {
   Niedrigster: "Lowest",
   Durchschnitt: "Average",
 
-  // Feedback
-  "Unbekannter Fehler": "Unknown error",
-  Wunsch: "Feature Request",
-  "Beschreibe dein Feedback...": "Describe your feedback...",
-  "Sende...": "Sending...",
-  "Feedback senden": "Send Feedback",
-  "Erstellt ein GitHub Issue — kein Account nötig": "Creates a GitHub Issue — no account needed",
-  "Deine Feedbacks": "Your Feedback",
-  "Danke!": "Thank you!",
-
   // Update Banner
   "Neue Version verfügbar": "New version available",
-  "Alle Änderungen ansehen": "View all changes",
+  "Änderungen auf GitHub ansehen": "View changes on GitHub",
   "Diese Version enthält Datenbank-Änderungen. Lokale Daten müssen zurückgesetzt werden.":
     "This version contains database changes. Local data must be reset.",
   "Daten löschen & aktualisieren": "Delete data & update",
@@ -834,7 +824,6 @@ export const en: Record<string, string> = {
   "Zugriff auf die Datei nicht möglich.": "Cannot access the file.",
   "Hell, Dunkel oder System": "Light, Dark or System",
   "Sync aktiviert & Daten hochgeladen": "Sync enabled & data uploaded",
-  "Feedback konnte nicht gesendet werden": "Feedback could not be sent",
   "Ein Open-Source-Projekt von **Komiljon Maksudov**. Gebaut mit **Zig**, **SwiftUI** und **SQLite**.":
     "An open-source project by **Komiljon Maksudov**. Built with **Zig**, **SwiftUI** and **SQLite**.",
   "Gehe zu Einstellungen → Sync aktivieren. Dadurch wird ein einzigartiger Sync-Schlüssel erstellt. Kopiere diesen Schlüssel und füge ihn auf dem zweiten Gerät ein. Änderungen werden in Echtzeit per WebSocket synchronisiert — Ende-zu-Ende verschlüsselt.":

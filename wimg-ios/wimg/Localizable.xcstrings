@@ -4546,134 +4546,6 @@
         }
       }
     },
-    "Unbekannter Fehler": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Unbekannter Fehler"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Unknown error"
-          }
-        }
-      }
-    },
-    "Wunsch": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wunsch"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Feature Request"
-          }
-        }
-      }
-    },
-    "Beschreibe dein Feedback...": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Beschreibe dein Feedback..."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Describe your feedback..."
-          }
-        }
-      }
-    },
-    "Sende...": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sende..."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sending..."
-          }
-        }
-      }
-    },
-    "Feedback senden": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Feedback senden"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Send Feedback"
-          }
-        }
-      }
-    },
-    "Erstellt ein GitHub Issue — kein Account nötig": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erstellt ein GitHub Issue — kein Account nötig"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Creates a GitHub Issue — no account needed"
-          }
-        }
-      }
-    },
-    "Deine Feedbacks": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deine Feedbacks"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your Feedback"
-          }
-        }
-      }
-    },
-    "Danke!": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Danke!"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Thank you!"
-          }
-        }
-      }
-    },
     "Neue Version verfügbar": {
       "localizations": {
         "de": {
@@ -4690,18 +4562,18 @@
         }
       }
     },
-    "Alle Änderungen ansehen": {
+    "Änderungen auf GitHub ansehen": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alle Änderungen ansehen"
+            "value": "Änderungen auf GitHub ansehen"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "View all changes"
+            "value": "View changes on GitHub"
           }
         }
       }
@@ -10510,22 +10382,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sync enabled & data uploaded"
-          }
-        }
-      }
-    },
-    "Feedback konnte nicht gesendet werden": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Feedback konnte nicht gesendet werden"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Feedback could not be sent"
           }
         }
       }

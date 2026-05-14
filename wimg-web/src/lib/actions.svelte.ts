@@ -30,7 +30,6 @@ import { toastStore } from "$lib/toast.svelte";
 import { data } from "$lib/data.svelte";
 import { dateNav } from "$lib/dateNav.svelte";
 import { themeStore } from "$lib/theme.svelte";
-import { feedbackStore } from "$lib/feedback.svelte";
 import { i18n } from "$lib/i18n.svelte";
 
 export interface PaletteAction {
@@ -173,14 +172,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
     icon: "ℹ️",
     keywords: ["about", "info", "version"],
     handler: () => goto("/about"),
-  },
-  {
-    id: "nav-feedback",
-    label: "Feedback senden",
-    group: "Navigation",
-    icon: "💬",
-    keywords: ["feedback", "bug", "wunsch", "issue", "melden"],
-    handler: () => feedbackStore.show(),
   },
   // --- Hilfe & FAQ ---
   // Feature-specific explanations are handled by inline InfoTooltips on the

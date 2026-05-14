@@ -133,7 +133,6 @@ fun WimgNavigation() {
                 composable("recurring") { RecurringScreen() }
                 composable("review") { ReviewScreen(selectedAccount = selectedAccount) }
                 composable("fints") { FinTSScreen() }
-                composable("feedback") { FeedbackScreen() }
                 composable("settings") { SettingsScreen() }
                 composable("about") { AboutScreen() }
             }

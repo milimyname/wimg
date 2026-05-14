@@ -7,7 +7,6 @@
   import { formatAmountSigned, formatDateShort } from "$lib/format";
   import { toastStore } from "$lib/toast.svelte";
   import { data } from "$lib/data.svelte";
-  import { feedbackStore } from "$lib/feedback.svelte";
   import Drawer from "./Drawer.svelte";
 
   let inputEl = $state<HTMLInputElement | null>(null);
@@ -226,8 +225,6 @@
     } catch (err) {
       toastStore.show(`Fehler: ${err}`);
     }
-    // Don't close if a stacked sheet opened (e.g. feedback sheet)
-    if (feedbackStore.open) return;
     // Close palette only if handler didn't navigate away (e.g. goto)
     if (showPalette) closePalette();
   }
