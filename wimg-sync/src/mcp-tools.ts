@@ -705,42 +705,6 @@ export function getToolDefinitions(): ToolDef[] {
     },
 
     {
-      name: "add_account",
-      description: "Add a new bank account for tracking",
-      schema: {
-        id: z.string().describe("Account ID (e.g. 'comdirect-main', 'tr-depot')"),
-        name: z.string().describe("Display name (e.g. 'Comdirect Girokonto')"),
-        color: z.string().optional().describe("Hex color (e.g. '#FFD700', default: '#6B7280')"),
-      },
-      handler: (args, wasm) => {
-        wasm.addAccount(args.id as string, args.name as string, args.color as string | undefined);
-        return {
-          text: JSON.stringify({ success: true, id: args.id, name: args.name }),
-        };
-      },
-    },
-
-    {
-      name: "update_account",
-      description: "Update an existing bank account's name or color",
-      schema: {
-        id: z.string().describe("Account ID to update"),
-        name: z.string().describe("New display name"),
-        color: z.string().optional().describe("New hex color"),
-      },
-      handler: (args, wasm) => {
-        wasm.updateAccount(
-          args.id as string,
-          args.name as string,
-          args.color as string | undefined,
-        );
-        return {
-          text: JSON.stringify({ success: true, id: args.id, name: args.name }),
-        };
-      },
-    },
-
-    {
       name: "undo",
       description: "Undo the last action (category change, debt payment, etc.)",
       schema: {},
@@ -770,8 +734,6 @@ export const WRITE_TOOL_NAMES = new Set([
   "batch_set_category",
   "batch_categorize_by_pattern",
   "set_excluded",
-  "add_account",
-  "update_account",
   "undo",
   "redo",
   "detect_recurring",

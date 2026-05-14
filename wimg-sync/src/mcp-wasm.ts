@@ -105,8 +105,6 @@ interface WasmExports {
   // Write
   wimg_set_category: (id: number, id_len: number, category: number) => number;
   wimg_set_excluded: (id: number, id_len: number, excluded: number) => number;
-  wimg_add_account: (data: number, len: number) => number;
-  wimg_update_account: (data: number, len: number) => number;
   wimg_undo: () => number;
   wimg_redo: () => number;
 
@@ -296,22 +294,6 @@ export class WasmInstance {
     const idPtr = this.writeString(id);
     const rc = this.wasm.wimg_set_excluded(idPtr, id.length, excluded ? 1 : 0);
     if (rc !== 0) throw new Error(this.getLastError("Failed to set excluded"));
-  }
-
-  addAccount(id: string, name: string, color?: string): void {
-    const json = JSON.stringify({ id, name, color: color ?? "#6B7280" });
-    const encoded = new TextEncoder().encode(json);
-    const ptr = this.writeBytes(encoded);
-    const rc = this.wasm.wimg_add_account(ptr, encoded.length);
-    if (rc !== 0) throw new Error(this.getLastError("Failed to add account"));
-  }
-
-  updateAccount(id: string, name: string, color?: string): void {
-    const json = JSON.stringify({ id, name, color: color ?? "#6B7280" });
-    const encoded = new TextEncoder().encode(json);
-    const ptr = this.writeBytes(encoded);
-    const rc = this.wasm.wimg_update_account(ptr, encoded.length);
-    if (rc !== 0) throw new Error(this.getLastError("Failed to update account"));
   }
 
   undo(): UndoResult | null {
