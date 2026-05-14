@@ -177,7 +177,14 @@
 >
   <p>
     &copy; {new Date().getFullYear()} wimg &middot;
-    <a href="/changelog" class="hover:underline font-bold">Was ist neu?</a>
+    <a
+      href="https://github.com/milimyname/wimg/releases"
+      class="hover:underline font-bold"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      Was ist neu?
+    </a>
     &middot;
     <a
       href="https://github.com/milimyname/wimg"

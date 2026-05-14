@@ -1,44 +1,8 @@
 <script lang="ts">
   import { updateStore } from "$lib/update.svelte";
-  import { changelogStore } from "$lib/changelog.svelte";
-  import { APP_VERSION } from "$lib/version";
   import Drawer from "./Drawer.svelte";
 
   let updating = $state(false);
-
-  const missedReleases = $derived(changelogStore.releasesSince(APP_VERSION));
-
-  interface ChangeItem {
-    type: string;
-    text: string;
-  }
-
-  const TYPE_BADGES: Record<string, { label: string; cls: string }> = {
-    feat: { label: "Feature", cls: "bg-emerald-100 text-emerald-700" },
-    fix: { label: "Fix", cls: "bg-rose-100 text-rose-600" },
-    refactor: { label: "Refactor", cls: "bg-sky-100 text-sky-700" },
-    perf: { label: "Perf", cls: "bg-amber-100 text-amber-700" },
-  };
-
-  function parseItems(body: string): ChangeItem[] {
-    return body
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0)
-      .filter((l) => !l.match(/^release:\s*v[\d.]+$/i))
-      .filter((l) => !l.match(/^#{1,3}\s/))
-      .map((l) => l.replace(/^[-*]\s*/, "").trim())
-      .filter((l) => l.length > 0)
-      .map((l) => {
-        const match = l.match(/^(feat|fix|refactor|perf|docs|style|test)(?:\(.+?\))?:\s*(.+)$/i);
-        if (match) return { type: match[1].toLowerCase(), text: match[2].trim() };
-        return { type: "", text: l };
-      });
-  }
-
-  $effect(() => {
-    if (updateStore.sheetOpen) changelogStore.load();
-  });
 
   function handleUpdate() {
     updating = true;
@@ -89,53 +53,17 @@
         </div>
       </div>
 
-      <!-- Inline changelog -->
-      {#if changelogStore.loading && missedReleases.length === 0}
-        <div class="space-y-2 animate-pulse">
-          <div class="w-full h-3.5 bg-gray-100 rounded"></div>
-          <div class="w-3/4 h-3.5 bg-gray-100 rounded"></div>
-        </div>
-      {:else if missedReleases.length > 0}
-        <div class="bg-(--color-bg) rounded-2xl p-4">
-          {#each missedReleases as release, i}
-            {@const items = parseItems(release.body)}
-            {#if items.length > 0}
-              {#if i > 0}
-                <hr class="my-3 border-(--color-text-secondary)/10" />
-              {/if}
-              <p
-                class="text-xs font-bold text-(--color-text-secondary) uppercase tracking-wider mb-2"
-              >
-                {release.tag}
-              </p>
-              <div class="space-y-1.5">
-                {#each items as item}
-                  {@const badge = TYPE_BADGES[item.type]}
-                  <div class="flex gap-2.5 items-start">
-                    {#if badge}
-                      <span class="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded mt-0.5 {badge.cls}">
-                        {badge.label}
-                      </span>
-                    {:else}
-                      <span class="shrink-0 w-1.5 h-1.5 rounded-full bg-(--color-text-secondary)/30 mt-2"></span>
-                    {/if}
-                    <p class="text-sm text-(--color-text) leading-relaxed">
-                      {item.text}
-                    </p>
-                  </div>
-                {/each}
-              </div>
-            {/if}
-          {/each}
-          <a
-            href="/changelog"
-            onclick={() => (updateStore.sheetOpen = false)}
-            class="inline-flex items-center gap-1 text-xs font-medium text-(--color-text-secondary) hover:text-(--color-text) transition-colors mt-3"
-          >
-            Alle Änderungen ansehen
-          </a>
-        </div>
-      {/if}
+      <a
+        href={updateStore.releasesUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center gap-1 text-xs font-medium text-(--color-text-secondary) hover:text-(--color-text) transition-colors"
+      >
+        Änderungen auf GitHub ansehen
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+        </svg>
+      </a>
 
       {#if updateStore.hasBreaking}
         <div
@@ -158,7 +86,7 @@
             {#if updating}
               <span class="inline-flex items-center gap-2">
                 <span
-                  class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"
+                  class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"
                 ></span>
                 Aktualisiere...
               </span>
@@ -175,7 +103,7 @@
             {#if updating}
               <span class="inline-flex items-center gap-2">
                 <span
-                  class="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"
+                  class="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"
                 ></span>
                 Aktualisiere...
               </span>
@@ -184,17 +112,12 @@
             {/if}
           </button>
         {/if}
-        {#if !updating}
-          <button
-            onclick={() => {
-              updateStore.sheetOpen = false;
-              updateStore.dismiss();
-            }}
-            class="py-3 px-5 rounded-xl text-sm font-medium text-(--color-text-secondary) hover:bg-(--color-bg) transition-colors"
-          >
-            Später
-          </button>
-        {/if}
+        <button
+          onclick={() => (updateStore.sheetOpen = false)}
+          class="px-5 py-3 rounded-xl text-sm font-medium text-(--color-text-secondary) hover:bg-(--color-bg) transition-colors"
+        >
+          Später
+        </button>
       </div>
     </div>
   {/snippet}

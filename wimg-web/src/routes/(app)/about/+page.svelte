@@ -384,7 +384,9 @@
     class="flex flex-col items-center gap-2 pt-2 pb-6 text-(--color-text-secondary)"
   >
     <a
-      href="/changelog"
+      href={RELEASES_URL}
+      target="_blank"
+      rel="noopener noreferrer"
       class="text-xs font-bold text-amber-600 hover:underline"
     >
       Was ist neu?

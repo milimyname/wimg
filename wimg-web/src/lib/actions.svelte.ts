@@ -182,15 +182,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
     keywords: ["feedback", "bug", "wunsch", "issue", "melden"],
     handler: () => feedbackStore.show(),
   },
-  {
-    id: "nav-changelog",
-    label: "Changelog",
-    group: "Navigation",
-    icon: "📝",
-    keywords: ["changelog", "updates", "neu", "version", "release"],
-    handler: () => goto("/changelog"),
-  },
-
   // --- Hilfe & FAQ ---
   // Feature-specific explanations are handled by inline InfoTooltips on the
   // cards themselves. The palette only deep-links to the *general* FAQ.
