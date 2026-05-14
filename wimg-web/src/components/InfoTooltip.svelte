@@ -25,7 +25,18 @@
     popoverEl.style.top = `${rect.bottom + 8}px`;
     popoverEl.style.left = `${clamped - HALF_W}px`;
   }
+
+  // Re-anchor on scroll/resize so the popover follows its trigger. Without
+  // this the popover sits at the viewport coords it was opened at while the
+  // button scrolls away under it. Use capture:true on the scroll listener
+  // because the (app) layout may scroll on a child container, not window.
+  function onMaybeReposition() {
+    if (popoverEl?.matches(":popover-open")) positionPopover();
+  }
 </script>
+
+<svelte:window onresize={onMaybeReposition} />
+<svelte:document onscrollcapture={onMaybeReposition} />
 
 <button
   bind:this={buttonEl}
