@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.8.3 (2026-05-15)
+
+- fix: i18n plugin now translates text="..." attributes
+
 ## v0.8.2 (2026-05-15)
 
 - Version bump
