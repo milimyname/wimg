@@ -158,46 +158,46 @@
   {/if}
 </div>
 
-<!-- Gesamtsaldo / Einnahmen / Ausgaben Grid -->
-<div class="grid grid-cols-3 gap-3 mb-5">
-  <div class="bg-white rounded-[1.5rem] p-4 shadow-[var(--shadow-card)] flex flex-col gap-2.5">
-    <div class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
-      <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<!-- Gesamt / Einnahmen / Ausgaben stacked rows -->
+<div class="flex flex-col gap-3 mb-5">
+  <div class="bg-white rounded-[1.5rem] p-4 shadow-[var(--shadow-card)] flex items-center gap-4">
+    <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 shrink-0">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
       </svg>
     </div>
-    <div class="min-w-0">
-      <p class="text-[10px] text-(--color-text-secondary) font-bold uppercase tracking-wide mb-0.5">Gesamt</p>
+    <div class="flex-1 min-w-0 flex items-center justify-between gap-3">
+      <p class="text-xs text-(--color-text-secondary) font-bold uppercase tracking-wide">Gesamt</p>
       <p
-        class="font-display font-extrabold text-base truncate"
+        class="font-display font-extrabold text-lg tabular-nums truncate"
         class:text-emerald-600={totalBalance > 0}
         class:text-rose-500={totalBalance < 0}
         class:text-(--color-text)={totalBalance === 0}
       >
-        {formatEurCompact(totalBalance)}
+        {formatEur(totalBalance)}
       </p>
     </div>
   </div>
-  <div class="bg-white rounded-[1.5rem] p-4 shadow-[var(--shadow-card)] flex flex-col gap-2.5">
-    <div class="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500">
-      <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <div class="bg-white rounded-[1.5rem] p-4 shadow-[var(--shadow-card)] flex items-center gap-4">
+    <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
       </svg>
     </div>
-    <div class="min-w-0">
-      <p class="text-[10px] text-(--color-text-secondary) font-bold uppercase tracking-wide mb-0.5">Einnahmen</p>
-      <p class="text-base font-display font-extrabold text-emerald-600 truncate">+ {formatEurCompact(summary.income)}</p>
+    <div class="flex-1 min-w-0 flex items-center justify-between gap-3">
+      <p class="text-xs text-(--color-text-secondary) font-bold uppercase tracking-wide">Einnahmen</p>
+      <p class="font-display font-extrabold text-lg text-emerald-600 tabular-nums truncate">+ {formatEur(summary.income)}</p>
     </div>
   </div>
-  <div class="bg-white rounded-[1.5rem] p-4 shadow-[var(--shadow-card)] flex flex-col gap-2.5">
-    <div class="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500">
-      <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <div class="bg-white rounded-[1.5rem] p-4 shadow-[var(--shadow-card)] flex items-center gap-4">
+    <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 shrink-0">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
       </svg>
     </div>
-    <div class="min-w-0">
-      <p class="text-[10px] text-(--color-text-secondary) font-bold uppercase tracking-wide mb-0.5">Ausgaben</p>
-      <p class="text-base font-display font-extrabold text-rose-600 truncate">- {formatEurCompact(Math.abs(summary.expenses))}</p>
+    <div class="flex-1 min-w-0 flex items-center justify-between gap-3">
+      <p class="text-xs text-(--color-text-secondary) font-bold uppercase tracking-wide">Ausgaben</p>
+      <p class="font-display font-extrabold text-lg text-rose-600 tabular-nums truncate">- {formatEur(Math.abs(summary.expenses))}</p>
     </div>
   </div>
 </div>
