@@ -404,7 +404,10 @@ struct TransactionsView: View {
                         Button {
                             displayLimit += 30
                         } label: {
-                            Text("Mehr laden (\(totalFilteredCount - displayLimit) weitere)")
+                            let remaining = totalFilteredCount - displayLimit
+                            Text(RecurringPattern.isEnglish
+                                ? "Load more (\(remaining) more)"
+                                : "Mehr laden (\(remaining) weitere)")
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundStyle(WimgTheme.textSecondary)
                                 .frame(maxWidth: .infinity)

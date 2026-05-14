@@ -414,7 +414,14 @@ struct SearchView: View {
                                 filterCategories.insert(cat.rawValue)
                             }
                         } label: {
-                            Label(cat.name, systemImage: filterCategories.contains(cat.rawValue) ? "checkmark.circle.fill" : "circle")
+                            // Label(_:systemImage:) doesn't auto-localize a
+                            // variable title; build the Label manually so the
+                            // category name flows through TText/.xcstrings.
+                            Label {
+                                TText(cat.name)
+                            } icon: {
+                                Image(systemName: filterCategories.contains(cat.rawValue) ? "checkmark.circle.fill" : "circle")
+                            }
                         }
                     }
                     if !filterCategories.isEmpty {

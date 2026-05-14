@@ -385,7 +385,14 @@ struct ReviewView: View {
                                 Text("Preiserhöhung erkannt")
                                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                                     .foregroundStyle(.white)
-                                Text("\(category.name): +\(formatAmountShort(item.increase)) (\(pct)% mehr)")
+                                // Interpolated strings never match a static
+                                // .xcstrings key — branch on locale and run the
+                                // category name through Translations.t().
+                                let catName = Translations.t(category.name)
+                                let amt = formatAmountShort(item.increase)
+                                Text(RecurringPattern.isEnglish
+                                    ? "\(catName): +\(amt) (\(pct)% more)"
+                                    : "\(catName): +\(amt) (\(pct)% mehr)")
                                     .font(.system(.caption, design: .rounded))
                                     .foregroundStyle(.white.opacity(0.7))
                             }

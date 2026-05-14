@@ -7,7 +7,7 @@ struct CategoryBadge: View {
         HStack(spacing: 5) {
             Image(systemName: category.icon)
                 .font(.caption2)
-            Text(category.name)
+            TText(category.name)
                 .font(.system(.caption, design: .rounded, weight: .semibold))
         }
         .padding(.horizontal, 10)

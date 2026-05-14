@@ -144,7 +144,9 @@ struct RecurringView: View {
                     .foregroundStyle(.white)
                     .tracking(-1)
 
-                Text("\(activePatterns.count) erkannte Muster")
+                Text(RecurringPattern.isEnglish
+                    ? "\(activePatterns.count) detected patterns"
+                    : "\(activePatterns.count) erkannte Muster")
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(.white.opacity(0.7))
             }

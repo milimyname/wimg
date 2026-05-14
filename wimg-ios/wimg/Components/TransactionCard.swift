@@ -30,7 +30,7 @@ struct TransactionCard: View {
                         .lineLimit(1)
                         .foregroundStyle(WimgTheme.text)
 
-                    Text(category.name)
+                    TText(category.name)
                         .font(.caption)
                         .foregroundStyle(WimgTheme.textSecondary)
                 }

@@ -252,7 +252,10 @@ struct HomeView: View {
                         .foregroundStyle(WimgTheme.heroText)
                         .tracking(-1)
 
-                    Text("\(summary?.tx_count ?? 0) Transaktionen")
+                    // Interpolated -> branch on locale instead of relying on
+                    // the static .xcstrings catalog.
+                    let txCount = summary?.tx_count ?? 0
+                    Text(RecurringPattern.isEnglish ? "\(txCount) transactions" : "\(txCount) Transaktionen")
                         .font(.system(.caption, design: .rounded, weight: .medium))
                         .foregroundStyle(WimgTheme.heroText.opacity(0.6))
                 }
