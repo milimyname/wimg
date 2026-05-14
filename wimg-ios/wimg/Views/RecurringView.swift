@@ -184,10 +184,11 @@ struct RecurringView: View {
         }
 
         // Section header
-        HStack {
+        HStack(spacing: 8) {
             Text("Abonnements")
                 .font(.system(.title2, design: .rounded, weight: .black))
                 .foregroundStyle(WimgTheme.text)
+            InfoTooltip(text: "Scannt deine Transaktionen nach wiederkehrenden Mustern (mind. 3 ähnliche Beträge in regelmäßigen Abständen). Erkennt Abos, Mieten und Fixkosten.")
             Spacer()
 
             Button {
@@ -418,10 +419,13 @@ struct RecurringView: View {
 
     private var priceAlertsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Preisänderungen")
-                .font(.system(.headline, design: .rounded, weight: .bold))
-                .foregroundStyle(WimgTheme.text)
-                .padding(.horizontal)
+            HStack(spacing: 8) {
+                Text("Preisänderungen")
+                    .font(.system(.headline, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text)
+                InfoTooltip(text: "Wenn ein erkanntes Abo seinen Preis ändert, erscheint hier eine Warnung mit altem und neuem Betrag. So bemerkst du schleichende Preiserhöhungen frühzeitig.")
+            }
+            .padding(.horizontal)
 
             ForEach(priceAlerts) { alert in
                 HStack(spacing: 12) {

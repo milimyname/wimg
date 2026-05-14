@@ -139,8 +139,11 @@ private fun SubscriptionsTab(
             }
 
             item {
-                OutlinedButton(onClick = onDetect, modifier = Modifier.fillMaxWidth(), shape = WimgShapes.small) {
-                    Text(if (detecting) "Erkennung..." else "Erneut erkennen", fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(onClick = onDetect, modifier = Modifier.weight(1f), shape = WimgShapes.small) {
+                        Text(if (detecting) "Erkennung..." else "Erneut erkennen", fontWeight = FontWeight.Bold)
+                    }
+                    InfoTooltip("Scannt deine Transaktionen nach wiederkehrenden Mustern (mind. 3 ähnliche Beträge in regelmäßigen Abständen). Erkennt Abos, Mieten und Fixkosten.")
                 }
             }
 

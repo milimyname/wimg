@@ -258,7 +258,10 @@
   <!-- Price Alerts -->
   {#if priceAlerts.length > 0}
     <div id="price-alerts" class="mb-5">
-      <a href="#price-alerts" class="text-lg font-display font-extrabold mb-3 px-1 block">Preisänderungen</a>
+      <div class="flex items-center gap-2 mb-3 px-1">
+        <a href="#price-alerts" class="text-lg font-display font-extrabold">Preisänderungen</a>
+        <InfoTooltip text="Wenn ein erkanntes Abo seinen Preis ändert, erscheint hier eine Warnung mit altem und neuem Betrag. So bemerkst du schleichende Preiserhöhungen frühzeitig." />
+      </div>
       <div class="flex flex-col gap-3">
         {#each priceAlerts as alert}
           {@const isUp = (alert.price_change ?? 0) > 0}
@@ -289,7 +292,10 @@
 
   <!-- Section Title + Detect Button -->
   <div id="subscriptions" class="flex items-center justify-between mb-4 px-1">
-    <a href="#subscriptions" class="text-2xl font-display font-extrabold">Abonnements</a>
+    <div class="flex items-center gap-2">
+      <a href="#subscriptions" class="text-2xl font-display font-extrabold">Abonnements</a>
+      <InfoTooltip text="Scannt deine Transaktionen nach wiederkehrenden Mustern (mind. 3 ähnliche Beträge in regelmäßigen Abständen). Erkennt Abos, Mieten und Fixkosten." />
+    </div>
     <button
       onclick={handleDetect}
       disabled={detecting || !hasData}

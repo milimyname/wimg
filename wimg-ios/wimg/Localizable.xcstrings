@@ -4386,6 +4386,38 @@
         }
       }
     },
+    "Scannt deine Transaktionen nach wiederkehrenden Mustern (mind. 3 ähnliche Beträge in regelmäßigen Abständen). Erkennt Abos, Mieten und Fixkosten.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scannt deine Transaktionen nach wiederkehrenden Mustern (mind. 3 ähnliche Beträge in regelmäßigen Abständen). Erkennt Abos, Mieten und Fixkosten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scans your transactions for recurring patterns (at least 3 similar amounts at regular intervals). Detects subscriptions, rent, and fixed costs."
+          }
+        }
+      }
+    },
+    "Wenn ein erkanntes Abo seinen Preis ändert, erscheint hier eine Warnung mit altem und neuem Betrag. So bemerkst du schleichende Preiserhöhungen frühzeitig.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wenn ein erkanntes Abo seinen Preis ändert, erscheint hier eine Warnung mit altem und neuem Betrag. So bemerkst du schleichende Preiserhöhungen frühzeitig."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When a detected subscription changes price, a warning appears here with old and new amount. Helps you spot creeping price hikes early."
+          }
+        }
+      }
+    },
     "Ausgaben-Heatmap": {
       "localizations": {
         "de": {

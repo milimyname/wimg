@@ -281,6 +281,8 @@ enum Translations {
         "Kumulatives Nettovermögen über die Zeit, berechnet aus monatlichen Snapshots (Einnahmen − Ausgaben). Mindestens 2 Snapshots erforderlich.": "Cumulative net worth over time, calculated from monthly snapshots (income − expenses). Requires at least 2 snapshots.",
         "Deine monatlichen Ausgaben als Farbgitter — inspiriert vom GitHub Contribution Graph. Dunklere Farben bedeuten höhere Ausgaben.": "Your monthly expenses as a colored grid — inspired by the GitHub contribution graph. Darker colors mean higher spending.",
         "Summe aller erkannten monatlichen Abos und Fixkosten. Quartals- und Jahresbeiträge werden nicht eingerechnet.": "Sum of all detected monthly subscriptions and fixed costs. Quarterly and annual bills are excluded.",
+        "Scannt deine Transaktionen nach wiederkehrenden Mustern (mind. 3 ähnliche Beträge in regelmäßigen Abständen). Erkennt Abos, Mieten und Fixkosten.": "Scans your transactions for recurring patterns (at least 3 similar amounts at regular intervals). Detects subscriptions, rent, and fixed costs.",
+        "Wenn ein erkanntes Abo seinen Preis ändert, erscheint hier eine Warnung mit altem und neuem Betrag. So bemerkst du schleichende Preiserhöhungen frühzeitig.": "When a detected subscription changes price, a warning appears here with old and new amount. Helps you spot creeping price hikes early.",
         "Ausgaben-Heatmap": "Spending Heatmap",
         "Monatliche Ausgaben im Zeitverlauf": "Monthly expenses over time",
         "Wenig": "Low",

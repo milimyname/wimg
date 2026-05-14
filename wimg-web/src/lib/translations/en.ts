@@ -345,6 +345,10 @@ export const en: Record<string, string> = {
     "Your monthly expenses as a colored grid — inspired by the GitHub contribution graph. Darker colors mean higher spending.",
   "Summe aller erkannten monatlichen Abos und Fixkosten. Quartals- und Jahresbeiträge werden nicht eingerechnet.":
     "Sum of all detected monthly subscriptions and fixed costs. Quarterly and annual bills are excluded.",
+  "Scannt deine Transaktionen nach wiederkehrenden Mustern (mind. 3 ähnliche Beträge in regelmäßigen Abständen). Erkennt Abos, Mieten und Fixkosten.":
+    "Scans your transactions for recurring patterns (at least 3 similar amounts at regular intervals). Detects subscriptions, rent, and fixed costs.",
+  "Wenn ein erkanntes Abo seinen Preis ändert, erscheint hier eine Warnung mit altem und neuem Betrag. So bemerkst du schleichende Preiserhöhungen frühzeitig.":
+    "When a detected subscription changes price, a warning appears here with old and new amount. Helps you spot creeping price hikes early.",
 
   // Heatmap
   "Ausgaben-Heatmap": "Spending Heatmap",
