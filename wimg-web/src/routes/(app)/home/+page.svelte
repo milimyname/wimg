@@ -143,40 +143,39 @@
   </h1>
 </div>
 
-<!-- Verfügbares Einkommen — compact highlight card -->
-<div class="bg-(--color-accent) rounded-3xl p-6 mb-5 shadow-[var(--shadow-soft)] relative overflow-hidden" style="color: #1a1a1a">
+<!-- Hero: Verfügbares Einkommen -->
+<div class="bg-(--color-accent) rounded-[2rem] p-7 mb-5 shadow-[var(--shadow-soft)] relative overflow-hidden" style="color: #1a1a1a">
   <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/25 rounded-full blur-2xl pointer-events-none"></div>
-  <div class="relative z-10">
-    <div class="flex items-center gap-1.5 mb-1">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a2.25 2.25 0 00-2.25-2.25H5.25a2.25 2.25 0 000 4.5h13.5A2.25 2.25 0 0021 12zM4 7.5A2.5 2.5 0 016.5 5h11a2.5 2.5 0 010 5h-11A2.5 2.5 0 014 7.5zM18 14.5v.01" />
+  <div class="flex justify-between items-start mb-3 relative z-10">
+    <div class="flex items-center gap-2">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
       </svg>
-      <p class="text-[10px] font-bold uppercase tracking-widest" style="opacity: 0.8">Verfügbares Einkommen</p>
+      <p class="text-sm font-bold uppercase tracking-wide" style="opacity: 0.8">Verfügbares Einkommen</p>
       <InfoTooltip text="Einnahmen minus Ausgaben in diesem Monat. Was dir zum Sparen oder Investieren bleibt." />
     </div>
-    <div class="flex items-baseline justify-between gap-3">
-      <h2 class="text-3xl font-display font-black tracking-tight tabular-nums">
-        {Math.abs(summary.available) >= 10000 ? formatEurCompact(summary.available) : formatEur(summary.available)}
-      </h2>
-      {#if delta !== null}
-        <span
-          class="shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-black backdrop-blur-sm border border-white/20"
-          style="background: rgba(255,255,255,0.4); color: #1a1a1a"
-        >
-          {#if delta >= 0}
-            <svg class="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" />
-            </svg>
-          {:else}
-            <svg class="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" />
-            </svg>
-          {/if}
-          {delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
-        </span>
-      {/if}
-    </div>
   </div>
+  <p class="text-[2.75rem] font-display font-black tracking-tight leading-tight relative z-10 mb-4">
+    {Math.abs(summary.available) >= 10000 ? formatEurCompact(summary.available) : formatEur(summary.available)}
+  </p>
+  {#if delta !== null}
+    <div class="relative z-10">
+      <span
+        class="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold shadow-sm" style="background: rgba(255,255,255,0.5); color: #1a1a1a"
+      >
+        {#if delta >= 0}
+          <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" />
+          </svg>
+        {:else}
+          <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" />
+          </svg>
+        {/if}
+        {delta >= 0 ? "+" : ""}{delta.toFixed(1)}% vs. Vormonat
+      </span>
+    </div>
+  {/if}
 </div>
 
 <!-- Einnahmen / Ausgaben — 2-col grid (original placement) -->
