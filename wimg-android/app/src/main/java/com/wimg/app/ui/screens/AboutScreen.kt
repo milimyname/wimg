@@ -2,14 +2,17 @@ package com.wimg.app.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,12 +27,37 @@ import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
 import com.wimg.app.ui.theme.wimgCard
 
+private data class FAQ(val q: String, val a: String)
+
+// General philosophy / how-it-works questions. Feature-specific explanations
+// (Sparquote formula, "Verfügbar" meaning, 12-Monats-Übersicht) live in
+// inline InfoTooltips on the cards themselves.
+private val faqs = listOf(
+    FAQ("Sind meine Daten sicher?", "Ja. Alle Finanzdaten werden lokal in einer SQLite-Datenbank auf deinem Gerät gespeichert. Sync ist Ende-zu-Ende verschlüsselt — der Server sieht nur Chiffretext."),
+    FAQ("Welche Banken werden unterstützt?", "CSV-Import von Comdirect, Trade Republic und Scalable Capital. Da wimg Open-Source ist, können weitere Formate jederzeit hinzugefügt werden."),
+    FAQ("Wie funktioniert der Import?", "Lade deinen Kontoauszug im CSV-Format hoch. wimg erkennt das Format automatisch, analysiert die Transaktionen lokal und kategorisiert sie mit intelligenten Regeln."),
+    FAQ("Wie funktioniert die Kategorisierung?", "wimg nutzt ein Regel-System mit Schlüsselwörtern. Bekannte Händler (REWE, LIDL, etc.) werden automatisch erkannt. Wenn du eine Transaktion manuell kategorisierst, lernt wimg das Muster und wendet es zukünftig automatisch an."),
+    FAQ("Ist wimg wirklich kostenlos?", "Ja. wimg ist ein Leidenschaftsprojekt unter Open-Source-Lizenz. Keine Abonnements, keine versteckten Kosten, kein Verkauf deiner Daten."),
+    FAQ("Wo werden die Daten gespeichert?", "Auf Android: lokale SQLite-Datei. Deine Daten verlassen dein Gerät nur bei aktivierter Sync — dann Ende-zu-Ende verschlüsselt."),
+    FAQ("Was ist der MCP-Server?", "Mit aktivierter Synchronisierung wird dein Sync-Schlüssel zum MCP-Zugang. Claude.ai oder andere KI-Tools können Ausgaben abfragen und Kategorien setzen — Ende-zu-Ende verschlüsselt."),
+    FAQ("Wie funktioniert Auto-Learn?", "Wenn du eine Transaktion manuell kategorisierst, lernt wimg automatisch das Schlüsselwort. Beim nächsten Import oder Auto-Kategorisieren werden ähnliche Transaktionen automatisch zugeordnet."),
+    FAQ("Was zeigt das Vermögens-Diagramm?", "Das Vermögens-Diagramm auf der Analyse-Seite zeigt dein kumulatives Nettovermögen über die Zeit — basierend auf monatlichen Snapshots. Du brauchst mindestens 2 Snapshots."),
+    FAQ("Wie synchronisiere ich zwischen Geräten?", "Gehe zu Einstellungen → Sync aktivieren. Kopiere den Sync-Schlüssel und füge ihn auf dem zweiten Gerät ein. Änderungen werden in Echtzeit per WebSocket synchronisiert."),
+    FAQ("Wie erkennt wimg Abos?", "wimg analysiert deine Transaktionen automatisch und erkennt regelmäßige Muster (monatlich, vierteljährlich, jährlich). Unter Mehr → Wiederkehrend siehst du alle erkannten Abos."),
+    FAQ("Funktioniert wimg offline?", "Ja, vollständig. Alle Daten liegen lokal in SQLite. Du brauchst kein Internet für Import, Kategorisierung, Analyse oder irgendeine Kernfunktion."),
+    FAQ("Kann ich mehrere Konten verwalten?", "Ja. Neue Konten werden beim CSV-Import automatisch erstellt oder können manuell angelegt werden."),
+    FAQ("Kann ich Änderungen rückgängig machen?", "Ja. wimg speichert bis zu 50 Undo-Schritte. Über die Suche findest du Rückgängig und Wiederherstellen."),
+    FAQ("Wie lösche ich meine Daten?", "Unter Einstellungen → Danger Zone kannst du die Datenbank zurücksetzen. Diese Aktion kann nicht rückgängig gemacht werden."),
+    FAQ("Wie kann ich beitragen?", "Besuche das GitHub-Repository. Code, Übersetzungen, Feedback und Bug-Reports sind willkommen."),
+)
+
 @Composable
 fun AboutScreen() {
     val context = LocalContext.current
     val version = try {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "—"
     } catch (_: Exception) { "—" }
+    var expandedFaq by remember { mutableStateOf<String?>(null) }
 
     LazyColumn(
         modifier = Modifier
@@ -103,6 +131,52 @@ fun AboutScreen() {
                 modifier = Modifier.fillMaxWidth(),
                 shape = WimgShapes.small,
             ) { Text("GitHub", fontWeight = FontWeight.Bold) }
+        }
+
+        // FAQ section
+        item {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "HÄUFIGE FRAGEN",
+                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.8.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 4.dp),
+            )
+        }
+
+        items(faqs) { faq ->
+            val isExpanded = expandedFaq == faq.q
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wimgCard(WimgShapes.small)
+                    .clickable { expandedFaq = if (isExpanded) null else faq.q }
+                    .padding(16.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        faq.q,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        if (isExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                AnimatedVisibility(visible = isExpanded) {
+                    Text(
+                        faq.a,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+            }
         }
 
         // Credits
