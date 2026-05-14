@@ -98,6 +98,118 @@
         }
       }
     },
+    "Ups! Seite nicht gefunden": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ups! Seite nicht gefunden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oops! Page not found"
+          }
+        }
+      }
+    },
+    "Etwas ist schiefgelaufen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etwas ist schiefgelaufen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Something went wrong"
+          }
+        }
+      }
+    },
+    "Der digitale Pfad endet hier. Vielleicht wurde die Seite verschoben oder du hast dich vertippt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der digitale Pfad endet hier. Vielleicht wurde die Seite verschoben oder du hast dich vertippt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The digital path ends here. The page may have been moved or you mistyped the URL."
+          }
+        }
+      }
+    },
+    "Wir konnten die Seite nicht laden. Bitte versuche es erneut.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wir konnten die Seite nicht laden. Bitte versuche es erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We couldn't load the page. Please try again."
+          }
+        }
+      }
+    },
+    "404 Error": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "404 Error"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "404 Error"
+          }
+        }
+      }
+    },
+    "Zurück zum Dashboard": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurück zum Dashboard"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to Dashboard"
+          }
+        }
+      }
+    },
+    "Support kontaktieren": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Support kontaktieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contact Support"
+          }
+        }
+      }
+    },
     "Willkommen zurück": {
       "localizations": {
         "de": {
@@ -402,22 +514,6 @@
         }
       }
     },
-    "Tippe Details für die volle Analyse": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tippe Details für die volle Analyse"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tap Details for full analysis"
-          }
-        }
-      }
-    },
     "Letzte Transaktionen": {
       "localizations": {
         "de": {
@@ -562,38 +658,6 @@
         }
       }
     },
-    "Sparziele": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sparziele"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Savings Goals"
-          }
-        }
-      }
-    },
-    "Steuern": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Steuern"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Taxes"
-          }
-        }
-      }
-    },
     "Einstellungen": {
       "localizations": {
         "de": {
@@ -686,22 +750,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Available"
-          }
-        }
-      }
-    },
-    "Tippe auf eine Kategorie für Details": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tippe auf eine Kategorie für Details"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tap a category for details"
           }
         }
       }
@@ -814,22 +862,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Filter"
-          }
-        }
-      }
-    },
-    "Tippe auf eine Transaktion zum Kategorisieren": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tippe auf eine Transaktion zum Kategorisieren"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tap a transaction to categorize"
           }
         }
       }
@@ -1406,22 +1438,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Features"
-          }
-        }
-      }
-    },
-    "Funktionen ein- oder ausblenden": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Funktionen ein- oder ausblenden"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Show or hide features"
           }
         }
       }
@@ -2130,118 +2146,6 @@
         }
       }
     },
-    "Verbleibende Schulden": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Verbleibende Schulden"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Remaining Debts"
-          }
-        }
-      }
-    },
-    "Deine Schulden": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deine Schulden"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your Debts"
-          }
-        }
-      }
-    },
-    "Schuld hinzufügen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Schuld hinzufügen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add Debt"
-          }
-        }
-      }
-    },
-    "Neue Schuld": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Neue Schuld"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "New Debt"
-          }
-        }
-      }
-    },
-    "Name (z.B. WSW Strom)": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Name (z.B. WSW Strom)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Name (e.g. Electricity bill)"
-          }
-        }
-      }
-    },
-    "Gesamtbetrag (z.B. 1234,56)": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gesamtbetrag (z.B. 1234,56)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Total amount (e.g. 1234.56)"
-          }
-        }
-      }
-    },
-    "Monatliche Rate (optional)": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Monatliche Rate (optional)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Monthly payment (optional)"
-          }
-        }
-      }
-    },
     "Hinzufügen": {
       "localizations": {
         "de": {
@@ -2254,54 +2158,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Add"
-          }
-        }
-      }
-    },
-    "Keine Schulden": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine Schulden"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No Debts"
-          }
-        }
-      }
-    },
-    "Füge Schulden hinzu um den Fortschritt zu tracken.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Füge Schulden hinzu um den Fortschritt zu tracken."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add debts to track your progress."
-          }
-        }
-      }
-    },
-    "Endgültig löschen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Endgültig löschen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete permanently"
           }
         }
       }
@@ -2322,102 +2178,6 @@
         }
       }
     },
-    "Gesamtfortschritt": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gesamtfortschritt"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Overall Progress"
-          }
-        }
-      }
-    },
-    "Fortschritt": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fortschritt"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Progress"
-          }
-        }
-      }
-    },
-    "Deine Sparziele": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deine Sparziele"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your Savings Goals"
-          }
-        }
-      }
-    },
-    "Sparziel hinzufügen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sparziel hinzufügen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add Savings Goal"
-          }
-        }
-      }
-    },
-    "Neues Sparziel": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Neues Sparziel"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "New Savings Goal"
-          }
-        }
-      }
-    },
-    "Name (z.B. Urlaub 2027)": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Name (z.B. Urlaub 2027)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Name (e.g. Vacation 2027)"
-          }
-        }
-      }
-    },
     "Icon": {
       "localizations": {
         "de": {
@@ -2430,118 +2190,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Icon"
-          }
-        }
-      }
-    },
-    "Zielbetrag (z.B. 5000)": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zielbetrag (z.B. 5000)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Target amount (e.g. 5000)"
-          }
-        }
-      }
-    },
-    "Deadline (optional)": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deadline (optional)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deadline (optional)"
-          }
-        }
-      }
-    },
-    "Keine Sparziele": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine Sparziele"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No Savings Goals"
-          }
-        }
-      }
-    },
-    "Setze dir Sparziele und verfolge deinen Fortschritt.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Setze dir Sparziele und verfolge deinen Fortschritt."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Set savings goals and track your progress."
-          }
-        }
-      }
-    },
-    "Ziel": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ziel"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Goal"
-          }
-        }
-      }
-    },
-    "Ziele": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ziele"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Goals"
-          }
-        }
-      }
-    },
-    "Betrag (z.B. 50)": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Betrag (z.B. 50)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Amount (e.g. 50)"
           }
         }
       }
@@ -2798,22 +2446,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Show all"
-          }
-        }
-      }
-    },
-    "Local-first · Sicherer Import": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local-first · Sicherer Import"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Local-first · Secure Import"
           }
         }
       }
@@ -3554,22 +3186,6 @@
         }
       }
     },
-    "Nächste 30 Tage": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nächste 30 Tage"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Next 30 Days"
-          }
-        }
-      }
-    },
     "Zahlung": {
       "localizations": {
         "de": {
@@ -3618,118 +3234,6 @@
         }
       }
     },
-    "Anstehende Zahlungen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anstehende Zahlungen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Upcoming Payments"
-          }
-        }
-      }
-    },
-    "Keine anstehenden Zahlungen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine anstehenden Zahlungen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No upcoming payments"
-          }
-        }
-      }
-    },
-    "Erkenne zuerst wiederkehrende Muster im Abonnements-Tab.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erkenne zuerst wiederkehrende Muster im Abonnements-Tab."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Detect recurring patterns in the Subscriptions tab first."
-          }
-        }
-      }
-    },
-    "Zu Abonnements": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zu Abonnements"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Go to Subscriptions"
-          }
-        }
-      }
-    },
-    "Zahlungskalender": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zahlungskalender"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Payment Calendar"
-          }
-        }
-      }
-    },
-    "Importiere eine CSV-Datei um steuerlich relevante Ausgaben zu erkennen.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Importiere eine CSV-Datei um steuerlich relevante Ausgaben zu erkennen."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Import a CSV file to detect tax-relevant expenses."
-          }
-        }
-      }
-    },
-    "Absetzbare Ausgaben": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Absetzbare Ausgaben"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deductible Expenses"
-          }
-        }
-      }
-    },
     "Werbung": {
       "localizations": {
         "de": {
@@ -3742,22 +3246,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Work Expenses"
-          }
-        }
-      }
-    },
-    "Pauschalen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pauschalen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Allowances"
           }
         }
       }
@@ -3778,86 +3266,6 @@
         }
       }
     },
-    "Pendlerpauschale": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pendlerpauschale"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Commuter Allowance"
-          }
-        }
-      }
-    },
-    "Entfernung (km)": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Entfernung (km)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Distance (km)"
-          }
-        }
-      }
-    },
-    "Arbeitstage": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Arbeitstage"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Work days"
-          }
-        }
-      }
-    },
-    "Homeoffice": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Homeoffice"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Home Office"
-          }
-        }
-      }
-    },
-    "Anzahl Homeoffice-Tage": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anzahl Homeoffice-Tage"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Number of home office days"
-          }
-        }
-      }
-    },
     "TAGE": {
       "localizations": {
         "de": {
@@ -3874,118 +3282,6 @@
         }
       }
     },
-    "6 €/Tag (max. 210 Tage)": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "6 €/Tag (max. 210 Tage)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "€6/day (max. 210 days)"
-          }
-        }
-      }
-    },
-    "Eigene Schlüsselwörter": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Eigene Schlüsselwörter"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Custom Keywords"
-          }
-        }
-      }
-    },
-    "Zusätzliche Begriffe für die Erkennung": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zusätzliche Begriffe für die Erkennung"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Additional terms for detection"
-          }
-        }
-      }
-    },
-    "Schlüsselwort hinzufügen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Schlüsselwort hinzufügen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add keyword"
-          }
-        }
-      }
-    },
-    "Noch keine eigenen Schlüsselwörter. Füge Begriffe hinzu, die in deinen Transaktionsbeschreibungen vorkommen.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Noch keine eigenen Schlüsselwörter. Füge Begriffe hinzu, die in deinen Transaktionsbeschreibungen vorkommen."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No custom keywords yet. Add terms that appear in your transaction descriptions."
-          }
-        }
-      }
-    },
-    "Erkannte Ausgaben": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erkannte Ausgaben"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Detected Expenses"
-          }
-        }
-      }
-    },
-    "Woher kommen die Berechnungen?": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Woher kommen die Berechnungen?"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Where do the calculations come from?"
-          }
-        }
-      }
-    },
     "Was ist neu?": {
       "localizations": {
         "de": {
@@ -3998,86 +3294,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "What's new?"
-          }
-        }
-      }
-    },
-    "Die neuesten Updates für wimg": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die neuesten Updates für wimg"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Changelog"
-          }
-        }
-      }
-    },
-    "Wartungsrelease.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wartungsrelease."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Maintenance release."
-          }
-        }
-      }
-    },
-    "Verstanden!": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Verstanden!"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Got it!"
-          }
-        }
-      }
-    },
-    "Alle Releases auf GitHub ansehen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alle Releases auf GitHub ansehen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "View all releases on GitHub"
-          }
-        }
-      }
-    },
-    "Changelog konnte nicht geladen werden.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Changelog konnte nicht geladen werden."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Changelog could not be loaded."
           }
         }
       }
@@ -4318,22 +3534,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Percent of your income you save: (income − expenses) ÷ income × 100. ≥20% is considered good."
-          }
-        }
-      }
-    },
-    "Hochrechnung deiner Fixkosten für die nächsten 12 Monate, basierend auf erkannten wiederkehrenden Mustern.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hochrechnung deiner Fixkosten für die nächsten 12 Monate, basierend auf erkannten wiederkehrenden Mustern."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Projection of your fixed costs for the next 12 months, based on detected recurring patterns."
           }
         }
       }
@@ -4722,22 +3922,6 @@
         }
       }
     },
-    "Mit aktivierter Synchronisierung wird dein Sync-Schlüssel zum MCP-Zugang. Claude.ai oder andere KI-Tools können Ausgaben abfragen, Kategorien setzen und Schulden verwalten — Ende-zu-Ende verschlüsselt, in Echtzeit synchronisiert.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mit aktivierter Synchronisierung wird dein Sync-Schlüssel zum MCP-Zugang. Claude.ai oder andere KI-Tools können Ausgaben abfragen, Kategorien setzen und Schulden verwalten — Ende-zu-Ende verschlüsselt, in Echtzeit synchronisiert."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "With sync enabled, your sync key becomes MCP access. Claude.ai or other AI tools can query expenses, set categories and manage debts — end-to-end encrypted, synced in real-time."
-          }
-        }
-      }
-    },
     "Ja! Im Dev-Modus oder mit ?devtools in der URL kannst du mit Ctrl+Shift+D ein DevTools-Panel öffnen. Es zeigt WASM-Performance, Speicherverbrauch, Sync-Status, SQL-Abfragen, localStorage und mehr — inspiriert von TanStack DevTools.": {
       "localizations": {
         "de": {
@@ -4802,54 +3986,6 @@
         }
       }
     },
-    "Die Steuern-Seite hilft dir, absetzbare Ausgaben für deine Steuererklärung zu finden. Transaktionen werden nach Schlüsselwörtern gescannt (Arbeitsmittel, Fortbildung, Fahrtkosten etc.) — du kannst eigene Schlüsselwörter ergänzen. Die Pendlerpauschale berechnet sich nach §9 EStG: 0,30 €/km für die ersten 20 km, 0,38 €/km ab dem 21. km. Die Homeoffice-Pauschale beträgt 6 €/Tag (max. 210 Tage, §4 Abs. 5 Nr. 6c EStG). Einzelne Transaktionen lassen sich ein-/ausblenden, und alles kann als CSV für ELSTER oder WISO exportiert werden. Keine Steuerberatung — nur eine Übersicht deiner Zahlen.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Steuern-Seite hilft dir, absetzbare Ausgaben für deine Steuererklärung zu finden. Transaktionen werden nach Schlüsselwörtern gescannt (Arbeitsmittel, Fortbildung, Fahrtkosten etc.) — du kannst eigene Schlüsselwörter ergänzen. Die Pendlerpauschale berechnet sich nach §9 EStG: 0,30 €/km für die ersten 20 km, 0,38 €/km ab dem 21. km. Die Homeoffice-Pauschale beträgt 6 €/Tag (max. 210 Tage, §4 Abs. 5 Nr. 6c EStG). Einzelne Transaktionen lassen sich ein-/ausblenden, und alles kann als CSV für ELSTER oder WISO exportiert werden. Keine Steuerberatung — nur eine Übersicht deiner Zahlen."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The tax page helps you find deductible expenses for your tax return. Transactions are scanned by keywords (work equipment, training, commute costs etc.) — you can add custom keywords. The commuter allowance is calculated per §9 EStG: €0.30/km for the first 20 km, €0.38/km beyond. The home office allowance is €6/day (max. 210 days, §4 Abs. 5 Nr. 6c EStG). Individual transactions can be shown/hidden, and everything can be exported as CSV for ELSTER or WISO. Not tax advice — just an overview of your numbers."
-          }
-        }
-      }
-    },
-    "Die Sparquote zeigt, wie viel Prozent deines Einkommens du sparst: (Einnahmen − Ausgaben) ÷ Einnahmen × 100. Sie erscheint auf dem Dashboard neben dem verfügbaren Einkommen. Eine höhere Sparquote bedeutet schnelleren Vermögensaufbau. Die Änderung zum Vormonat wird in Prozentpunkten (pp) angezeigt.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Sparquote zeigt, wie viel Prozent deines Einkommens du sparst: (Einnahmen − Ausgaben) ÷ Einnahmen × 100. Sie erscheint auf dem Dashboard neben dem verfügbaren Einkommen. Eine höhere Sparquote bedeutet schnelleren Vermögensaufbau. Die Änderung zum Vormonat wird in Prozentpunkten (pp) angezeigt."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The savings rate shows what percentage of your income you save: (income − expenses) ÷ income × 100. It appears on the dashboard next to available income. A higher savings rate means faster wealth building. The change vs. last month is shown in percentage points (pp)."
-          }
-        }
-      }
-    },
-    "Die Heatmap auf der Analyse-Seite zeigt deine monatlichen Ausgaben als Farbgitter — inspiriert vom GitHub Contribution Graph. Jede Zelle ist ein Monat, dunklere Farben bedeuten höhere Ausgaben. So erkennst du auf einen Blick saisonale Muster (z.B. Dezember-Spitzen, günstige Sommermonate). Die Daten kommen aus deinen monatlichen Snapshots.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Heatmap auf der Analyse-Seite zeigt deine monatlichen Ausgaben als Farbgitter — inspiriert vom GitHub Contribution Graph. Jede Zelle ist ein Monat, dunklere Farben bedeuten höhere Ausgaben. So erkennst du auf einen Blick saisonale Muster (z.B. Dezember-Spitzen, günstige Sommermonate). Die Daten kommen aus deinen monatlichen Snapshots."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The heatmap on the analysis page shows your monthly expenses as a color grid — inspired by the GitHub Contribution Graph. Each cell is a month, darker colors mean higher spending. This lets you spot seasonal patterns at a glance (e.g. December peaks, cheaper summer months). Data comes from your monthly snapshots."
-          }
-        }
-      }
-    },
     "wimg analysiert deine Transaktionen automatisch und erkennt regelmäßige Muster (monatlich, vierteljährlich, jährlich). Unter Mehr → Wiederkehrend siehst du alle erkannten Abos mit Betrag, Intervall und dem nächsten Fälligkeitsdatum. Preisänderungen werden ebenfalls erkannt. Im Kalender-Tab siehst du eine 12-Monats-Vorschau aller anstehenden Zahlungen mit Gesamtbeträgen pro Monat.": {
       "localizations": {
         "de": {
@@ -4894,22 +4030,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Which banks are supported?"
-          }
-        }
-      }
-    },
-    "Was zeigt das Vermögens-Diagramm?": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Was zeigt das Vermögens-Diagramm?"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "What does the net worth chart show?"
           }
         }
       }
@@ -4990,86 +4110,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "on your device."
-          }
-        }
-      }
-    },
-    "Abos und regelmäßige Zahlungen erkennen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abos und regelmäßige Zahlungen erkennen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Detect subscriptions and recurring payments"
-          }
-        }
-      }
-    },
-    "Verwende nur vertrauenswürdige MCP-Clients.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Verwende nur vertrauenswürdige MCP-Clients."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Only use trusted MCP clients."
-          }
-        }
-      }
-    },
-    "Alle Daten bleiben auf deinem Gerät (OPFS / lokale Datei)": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alle Daten bleiben auf deinem Gerät (OPFS / lokale Datei)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All data stays on your device (OPFS / local file)"
-          }
-        }
-      }
-    },
-    "Sync ist optional und Ende-zu-Ende verschlüsselt": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sync ist optional und Ende-zu-Ende verschlüsselt"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sync is optional and end-to-end encrypted"
-          }
-        }
-      }
-    },
-    "Keine Konten, keine Passwörter, kein Tracking": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine Konten, keine Passwörter, kein Tracking"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No accounts, no passwords, no tracking"
           }
         }
       }
@@ -5266,22 +4306,6 @@
         }
       }
     },
-    "Wie funktionieren Sparziele?": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wie funktionieren Sparziele?"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "How do savings goals work?"
-          }
-        }
-      }
-    },
     "Wie erkennt wimg Abos und wiederkehrende Zahlungen?": {
       "localizations": {
         "de": {
@@ -5346,54 +4370,6 @@
         }
       }
     },
-    "Was kann die Steuern-Seite?": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Was kann die Steuern-Seite?"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "What does the tax page do?"
-          }
-        }
-      }
-    },
-    "Was ist die Sparquote?": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Was ist die Sparquote?"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "What is the savings rate?"
-          }
-        }
-      }
-    },
-    "Was zeigt die Ausgaben-Heatmap?": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Was zeigt die Ausgaben-Heatmap?"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "What does the spending heatmap show?"
-          }
-        }
-      }
-    },
     "Wie kann ich beitragen?": {
       "localizations": {
         "de": {
@@ -5442,70 +4418,6 @@
         }
       }
     },
-    "Schulden verfolgen und abzahlen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Schulden verfolgen und abzahlen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Track and pay off debts"
-          }
-        }
-      }
-    },
-    "Monatliche Zusammenfassung und Analyse": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Monatliche Zusammenfassung und Analyse"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Monthly summary and analysis"
-          }
-        }
-      }
-    },
-    "Sparziele setzen und Fortschritt verfolgen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sparziele setzen und Fortschritt verfolgen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Set savings goals and track progress"
-          }
-        }
-      }
-    },
-    "Steuerlich absetzbare Ausgaben erkennen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Steuerlich absetzbare Ausgaben erkennen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Detect tax-deductible expenses"
-          }
-        }
-      }
-    },
     "Deine Finanzen,": {
       "localizations": {
         "de": {
@@ -5534,22 +4446,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Local. Private. Open."
-          }
-        }
-      }
-    },
-    "Zur App →": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zur App →"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open App →"
           }
         }
       }
@@ -5842,38 +4738,6 @@
         }
       }
     },
-    "Einzahlen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Einzahlen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Contribute"
-          }
-        }
-      }
-    },
-    "Erreicht": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Erreicht"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reached"
-          }
-        }
-      }
-    },
     "T überfällig": {
       "localizations": {
         "de": {
@@ -5986,22 +4850,6 @@
         }
       }
     },
-    "Als CSV exportieren": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Als CSV exportieren"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Export as CSV"
-          }
-        }
-      }
-    },
     "Dein Sparziel wurde erreicht. Super Leistung!": {
       "localizations": {
         "de": {
@@ -6046,102 +4894,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Income and expenses were balanced this month."
-          }
-        }
-      }
-    },
-    "§9 EStG — Werbungskosten (gesetze-im-internet.de)": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "§9 EStG — Werbungskosten (gesetze-im-internet.de)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "§9 EStG — Work expenses (gesetze-im-internet.de)"
-          }
-        }
-      }
-    },
-    "Abbezahlt": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Abbezahlt"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Paid off"
-          }
-        }
-      }
-    },
-    "Bezahlt": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bezahlt"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Paid"
-          }
-        }
-      }
-    },
-    "% erledigt": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "% erledigt"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "% done"
-          }
-        }
-      }
-    },
-    "Entfernen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Entfernen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Remove"
-          }
-        }
-      }
-    },
-    "Monatlich:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Monatlich:"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Monthly:"
           }
         }
       }
@@ -6226,22 +4978,6 @@
         }
       }
     },
-    "% von": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "% von"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "% of"
-          }
-        }
-      }
-    },
     "% vs. Vorjahr": {
       "localizations": {
         "de": {
@@ -6302,102 +5038,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "of"
-          }
-        }
-      }
-    },
-    "gespart": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "gespart"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "saved"
-          }
-        }
-      }
-    },
-    "Arbeitsmittel": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Arbeitsmittel"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Work Equipment"
-          }
-        }
-      }
-    },
-    "Fortbildung": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fortbildung"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Training"
-          }
-        }
-      }
-    },
-    "Fachliteratur": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fachliteratur"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Professional Literature"
-          }
-        }
-      }
-    },
-    "Fahrtkosten": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fahrtkosten"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Commute Costs"
-          }
-        }
-      }
-    },
-    "Versicherungen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Versicherungen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Insurance"
           }
         }
       }
@@ -6622,86 +5262,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Restore"
-          }
-        }
-      }
-    },
-    "Schulden ein/aus": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Schulden ein/aus"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Debts on/off"
-          }
-        }
-      }
-    },
-    "Wiederkehrend ein/aus": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wiederkehrend ein/aus"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recurring on/off"
-          }
-        }
-      }
-    },
-    "Steuern ein/aus": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Steuern ein/aus"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Taxes on/off"
-          }
-        }
-      }
-    },
-    "Sparziele ein/aus": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sparziele ein/aus"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Savings Goals on/off"
-          }
-        }
-      }
-    },
-    "Rückblick ein/aus": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rückblick ein/aus"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Review on/off"
           }
         }
       }
@@ -7218,22 +5778,6 @@
         }
       }
     },
-    "Schulden:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Schulden:"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Debts:"
-          }
-        }
-      }
-    },
     "Ein": {
       "localizations": {
         "de": {
@@ -7262,70 +5806,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Off"
-          }
-        }
-      }
-    },
-    "Wiederkehrend:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wiederkehrend:"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recurring:"
-          }
-        }
-      }
-    },
-    "Steuern:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Steuern:"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Taxes:"
-          }
-        }
-      }
-    },
-    "Sparziele:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sparziele:"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Savings Goals:"
-          }
-        }
-      }
-    },
-    "Rückblick:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rückblick:"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Review:"
           }
         }
       }
@@ -7426,102 +5906,6 @@
         }
       }
     },
-    "Zahlung verbucht": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zahlung verbucht"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Payment recorded"
-          }
-        }
-      }
-    },
-    "Schuld hinzugefügt:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Schuld hinzugefügt:"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Debt added:"
-          }
-        }
-      }
-    },
-    "Schuld gelöscht:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Schuld gelöscht:"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Debt deleted:"
-          }
-        }
-      }
-    },
-    "Sparziel hinzugefügt:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sparziel hinzugefügt:"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Savings goal added:"
-          }
-        }
-      }
-    },
-    "Sparziel gelöscht:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sparziel gelöscht:"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Savings goal deleted:"
-          }
-        }
-      }
-    },
-    "Unter Mehr → Sparziele kannst du Sparziele mit Name, Icon, Zielbetrag und optionaler Deadline erstellen. Über den \"Einzahlen\"-Button trägst du Beträge ein und siehst deinen Fortschritt als Prozentbalken. Sparziele werden über Sync zwischen Geräten synchronisiert.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Unter Mehr → Sparziele kannst du Sparziele mit Name, Icon, Zielbetrag und optionaler Deadline erstellen. Über den \"Einzahlen\"-Button trägst du Beträge ein und siehst deinen Fortschritt als Prozentbalken. Sparziele werden über Sync zwischen Geräten synchronisiert."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Under More → Savings Goals, you can create goals with name, icon, target amount and optional deadline. Use the \"Contribute\" button to add amounts and see your progress as a percentage bar. Savings goals sync between devices."
-          }
-        }
-      }
-    },
     "Ja! Über die Command Palette (Cmd+K → \"Design wechseln\") kannst du zwischen Hell, Dunkel und System wählen. Der Dark Mode hat ein Premium-Design mit dunklem Hintergrund und dezenten Akzenten. Die Einstellung wird gespeichert und beim nächsten Start automatisch angewendet.": {
       "localizations": {
         "de": {
@@ -7534,22 +5918,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yes! Via the Command Palette (Cmd+K → \"Switch theme\") you can choose between Light, Dark and System. The dark mode has a premium design with dark background and subtle accents. The setting is saved and automatically applied on next launch."
-          }
-        }
-      }
-    },
-    "Ja. Nach jeder Aktion (Kategorisierung, Schuld hinzufügen, Sparziel löschen etc.) erscheint ein Undo-Toast am unteren Bildschirmrand. Auch über die Command Palette (Cmd+K → \"Rückgängig\") oder Cmd+Z kannst du die letzte Aktion rückgängig machen. wimg speichert bis zu 50 Undo-Schritte.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ja. Nach jeder Aktion (Kategorisierung, Schuld hinzufügen, Sparziel löschen etc.) erscheint ein Undo-Toast am unteren Bildschirmrand. Auch über die Command Palette (Cmd+K → \"Rückgängig\") oder Cmd+Z kannst du die letzte Aktion rückgängig machen. wimg speichert bis zu 50 Undo-Schritte."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Yes. After every action (categorization, adding debt, deleting savings goal etc.) an undo toast appears at the bottom of the screen. You can also undo via the Command Palette (Cmd+K → \"Undo\") or Cmd+Z. wimg stores up to 50 undo steps."
           }
         }
       }
@@ -7586,22 +5954,6 @@
         }
       }
     },
-    "Das Vermögens-Diagramm auf der Analyse-Seite zeigt dein kumulatives Nettovermögen über die Zeit — basierend auf monatlichen Snapshots (Einnahmen minus Ausgaben). Du brauchst mindestens 2 Snapshots. Snapshots werden automatisch jeden Monat erstellt, oder manuell über die Command Palette (\"Snapshot erstellen\").": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Das Vermögens-Diagramm auf der Analyse-Seite zeigt dein kumulatives Nettovermögen über die Zeit — basierend auf monatlichen Snapshots (Einnahmen minus Ausgaben). Du brauchst mindestens 2 Snapshots. Snapshots werden automatisch jeden Monat erstellt, oder manuell über die Command Palette (\"Snapshot erstellen\")."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The net worth chart on the analysis page shows your cumulative net worth over time — based on monthly snapshots (income minus expenses). You need at least 2 snapshots. Snapshots are created automatically each month, or manually via the Command Palette (\"Create snapshot\")."
-          }
-        }
-      }
-    },
     "Ausführen": {
       "localizations": {
         "de": {
@@ -7614,38 +5966,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Execute"
-          }
-        }
-      }
-    },
-    "Geschätztes Steuerjahr": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Geschätztes Steuerjahr"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Estimated tax year"
-          }
-        }
-      }
-    },
-    "übrig": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "übrig"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "remaining"
           }
         }
       }
@@ -8034,22 +6354,6 @@
         }
       }
     },
-    "App starten →": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "App starten →"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Launch App →"
-          }
-        }
-      }
-    },
     "Lokale Finanzverwaltung. Keine Cloud, kein Konto, kein Tracking. Nur deine Bankdaten in deinem Browser.": {
       "localizations": {
         "de": {
@@ -8286,22 +6590,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Download APK"
-          }
-        }
-      }
-    },
-    "Einstellungen → Apps → Unbekannte Quellen erlauben, dann APK antippen.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Einstellungen → Apps → Unbekannte Quellen erlauben, dann APK antippen."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Settings → Apps → Allow unknown sources, then tap APK to install."
           }
         }
       }
@@ -8578,70 +6866,6 @@
         }
       }
     },
-    "Export-Guides": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Export-Guides"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Export Guides"
-          }
-        }
-      }
-    },
-    "Umsätze → CSV": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Umsätze → CSV"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Transactions → CSV"
-          }
-        }
-      }
-    },
-    "Aktivität → CSV": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aktivität → CSV"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Activity → CSV"
-          }
-        }
-      }
-    },
-    "Transaktionen → CSV": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Transaktionen → CSV"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Transactions → CSV"
-          }
-        }
-      }
-    },
     "MCP-Verbindung": {
       "localizations": {
         "de": {
@@ -8686,22 +6910,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Configure MCP Client"
-          }
-        }
-      }
-    },
-    "In Claude Desktop oder Claude Code hinzufügen:": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "In Claude Desktop oder Claude Code hinzufügen:"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add to Claude Desktop or Claude Code:"
           }
         }
       }
@@ -9458,22 +7666,6 @@
         }
       }
     },
-    "Gehe zur Analyse für Details": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gehe zur Analyse für Details"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Go to Analysis for details"
-          }
-        }
-      }
-    },
     "Keine Umsätze": {
       "localizations": {
         "de": {
@@ -9586,38 +7778,6 @@
         }
       }
     },
-    "Tippe auf eine Buchung zum Kategorisieren": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tippe auf eine Buchung zum Kategorisieren"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tap a transaction to categorize"
-          }
-        }
-      }
-    },
-    "Tippe auf das Diagramm oder eine Kategorie": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tippe auf das Diagramm oder eine Kategorie"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tap the chart or a category"
-          }
-        }
-      }
-    },
     "Kategorie geändert": {
       "localizations": {
         "de": {
@@ -9678,214 +7838,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "No expenses"
-          }
-        }
-      }
-    },
-    "Bezahlen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bezahlen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pay"
-          }
-        }
-      }
-    },
-    "Zahlung eintragen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zahlung eintragen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Record payment"
-          }
-        }
-      }
-    },
-    "Zahlung eingetragen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zahlung eingetragen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Payment recorded"
-          }
-        }
-      }
-    },
-    "Einzahlung verbucht": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Einzahlung verbucht"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deposit recorded"
-          }
-        }
-      }
-    },
-    "Schuld hinzugefügt": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Schuld hinzugefügt"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Debt added"
-          }
-        }
-      }
-    },
-    "Schuld gelöscht": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Schuld gelöscht"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Debt deleted"
-          }
-        }
-      }
-    },
-    "Sparziel erstellen": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sparziel erstellen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Create savings goal"
-          }
-        }
-      }
-    },
-    "Sparziel hinzugefügt": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sparziel hinzugefügt"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Savings goal added"
-          }
-        }
-      }
-    },
-    "Sparziel gelöscht": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sparziel gelöscht"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Savings goal deleted"
-          }
-        }
-      }
-    },
-    "Setze dir Sparziele und verfolge deinen Fortschritt": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Setze dir Sparziele und verfolge deinen Fortschritt"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Set savings goals and track your progress"
-          }
-        }
-      }
-    },
-    "Füge Schulden hinzu um den Fortschritt zu tracken": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Füge Schulden hinzu um den Fortschritt zu tracken"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add debts to track your progress"
-          }
-        }
-      }
-    },
-    "Gesamtbetrag": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gesamtbetrag"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Total amount"
-          }
-        }
-      }
-    },
-    "Zielbetrag": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zielbetrag"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Target amount"
           }
         }
       }
@@ -10114,22 +8066,6 @@
         }
       }
     },
-    "Importiere Bankdaten um steuerrelevante Ausgaben zu finden": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Importiere Bankdaten um steuerrelevante Ausgaben zu finden"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Import bank data to find tax-relevant expenses"
-          }
-        }
-      }
-    },
     "Snapshots für alle Monate": {
       "localizations": {
         "de": {
@@ -10142,22 +8078,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Snapshots for all months"
-          }
-        }
-      }
-    },
-    "Homeoffice-Tage": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Homeoffice-Tage"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Home office days"
           }
         }
       }
@@ -10450,38 +8370,6 @@
         }
       }
     },
-    "Das Vermögens-Diagramm auf der Analyse-Seite zeigt dein kumulatives Nettovermögen über die Zeit — basierend auf monatlichen Snapshots (Einnahmen minus Ausgaben). Du brauchst mindestens 2 Snapshots. Snapshots werden automatisch jeden Monat erstellt.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Das Vermögens-Diagramm auf der Analyse-Seite zeigt dein kumulatives Nettovermögen über die Zeit — basierend auf monatlichen Snapshots (Einnahmen minus Ausgaben). Du brauchst mindestens 2 Snapshots. Snapshots werden automatisch jeden Monat erstellt."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The net worth chart on the analysis page shows your cumulative net worth over time — based on monthly snapshots (income minus expenses). You need at least 2 snapshots. Snapshots are created automatically each month."
-          }
-        }
-      }
-    },
-    "Die Steuern-Seite hilft dir, absetzbare Ausgaben für deine Steuererklärung zu finden. Sie berechnet Pendlerpauschale (§9 EStG) und Homeoffice-Pauschale (§4 Abs. 5 Nr. 6c EStG) und scannt Transaktionen nach steuerrelevanten Schlüsselwörtern. Alles kann als CSV exportiert werden.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Die Steuern-Seite hilft dir, absetzbare Ausgaben für deine Steuererklärung zu finden. Sie berechnet Pendlerpauschale (§9 EStG) und Homeoffice-Pauschale (§4 Abs. 5 Nr. 6c EStG) und scannt Transaktionen nach steuerrelevanten Schlüsselwörtern. Alles kann als CSV exportiert werden."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The tax page helps you find deductible expenses for your tax return. It calculates commuter allowance (§9 EStG) and home office allowance (§4 Abs. 5 Nr. 6c EStG) and scans transactions for tax-relevant keywords. Everything can be exported as CSV."
-          }
-        }
-      }
-    },
     "Unter Einstellungen → Danger Zone kannst du die Datenbank zurücksetzen. Diese Aktion kann nicht rückgängig gemacht werden.": {
       "localizations": {
         "de": {
@@ -10574,22 +8462,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Add the following configuration to Claude Desktop or Claude Code:"
-          }
-        }
-      }
-    },
-    "Wie synchronisiere ich?": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wie synchronisiere ich?"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "How do I sync?"
           }
         }
       }

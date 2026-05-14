@@ -45,7 +45,6 @@ export const en: Record<string, string> = {
   "Budget Übersicht": "Budget Overview",
   Details: "Details",
   Total: "Total",
-  "Tippe Details für die volle Analyse": "Tap Details for full analysis",
   "Letzte Transaktionen": "Recent Transactions",
   Alle: "All",
   Sonstiges: "Other",
@@ -57,8 +56,6 @@ export const en: Record<string, string> = {
   Schulden: "Debts",
   Wiederkehrend: "Recurring",
   Rückblick: "Review",
-  Sparziele: "Savings Goals",
-  Steuern: "Taxes",
   Einstellungen: "Settings",
   "Über wimg": "About wimg",
 
@@ -68,7 +65,6 @@ export const en: Record<string, string> = {
   "Importiere eine CSV-Datei, um deine Ausgaben zu analysieren.":
     "Import a CSV file to analyze your spending.",
   Verfügbar: "Available",
-  "Tippe auf eine Kategorie für Details": "Tap a category for details",
   Kategorien: "Categories",
   "Keine Transaktionen": "No transactions",
   "Keine Daten": "No data",
@@ -78,7 +74,6 @@ export const en: Record<string, string> = {
   "Änderungen gespeichert": "Changes saved",
   Suchen: "Search",
   Filter: "Filter",
-  "Tippe auf eine Transaktion zum Kategorisieren": "Tap a transaction to categorize",
   "Importiere eine CSV-Datei um loszulegen": "Import a CSV file to get started",
   "Keine Ergebnisse": "No results",
   "Versuche einen anderen Filter": "Try a different filter",
@@ -117,7 +112,6 @@ export const en: Record<string, string> = {
   "Sync-Schlüssel einfügen": "Paste sync key",
   Verknüpfen: "Link",
   Features: "Features",
-  "Funktionen ein- oder ausblenden": "Show or hide features",
   Sprache: "Language",
   Regeln: "Rules",
   "Automatische Kategorisierung": "Automatic categorization",
@@ -178,35 +172,11 @@ export const en: Record<string, string> = {
   Schließen: "Close",
 
   // Debts
-  "Verbleibende Schulden": "Remaining Debts",
-  "Deine Schulden": "Your Debts",
-  "Schuld hinzufügen": "Add Debt",
-  "Neue Schuld": "New Debt",
-  "Name (z.B. WSW Strom)": "Name (e.g. Electricity bill)",
-  "Gesamtbetrag (z.B. 1234,56)": "Total amount (e.g. 1234.56)",
-  "Monatliche Rate (optional)": "Monthly payment (optional)",
   Hinzufügen: "Add",
-  "Keine Schulden": "No Debts",
-  "Füge Schulden hinzu um den Fortschritt zu tracken.": "Add debts to track your progress.",
-  "Endgültig löschen": "Delete permanently",
   Löschen: "Delete",
-  Gesamtfortschritt: "Overall Progress",
-  Fortschritt: "Progress",
 
   // Goals
-  "Deine Sparziele": "Your Savings Goals",
-  "Sparziel hinzufügen": "Add Savings Goal",
-  "Neues Sparziel": "New Savings Goal",
-  "Name (z.B. Urlaub 2027)": "Name (e.g. Vacation 2027)",
   Icon: "Icon",
-  "Zielbetrag (z.B. 5000)": "Target amount (e.g. 5000)",
-  "Deadline (optional)": "Deadline (optional)",
-  "Keine Sparziele": "No Savings Goals",
-  "Setze dir Sparziele und verfolge deinen Fortschritt.":
-    "Set savings goals and track your progress.",
-  Ziel: "Goal",
-  Ziele: "Goals",
-  "Betrag (z.B. 50)": "Amount (e.g. 50)",
   Sparen: "Save",
   Speichern: "Save",
   Zurück: "Back",
@@ -226,7 +196,6 @@ export const en: Record<string, string> = {
   Buchungen: "Transactions",
   Weniger: "Less",
   "Alle anzeigen": "Show all",
-  "Local-first · Sicherer Import": "Local-first · Secure Import",
   "Import abgeschlossen": "Import complete",
   "Weitere Datei importieren": "Import another file",
   Kategorisierung: "Categorization",
@@ -283,46 +252,17 @@ export const en: Record<string, string> = {
   "Analysiere deine Transaktionen, um Abos und regelmäßige Zahlungen automatisch zu finden.":
     "Analyze your transactions to automatically find subscriptions and regular payments.",
   Kalender: "Calendar",
-  "Nächste 30 Tage": "Next 30 Days",
   Zahlung: "Payment",
   Zahlungen: "Payments",
   "12-Monats-Übersicht": "12-Month Overview",
-  "Anstehende Zahlungen": "Upcoming Payments",
-  "Keine anstehenden Zahlungen": "No upcoming payments",
-  "Erkenne zuerst wiederkehrende Muster im Abonnements-Tab.":
-    "Detect recurring patterns in the Subscriptions tab first.",
-  "Zu Abonnements": "Go to Subscriptions",
-  Zahlungskalender: "Payment Calendar",
 
   // Tax
-  "Importiere eine CSV-Datei um steuerlich relevante Ausgaben zu erkennen.":
-    "Import a CSV file to detect tax-relevant expenses.",
-  "Absetzbare Ausgaben": "Deductible Expenses",
   Werbung: "Work Expenses",
-  Pauschalen: "Allowances",
   Gesamt: "Total",
-  Pendlerpauschale: "Commuter Allowance",
-  "Entfernung (km)": "Distance (km)",
-  Arbeitstage: "Work days",
-  Homeoffice: "Home Office",
-  "Anzahl Homeoffice-Tage": "Number of home office days",
   TAGE: "DAYS",
-  "6 €/Tag (max. 210 Tage)": "€6/day (max. 210 days)",
-  "Eigene Schlüsselwörter": "Custom Keywords",
-  "Zusätzliche Begriffe für die Erkennung": "Additional terms for detection",
-  "Schlüsselwort hinzufügen": "Add keyword",
-  "Noch keine eigenen Schlüsselwörter. Füge Begriffe hinzu, die in deinen Transaktionsbeschreibungen vorkommen.":
-    "No custom keywords yet. Add terms that appear in your transaction descriptions.",
-  "Erkannte Ausgaben": "Detected Expenses",
-  "Woher kommen die Berechnungen?": "Where do the calculations come from?",
 
   // Changelog
   "Was ist neu?": "What's new?",
-  "Die neuesten Updates für wimg": "Changelog",
-  "Wartungsrelease.": "Maintenance release.",
-  "Verstanden!": "Got it!",
-  "Alle Releases auf GitHub ansehen": "View all releases on GitHub",
-  "Changelog konnte nicht geladen werden.": "Changelog could not be loaded.",
   "Fehler beim Laden": "Error loading",
 
   // Onboarding
@@ -348,8 +288,6 @@ export const en: Record<string, string> = {
     "Income minus expenses this month. What you have left for saving or investing.",
   "Prozent deines Einkommens, das du sparst: (Einnahmen − Ausgaben) ÷ Einnahmen × 100. Ab 20 % gilt als gut.":
     "Percent of your income you save: (income − expenses) ÷ income × 100. ≥20% is considered good.",
-  "Hochrechnung deiner Fixkosten für die nächsten 12 Monate, basierend auf erkannten wiederkehrenden Mustern.":
-    "Projection of your fixed costs for the next 12 months, based on detected recurring patterns.",
   "Kumulatives Nettovermögen über die Zeit, berechnet aus monatlichen Snapshots (Einnahmen − Ausgaben). Mindestens 2 Snapshots erforderlich.":
     "Cumulative net worth over time, calculated from monthly snapshots (income − expenses). Requires at least 2 snapshots.",
   "Deine monatlichen Ausgaben als Farbgitter — inspiriert vom GitHub Contribution Graph. Dunklere Farben bedeuten höhere Ausgaben.":
@@ -392,8 +330,6 @@ export const en: Record<string, string> = {
     "wimg uses a rule system with keywords. Known merchants (REWE, LIDL, etc.) are detected automatically. When you manually categorize a transaction, wimg learns the pattern and applies it automatically in the future. Claude via MCP handles the rest.",
   "Im Browser: OPFS (Origin Private File System). Auf iOS: lokale SQLite-Datei. Deine Daten verlassen dein Gerät nur bei aktivierter Sync — dann Ende-zu-Ende verschlüsselt.":
     "In the browser: OPFS (Origin Private File System). On iOS: local SQLite file. Your data only leaves your device with sync enabled — then end-to-end encrypted.",
-  "Mit aktivierter Synchronisierung wird dein Sync-Schlüssel zum MCP-Zugang. Claude.ai oder andere KI-Tools können Ausgaben abfragen, Kategorien setzen und Schulden verwalten — Ende-zu-Ende verschlüsselt, in Echtzeit synchronisiert.":
-    "With sync enabled, your sync key becomes MCP access. Claude.ai or other AI tools can query expenses, set categories and manage debts — end-to-end encrypted, synced in real-time.",
   "Ja! Im Dev-Modus oder mit ?devtools in der URL kannst du mit Ctrl+Shift+D ein DevTools-Panel öffnen. Es zeigt WASM-Performance, Speicherverbrauch, Sync-Status, SQL-Abfragen, localStorage und mehr — inspiriert von TanStack DevTools.":
     "Yes! In dev mode or with ?devtools in the URL, you can open a DevTools panel with Ctrl+Shift+D. It shows WASM performance, memory usage, sync status, SQL queries, localStorage and more — inspired by TanStack DevTools.",
   "Gehe zu Einstellungen → Sync aktivieren. Dadurch wird ein einzigartiger Sync-Schlüssel erstellt. Kopiere diesen Schlüssel und füge ihn auf dem zweiten Gerät ein (Einstellungen → Gerät verknüpfen). Änderungen werden in Echtzeit per WebSocket synchronisiert — Ende-zu-Ende verschlüsselt. Ohne Sync funktioniert alles lokal weiter.":
@@ -402,12 +338,6 @@ export const en: Record<string, string> = {
     "Yes, fully. wimg is a PWA (Progressive Web App) and can be installed via the browser. All data is stored locally in SQLite (OPFS). You don't need internet for import, categorization, analysis or any core feature. Sync is optional and only works with an internet connection.",
   "Ja. Über den Konto-Switcher oben rechts kannst du zwischen Konten wechseln oder alle anzeigen. Neue Konten werden beim CSV-Import automatisch erstellt oder können manuell in den Einstellungen angelegt werden. Dashboard, Transaktionen und Analyse filtern automatisch nach dem gewählten Konto.":
     "Yes. Via the account switcher in the top right, you can switch between accounts or show all. New accounts are created automatically during CSV import or can be added manually in settings. Dashboard, transactions and analysis automatically filter by the selected account.",
-  "Die Steuern-Seite hilft dir, absetzbare Ausgaben für deine Steuererklärung zu finden. Transaktionen werden nach Schlüsselwörtern gescannt (Arbeitsmittel, Fortbildung, Fahrtkosten etc.) — du kannst eigene Schlüsselwörter ergänzen. Die Pendlerpauschale berechnet sich nach §9 EStG: 0,30 €/km für die ersten 20 km, 0,38 €/km ab dem 21. km. Die Homeoffice-Pauschale beträgt 6 €/Tag (max. 210 Tage, §4 Abs. 5 Nr. 6c EStG). Einzelne Transaktionen lassen sich ein-/ausblenden, und alles kann als CSV für ELSTER oder WISO exportiert werden. Keine Steuerberatung — nur eine Übersicht deiner Zahlen.":
-    "The tax page helps you find deductible expenses for your tax return. Transactions are scanned by keywords (work equipment, training, commute costs etc.) — you can add custom keywords. The commuter allowance is calculated per §9 EStG: €0.30/km for the first 20 km, €0.38/km beyond. The home office allowance is €6/day (max. 210 days, §4 Abs. 5 Nr. 6c EStG). Individual transactions can be shown/hidden, and everything can be exported as CSV for ELSTER or WISO. Not tax advice — just an overview of your numbers.",
-  "Die Sparquote zeigt, wie viel Prozent deines Einkommens du sparst: (Einnahmen − Ausgaben) ÷ Einnahmen × 100. Sie erscheint auf dem Dashboard neben dem verfügbaren Einkommen. Eine höhere Sparquote bedeutet schnelleren Vermögensaufbau. Die Änderung zum Vormonat wird in Prozentpunkten (pp) angezeigt.":
-    "The savings rate shows what percentage of your income you save: (income − expenses) ÷ income × 100. It appears on the dashboard next to available income. A higher savings rate means faster wealth building. The change vs. last month is shown in percentage points (pp).",
-  "Die Heatmap auf der Analyse-Seite zeigt deine monatlichen Ausgaben als Farbgitter — inspiriert vom GitHub Contribution Graph. Jede Zelle ist ein Monat, dunklere Farben bedeuten höhere Ausgaben. So erkennst du auf einen Blick saisonale Muster (z.B. Dezember-Spitzen, günstige Sommermonate). Die Daten kommen aus deinen monatlichen Snapshots.":
-    "The heatmap on the analysis page shows your monthly expenses as a color grid — inspired by the GitHub Contribution Graph. Each cell is a month, darker colors mean higher spending. This lets you spot seasonal patterns at a glance (e.g. December peaks, cheaper summer months). Data comes from your monthly snapshots.",
   "wimg analysiert deine Transaktionen automatisch und erkennt regelmäßige Muster (monatlich, vierteljährlich, jährlich). Unter Mehr → Wiederkehrend siehst du alle erkannten Abos mit Betrag, Intervall und dem nächsten Fälligkeitsdatum. Preisänderungen werden ebenfalls erkannt. Im Kalender-Tab siehst du eine 12-Monats-Vorschau aller anstehenden Zahlungen mit Gesamtbeträgen pro Monat.":
     "wimg automatically analyzes your transactions and detects recurring patterns (monthly, quarterly, yearly). Under More → Recurring you can see all detected subscriptions with amount, interval and next due date. Price changes are also detected. The Calendar tab shows a 12-month preview of all upcoming payments with monthly totals.",
   "Besuche das GitHub-Repository. Code, Übersetzungen, Feedback und Bug-Reports sind willkommen.":
@@ -415,7 +345,6 @@ export const en: Record<string, string> = {
 
   // About — FAQ questions missing
   "Welche Banken werden unterstützt?": "Which banks are supported?",
-  "Was zeigt das Vermögens-Diagramm?": "What does the net worth chart show?",
   "Wie synchronisiere ich zwischen Geräten?": "How do I sync between devices?",
   "Kann ich Änderungen rückgängig machen?": "Can I undo changes?",
   "Wie lösche ich meine Daten?": "How do I delete my data?",
@@ -423,12 +352,6 @@ export const en: Record<string, string> = {
   // About — misc
   "Persönliche Finanzverwaltung.": "Personal Finance.",
   "auf deinem Gerät.": "on your device.",
-  "Abos und regelmäßige Zahlungen erkennen": "Detect subscriptions and recurring payments",
-  "Verwende nur vertrauenswürdige MCP-Clients.": "Only use trusted MCP clients.",
-  "Alle Daten bleiben auf deinem Gerät (OPFS / lokale Datei)":
-    "All data stays on your device (OPFS / local file)",
-  "Sync ist optional und Ende-zu-Ende verschlüsselt": "Sync is optional and end-to-end encrypted",
-  "Keine Konten, keine Passwörter, kein Tracking": "No accounts, no passwords, no tracking",
   "PII wird automatisch aus MCP-Antworten entfernt":
     "PII is automatically removed from MCP responses",
   "Personenbezogene Daten (IBANs, Kartennummern, Namen) werden automatisch entfernt.":
@@ -447,14 +370,10 @@ export const en: Record<string, string> = {
   "Was ist der MCP-Server?": "What is the MCP server?",
   "Gibt es Entwickler-Tools?": "Are there developer tools?",
   "Wie funktioniert Auto-Learn?": "How does Auto-Learn work?",
-  "Wie funktionieren Sparziele?": "How do savings goals work?",
   "Wie erkennt wimg Abos und wiederkehrende Zahlungen?": "How does wimg detect subscriptions?",
   "Funktioniert wimg offline?": "Does wimg work offline?",
   "Gibt es einen Dark Mode?": "Is there a dark mode?",
   "Kann ich mehrere Konten verwalten?": "Can I manage multiple accounts?",
-  "Was kann die Steuern-Seite?": "What does the tax page do?",
-  "Was ist die Sparquote?": "What is the savings rate?",
-  "Was zeigt die Ausgaben-Heatmap?": "What does the spending heatmap show?",
   "Wie kann ich beitragen?": "How can I contribute?",
   "Ja. wimg ist ein Leidenschaftsprojekt unter Open-Source-Lizenz. Keine Abonnements, keine versteckten Kosten, kein Verkauf deiner Daten.":
     "Yes. wimg is a passion project under open-source license. No subscriptions, no hidden costs, no selling your data.",
@@ -462,15 +381,10 @@ export const en: Record<string, string> = {
     "Upload your bank statement in CSV format. wimg detects the format automatically, analyzes transactions locally and categorizes them with smart rules.",
 
   // Settings feature descriptions
-  "Schulden verfolgen und abzahlen": "Track and pay off debts",
-  "Monatliche Zusammenfassung und Analyse": "Monthly summary and analysis",
-  "Sparziele setzen und Fortschritt verfolgen": "Set savings goals and track progress",
-  "Steuerlich absetzbare Ausgaben erkennen": "Detect tax-deductible expenses",
 
   // Landing / About misc
   "Deine Finanzen,": "Your finances,",
   "Lokal. Privat. Offen.": "Local. Private. Open.",
-  "Zur App →": "Open App →",
   "Language / Sprache": "Language / Sprache",
   Transaktionen: "Transactions",
 
@@ -493,8 +407,6 @@ export const en: Record<string, string> = {
   Bildung: "Education",
 
   // Goals
-  Einzahlen: "Contribute",
-  Erreicht: "Reached",
   "T überfällig": "d overdue",
   Tagen: "days",
   Mär: "Mar",
@@ -502,39 +414,24 @@ export const en: Record<string, string> = {
   löschen: "delete",
   "Zuletzt:": "Last:",
   "erkannte Muster": "detected patterns",
-  "Als CSV exportieren": "Export as CSV",
   "Dein Sparziel wurde erreicht. Super Leistung!": "You reached your savings goal. Great job!",
   "Diesen Monat hast du mehr ausgegeben als eingenommen.":
     "This month you spent more than you earned.",
   "Einnahmen und Ausgaben waren diesen Monat ausgeglichen.":
     "Income and expenses were balanced this month.",
-  "§9 EStG — Werbungskosten (gesetze-im-internet.de)":
-    "§9 EStG — Work expenses (gesetze-im-internet.de)",
 
   // Debts detail strings
-  Abbezahlt: "Paid off",
-  Bezahlt: "Paid",
-  "% erledigt": "% done",
-  Entfernen: "Remove",
-  "Monatlich:": "Monthly:",
   "Aktuell:": "Current:",
   "Vormonat:": "Last month:",
   "-Kosten sind um": " costs increased by",
   "gestiegen (": "(",
   "% mehr).": "% more).",
-  "% von": "% of",
   "% vs. Vorjahr": "% vs. last year",
   "% vs. Vormonat": "% vs. last month",
   "% vs.": "% vs.",
   von: "of",
-  gespart: "saved",
 
   // Tax category labels (from $lib/tax.ts)
-  Arbeitsmittel: "Work Equipment",
-  Fortbildung: "Training",
-  Fachliteratur: "Professional Literature",
-  Fahrtkosten: "Commute Costs",
-  Versicherungen: "Insurance",
 
   // Command Palette — action groups
   Hilfe: "Help",
@@ -553,11 +450,6 @@ export const en: Record<string, string> = {
   "Sync-Key kopieren": "Copy Sync Key",
   "Sync trennen": "Disconnect Sync",
   Wiederherstellen: "Restore",
-  "Schulden ein/aus": "Debts on/off",
-  "Wiederkehrend ein/aus": "Recurring on/off",
-  "Steuern ein/aus": "Taxes on/off",
-  "Sparziele ein/aus": "Savings Goals on/off",
-  "Rückblick ein/aus": "Review on/off",
   "Vorheriger Monat": "Previous month",
   "Nächster Monat": "Next month",
   "Design wechseln": "Switch theme",
@@ -592,41 +484,23 @@ export const en: Record<string, string> = {
   "Sync getrennt": "Sync disconnected",
   "Rückgängig:": "Undo:",
   "Wiederhergestellt:": "Restored:",
-  "Schulden:": "Debts:",
   Ein: "On",
   Aus: "Off",
-  "Wiederkehrend:": "Recurring:",
-  "Steuern:": "Taxes:",
-  "Sparziele:": "Savings Goals:",
-  "Rückblick:": "Review:",
   "Design:": "Theme:",
   Hell: "Light",
   Dunkel: "Dark",
   "Sprache:": "Language:",
   "Fehler:": "Error:",
   "Kategorie:": "Category:",
-  "Zahlung verbucht": "Payment recorded",
-  "Schuld hinzugefügt:": "Debt added:",
-  "Schuld gelöscht:": "Debt deleted:",
-  "Sparziel hinzugefügt:": "Savings goal added:",
-  "Sparziel gelöscht:": "Savings goal deleted:",
 
   // FAQ answers with quotes/unicode (keys must match runtime values)
-  'Unter Mehr → Sparziele kannst du Sparziele mit Name, Icon, Zielbetrag und optionaler Deadline erstellen. Über den "Einzahlen"-Button trägst du Beträge ein und siehst deinen Fortschritt als Prozentbalken. Sparziele werden über Sync zwischen Geräten synchronisiert.':
-    'Under More → Savings Goals, you can create goals with name, icon, target amount and optional deadline. Use the "Contribute" button to add amounts and see your progress as a percentage bar. Savings goals sync between devices.',
   'Ja! Über die Command Palette (Cmd+K → "Design wechseln") kannst du zwischen Hell, Dunkel und System wählen. Der Dark Mode hat ein Premium-Design mit dunklem Hintergrund und dezenten Akzenten. Die Einstellung wird gespeichert und beim nächsten Start automatisch angewendet.':
     'Yes! Via the Command Palette (Cmd+K → "Switch theme") you can choose between Light, Dark and System. The dark mode has a premium design with dark background and subtle accents. The setting is saved and automatically applied on next launch.',
-  'Ja. Nach jeder Aktion (Kategorisierung, Schuld hinzufügen, Sparziel löschen etc.) erscheint ein Undo-Toast am unteren Bildschirmrand. Auch über die Command Palette (Cmd+K → "Rückgängig") oder Cmd+Z kannst du die letzte Aktion rückgängig machen. wimg speichert bis zu 50 Undo-Schritte.':
-    'Yes. After every action (categorization, adding debt, deleting savings goal etc.) an undo toast appears at the bottom of the screen. You can also undo via the Command Palette (Cmd+K → "Undo") or Cmd+Z. wimg stores up to 50 undo steps.',
   'Unter Einstellungen → Danger Zone kannst du die Datenbank zurücksetzen. Über die Command Palette findest du auch "Datenbank löschen" (löscht nur die SQLite-Datei) und "Vollständiger Reset" (löscht Datenbank, Sync-Schlüssel und alle Einstellungen). Diese Aktionen können nicht rückgängig gemacht werden.':
     'Under Settings → Danger Zone you can reset the database. Via the Command Palette you can also find "Delete database" (deletes only the SQLite file) and "Full reset" (deletes database, sync key and all settings). These actions cannot be undone.',
   'Wenn du eine Transaktion manuell kategorisierst, lernt wimg automatisch das Schlüsselwort (z.B. "REWE" → Lebensmittel). Beim nächsten Import oder Auto-Kategorisieren werden ähnliche Transaktionen automatisch zugeordnet. Alle gelernten Regeln findest du unter Einstellungen → Regeln, wo du sie auch einzeln löschen kannst.':
     'When you manually categorize a transaction, wimg automatically learns the keyword (e.g. "REWE" → Groceries). On the next import or auto-categorize, similar transactions are automatically assigned. All learned rules can be found under Settings → Rules, where you can also delete them individually.',
-  'Das Vermögens-Diagramm auf der Analyse-Seite zeigt dein kumulatives Nettovermögen über die Zeit \u2014 basierend auf monatlichen Snapshots (Einnahmen minus Ausgaben). Du brauchst mindestens 2 Snapshots. Snapshots werden automatisch jeden Monat erstellt, oder manuell über die Command Palette ("Snapshot erstellen").':
-    'The net worth chart on the analysis page shows your cumulative net worth over time \u2014 based on monthly snapshots (income minus expenses). You need at least 2 snapshots. Snapshots are created automatically each month, or manually via the Command Palette ("Create snapshot").',
   Ausführen: "Execute",
-  "Geschätztes Steuerjahr": "Estimated tax year",
-  übrig: "remaining",
 
   // Photo TAN
   "Bank-Verbindung": "Bank Connection",
@@ -663,7 +537,6 @@ export const en: Record<string, string> = {
   "CSV hier ablegen": "Drop CSV here",
 
   // Landing page
-  "App starten →": "Launch App →",
   "Lokale Finanzverwaltung. Keine Cloud, kein Konto, kein Tracking. Nur deine Bankdaten in deinem Browser.":
     "Local finance management. No cloud, no account, no tracking. Just your bank data in your browser.",
   "CSV-Import": "CSV Import",
@@ -687,8 +560,6 @@ export const en: Record<string, string> = {
   "Native Kotlin-App. APK herunterladen und installieren.":
     "Native Kotlin app. Download and install the APK.",
   "APK herunterladen": "Download APK",
-  "Einstellungen → Apps → Unbekannte Quellen erlauben, dann APK antippen.":
-    "Settings → Apps → Allow unknown sources, then tap APK to install.",
 
   // About page
   Privatsphäre: "Privacy",
@@ -713,14 +584,9 @@ export const en: Record<string, string> = {
   "MCP-Antworten werden von IBANs, BICs und Namen bereinigt.":
     "MCP responses are stripped of IBANs, BICs and names.",
   "Auf GitHub ansehen": "View on GitHub",
-  "Export-Guides": "Export Guides",
-  "Umsätze → CSV": "Transactions → CSV",
-  "Aktivität → CSV": "Activity → CSV",
-  "Transaktionen → CSV": "Transactions → CSV",
   "MCP-Verbindung": "MCP Connection",
   "Unter Einstellungen einen Sync-Schlüssel erstellen.": "Create a sync key under Settings.",
   "MCP-Client konfigurieren": "Configure MCP Client",
-  "In Claude Desktop oder Claude Code hinzufügen:": "Add to Claude Desktop or Claude Code:",
   Nutzen: "Use",
   "Datenschutz-Hinweis": "Privacy Notice",
   Datenschutz: "Privacy",
@@ -775,7 +641,6 @@ export const en: Record<string, string> = {
   Übersicht: "Overview",
   "Letzte Umsätze": "Recent Transactions",
   "Ausgaben nach Kategorie": "Spending by Category",
-  "Gehe zur Analyse für Details": "Go to Analysis for details",
   "Keine Umsätze": "No transactions",
   "Keine Daten für diesen Monat.": "No data for this month.",
   "Alle Filter zurücksetzen": "Reset all filters",
@@ -783,26 +648,10 @@ export const en: Record<string, string> = {
   "Erweiterte Suche": "Advanced Search",
   "Transaktionen suchen...": "Search transactions...",
   "Suchen...": "Search...",
-  "Tippe auf eine Buchung zum Kategorisieren": "Tap a transaction to categorize",
-  "Tippe auf das Diagramm oder eine Kategorie": "Tap the chart or a category",
   "Kategorie geändert": "Category changed",
   Kategorisiert: "Categorized",
   "Lade Transaktionen...": "Loading transactions...",
   "Keine Ausgaben": "No expenses",
-  Bezahlen: "Pay",
-  "Zahlung eintragen": "Record payment",
-  "Zahlung eingetragen": "Payment recorded",
-  "Einzahlung verbucht": "Deposit recorded",
-  "Schuld hinzugefügt": "Debt added",
-  "Schuld gelöscht": "Debt deleted",
-  "Sparziel erstellen": "Create savings goal",
-  "Sparziel hinzugefügt": "Savings goal added",
-  "Sparziel gelöscht": "Savings goal deleted",
-  "Setze dir Sparziele und verfolge deinen Fortschritt":
-    "Set savings goals and track your progress",
-  "Füge Schulden hinzu um den Fortschritt zu tracken": "Add debts to track your progress",
-  Gesamtbetrag: "Total amount",
-  Zielbetrag: "Target amount",
   Erstellen: "Create",
   Sichern: "Save",
   Farbe: "Color",
@@ -817,10 +666,7 @@ export const en: Record<string, string> = {
   "Keine Muster erkannt": "No patterns detected",
   "Keine ungewöhnlichen Preiserhöhungen erkannt.": "No unusual price increases detected.",
   "Importiere Transaktionen und tippe auf Erkennen": "Import transactions and tap Detect",
-  "Importiere Bankdaten um steuerrelevante Ausgaben zu finden":
-    "Import bank data to find tax-relevant expenses",
   "Snapshots für alle Monate": "Snapshots for all months",
-  "Homeoffice-Tage": "Home office days",
   Jahr: "Year",
   Monat: "Month",
   Tage: "Days",
@@ -843,10 +689,6 @@ export const en: Record<string, string> = {
     "Yes, fully. All data is stored locally in SQLite. You don't need internet for import, categorization, analysis or any core feature. Sync is optional and only works with an internet connection.",
   "Ja. Über den Konto-Switcher oben rechts kannst du zwischen Konten wechseln oder alle anzeigen. Neue Konten werden beim CSV-Import automatisch erstellt oder können manuell in den Einstellungen angelegt werden.":
     "Yes. Via the account switcher in the top right, you can switch between accounts or show all. New accounts are created automatically during CSV import or can be added manually in settings.",
-  "Das Vermögens-Diagramm auf der Analyse-Seite zeigt dein kumulatives Nettovermögen über die Zeit — basierend auf monatlichen Snapshots (Einnahmen minus Ausgaben). Du brauchst mindestens 2 Snapshots. Snapshots werden automatisch jeden Monat erstellt.":
-    "The net worth chart on the analysis page shows your cumulative net worth over time — based on monthly snapshots (income minus expenses). You need at least 2 snapshots. Snapshots are created automatically each month.",
-  "Die Steuern-Seite hilft dir, absetzbare Ausgaben für deine Steuererklärung zu finden. Sie berechnet Pendlerpauschale (§9 EStG) und Homeoffice-Pauschale (§4 Abs. 5 Nr. 6c EStG) und scannt Transaktionen nach steuerrelevanten Schlüsselwörtern. Alles kann als CSV exportiert werden.":
-    "The tax page helps you find deductible expenses for your tax return. It calculates commuter allowance (§9 EStG) and home office allowance (§4 Abs. 5 Nr. 6c EStG) and scans transactions for tax-relevant keywords. Everything can be exported as CSV.",
   "Unter Einstellungen → Danger Zone kannst du die Datenbank zurücksetzen. Diese Aktion kann nicht rückgängig gemacht werden.":
     "Under Settings → Danger Zone you can reset the database. This action cannot be undone.",
   "Diese TAN-Freigabe erwartet eine scanbare Grafik. Wenn kein Bild angezeigt wird, liefert die Bank ggf. ein nicht direkt darstellbares photoTAN-Format.":
@@ -858,7 +700,6 @@ export const en: Record<string, string> = {
   "Diese Bankleitzahl wird nicht unterstützt.": "This bank routing number is not supported.",
   "In Claude Desktop oder Claude Code die folgende Konfiguration hinzufügen:":
     "Add the following configuration to Claude Desktop or Claude Code:",
-  "Wie synchronisiere ich?": "How do I sync?",
   "Comdirect, Trade Republic oder Scalable Capital":
     "Comdirect, Trade Republic or Scalable Capital",
 
