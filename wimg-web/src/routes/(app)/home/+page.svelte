@@ -123,9 +123,9 @@
 
 <MonthPicker bind:year={dateNav.year} bind:month={dateNav.month} />
 
-<!-- Combined balance hero: big Gesamtsaldo + Einnahmen/Ausgaben mini cards -->
-<section class="mb-5 pt-2">
-  <div class="flex flex-col items-center text-center mb-6">
+<!-- Combined balance hero: Gesamtsaldo + Einnahmen/Ausgaben in one robust card -->
+<section class="bg-white rounded-3xl p-6 mb-5 shadow-[var(--shadow-soft)]">
+  <div class="flex flex-col items-center text-center pb-6 mb-6 border-b border-gray-100">
     <div class="flex items-center gap-1.5 mb-2">
       <svg class="w-4 h-4 text-(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -144,8 +144,8 @@
     </h1>
   </div>
 
-  <div class="grid grid-cols-2 gap-3">
-    <div class="flex items-center gap-3 bg-white rounded-3xl p-4 shadow-[var(--shadow-card)]">
+  <div class="grid grid-cols-2 gap-4">
+    <div class="flex items-center gap-3">
       <div class="w-9 h-9 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
         <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
@@ -156,7 +156,7 @@
         <p class="text-sm font-display font-bold text-emerald-700 truncate">+ {formatEurCompact(summary.income)}</p>
       </div>
     </div>
-    <div class="flex items-center gap-3 bg-white rounded-3xl p-4 shadow-[var(--shadow-card)]">
+    <div class="flex items-center gap-3">
       <div class="w-9 h-9 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
         <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
