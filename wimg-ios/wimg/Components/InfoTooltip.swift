@@ -7,21 +7,20 @@ struct InfoTooltip: View {
     @State private var show = false
 
     var body: some View {
-        Button {
-            show.toggle()
-        } label: {
-            Image(systemName: "info.circle")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary.opacity(0.6))
-        }
-        .buttonStyle(.plain)
-        .popover(isPresented: $show, arrowEdge: .top) {
-            TText(text)
-                .font(.system(.footnote, design: .rounded))
-                .foregroundStyle(WimgTheme.text)
-                .padding(14)
-                .frame(maxWidth: 280)
-                .presentationCompactAdaptation(.popover)
-        }
+        Image(systemName: "info.circle")
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.secondary.opacity(0.6))
+            // Stay at icon size — never push neighbors into truncation.
+            .frame(width: 16, height: 16)
+            .contentShape(Rectangle())
+            .onTapGesture { show.toggle() }
+            .popover(isPresented: $show, arrowEdge: .top) {
+                TText(text)
+                    .font(.system(.footnote, design: .rounded))
+                    .foregroundStyle(WimgTheme.text)
+                    .padding(14)
+                    .frame(maxWidth: 280)
+                    .presentationCompactAdaptation(.popover)
+            }
     }
 }

@@ -81,11 +81,11 @@ struct HomeView: View {
                     .frame(maxWidth: .infinity)
                 } else {
                 VStack(spacing: 20) {
-                    // Gesamtsaldo — centered, no card chrome
-                    gesamtsaldoHeader
+                    MonthPicker(year: $year, month: $month)
                         .padding(.top, 8)
 
-                    MonthPicker(year: $year, month: $month)
+                    // Gesamtsaldo header sits right above the available-income hero card
+                    gesamtsaldoHeader
 
                     // Hero: Verfügbares Einkommen
                     availableCard

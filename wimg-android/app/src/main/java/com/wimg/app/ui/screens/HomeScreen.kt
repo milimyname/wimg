@@ -38,7 +38,7 @@ import com.wimg.app.ui.theme.wimgHero
 import java.util.Calendar
 
 @Composable
-fun DashboardScreen(
+fun HomeScreen(
     selectedAccount: String?,
     navController: androidx.navigation.NavController? = null,
 ) {
