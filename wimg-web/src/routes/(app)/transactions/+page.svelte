@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
-  import { SvelteSet } from "svelte/reactivity";
   import {
     getTransactionById,
     setCategory,
@@ -231,50 +230,26 @@
     }
   }
 
-  // Running balance: track which rows are on-screen, sum from topmost visible
-  // back through history (older transactions). Mirrors Comdirect mobile.
-  let visibleIds = new SvelteSet<string>();
-  const observer =
-    typeof IntersectionObserver !== "undefined"
-      ? new IntersectionObserver(
-          (entries) => {
-            for (const e of entries) {
-              const id = (e.target as HTMLElement).dataset.txnId;
-              if (!id) continue;
-              if (e.isIntersecting) visibleIds.add(id);
-              else visibleIds.delete(id);
-            }
-          },
-          { root: null, threshold: 0 },
-        )
-      : null;
+  // Gesamtsaldo: total of all transactions in current filter scope.
+  let totalBalance = $derived(filtered.reduce((s, t) => s + t.amount, 0));
 
-  function observeRow(node: HTMLElement) {
-    observer?.observe(node);
-    return {
-      destroy() {
-        observer?.unobserve(node);
-        const id = node.dataset.txnId;
-        if (id) visibleIds.delete(id);
-      },
-    };
-  }
-
-  let flatTxns = $derived(filtered);
-
-  let runningBalance = $derived.by(() => {
-    if (!flatTxns.length || visibleIds.size === 0) return { sum: 0, count: 0 };
-    let topIdx = flatTxns.length;
-    for (let i = 0; i < flatTxns.length; i++) {
-      if (visibleIds.has(flatTxns[i].id) && i < topIdx) {
-        topIdx = i;
-        break;
-      }
+  // 30-day rolling trend: net of last 30 days vs net of 30–60 days ago.
+  // Null when there's no comparable prior period (would render a misleading
+  // ∞% change).
+  let trend = $derived.by(() => {
+    if (filtered.length === 0) return null;
+    const now = Date.now();
+    const thirty = 30 * 24 * 60 * 60 * 1000;
+    let last30 = 0;
+    let prev30 = 0;
+    for (const t of filtered) {
+      const ts = new Date(t.date + "T00:00:00").getTime();
+      const age = now - ts;
+      if (age < thirty) last30 += t.amount;
+      else if (age < thirty * 2) prev30 += t.amount;
     }
-    if (topIdx >= flatTxns.length) return { sum: 0, count: 0 };
-    let sum = 0;
-    for (let i = topIdx; i < flatTxns.length; i++) sum += flatTxns[i].amount;
-    return { sum, count: flatTxns.length - topIdx };
+    if (prev30 === 0) return null;
+    return ((last30 - prev30) / Math.abs(prev30)) * 100;
   });
 
   function clearAllFilters() {
@@ -336,6 +311,47 @@
     {/if}
   </button>
 </div>
+
+<!-- Gesamtsaldo hero card -->
+{#if transactions.length > 0}
+  <div class="mb-5 bg-white rounded-3xl p-6 shadow-[var(--shadow-card)] border border-gray-100/80">
+    <div class="flex items-start justify-between gap-3">
+      <div class="flex flex-col gap-1 min-w-0">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-(--color-text-secondary)">
+          Gesamtsaldo
+        </span>
+        <p
+          class="text-4xl font-display font-black tabular-nums tracking-tight truncate"
+          class:text-emerald-600={totalBalance > 0}
+          class:text-rose-500={totalBalance < 0}
+          class:text-(--color-text)={totalBalance === 0}
+        >
+          {formatAmountSigned(totalBalance)}
+        </p>
+      </div>
+      {#if trend !== null && Math.abs(trend) >= 0.5}
+        {@const up = trend > 0}
+        <span
+          class="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
+          class:bg-emerald-50={up}
+          class:text-emerald-700={up}
+          class:bg-rose-50={!up}
+          class:text-rose-600={!up}
+        >
+          {#if up}
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" /></svg>
+          {:else}
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" /></svg>
+          {/if}
+          {up ? "+" : ""}{trend.toFixed(1)}%
+        </span>
+      {/if}
+    </div>
+    <p class="text-xs text-(--color-text-secondary) mt-2 font-medium">
+      {filtered.length} {filtered.length === 1 ? "Transaktion" : "Transaktionen"} im aktuellen Filter
+    </p>
+  </div>
+{/if}
 
 <!-- Segmented Control -->
 <div class="mb-5">
@@ -437,20 +453,6 @@
     <p class="text-sm mt-1">Versuche einen anderen Filter</p>
   </div>
 {:else}
-  <div
-    class="sticky top-16 z-10 -mx-1 mt-4 mb-3 flex items-center justify-between rounded-2xl bg-white/90 backdrop-blur px-4 py-2.5 shadow-[var(--shadow-card)] border border-gray-100/80"
-  >
-    <div class="flex items-center gap-2">
-      <span class="text-[11px] font-bold uppercase tracking-wider text-(--color-text-secondary)">Saldo</span>
-      <span class="text-xs font-medium text-(--color-text-secondary)">({runningBalance.count})</span>
-    </div>
-    <span
-      class="text-sm font-display font-extrabold tabular-nums"
-      class:text-emerald-600={runningBalance.sum > 0}
-    >
-      {formatAmountSigned(runningBalance.sum)}
-    </span>
-  </div>
   {#each [...grouped.entries()] as [date, txns]}
     <h3
       class="text-xs font-bold text-(--color-text-secondary) uppercase tracking-wider mt-6 mb-3"
@@ -461,8 +463,6 @@
     {#each txns as txn}
       <button
         id={txn.id}
-        data-txn-id={txn.id}
-        use:observeRow
         class="bg-white w-full p-4 rounded-2xl shadow-[var(--shadow-card)] border border-gray-100/80 flex items-center justify-between mb-2.5 cursor-pointer hover:shadow-[var(--shadow-soft)] transition-shadow text-left"
         class:opacity-40={!!txn.excluded}
         onclick={() => openDetail(txn)}
