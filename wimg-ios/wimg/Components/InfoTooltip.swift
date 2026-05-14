@@ -18,8 +18,11 @@ struct InfoTooltip: View {
                 TText(text)
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(WimgTheme.text)
-                    .padding(14)
-                    .frame(maxWidth: 280)
+                    .lineLimit(nil)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(16)
+                    .frame(width: 280, alignment: .leading)
                     .presentationCompactAdaptation(.popover)
             }
     }

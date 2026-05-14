@@ -445,6 +445,7 @@ enum Translations {
         "Auf GitHub ansehen": "View on GitHub",
         "MCP-Verbindung": "MCP Connection",
         "Unter Einstellungen einen Sync-Schlüssel erstellen.": "Create a sync key under Settings.",
+        "Frage Claude z.B. „Zeig mir meine Ausgaben diesen Monat\" oder „Kategorisiere meine letzten Transaktionen\".": "Ask Claude e.g. \"Show me my spending this month\" or \"Categorize my recent transactions\".",
         "MCP-Client konfigurieren": "Configure MCP Client",
         "Nutzen": "Use",
         "Datenschutz-Hinweis": "Privacy Notice",

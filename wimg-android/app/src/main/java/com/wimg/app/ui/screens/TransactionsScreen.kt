@@ -1,6 +1,7 @@
 package com.wimg.app.ui.screens
 import com.wimg.app.ui.components.TText
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -36,7 +37,7 @@ enum class TxFilter(val label: String) {
     INCOME("Einnahmen"),
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun TransactionsScreen(selectedAccount: String?) {
     var transactions by remember { mutableStateOf<List<Transaction>>(emptyList()) }
@@ -95,16 +96,13 @@ fun TransactionsScreen(selectedAccount: String?) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        if (grouped.isNotEmpty()) {
-            GesamtsaldoCard(sum = runningBalance.first, count = runningBalance.second)
-        }
         LazyColumn(
             state = listState,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier.weight(1f),
         ) {
-            // Filter row scrolls with content so it doesn't pin above the Gesamtsaldo card.
+            // Tabs row scrolls with content above the sticky card.
             item(key = "filter_row") {
                 Row(
                     modifier = Modifier
@@ -137,6 +135,15 @@ fun TransactionsScreen(selectedAccount: String?) {
                                 tint = if (activeFilterCount > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                    }
+                }
+            }
+
+            // Sticky Gesamtsaldo card — mirrors the web's `sticky top-16`.
+            if (grouped.isNotEmpty()) {
+                stickyHeader(key = "gesamtsaldo") {
+                    Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
+                        GesamtsaldoCard(sum = runningBalance.first, count = runningBalance.second)
                     }
                 }
             }

@@ -274,9 +274,9 @@
   </a>
 
   <!-- MCP Connection Guide -->
-  <div id="mcp">
+  <div id="mcp" class="space-y-3">
     <h3
-      class="text-lg font-display font-extrabold text-(--color-text) mb-3 flex items-center gap-2"
+      class="text-lg font-display font-extrabold text-(--color-text) flex items-center gap-2"
     >
       <svg
         class="w-4.5 h-4.5 text-purple-500"
@@ -293,32 +293,70 @@
       </svg>
       MCP-Verbindung
     </h3>
-    <div class="bg-white rounded-2xl p-5 border border-gray-100 space-y-3">
-      <p class="text-sm text-(--color-text-secondary) leading-relaxed">
-        Verbinde Claude.ai mit deinem wimg, um Finanzfragen mit deinen echten Daten zu beantworten. Aktiviere zuerst Sync unter <a href="/settings" class="font-bold text-(--color-text) underline">Einstellungen</a>, dann nutze:
-      </p>
-      <div class="space-y-2 text-xs font-mono">
-        <div class="bg-gray-50 rounded-lg px-3 py-2 break-all">
-          <span class="text-(--color-text-secondary)">URL:</span> https://wimg-sync.mili-my.name/mcp
-        </div>
-        <div class="bg-gray-50 rounded-lg px-3 py-2">
-          <span class="text-(--color-text-secondary)">Auth:</span> Bearer &lt;dein Sync-Schlüssel&gt;
-        </div>
+
+    <p class="text-sm text-(--color-text-secondary) leading-relaxed">
+      Mit aktivierter Sync kannst du KI-Assistenten (Claude, etc.) per MCP-Protokoll Zugriff auf deine Finanzdaten geben.
+    </p>
+
+    <!-- Step 1 -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-4 flex items-start gap-3">
+      <span class="shrink-0 w-7 h-7 rounded-full bg-(--color-accent) text-(--color-text) flex items-center justify-center text-xs font-bold">1</span>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-semibold text-(--color-text)">Sync aktivieren</p>
+        <p class="text-xs text-(--color-text-secondary) leading-snug mt-0.5">
+          Unter <a href="/settings" class="font-bold text-(--color-text) underline">Einstellungen</a> einen Sync-Schlüssel erstellen.
+        </p>
       </div>
-      <ul class="text-xs text-(--color-text-secondary) leading-relaxed space-y-1 pt-1">
-        <li class="flex items-start gap-2">
-          <span class="text-emerald-500 shrink-0">&check;</span>
-          Sync-Schlüssel = MCP-Zugang, kein extra Setup
-        </li>
-        <li class="flex items-start gap-2">
-          <span class="text-emerald-500 shrink-0">&check;</span>
-          Ende-zu-Ende verschlüsselt, Echtzeit-Synchronisierung
-        </li>
-        <li class="flex items-start gap-2">
-          <span class="text-emerald-500 shrink-0">&check;</span>
-          PII wird automatisch aus MCP-Antworten entfernt
-        </li>
-      </ul>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-4 flex items-start gap-3">
+      <span class="shrink-0 w-7 h-7 rounded-full bg-(--color-accent) text-(--color-text) flex items-center justify-center text-xs font-bold">2</span>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-semibold text-(--color-text)">MCP-Client konfigurieren</p>
+        <p class="text-xs text-(--color-text-secondary) leading-snug mt-0.5">
+          In Claude Desktop oder Claude Code die folgende Konfiguration hinzufügen:
+        </p>
+      </div>
+    </div>
+
+    <!-- JSON config code block -->
+    <pre class="bg-gray-50 border border-gray-100 rounded-xl p-3 text-[11px] font-mono text-(--color-text) overflow-x-auto leading-snug whitespace-pre">{`{
+  "mcpServers": {
+    "wimg": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://wimg-sync.mili-my.name/mcp",
+        "--header",
+        "Authorization: Bearer DEIN-SYNC-SCHLÜSSEL"
+      ]
+    }
+  }
+}`}</pre>
+
+    <!-- Step 3 -->
+    <div class="bg-white rounded-2xl border border-gray-100 p-4 flex items-start gap-3">
+      <span class="shrink-0 w-7 h-7 rounded-full bg-(--color-accent) text-(--color-text) flex items-center justify-center text-xs font-bold">3</span>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-semibold text-(--color-text)">Nutzen</p>
+        <p class="text-xs text-(--color-text-secondary) leading-snug mt-0.5">
+          Frage Claude z.B. „Zeig mir meine Ausgaben diesen Monat" oder „Kategorisiere meine letzten Transaktionen".
+        </p>
+      </div>
+    </div>
+
+    <!-- Privacy warning -->
+    <div class="flex items-start gap-3 p-4 rounded-2xl bg-orange-50 border border-orange-100">
+      <svg class="w-5 h-5 text-orange-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+      </svg>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-bold text-orange-700">Datenschutz-Hinweis</p>
+        <p class="text-xs text-orange-700/80 leading-snug mt-0.5">
+          Wenn du wimg mit einem MCP-Client verbindest, werden deine Finanzdaten an diesen Client weitergegeben. Die Daten sind Ende-zu-Ende verschlüsselt zwischen deinen Geräten und dem Server, aber der MCP-Client selbst kann die entschlüsselten Daten lesen. Verwende nur vertrauenswürdige MCP-Clients und teile deinen Sync-Schlüssel niemals mit Dritten.
+        </p>
+      </div>
     </div>
   </div>
 

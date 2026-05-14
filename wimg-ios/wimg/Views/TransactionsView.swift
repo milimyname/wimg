@@ -212,10 +212,7 @@ struct TransactionsView: View {
                 Spacer()
             }
         } else {
-            VStack(spacing: 0) {
-                gesamtsaldoCard
-                transactionList
-            }
+            transactionList
         }
     }
 
@@ -374,59 +371,64 @@ struct TransactionsView: View {
     }
 
     private var transactionList: some View {
-        List {
-            // Filter + quick categories scroll with the list so they don't pin
-            // above the Gesamtsaldo card.
-            Section {
+        ScrollView {
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                // Tabs + quick categories scroll above the sticky card.
                 segmentedFilter
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
                 quickCategoryBar
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-            }
 
-            ForEach(limitedGroups, id: \.0) { date, txs in
+                // Section header = sticky Gesamtsaldo card (mirrors the web's
+                // `sticky top-16` running-balance card).
                 Section {
-                    ForEach(txs) { tx in
-                        transactionRow(tx)
-                    }
-                } header: {
-                    Text(formatDateHeader(date))
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(WimgTheme.textSecondary)
-                        .textCase(.uppercase)
-                        .tracking(0.8)
-                }
-            }
+                    ForEach(limitedGroups, id: \.0) { date, txs in
+                        Text(formatDateHeader(date))
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                            .textCase(.uppercase)
+                            .tracking(0.8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 16)
+                            .padding(.bottom, 6)
+                            .background(WimgTheme.bg)
 
-            if displayLimit < totalFilteredCount {
-                Button {
-                    displayLimit += 30
-                } label: {
-                    Text("Mehr laden (\(totalFilteredCount - displayLimit) weitere)")
-                        .font(.system(.subheadline, design: .rounded))
-                        .foregroundStyle(WimgTheme.textSecondary)
-                        .frame(maxWidth: .infinity)
+                        ForEach(txs) { tx in
+                            transactionRow(tx)
+                        }
+                    }
+
+                    if displayLimit < totalFilteredCount {
+                        Button {
+                            displayLimit += 30
+                        } label: {
+                            Text("Mehr laden (\(totalFilteredCount - displayLimit) weitere)")
+                                .font(.system(.subheadline, design: .rounded))
+                                .foregroundStyle(WimgTheme.textSecondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                        }
+                    }
+
+                    Spacer(minLength: 24)
+                } header: {
+                    gesamtsaldoCard
+                        .background(WimgTheme.bg)
                 }
-                .listRowBackground(Color.clear)
             }
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
     }
 
     private func transactionRow(_ tx: Transaction) -> some View {
         TransactionCard(transaction: tx) {
             selectedTransaction = tx
         }
-        .listRowInsets(EdgeInsets())
+        .padding(.horizontal, 16)
+        .padding(.vertical, 2)
         .opacity(tx.isExcluded ? 0.4 : 1.0)
+        .background(WimgTheme.bg)
         .onAppear { visibleTxIds.insert(tx.id) }
         .onDisappear { visibleTxIds.remove(tx.id) }
-        .swipeActions(edge: .trailing) {
+        .contextMenu {
             Button {
                 toggleExcluded(tx)
             } label: {
@@ -435,7 +437,6 @@ struct TransactionsView: View {
                     systemImage: tx.isExcluded ? "eye" : "eye.slash"
                 )
             }
-            .tint(tx.isExcluded ? .blue : .orange)
         }
     }
 
