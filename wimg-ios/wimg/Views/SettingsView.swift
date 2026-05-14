@@ -224,7 +224,6 @@ struct SettingsView: View {
                 }
                 .padding(20)
                 .wimgCard(radius: WimgTheme.radiusMedium)
-                .padding(.horizontal)
 
                 // MARK: - Language Section
                 VStack(alignment: .leading, spacing: 16) {
@@ -259,7 +258,6 @@ struct SettingsView: View {
                 }
                 .padding(20)
                 .wimgCard(radius: WimgTheme.radiusMedium)
-                .padding(.horizontal)
 
                 // MARK: - About Section
                 VStack(alignment: .leading, spacing: 12) {

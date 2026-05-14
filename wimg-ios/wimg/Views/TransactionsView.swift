@@ -179,13 +179,14 @@ struct TransactionsView: View {
 
     @ViewBuilder
     private var mainContent: some View {
-        VStack(spacing: 0) {
-            segmentedFilter
-            quickCategoryBar
-
-            if let loadError {
+        if let loadError {
+            VStack(spacing: 0) {
                 errorView(loadError)
-            } else if filteredGrouped.isEmpty {
+            }
+        } else if filteredGrouped.isEmpty {
+            VStack(spacing: 0) {
+                segmentedFilter
+                quickCategoryBar
                 Spacer()
                 VStack(spacing: 8) {
                     Text("📋")
@@ -209,7 +210,9 @@ struct TransactionsView: View {
                     .padding(.top, 4)
                 }
                 Spacer()
-            } else {
+            }
+        } else {
+            VStack(spacing: 0) {
                 gesamtsaldoCard
                 transactionList
             }
@@ -372,6 +375,19 @@ struct TransactionsView: View {
 
     private var transactionList: some View {
         List {
+            // Filter + quick categories scroll with the list so they don't pin
+            // above the Gesamtsaldo card.
+            Section {
+                segmentedFilter
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                quickCategoryBar
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+            }
+
             ForEach(limitedGroups, id: \.0) { date, txs in
                 Section {
                     ForEach(txs) { tx in

@@ -95,69 +95,77 @@ fun TransactionsScreen(selectedAccount: String?) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        // Segmented filter + filter button
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        if (grouped.isNotEmpty()) {
+            GesamtsaldoCard(sum = runningBalance.first, count = runningBalance.second)
+        }
+        LazyColumn(
+            state = listState,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.weight(1f),
         ) {
-            TxFilter.entries.forEach { f ->
-                FilterChip(
-                    selected = filter == f,
-                    onClick = { filter = f },
-                    label = { Text(f.label) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            IconButton(onClick = { showFilterSheet = true }) {
-                BadgedBox(
-                    badge = {
-                        if (activeFilterCount > 0) {
-                            Badge(containerColor = WimgColors.accent) {
-                                Text("$activeFilterCount", color = WimgColors.heroText, fontSize = 10.sp)
-                            }
+            // Filter row scrolls with content so it doesn't pin above the Gesamtsaldo card.
+            item(key = "filter_row") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TxFilter.entries.forEach { f ->
+                        FilterChip(
+                            selected = filter == f,
+                            onClick = { filter = f },
+                            label = { Text(f.label) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    IconButton(onClick = { showFilterSheet = true }) {
+                        BadgedBox(
+                            badge = {
+                                if (activeFilterCount > 0) {
+                                    Badge(containerColor = WimgColors.accent) {
+                                        Text("$activeFilterCount", color = WimgColors.heroText, fontSize = 10.sp)
+                                    }
+                                }
+                            },
+                        ) {
+                            Icon(
+                                Icons.Outlined.FilterList,
+                                contentDescription = "Filter",
+                                tint = if (activeFilterCount > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
-                ) {
-                    Icon(
-                        Icons.Outlined.FilterList,
-                        contentDescription = "Filter",
-                        tint = if (activeFilterCount > 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
-        }
 
-        if (grouped.isEmpty()) {
-            // Empty state
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("📋", fontSize = 48.sp)
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Keine Umsätze",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        "Importiere eine CSV-Datei",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            if (grouped.isEmpty()) {
+                item(key = "empty_state") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 48.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("📋", fontSize = 48.sp)
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                if (transactions.isEmpty()) "Keine Umsätze" else "Keine Ergebnisse",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                if (transactions.isEmpty()) "Importiere eine CSV-Datei" else "Versuche einen anderen Filter",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
-            }
-        } else {
-            GesamtsaldoCard(sum = runningBalance.first, count = runningBalance.second)
-            LazyColumn(
-                state = listState,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
+            } else {
                 grouped.forEach { (date, txs) ->
                     item(key = "header_$date") {
                         Text(
