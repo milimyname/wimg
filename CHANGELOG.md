@@ -1,5 +1,51 @@
 # Changelog
 
+## v0.8.0 (2026-05-14)
+
+- fix: NetWorthCard month labels follow locale
+- fix: AnalysisView count line + heatmap month labels follow locale
+- fix: iOS category names + tail-words now follow locale
+- fix: top breathing room on sticky Gesamtsaldo card
+- refactor: native transactions layout + InfoTooltip + web MCP card
+- refactor: align AboutView + AboutScreen with web /about
+- feat: infotooltips on analysis page (donut + categories)
+- fix: home/transactions polish + Gesamtsaldo placement
+- fix: transactions filter scrolls with content; settings card widths
+- feat: gesamtsaldo running-balance card on transactions (iOS + Android)
+- refactor: prune 140 dead translation keys from en.ts
+- fix: stray brace in SearchView.navLink broke iOS build
+- feat: add 404 + generic error page
+- refactor: remove renewals calendar tab from recurring page
+- feat: port dashboard redesign to iOS + Android, rename DashboardView
+- fix: iOS recurring pattern strings now actually translate to English
+- refactor: revert Verfügbares Einkommen card to pre-Stitch styling
+- refactor: separate Gesamtsaldo header from Verfügbar + restore E/A grid
+- refactor: wrap balance hero into a single card with internal divider
+- feat: combined balance hero on dashboard, add Wiederkehrend quick-link
+- refactor: stack Gesamt/Einnahmen/Ausgaben cards into rows
+- feat: surface lifetime Gesamtsaldo as 3rd stat card on dashboard
+- fix: gap Gesamtsaldo card 4px below app header when sticky
+- refactor: restore running-balance logic in Gesamtsaldo card
+- feat: make Gesamtsaldo hero card sticky below app header
+- feat: replace sticky Saldo bar with Gesamtsaldo hero card on web
+- refactor: drop add_account / update_account MCP write tools
+- refactor: remove feature flag system entirely
+- refactor: remove in-app feedback system
+- refactor: drop in-app changelog page, link to GitHub releases instead
+- refactor: remove coachmarks system + stray Schulden quick-link
+- fix: dismiss InfoTooltip on scroll instead of re-anchoring
+- fix: re-anchor InfoTooltip to its trigger on scroll/resize
+- fix: use native HTML5 popover for InfoTooltip top-layer rendering
+- fix: lift InfoTooltip popover above sibling stacking contexts
+- feat: add InfoTooltips on Preisänderungen + Abonnements/Erkennen
+- feat: extend InfoTooltips to Net Worth, Heatmap, Monatliche Fixkosten
+- feat: restore general-purpose FAQ on About, keep tooltips for cards
+- feat: enrich demo data to populate every dashboard card
+- feat: replace About FAQ with inline InfoTooltips on cards
+- fix: mark stale recurring patterns inactive + tolerate price changes
+- refactor: remove tax/goals/debts UI surface across all platforms
+- fix: set html lang to de to match German default UI
+
 ## v0.7.13 (2026-05-03)
 
 - Version bump
