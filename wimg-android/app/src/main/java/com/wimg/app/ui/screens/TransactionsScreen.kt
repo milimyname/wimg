@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
@@ -16,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,6 +28,7 @@ import com.wimg.app.ui.components.formatAmountShort
 import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
 import com.wimg.app.ui.theme.wimgCard
+import kotlin.math.abs
 
 enum class TxFilter(val label: String) {
     ALL("Alle"),
@@ -68,6 +71,24 @@ fun TransactionsScreen(selectedAccount: String?) {
     }
 
     val grouped = filtered.groupBy { it.date }.toSortedMap(compareByDescending { it })
+
+    val listState = rememberLazyListState()
+    val runningBalance by remember(filtered, listState) {
+        derivedStateOf {
+            if (filtered.isEmpty()) return@derivedStateOf 0.0 to 0
+            val visibleKeys = listState.layoutInfo.visibleItemsInfo
+                .mapNotNull { it.key as? String }
+                .toSet()
+            if (visibleKeys.isEmpty()) {
+                return@derivedStateOf filtered.sumOf { it.amount } to filtered.size
+            }
+            val topIdx = filtered.indexOfFirst { visibleKeys.contains(it.id) }
+            if (topIdx < 0) return@derivedStateOf 0.0 to 0
+            var total = 0.0
+            for (i in topIdx until filtered.size) total += filtered[i].amount
+            total to (filtered.size - topIdx)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -131,7 +152,9 @@ fun TransactionsScreen(selectedAccount: String?) {
                 }
             }
         } else {
+            GesamtsaldoCard(sum = runningBalance.first, count = runningBalance.second)
             LazyColumn(
+                state = listState,
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -417,6 +440,55 @@ private fun AdvancedFilterSheet(
                     Text("Ergebnisse anzeigen", fontWeight = FontWeight.Bold)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun GesamtsaldoCard(sum: Double, count: Int) {
+    val amountColor = when {
+        sum > 0 -> Color(0xFF059669) // emerald-600
+        sum < 0 -> Color(0xFFE11D48) // rose-600
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    val signedAmount = when {
+        sum > 0 -> "+${formatAmountShort(sum)}"
+        sum < 0 -> "-${formatAmountShort(abs(sum))}"
+        else -> formatAmountShort(0.0)
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 12.dp)
+            .wimgCard()
+            .padding(20.dp),
+    ) {
+        TText(
+            "Gesamtsaldo",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            signedAmount,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Black,
+            color = amountColor,
+        )
+        Spacer(Modifier.height(2.dp))
+        Row {
+            Text(
+                "$count ",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TText(
+                if (count == 1) "Transaktion im Blickfeld" else "Transaktionen im Blickfeld",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

@@ -210,7 +210,7 @@ struct TransactionsView: View {
                 }
                 Spacer()
             } else {
-                visibleSumBar
+                gesamtsaldoCard
                 transactionList
             }
         }
@@ -222,9 +222,14 @@ struct TransactionsView: View {
 
     private var visibleSumStats: (sum: Double, count: Int) {
         let flat = flatTransactions
-        guard !flat.isEmpty, !visibleTxIds.isEmpty else { return (0, 0) }
+        guard !flat.isEmpty else { return (0, 0) }
+        // Before any row reports visible, fall back to the full filtered set —
+        // matches the web behavior so the card shows the lifetime balance on mount.
+        guard !visibleTxIds.isEmpty else {
+            return (flat.reduce(0) { $0 + $1.amount }, flat.count)
+        }
         // Find topmost visible row (smallest index — list is newest-first).
-        // Running balance = sum of all transactions from that point back through history (older).
+        // Running balance = sum from that point back through history (older).
         var topIdx = flat.count
         for (i, tx) in flat.enumerated() where visibleTxIds.contains(tx.id) {
             if i < topIdx { topIdx = i }
@@ -237,32 +242,46 @@ struct TransactionsView: View {
         return (total, flat.count - topIdx)
     }
 
-    private var visibleSumBar: some View {
+    private var gesamtsaldoCard: some View {
         let stats = visibleSumStats
-        return HStack {
-            TText("Sichtbar")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+        let amountColor: Color = stats.sum > 0 ? .green : (stats.sum < 0 ? .red : WimgTheme.text)
+        return VStack(alignment: .leading, spacing: 4) {
+            TText("Gesamtsaldo")
+                .font(.system(size: 10, weight: .bold, design: .rounded))
                 .foregroundStyle(WimgTheme.textSecondary)
                 .textCase(.uppercase)
                 .tracking(0.8)
-            Text("(\(stats.count))")
-                .font(.system(.caption, design: .rounded, weight: .medium))
-                .foregroundStyle(WimgTheme.textSecondary)
-            Spacer()
-            Text(formatAmount(stats.sum))
-                .font(.system(.subheadline, design: .rounded, weight: .black))
-                .foregroundStyle(stats.sum >= 0 ? .green : WimgTheme.text)
+            Text(formatAmountSigned(stats.sum))
+                .font(.system(size: 32, weight: .black, design: .rounded))
+                .foregroundStyle(amountColor)
+                .monospacedDigit()
+                .tracking(-0.5)
                 .contentTransition(.numericText(value: stats.sum))
                 .animation(.easeInOut(duration: 0.2), value: stats.sum)
+            HStack(spacing: 4) {
+                Text("\(stats.count)")
+                TText(stats.count == 1 ? "Transaktion im Blickfeld" : "Transaktionen im Blickfeld")
+            }
+            .font(.system(.caption, design: .rounded, weight: .medium))
+            .foregroundStyle(WimgTheme.textSecondary)
+            .padding(.top, 2)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
         .background(WimgTheme.cardBg)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color.gray.opacity(0.15))
-                .frame(height: 0.5)
-        }
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.gray.opacity(0.12), lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.04), radius: 12, y: 4)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
+    }
+
+    private func formatAmountSigned(_ amount: Double) -> String {
+        let absStr = formatAmount(abs(amount))
+        return amount < 0 ? "-\(absStr)" : (amount > 0 ? "+\(absStr)" : absStr)
     }
 
     private func formatAmount(_ amount: Double) -> String {

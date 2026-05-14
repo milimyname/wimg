@@ -72,6 +72,9 @@ export const en: Record<string, string> = {
 
   // Transactions
   "Änderungen gespeichert": "Changes saved",
+  Gesamtsaldo: "Total Balance",
+  "Transaktion im Blickfeld": "transaction in view",
+  "Transaktionen im Blickfeld": "transactions in view",
   Suchen: "Search",
   Filter: "Filter",
   "Importiere eine CSV-Datei um loszulegen": "Import a CSV file to get started",

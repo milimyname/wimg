@@ -65,6 +65,9 @@ object TranslationMap {
         "Alle" to "All",
         "Keine Umsätze" to "No Transactions",
         "Importiere eine CSV-Datei" to "Import a CSV file",
+        "Gesamtsaldo" to "Total Balance",
+        "Transaktion im Blickfeld" to "transaction in view",
+        "Transaktionen im Blickfeld" to "transactions in view",
 
         // Search
         "Transaktionen suchen..." to "Search transactions...",
