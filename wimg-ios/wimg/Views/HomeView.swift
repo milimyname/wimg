@@ -1,7 +1,7 @@
 import SwiftUI
 import Charts
 
-struct DashboardView: View {
+struct HomeView: View {
     @Binding var selectedAccount: String?
     @Binding var accounts: [Account]
     @State private var year: Int
@@ -10,6 +10,7 @@ struct DashboardView: View {
     @State private var recentTransactions: [Transaction] = []
     @State private var hasAnyData = false
     @State private var loadingDemo = false
+    @State private var totalBalance: Double = 0
 
     init(selectedAccount: Binding<String?>, accounts: Binding<[Account]>) {
         _selectedAccount = selectedAccount
@@ -80,8 +81,11 @@ struct DashboardView: View {
                     .frame(maxWidth: .infinity)
                 } else {
                 VStack(spacing: 20) {
-                    MonthPicker(year: $year, month: $month)
+                    // Gesamtsaldo — centered, no card chrome
+                    gesamtsaldoHeader
                         .padding(.top, 8)
+
+                    MonthPicker(year: $year, month: $month)
 
                     // Hero: Verfügbares Einkommen
                     availableCard
@@ -107,6 +111,10 @@ struct DashboardView: View {
                     if let cats = summary?.by_category, !cats.isEmpty {
                         donutSection(cats)
                     }
+
+                    // Quick links: Rückblick + Wiederkehrend
+                    quickLinks
+                        .padding(.horizontal)
 
                     // Recent transactions
                     if !recentTransactions.isEmpty {
@@ -136,6 +144,80 @@ struct DashboardView: View {
     }
 
     // MARK: - Cards
+
+    // Lifetime balance header (centered, no card chrome — like the web layout).
+    private var gesamtsaldoHeader: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "building.columns")
+                    .font(.system(size: 12))
+                    .foregroundStyle(WimgTheme.textSecondary)
+                Text("GESAMTSALDO")
+                    .font(.system(.caption2, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.textSecondary)
+                    .tracking(1.6)
+            }
+            Text(formatAmountShort(totalBalance))
+                .font(.system(size: 40, weight: .black, design: .rounded))
+                .foregroundStyle(
+                    totalBalance > 0 ? Color.green
+                        : totalBalance < 0 ? Color.red
+                        : WimgTheme.text
+                )
+                .tracking(-1)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // Rückblick + Wiederkehrend quick-link tiles.
+    private var quickLinks: some View {
+        HStack(spacing: 12) {
+            NavigationLink {
+                ReviewView(selectedAccount: $selectedAccount)
+            } label: {
+                quickLinkTile(label: "Rückblick", icon: "calendar", color: .indigo)
+            }
+            NavigationLink {
+                RecurringView()
+            } label: {
+                quickLinkTile(label: "Wiederkehrend", icon: "arrow.triangle.2.circlepath", color: .green)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func quickLinkTile(label: String, icon: String, color: Color) -> some View {
+        HStack(spacing: 12) {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(color.opacity(0.15))
+                .frame(width: 40, height: 40)
+                .overlay {
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(color)
+                }
+            TText(label)
+                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                .foregroundStyle(WimgTheme.text)
+            Spacer()
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .wimgCard(radius: WimgTheme.radiusMedium)
+    }
+
+    // Sparquote subtitle is fully dynamic (two amounts interpolated), so
+    // `Text("Du sparst \(a) von \(b)")` never localizes — Swift uses the
+    // formatted string as the runtime catalog key, which never matches a
+    // static .xcstrings entry. Branch on `RecurringPattern.isEnglish`
+    // manually, matching the pattern used for recurring labels.
+    private var sparquoteSubtitle: String {
+        let available = formatAmountShort(summary?.available ?? 0)
+        let income = formatAmountShort(summary?.income ?? 0)
+        return RecurringPattern.isEnglish
+            ? "You save \(available) of \(income)"
+            : "Du sparst \(available) von \(income)"
+    }
 
     // expenses comes as positive from Zig (negated for display)
     private var sparquote: Int {
@@ -208,7 +290,7 @@ struct DashboardView: View {
                                 .foregroundStyle(WimgTheme.text)
                             InfoTooltip(text: "Prozent deines Einkommens, das du sparst: (Einnahmen − Ausgaben) ÷ Einnahmen × 100. Ab 20 % gilt als gut.")
                         }
-                        Text("Du sparst \(formatAmountShort(summary?.available ?? 0)) von \(formatAmountShort(summary?.income ?? 0))")
+                        Text(sparquoteSubtitle)
                             .font(.system(.caption, design: .rounded, weight: .medium))
                             .foregroundStyle(WimgTheme.textSecondary)
                     }
@@ -346,10 +428,12 @@ struct DashboardView: View {
             let recent = all
                 .filter { $0.date.hasPrefix(monthStr) }
                 .sorted { $0.date > $1.date }
+            let total = all.reduce(0) { $0 + $1.amount }
             await MainActor.run {
                 hasAnyData = !allTx.isEmpty
                 summary = s
                 recentTransactions = recent
+                totalBalance = total
             }
         }
     }

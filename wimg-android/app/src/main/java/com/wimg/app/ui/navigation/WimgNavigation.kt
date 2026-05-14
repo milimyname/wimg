@@ -125,7 +125,7 @@ fun WimgNavigation() {
                 startDestination = "dashboard",
             ) {
                 composable("search") { SearchScreen(selectedAccount = selectedAccount, navController = navController) }
-                composable("dashboard") { DashboardScreen(selectedAccount = selectedAccount) }
+                composable("dashboard") { DashboardScreen(selectedAccount = selectedAccount, navController = navController) }
                 composable("transactions") { TransactionsScreen(selectedAccount = selectedAccount) }
                 composable("more") { MoreScreen(navController = navController) }
                 composable("import") { ImportScreen(navController = navController) }

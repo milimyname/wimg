@@ -5,9 +5,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,16 +38,22 @@ import com.wimg.app.ui.theme.wimgHero
 import java.util.Calendar
 
 @Composable
-fun DashboardScreen(selectedAccount: String?) {
+fun DashboardScreen(
+    selectedAccount: String?,
+    navController: androidx.navigation.NavController? = null,
+) {
     val calendar = Calendar.getInstance()
     var year by remember { mutableIntStateOf(calendar.get(Calendar.YEAR)) }
     var month by remember { mutableIntStateOf(calendar.get(Calendar.MONTH) + 1) }
     var summary by remember { mutableStateOf<MonthlySummary?>(null) }
+    var totalBalance by remember { mutableStateOf(0.0) }
     var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(year, month, selectedAccount) {
         summary = LibWimg.getSummaryFiltered(year, month, selectedAccount)
+        val all = LibWimg.getTransactionsFiltered(selectedAccount)
+        totalBalance = all.sumOf { it.amount }
         com.wimg.app.services.WidgetDataWriter.writeSummary(context)
     }
 
@@ -148,6 +159,42 @@ fun DashboardScreen(selectedAccount: String?) {
                         }
                     }
                 }
+            }
+        }
+
+        // Gesamtsaldo — centered, no card chrome
+        item {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Outlined.AccountBalance,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "GESAMTSALDO",
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.6.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    formatAmountShort(totalBalance),
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-1).sp,
+                    color = when {
+                        totalBalance > 0 -> Color(0xFF34C759)
+                        totalBalance < 0 -> Color(0xFFFF3B30)
+                        else -> MaterialTheme.colorScheme.onSurface
+                    },
+                )
             }
         }
 
@@ -289,6 +336,31 @@ fun DashboardScreen(selectedAccount: String?) {
             }
         }
 
+        // Quick links: Rückblick + Wiederkehrend
+        if (navController != null) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    QuickLinkTile(
+                        label = "Rückblick",
+                        icon = Icons.Outlined.CalendarMonth,
+                        color = Color(0xFF5856D6),
+                        onClick = { navController.navigate("review") },
+                        modifier = Modifier.weight(1f),
+                    )
+                    QuickLinkTile(
+                        label = "Wiederkehrend",
+                        icon = Icons.Outlined.Refresh,
+                        color = Color(0xFF30D158),
+                        onClick = { navController.navigate("recurring") },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+
         // Empty state
         if (summary == null || (summary?.tx_count ?: 0) == 0) {
             item {
@@ -337,6 +409,35 @@ fun DashboardScreen(selectedAccount: String?) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun QuickLinkTile(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .wimgCard(WimgShapes.small)
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(color.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        com.wimg.app.ui.components.TText(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
     }
 }
 

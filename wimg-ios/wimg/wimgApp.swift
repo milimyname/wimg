@@ -89,7 +89,7 @@ struct ContentView: View {
                 }
                 .tag(0)
 
-            DashboardView(selectedAccount: $selectedAccount, accounts: $accounts)
+            HomeView(selectedAccount: $selectedAccount, accounts: $accounts)
                 .tabItem {
                     Label("Home", systemImage: "house")
                 }
