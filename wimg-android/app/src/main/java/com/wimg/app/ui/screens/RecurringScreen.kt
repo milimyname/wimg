@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import com.wimg.app.bridge.LibWimg
 import com.wimg.app.models.RecurringPattern
 import com.wimg.app.models.WimgCategory
+import com.wimg.app.ui.components.InfoTooltip
 import com.wimg.app.ui.components.formatAmountShort
 import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
@@ -203,7 +204,10 @@ private fun CalendarTab(active: List<RecurringPattern>) {
         item {
             Box(modifier = Modifier.fillMaxWidth().wimgHero()) {
                 Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Nächste 30 Tage", style = MaterialTheme.typography.labelMedium, color = WimgColors.heroText.copy(alpha = 0.7f))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Nächste 30 Tage", style = MaterialTheme.typography.labelMedium, color = WimgColors.heroText.copy(alpha = 0.7f))
+                        InfoTooltip("Hochrechnung deiner Fixkosten für die nächsten 12 Monate, basierend auf erkannten wiederkehrenden Mustern.")
+                    }
                     Spacer(Modifier.height(4.dp))
                     Text(formatAmountShort(next30Total), fontSize = 32.sp, fontWeight = FontWeight.Black, color = WimgColors.heroText)
                 }

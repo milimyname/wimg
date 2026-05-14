@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.wimg.app.bridge.LibWimg
+import com.wimg.app.ui.components.InfoTooltip
 import com.wimg.app.models.CategoryBreakdown
 import com.wimg.app.models.MonthlySummary
 import com.wimg.app.models.WimgCategory
@@ -168,12 +169,15 @@ fun DashboardScreen(selectedAccount: String?) {
                         .padding(vertical = 28.dp, horizontal = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(
-                        "VERFÜGBAR",
-                        style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.sp),
-                        fontWeight = FontWeight.Bold,
-                        color = WimgColors.heroText.copy(alpha = 0.7f),
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "VERFÜGBAR",
+                            style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.sp),
+                            fontWeight = FontWeight.Bold,
+                            color = WimgColors.heroText.copy(alpha = 0.7f),
+                        )
+                        InfoTooltip("Einnahmen minus Ausgaben in diesem Monat. Was dir zum Sparen oder Investieren bleibt.")
+                    }
                     Spacer(Modifier.height(6.dp))
                     Text(
                         formatAmountShort(summary?.available ?: 0.0),
@@ -229,10 +233,13 @@ fun DashboardScreen(selectedAccount: String?) {
                     }
                     Spacer(Modifier.width(16.dp))
                     Column {
-                        Text(
-                            "Sparquote",
-                            style = MaterialTheme.typography.titleSmall,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "Sparquote",
+                                style = MaterialTheme.typography.titleSmall,
+                            )
+                            InfoTooltip("Prozent deines Einkommens, das du sparst: (Einnahmen − Ausgaben) ÷ Einnahmen × 100. Ab 20 % gilt als gut.")
+                        }
                         Text(
                             "Du sparst ${formatAmountShort(summary?.available ?: 0.0)} von ${formatAmountShort(income)}",
                             style = MaterialTheme.typography.bodySmall,

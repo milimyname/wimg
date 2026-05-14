@@ -10,6 +10,7 @@
   import DonutChart from "../../../components/DonutChart.svelte";
   import EmptyState from "../../../components/EmptyState.svelte";
   import Coachmark from "../../../components/Coachmark.svelte";
+  import InfoTooltip from "../../../components/InfoTooltip.svelte";
   let loadingDemo = $state(false);
 
   let hasAnyData = $derived(data.hasAnyData());
@@ -127,6 +128,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
       </svg>
       <p class="text-sm font-bold uppercase tracking-wide" style="opacity: 0.8">Verfügbares Einkommen</p>
+      <InfoTooltip text="Einnahmen minus Ausgaben in diesem Monat. Was dir zum Sparen oder Investieren bleibt." />
     </div>
   </div>
   <p class="text-[2.75rem] font-display font-black tracking-tight leading-tight relative z-10 mb-4">
@@ -197,7 +199,10 @@
       </div>
     </div>
     <div class="flex-1 min-w-0">
-      <p class="text-sm font-bold text-(--color-text)">Sparquote</p>
+      <div class="flex items-center gap-1.5">
+        <p class="text-sm font-bold text-(--color-text)">Sparquote</p>
+        <InfoTooltip text="Prozent deines Einkommens, das du sparst: (Einnahmen − Ausgaben) ÷ Einnahmen × 100. Ab 20 % gilt als gut." />
+      </div>
       <p class="text-xs text-(--color-text-secondary) mt-0.5">
         Du sparst {formatEur(summary.available)} von {formatEur(summary.income)}
       </p>

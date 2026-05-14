@@ -249,10 +249,13 @@ struct RecurringView: View {
 
         // 12-month overview
         VStack(alignment: .leading, spacing: 12) {
-            Text("12-Monats-Übersicht")
-                .font(.system(.headline, design: .rounded, weight: .bold))
-                .foregroundStyle(WimgTheme.text)
-                .padding(.horizontal)
+            HStack(spacing: 8) {
+                Text("12-Monats-Übersicht")
+                    .font(.system(.headline, design: .rounded, weight: .bold))
+                    .foregroundStyle(WimgTheme.text)
+                InfoTooltip(text: "Hochrechnung deiner Fixkosten für die nächsten 12 Monate, basierend auf erkannten wiederkehrenden Mustern.")
+            }
+            .padding(.horizontal)
 
             VStack(spacing: 8) {
                 ForEach(Array(monthlyOverview.enumerated()), id: \.element.id) { i, month in

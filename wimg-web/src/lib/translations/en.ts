@@ -331,6 +331,15 @@ export const en: Record<string, string> = {
   Weiter: "Next",
   "Los geht's": "Get Started",
 
+  // InfoTooltip
+  "Mehr Infos": "More info",
+  "Einnahmen minus Ausgaben in diesem Monat. Was dir zum Sparen oder Investieren bleibt.":
+    "Income minus expenses this month. What you have left for saving or investing.",
+  "Prozent deines Einkommens, das du sparst: (Einnahmen − Ausgaben) ÷ Einnahmen × 100. Ab 20 % gilt als gut.":
+    "Percent of your income you save: (income − expenses) ÷ income × 100. ≥20% is considered good.",
+  "Hochrechnung deiner Fixkosten für die nächsten 12 Monate, basierend auf erkannten wiederkehrenden Mustern.":
+    "Projection of your fixed costs for the next 12 months, based on detected recurring patterns.",
+
   // Heatmap
   "Ausgaben-Heatmap": "Spending Heatmap",
   "Monatliche Ausgaben im Zeitverlauf": "Monthly expenses over time",

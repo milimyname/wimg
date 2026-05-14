@@ -1,55 +1,15 @@
 import SwiftUI
 
 struct AboutView: View {
-    var scrollToFAQ: String?
-
-    private let faqs: [(q: String, a: String)] = [
-        ("Sind meine Daten sicher?",
-         "Ja. Alle Finanzdaten werden lokal in einer SQLite-Datenbank auf deinem Gerät gespeichert. Sync ist Ende-zu-Ende verschlüsselt — der Server sieht nur Chiffretext."),
-        ("Welche Banken werden unterstützt?",
-         "CSV-Import von Comdirect, Trade Republic und Scalable Capital. Da wimg Open-Source ist, können weitere Formate jederzeit hinzugefügt werden."),
-        ("Wie funktioniert der Import?",
-         "Lade deinen Kontoauszug im CSV-Format hoch. wimg erkennt das Format automatisch, analysiert die Transaktionen lokal und kategorisiert sie mit intelligenten Regeln."),
-        ("Wie funktioniert die Kategorisierung?",
-         "wimg nutzt ein Regel-System mit Schlüsselwörtern. Bekannte Händler (REWE, LIDL, etc.) werden automatisch erkannt. Wenn du eine Transaktion manuell kategorisierst, lernt wimg das Muster und wendet es zukünftig automatisch an. Für den Rest hilft Claude per MCP."),
-        ("Ist wimg wirklich kostenlos?",
-         "Ja. wimg ist ein Leidenschaftsprojekt unter Open-Source-Lizenz. Keine Abonnements, keine versteckten Kosten, kein Verkauf deiner Daten."),
-        ("Wo werden die Daten gespeichert?",
-         "Im Browser: OPFS (Origin Private File System). Auf iOS: lokale SQLite-Datei. Deine Daten verlassen dein Gerät nur bei aktivierter Sync — dann Ende-zu-Ende verschlüsselt."),
-        ("Was ist der MCP-Server?",
-         "Mit aktivierter Synchronisierung wird dein Sync-Schlüssel zum MCP-Zugang. Claude.ai oder andere KI-Tools können Ausgaben abfragen und Kategorien setzen — Ende-zu-Ende verschlüsselt, in Echtzeit synchronisiert."),
-        ("Wie funktioniert Auto-Learn?",
-         "Wenn du eine Transaktion manuell kategorisierst, lernt wimg automatisch das Schlüsselwort (z.B. \"REWE\" → Lebensmittel). Beim nächsten Import oder Auto-Kategorisieren werden ähnliche Transaktionen automatisch zugeordnet. Alle gelernten Regeln findest du unter Einstellungen → Regeln."),
-        ("Was zeigt das Vermögens-Diagramm?",
-         "Das Vermögens-Diagramm auf der Analyse-Seite zeigt dein kumulatives Nettovermögen über die Zeit — basierend auf monatlichen Snapshots (Einnahmen minus Ausgaben). Du brauchst mindestens 2 Snapshots. Snapshots werden automatisch jeden Monat erstellt."),
-        ("Wie synchronisiere ich zwischen Geräten?",
-         "Gehe zu Einstellungen → Sync aktivieren. Dadurch wird ein einzigartiger Sync-Schlüssel erstellt. Kopiere diesen Schlüssel und füge ihn auf dem zweiten Gerät ein. Änderungen werden in Echtzeit per WebSocket synchronisiert — Ende-zu-Ende verschlüsselt."),
-        ("Wie erkennt wimg Abos und wiederkehrende Zahlungen?",
-         "wimg analysiert deine Transaktionen automatisch und erkennt regelmäßige Muster (monatlich, vierteljährlich, jährlich). Unter Mehr → Wiederkehrend siehst du alle erkannten Abos mit Betrag, Intervall und dem nächsten Fälligkeitsdatum."),
-        ("Funktioniert wimg offline?",
-         "Ja, vollständig. Alle Daten liegen lokal in SQLite. Du brauchst kein Internet für Import, Kategorisierung, Analyse oder irgendeine Kernfunktion. Sync ist optional und funktioniert nur bei Internetverbindung."),
-        ("Kann ich mehrere Konten verwalten?",
-         "Ja. Über den Konto-Switcher oben rechts kannst du zwischen Konten wechseln oder alle anzeigen. Neue Konten werden beim CSV-Import automatisch erstellt oder können manuell in den Einstellungen angelegt werden."),
-        ("Kann ich Änderungen rückgängig machen?",
-         "Ja. Nach jeder Aktion (Kategorisierung, Konto-Änderung etc.) erscheint ein Undo-Toast am unteren Bildschirmrand. Über die Suche findest du auch \"Rückgängig\" und \"Wiederherstellen\". wimg speichert bis zu 50 Undo-Schritte — das funktioniert plattformübergreifend im selben Zig-Core."),
-        ("Wie lösche ich meine Daten?",
-         "Unter Einstellungen → Danger Zone kannst du die Datenbank zurücksetzen. Diese Aktion kann nicht rückgängig gemacht werden."),
-        ("Wie kann ich beitragen?",
-         "Besuche das GitHub-Repository. Code, Übersetzungen, Feedback und Bug-Reports sind willkommen."),
-    ]
-
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
     }
-
-    @State private var expandedFAQ: String?
 
     // Feedback sheet
     @State private var showFeedback = false
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
+        ScrollView {
             VStack(spacing: 24) {
                 // MARK: - Hero
                 VStack(spacing: 16) {
@@ -248,42 +208,6 @@ struct AboutView: View {
                         .presentationDragIndicator(.visible)
                 }
 
-                // MARK: - FAQ
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "questionmark.circle")
-                            .font(.title3)
-                            .foregroundStyle(.orange)
-                        Text("Häufig gestellte Fragen")
-                            .font(.system(.title3, design: .rounded, weight: .bold))
-                            .foregroundStyle(WimgTheme.text)
-                    }
-
-                    VStack(spacing: 8) {
-                        ForEach(faqs, id: \.q) { faq in
-                            DisclosureGroup(
-                                isExpanded: Binding(
-                                    get: { expandedFAQ == faq.q },
-                                    set: { expandedFAQ = $0 ? faq.q : nil }
-                                )
-                            ) {
-                                TText(faq.a)
-                                    .font(.subheadline)
-                                    .foregroundStyle(WimgTheme.textSecondary)
-                                    .padding(.bottom, 4)
-                            } label: {
-                                TText(faq.q)
-                                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                                    .foregroundStyle(WimgTheme.text)
-                                    .multilineTextAlignment(.leading)
-                            }
-                            .padding(16)
-                            .wimgCard()
-                            .id(faq.q)
-                        }
-                    }
-                }
-
                 // MARK: - Footer
                 VStack(spacing: 8) {
                     Link("Was ist neu?", destination: URL(string: WimgConfig.releasesURL)!)
@@ -297,16 +221,7 @@ struct AboutView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 24)
             }
-                .padding(.horizontal, 20)
-            }
-            .onAppear {
-                if let scrollToFAQ {
-                    expandedFAQ = scrollToFAQ
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        withAnimation { proxy.scrollTo(scrollToFAQ, anchor: .top) }
-                    }
-                }
-            }
+            .padding(.horizontal, 20)
         }
         .background(WimgTheme.bg)
         .navigationTitle("Über wimg")

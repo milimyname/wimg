@@ -155,11 +155,15 @@ struct DashboardView: View {
                     .offset(x: 40, y: -40)
 
                 VStack(spacing: 6) {
-                    Text("Verfügbar")
-                        .font(.system(.subheadline, design: .rounded, weight: .bold))
-                        .foregroundStyle(WimgTheme.heroText.opacity(0.7))
-                        .textCase(.uppercase)
-                        .tracking(1)
+                    HStack(spacing: 6) {
+                        Text("Verfügbar")
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.heroText.opacity(0.7))
+                            .textCase(.uppercase)
+                            .tracking(1)
+                        InfoTooltip(text: "Einnahmen minus Ausgaben in diesem Monat. Was dir zum Sparen oder Investieren bleibt.")
+                            .foregroundStyle(WimgTheme.heroText.opacity(0.7))
+                    }
 
                     Text(formatAmountShort(summary?.available ?? 0))
                         .font(.system(size: 40, weight: .black, design: .rounded))
@@ -198,9 +202,12 @@ struct DashboardView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Sparquote")
-                            .font(.system(.subheadline, design: .rounded, weight: .bold))
-                            .foregroundStyle(WimgTheme.text)
+                        HStack(spacing: 6) {
+                            Text("Sparquote")
+                                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.text)
+                            InfoTooltip(text: "Prozent deines Einkommens, das du sparst: (Einnahmen − Ausgaben) ÷ Einnahmen × 100. Ab 20 % gilt als gut.")
+                        }
                         Text("Du sparst \(formatAmountShort(summary?.available ?? 0)) von \(formatAmountShort(summary?.income ?? 0))")
                             .font(.system(.caption, design: .rounded, weight: .medium))
                             .foregroundStyle(WimgTheme.textSecondary)

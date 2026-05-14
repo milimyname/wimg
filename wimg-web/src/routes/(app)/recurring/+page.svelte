@@ -10,6 +10,7 @@
   import { data } from "$lib/data.svelte";
   import { page } from "$app/state";
   import EmptyState from "../../../components/EmptyState.svelte";
+  import InfoTooltip from "../../../components/InfoTooltip.svelte";
 
   let patterns = $derived(data.recurring());
   let detecting = $state(false);
@@ -415,7 +416,10 @@
 
   <!-- 12-Month Overview -->
   <div class="mb-6">
-    <h3 class="text-lg font-display font-extrabold mb-3 px-1">12-Monats-Übersicht</h3>
+    <div class="flex items-center gap-2 mb-3 px-1">
+      <h3 class="text-lg font-display font-extrabold">12-Monats-Übersicht</h3>
+      <InfoTooltip text="Hochrechnung deiner Fixkosten für die nächsten 12 Monate, basierend auf erkannten wiederkehrenden Mustern." />
+    </div>
     <div class="bg-white rounded-3xl shadow-[var(--shadow-card)] p-5">
       <div class="flex flex-col gap-2.5">
         {#each monthlyOverview as month, i}
