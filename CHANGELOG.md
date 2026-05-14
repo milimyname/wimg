@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.8.2 (2026-05-15)
+
+- Version bump
+
 ## v0.8.1 (2026-05-15)
 
 - Version bump
