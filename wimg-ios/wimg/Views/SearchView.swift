@@ -204,17 +204,8 @@ struct SearchView: View {
                     navLink("Analyse", icon: "chart.bar", color: .indigo) {
                         AnalysisView(selectedAccount: $selectedAccount)
                     }
-                    navLink("Schulden", icon: "creditcard", color: .pink, feature: "debts") {
-                        DebtsView()
-                    }
-                    navLink("Sparziele", icon: "target", color: .yellow, feature: "goals") {
-                        GoalsView()
-                    }
                     navLink("Wiederkehrend", icon: "arrow.triangle.2.circlepath", color: .green, feature: "recurring") {
                         RecurringView()
-                    }
-                    navLink("Steuern", icon: "doc.text", color: .orange, feature: "tax") {
-                        TaxView()
                     }
                     navLink("Rückblick", icon: "calendar", color: .purple, feature: "review") {
                         ReviewView(selectedAccount: $selectedAccount)
@@ -268,9 +259,6 @@ struct SearchView: View {
                     navLink("Wie synchronisiere ich?", icon: "questionmark.circle", color: .orange) {
                         AboutView(scrollToFAQ: "Wie synchronisiere ich zwischen Geräten?")
                     }
-                    navLink("Wie funktionieren Sparziele?", icon: "questionmark.circle", color: .orange) {
-                        AboutView(scrollToFAQ: "Wie funktionieren Sparziele?")
-                    }
                     navLink("Wie erkennt wimg Abos?", icon: "questionmark.circle", color: .orange) {
                         AboutView(scrollToFAQ: "Wie erkennt wimg Abos und wiederkehrende Zahlungen?")
                     }
@@ -285,9 +273,6 @@ struct SearchView: View {
                     }
                     navLink("Kann ich Änderungen rückgängig machen?", icon: "questionmark.circle", color: .orange) {
                         AboutView(scrollToFAQ: "Kann ich Änderungen rückgängig machen?")
-                    }
-                    navLink("Was kann die Steuern-Seite?", icon: "questionmark.circle", color: .orange) {
-                        AboutView(scrollToFAQ: "Was kann die Steuern-Seite?")
                     }
                     navLink("Wie lösche ich meine Daten?", icon: "questionmark.circle", color: .orange) {
                         AboutView(scrollToFAQ: "Wie lösche ich meine Daten?")

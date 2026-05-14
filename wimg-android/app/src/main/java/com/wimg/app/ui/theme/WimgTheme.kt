@@ -121,11 +121,8 @@ object LocaleState {
 
 object FeatureFlagsState {
     var flags by mutableStateOf(mapOf(
-        "debts" to true,
         "recurring" to true,
         "review" to true,
-        "goals" to true,
-        "tax" to true,
     ))
 
     fun isEnabled(key: String): Boolean = flags[key] ?: true

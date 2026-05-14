@@ -10,13 +10,6 @@
       feature: null,
     },
     {
-      href: "/debts",
-      label: "Schulden",
-      icon: "creditcard",
-      color: "bg-rose-100 text-rose-600",
-      feature: "debts",
-    },
-    {
       href: "/recurring",
       label: "Wiederkehrend",
       icon: "recurring",
@@ -36,20 +29,6 @@
       icon: "review",
       color: "bg-violet-100 text-violet-600",
       feature: "review",
-    },
-    {
-      href: "/goals",
-      label: "Sparziele",
-      icon: "goals",
-      color: "bg-teal-100 text-teal-600",
-      feature: "goals",
-    },
-    {
-      href: "/tax",
-      label: "Steuern",
-      icon: "tax",
-      color: "bg-orange-100 text-orange-600",
-      feature: "tax",
     },
     {
       href: "/settings",
@@ -107,20 +86,6 @@
                 d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
               />
             </svg>
-          {:else if item.icon === "creditcard"}
-            <svg
-              class="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.5"
-                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-              />
-            </svg>
           {:else if item.icon === "recurring"}
             <svg
               class="w-6 h-6"
@@ -161,34 +126,6 @@
                 stroke-linejoin="round"
                 stroke-width="1.5"
                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-              />
-            </svg>
-          {:else if item.icon === "tax"}
-            <svg
-              class="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.5"
-                d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"
-              />
-            </svg>
-          {:else if item.icon === "goals"}
-            <svg
-              class="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.5"
-                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
               />
             </svg>
           {:else if item.icon === "settings"}

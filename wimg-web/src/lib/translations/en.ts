@@ -321,12 +321,12 @@ export const en: Record<string, string> = {
   "Importiere deine Bankdaten": "Import your bank data",
   "Lade eine CSV-Datei von Comdirect, Trade Republic oder Scalable Capital hoch.":
     "Upload a CSV file from Comdirect, Trade Republic or Scalable Capital.",
-  "Sparziele & Vermögen": "Savings Goals & Net Worth",
-  "Setze Sparziele, verfolge deinen Fortschritt und sieh dein Nettovermögen über die Zeit.":
-    "Set savings goals, track your progress and see your net worth over time.",
-  "Steuern & Sync": "Taxes & Sync",
-  "Finde absetzbare Ausgaben für deine Steuererklärung. Synchronisiere optional zwischen Geräten — Ende-zu-Ende verschlüsselt.":
-    "Find deductible expenses for your tax return. Optionally sync between devices — end-to-end encrypted.",
+  "Wiederkehrend erkennen": "Detect Recurring Payments",
+  "Erkenne Abos und Fixkosten automatisch. Sieh, was monatlich fällig wird.":
+    "Automatically detect subscriptions and fixed costs. See what's due each month.",
+  "Geräte synchronisieren": "Sync Devices",
+  "Synchronisiere optional zwischen Geräten — Ende-zu-Ende verschlüsselt.":
+    "Optionally sync between devices — end-to-end encrypted.",
   Überspringen: "Skip",
   Weiter: "Next",
   "Los geht's": "Get Started",

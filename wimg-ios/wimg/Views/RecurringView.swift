@@ -5,31 +5,19 @@ struct RecurringView: View {
     @State private var detecting = false
     @State private var tab = 0 // 0 = subscriptions, 1 = calendar
 
-    private var activePatterns: [RecurringPattern] {
-        patterns.filter(\.isActive)
-    }
-
-    private var priceAlerts: [RecurringPattern] {
-        activePatterns.filter(\.hasPriceChange)
-    }
-
-    private var monthlyTotal: Double {
-        activePatterns
-            .filter { $0.interval == "monthly" }
-            .reduce(0) { $0 + abs($1.amount) }
-    }
-
-    private var grouped: [(String, [RecurringPattern])] {
-        let order = ["weekly", "monthly", "quarterly", "annual"]
-        var dict: [String: [RecurringPattern]] = [:]
-        for p in activePatterns {
-            dict[p.interval, default: []].append(p)
-        }
-        return order.compactMap { key in
-            guard let items = dict[key], !items.isEmpty else { return nil }
-            return (key, items)
-        }
-    }
+    // Derived state — recomputed only when `patterns` changes via .onChange.
+    // Previously these were computed properties: every tab switch re-ran all of
+    // them on the main thread, creating fresh DateFormatters per access.
+    @State private var activePatterns: [RecurringPattern] = []
+    @State private var priceAlerts: [RecurringPattern] = []
+    @State private var monthlyTotal: Double = 0
+    @State private var grouped: [(String, [RecurringPattern])] = []
+    @State private var futurePayments: [FuturePayment] = []
+    @State private var paymentsByMonth: [(String, [FuturePayment])] = []
+    @State private var next30DaysPayments: [FuturePayment] = []
+    @State private var next30DaysTotal: Double = 0
+    @State private var monthlyOverview: [MonthOverview] = []
+    @State private var maxMonthlyTotal: Double = 1
 
     private let intervalLabels: [String: String] = [
         "weekly": "Wöchentlich",
@@ -50,37 +38,13 @@ struct RecurringView: View {
         let interval: String
     }
 
-    private var futurePayments: [FuturePayment] {
-        let now = Date()
-        let cal = Calendar.current
-        guard let end = cal.date(byAdding: .year, value: 1, to: now) else { return [] }
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM-dd"
-        var payments: [FuturePayment] = []
-
-        for p in activePatterns {
-            guard let nextDue = p.next_due, let startDate = df.date(from: nextDue) else { continue }
-            var d = startDate
-            // Step forward if overdue
-            while d < now {
-                d = addInterval(d, p.interval)
-            }
-            while d <= end {
-                payments.append(FuturePayment(
-                    date: d,
-                    dateStr: df.string(from: d),
-                    merchant: p.merchant,
-                    amount: p.amount,
-                    category: p.category,
-                    interval: p.interval
-                ))
-                d = addInterval(d, p.interval)
-            }
-        }
-        return payments.sorted { $0.date < $1.date }
+    private struct MonthOverview: Identifiable {
+        let id: String // "2026-04"
+        let label: String
+        let total: Double
     }
 
-    private func addInterval(_ date: Date, _ interval: String) -> Date {
+    private static func addInterval(_ date: Date, _ interval: String) -> Date {
         let cal = Calendar.current
         switch interval {
         case "weekly": return cal.date(byAdding: .day, value: 7, to: date) ?? date
@@ -91,38 +55,76 @@ struct RecurringView: View {
         }
     }
 
-    private var paymentsByMonth: [(String, [FuturePayment])] {
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM"
-        var dict: [String: [FuturePayment]] = [:]
-        for p in futurePayments {
-            let key = df.string(from: p.date)
-            dict[key, default: []].append(p)
+    /// Recompute all derived state from `patterns`. Single DateFormatter per
+    /// invocation, one main-thread pass. Called from .onChange(of: patterns).
+    private func recompute() {
+        // --- activePatterns + cheap derivations ---
+        let active = patterns.filter(\.isActive)
+        activePatterns = active
+        priceAlerts = active.filter(\.hasPriceChange)
+        monthlyTotal = active.filter { $0.interval == "monthly" }.reduce(0) { $0 + abs($1.amount) }
+
+        let order = ["weekly", "monthly", "quarterly", "annual"]
+        var groupDict: [String: [RecurringPattern]] = [:]
+        for p in active { groupDict[p.interval, default: []].append(p) }
+        grouped = order.compactMap { key in
+            guard let items = groupDict[key], !items.isEmpty else { return nil }
+            return (key, items)
         }
-        return dict.sorted { $0.key < $1.key }
-    }
 
-    private var next30DaysPayments: [FuturePayment] {
+        // --- futurePayments (single DateFormatter, single pass) ---
         let now = Date()
-        let limit = Calendar.current.date(byAdding: .day, value: 30, to: now) ?? now
-        return futurePayments.filter { $0.date >= now && $0.date <= limit }
-    }
-
-    private var next30DaysTotal: Double {
-        next30DaysPayments.reduce(0) { $0 + abs($1.amount) }
-    }
-
-    private struct MonthOverview: Identifiable {
-        let id: String // "2026-04"
-        let label: String
-        let total: Double
-    }
-
-    private var monthlyOverview: [MonthOverview] {
         let cal = Calendar.current
-        let now = Date()
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM"
+        let isoFmt = DateFormatter()
+        isoFmt.dateFormat = "yyyy-MM-dd"
+
+        guard let end = cal.date(byAdding: .year, value: 1, to: now) else {
+            futurePayments = []
+            paymentsByMonth = []
+            next30DaysPayments = []
+            next30DaysTotal = 0
+            monthlyOverview = []
+            maxMonthlyTotal = 1
+            return
+        }
+
+        var payments: [FuturePayment] = []
+        for p in active {
+            guard let nextDue = p.next_due, let startDate = isoFmt.date(from: nextDue) else { continue }
+            var d = startDate
+            while d < now { d = Self.addInterval(d, p.interval) }
+            while d <= end {
+                payments.append(FuturePayment(
+                    date: d,
+                    dateStr: isoFmt.string(from: d),
+                    merchant: p.merchant,
+                    amount: p.amount,
+                    category: p.category,
+                    interval: p.interval
+                ))
+                d = Self.addInterval(d, p.interval)
+            }
+        }
+        payments.sort { $0.date < $1.date }
+        futurePayments = payments
+
+        // --- paymentsByMonth (single DateFormatter) ---
+        let monthKeyFmt = DateFormatter()
+        monthKeyFmt.dateFormat = "yyyy-MM"
+        var byMonth: [String: [FuturePayment]] = [:]
+        for p in payments {
+            let key = monthKeyFmt.string(from: p.date)
+            byMonth[key, default: []].append(p)
+        }
+        paymentsByMonth = byMonth.sorted { $0.key < $1.key }
+
+        // --- next30Days ---
+        let limit30 = cal.date(byAdding: .day, value: 30, to: now) ?? now
+        let next30 = payments.filter { $0.date >= now && $0.date <= limit30 }
+        next30DaysPayments = next30
+        next30DaysTotal = next30.reduce(0) { $0 + abs($1.amount) }
+
+        // --- monthlyOverview (single label formatter, reused) ---
         let locale = Locale(identifier: UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE")
         let labelFmt = DateFormatter()
         labelFmt.locale = locale
@@ -130,23 +132,14 @@ struct RecurringView: View {
         var months: [MonthOverview] = []
         for i in 0..<12 {
             guard let monthDate = cal.date(byAdding: .month, value: i, to: now) else { continue }
-            let key = df.string(from: monthDate)
-            if i == 0 || cal.component(.month, from: monthDate) == 1 {
-                labelFmt.dateFormat = "MMM yy"
-            } else {
-                labelFmt.dateFormat = "MMM"
-            }
+            let key = monthKeyFmt.string(from: monthDate)
+            labelFmt.dateFormat = (i == 0 || cal.component(.month, from: monthDate) == 1) ? "MMM yy" : "MMM"
             let label = labelFmt.string(from: monthDate)
-            let total = paymentsByMonth
-                .first { $0.0 == key }?
-                .1.reduce(0) { $0 + abs($1.amount) } ?? 0
+            let total = byMonth[key]?.reduce(0) { $0 + abs($1.amount) } ?? 0
             months.append(MonthOverview(id: key, label: label, total: total))
         }
-        return months
-    }
-
-    private var maxMonthlyTotal: Double {
-        max(monthlyOverview.map(\.total).max() ?? 1, 1)
+        monthlyOverview = months
+        maxMonthlyTotal = max(months.map(\.total).max() ?? 1, 1)
     }
 
     var body: some View {
@@ -173,6 +166,7 @@ struct RecurringView: View {
         .background(WimgTheme.bg)
         .navigationTitle("Wiederkehrend")
         .onAppear { reload() }
+        .onChange(of: patterns) { recompute() }
     }
 
     // MARK: - Subscriptions Tab

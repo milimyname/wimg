@@ -173,11 +173,8 @@ fun SettingsScreen() {
 
         item {
             val featureToggles = listOf(
-                Triple("debts", "Schulden", "Schulden-Tracking mit Fortschritt"),
                 Triple("recurring", "Wiederkehrend", "Abo- und Mustererkennung"),
                 Triple("review", "Rückblick", "Monatlicher Finanzrückblick"),
-                Triple("goals", "Sparziele", "Sparziele setzen und verfolgen"),
-                Triple("tax", "Steuern", "Anlage N Assistent"),
             )
             val featurePrefs = context.getSharedPreferences("wimg_features", 0)
 

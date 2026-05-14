@@ -1,6 +1,6 @@
 import Foundation
 
-struct RecurringPattern: Codable, Identifiable {
+struct RecurringPattern: Codable, Identifiable, Equatable {
     let id: String
     let merchant: String
     let amount: Double

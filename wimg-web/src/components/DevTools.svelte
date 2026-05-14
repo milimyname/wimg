@@ -1,7 +1,7 @@
 <script lang="ts">
   import { devtoolsStore, type SyncEvent, type SyncDiff } from "$lib/devtools.svelte";
   import { syncWS } from "$lib/sync-ws.svelte";
-  import { getWasmMemoryBytes, getWasmDbSize, getTransactions, getAccounts, getDebts, getRecurring, getSnapshots, close, queryRaw, type QueryResult } from "$lib/wasm";
+  import { getWasmMemoryBytes, getWasmDbSize, getTransactions, getAccounts, getRecurring, getSnapshots, close, queryRaw, type QueryResult } from "$lib/wasm";
   import { clearSyncKey, getSyncKey } from "$lib/sync";
   import { featureStore } from "$lib/features.svelte";
 
@@ -39,7 +39,6 @@
       dataCounts = [
         { label: "Transaktionen", count: getTransactions().length },
         { label: "Konten", count: getAccounts().length },
-        { label: "Schulden", count: getDebts().length },
         { label: "Wiederkehrend", count: getRecurring().length },
         { label: "Snapshots", count: getSnapshots().length },
       ];
@@ -174,7 +173,6 @@
 
   // Feature flags
   const featureToggles = [
-    { key: "debts", label: "Schulden" },
     { key: "recurring", label: "Wiederkehrend" },
     { key: "review", label: "Rückblick" },
   ];

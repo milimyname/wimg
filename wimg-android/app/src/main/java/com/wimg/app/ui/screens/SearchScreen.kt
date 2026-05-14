@@ -141,10 +141,7 @@ fun SearchScreen(selectedAccount: String?, navController: NavController) {
                 item {
                     ActionSection("NAVIGATION") {
                         NavRow("Analyse", Icons.Outlined.BarChart, Color(0xFF5856D6)) { navController.navigate("analysis") }
-                        NavRow("Schulden", Icons.Outlined.CreditCard, Color(0xFFFF2D55)) { navController.navigate("debts") }
-                        NavRow("Sparziele", Icons.Outlined.Flag, Color(0xFFFFD60A)) { navController.navigate("goals") }
                         NavRow("Wiederkehrend", Icons.Outlined.Refresh, Color(0xFF30D158)) { navController.navigate("recurring") }
-                        NavRow("Steuern", Icons.Outlined.Description, Color(0xFFFF9500)) { navController.navigate("tax") }
                         NavRow("Rückblick", Icons.Outlined.CalendarMonth, Color(0xFFAF52DE)) { navController.navigate("review") }
                         NavRow("Bankverbindung", Icons.Outlined.AccountBalance, Color(0xFF5AC8FA)) { navController.navigate("fints") }
                         NavRow("Import", Icons.Outlined.FileUpload, Color(0xFF007AFF)) { navController.navigate("import") }

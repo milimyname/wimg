@@ -11,19 +11,19 @@ Dashboard, Transactions, Analysis, Import, Settings, About, Sync
 
 | Flag Key    | Label         | Description                    | Status      |
 | ----------- | ------------- | ------------------------------ | ----------- |
-| `debts`     | Schulden      | Debt tracking with progress    | Implemented |
 | `recurring` | Wiederkehrend | Recurring payment detection    | Implemented |
 | `review`    | Rückblick     | Monthly review                 | Implemented |
-| `goals`     | Sparziele     | Savings goals (Phase 6.4)      | Implemented |
 | `net_worth` | Vermögen      | Net worth tracking (Phase 6.2) | Implemented |
-| `tax`       | Steuern       | Anlage N assistant (Phase 6.3) | Implemented |
+| `debts`     | Schulden      | Removed 2026-05-14 (UI surface) | Removed    |
+| `goals`     | Sparziele     | Removed 2026-05-14 (UI surface) | Removed    |
+| `tax`       | Steuern       | Removed 2026-05-14 (UI surface) | Removed    |
 | `ai_chat`   | KI-Chat       | Removed — Claude Desktop + MCP | Removed     |
 
 ## Storage
 
 - **Web:** `localStorage` key `wimg_features` → JSON object (`features.svelte.ts`)
 - **iOS:** `UserDefaults` key `wimg_features` → JSON (`FeatureFlags.swift`)
-- Defaults: `{ debts: true, recurring: true, review: true, goals: true, tax: true }`
+- Defaults: `{ recurring: true, review: true }`
 
 ## How it works
 

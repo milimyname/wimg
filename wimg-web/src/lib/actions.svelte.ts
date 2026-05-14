@@ -132,33 +132,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
     handler: () => goto("/import"),
   },
   {
-    id: "nav-debts",
-    label: "Schulden",
-    group: "Navigation",
-    icon: "💳",
-    keywords: ["debts", "kredit"],
-    handler: () => goto("/debts"),
-    enabled: () => featureStore.isEnabled("debts"),
-  },
-  {
-    id: "nav-tax",
-    label: "Steuern",
-    group: "Navigation",
-    icon: "🧾",
-    keywords: ["steuern", "tax", "anlage", "werbungskosten", "pendler"],
-    handler: () => goto("/tax"),
-    enabled: () => featureStore.isEnabled("tax"),
-  },
-  {
-    id: "nav-goals",
-    label: "Sparziele",
-    group: "Navigation",
-    icon: "🎯",
-    keywords: ["goals", "sparziel", "sparen", "savings"],
-    handler: () => goto("/goals"),
-    enabled: () => featureStore.isEnabled("goals"),
-  },
-  {
     id: "nav-recurring",
     label: "Wiederkehrend",
     group: "Navigation",
@@ -316,14 +289,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
     handler: () => gotoHash("/about#faq-sync"),
   },
   {
-    id: "faq-sparziele",
-    label: "Wie funktionieren Sparziele?",
-    group: "Hilfe",
-    icon: "❓",
-    keywords: ["faq", "sparziel", "goals", "sparen", "ziel"],
-    handler: () => gotoHash("/about#faq-sparziele"),
-  },
-  {
     id: "faq-recurring",
     label: "Wie erkennt wimg Abos?",
     group: "Hilfe",
@@ -370,14 +335,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
     icon: "❓",
     keywords: ["faq", "löschen", "daten", "reset", "zurücksetzen"],
     handler: () => gotoHash("/about#faq-datenloeschen"),
-  },
-  {
-    id: "faq-steuern",
-    label: "Was kann die Steuern-Seite?",
-    group: "Hilfe",
-    icon: "❓",
-    keywords: ["faq", "steuern", "tax", "anlage", "pendler", "homeoffice", "absetzbar"],
-    handler: () => gotoHash("/about#faq-steuern"),
   },
   {
     id: "faq-beitragen",
@@ -626,17 +583,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
 
   // --- Feature Flags ---
   {
-    id: "toggle-debts",
-    label: "Schulden ein/aus",
-    group: "Features",
-    icon: "💳",
-    keywords: ["feature", "debts", "schulden", "toggle"],
-    handler: () => {
-      featureStore.toggle("debts");
-      toastStore.show(`Schulden: ${featureStore.isEnabled("debts") ? "Ein" : "Aus"}`);
-    },
-  },
-  {
     id: "toggle-recurring",
     label: "Wiederkehrend ein/aus",
     group: "Features",
@@ -645,28 +591,6 @@ const STATIC_ACTIONS: PaletteAction[] = [
     handler: () => {
       featureStore.toggle("recurring");
       toastStore.show(`Wiederkehrend: ${featureStore.isEnabled("recurring") ? "Ein" : "Aus"}`);
-    },
-  },
-  {
-    id: "toggle-tax",
-    label: "Steuern ein/aus",
-    group: "Features",
-    icon: "🧾",
-    keywords: ["feature", "tax", "steuern", "toggle"],
-    handler: () => {
-      featureStore.toggle("tax");
-      toastStore.show(`Steuern: ${featureStore.isEnabled("tax") ? "Ein" : "Aus"}`);
-    },
-  },
-  {
-    id: "toggle-goals",
-    label: "Sparziele ein/aus",
-    group: "Features",
-    icon: "🎯",
-    keywords: ["feature", "goals", "sparziele", "toggle"],
-    handler: () => {
-      featureStore.toggle("goals");
-      toastStore.show(`Sparziele: ${featureStore.isEnabled("goals") ? "Ein" : "Aus"}`);
     },
   },
   {

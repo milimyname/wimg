@@ -40,7 +40,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 - **Linter:** oxlint (`.oxlintrc.json`) — correctness/error, suspicious/warn, perf/warn
 - **Pre-commit:** lefthook (`zig fmt`, `oxfmt`, `oxlint`, commit-msg validation)
 - **Commit format:** conventional commits (`feat:`, `fix:`, `refactor:`, etc.) — enforced by lefthook
-- **Tests:** `bun test` — 36 tests covering tax calculations, format utils, changelog logic
+- **Tests:** `bun test` — format utils + changelog logic
 - **Release:** `scripts/release.sh` — bump versions, changelog (filters chore/ci/build), commit, tag, `--push`
 - **Build WASM:** `scripts/build-wasm.sh` — two variants (web 209MB + compact 53MB)
 - **Build iOS:** `scripts/build-ios.sh` — XCFramework
@@ -55,25 +55,22 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 Phases 0–4B + 5.0, 5.1, 5.3, 5.7, 5.7b, 5.8, 5.9, 5.10, 5.11, 6.2, 6.3, 6.4, 6.5, 6.6, 6.8, 6.9, 7.0, 7.1, 7.2, 8.0, 8.1 all **done**.
 
 Working: CSV import (Comdirect/TR/Scalable), categorization (keyword rules +
-auto-learn), summaries, debts, recurring detection, multi-account, undo/redo,
-real-time sync with E2E encryption, MCP server (20 tools), data export,
-monthly snapshots, PWA with offline support, DevTools panel (5 tabs), Command
-Palette with SQL LIKE search + search history + transaction deep-links,
-advanced search with date range, amount range slider, and category filters,
-in-app changelog (`/changelog`) fetching GitHub Releases API with localStorage
-cache, dark mode (light/dark/system with flash prevention), shared month/year
-navigation across dashboard/analysis/review via `dateNav` store, savings goals
-(CRUD with icon picker, progress tracking, feature-flagged), net worth over
-time chart (SVG area chart in analysis page, cumulative from snapshots),
-tax helper (Pendlerpauschale + Homeoffice calculators, auto-tagged
-tax-relevant transactions, CSV export), Sparquote (savings rate) on
-dashboard hero card, spending heatmap (GitHub contribution graph style),
-renewals calendar (12-month payment forecast with monthly totals, upcoming
-payments timeline, next-30-days hero card — tab on recurring page),
-running balance bar on transactions list (Comdirect-style: sticky header
-showing cumulative total of all transactions from the topmost visible row
-back through history, web via IntersectionObserver + SvelteSet, iOS via
-onAppear/onDisappear tracking).
+auto-learn), summaries, recurring detection, multi-account, undo/redo,
+real-time sync with E2E encryption, MCP server (read tools + categorization +
+account writes), data export, monthly snapshots, PWA with offline support,
+DevTools panel (5 tabs), Command Palette with SQL LIKE search + search history
++ transaction deep-links, advanced search with date range, amount range slider,
+and category filters, in-app changelog (`/changelog`) fetching GitHub Releases
+API with localStorage cache, dark mode (light/dark/system with flash
+prevention), shared month/year navigation across dashboard/analysis/review via
+`dateNav` store, net worth over time chart (SVG area chart in analysis page,
+cumulative from snapshots), Sparquote (savings rate) on dashboard hero card,
+spending heatmap (GitHub contribution graph style), renewals calendar
+(12-month payment forecast with monthly totals, upcoming payments timeline,
+next-30-days hero card — tab on recurring page), running balance bar on
+transactions list (Comdirect-style: sticky header showing cumulative total of
+all transactions from the topmost visible row back through history, web via
+IntersectionObserver + SvelteSet, iOS via onAppear/onDisappear tracking).
 
 Embeddings were built (Phase 5.5) then removed (Phase 5.9) — 4,400 lines
 deleted. Keyword rules cover ~80% of categorization, MCP + Claude handles
@@ -126,17 +123,17 @@ stacks on top of Command Palette. Feedback history persisted in
 localStorage (web) / UserDefaults (iOS). Claude Code Action auto-triages
 feedback issues.
 
-All Phase 6 features complete except 6.1 (Annual Review).
-MCP server has 24 tools (11 read + 13 write) including savings goals.
-Tax page has custom keyword settings (user-defined keywords per category,
-persisted in localStorage). Tax logic extracted to `src/lib/tax.ts` (pure
-functions, testable). Bun test runner with 36 tests covering tax
-calculations, format utils, and changelog logic (migrated from vitest).
+Simplification pass (2026-05-14): tax, goals, and debts UI surface removed on
+all three platforms. Tax was purely derived (no schema/C ABI) and is fully
+gone. Goals + Debts kept their Zig C ABI exports and SQLite tables (`debts`,
+`savings_goals`) for cheap resurrection, but Swift/TS bindings, MCP tools,
+feature flags, navigation entries, settings toggles, and About FAQ entries
+are deleted. Bun test count dropped (tax tests gone).
 
 iOS dark mode support (ThemeManager with light/dark/system, adaptive colors
-in WimgTheme, settings picker). Onboarding updated (4 cards:
-privacy, import, goals/net-worth, tax/sync). SearchView has nav links to
-all features including Bankverbindung (FinTS).
+in WimgTheme, settings picker). Onboarding has 4 cards: privacy, import,
+recurring detection, sync. SearchView has nav links to remaining features
+(Analyse, Wiederkehrend, Rückblick, Bankverbindung, Import, Einstellungen).
 
 FinTS 3.0 protocol engine (pure Zig, ~2500 lines): anonymous init, authenticated
 dialog (PIN/TAN), HKKAZ v5/v6/v7 statement fetch (version negotiated from BPD),
@@ -215,14 +212,11 @@ Each receiver registered separately in AndroidManifest with its own
 JSON, calls `updateAll(context)` on all three Glance widgets after
 every dashboard reload. iOS uses `WidgetCenter.shared.reloadAllTimelines()`.
 
-Planned: Phase 7.3 (Vertragsmanagement) — contract lifecycle tracking on
-recurring payments. `contracts` table (pattern, start date, duration,
-intro/full price), end-date badges, dashboard warning card (90 days),
-iOS local notifications at month 21, web banner on app open. One-time
-manual entry per contract, then automatic warnings.
-
-Deferred: Phase 5.2 (Notifications) — TBD.
-Deferred: Phase 6.1 (Annual Review / "Geld-Wrapped") — planned for end of year.
+Planned: Phase 6.9 v2 — weekly background FinTS refresh (`BGAppRefreshTask` on
+iOS, WorkManager on Android) + notifications (`UNUserNotificationCenter` /
+`NotificationCompat`) for fetch results and price-change alerts on recurring
+payments. Absorbs the previously-deferred Phase 5.2 (Notifications) and
+replaces Phase 7.3 (Vertragsmanagement, dropped).
 
 ---
 

@@ -7,13 +7,9 @@ import {
   getTransactions,
   getTransactionsFiltered,
   getSummaryFiltered,
-  getDebts,
-  getGoals,
   getRecurring,
   type Transaction,
   type MonthlySummary,
-  type Debt,
-  type Goal,
   type RecurringPattern,
 } from "./wasm";
 
@@ -47,16 +43,6 @@ class DataStore {
   summary(year: number, month: number, account?: string | null): MonthlySummary {
     this.#v;
     return getSummaryFiltered(year, month, account);
-  }
-
-  debts(): Debt[] {
-    this.#v;
-    return getDebts();
-  }
-
-  goals(): Goal[] {
-    this.#v;
-    return getGoals();
   }
 
   recurring(): RecurringPattern[] {

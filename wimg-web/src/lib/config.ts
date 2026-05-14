@@ -37,9 +37,6 @@ export const LS_LOCALE = "wimg_locale";
 
 // --- Feature Flags (default: all ON for existing users) ---
 export const DEFAULT_FEATURES: Record<string, boolean> = {
-  debts: true,
   recurring: true,
   review: true,
-  goals: true,
-  tax: true,
 };

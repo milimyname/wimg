@@ -54,11 +54,6 @@
   // Feature toggles
   const featureToggles = [
     {
-      key: "debts",
-      label: "Schulden",
-      description: "Schulden verfolgen und abzahlen",
-    },
-    {
       key: "recurring",
       label: "Wiederkehrend",
       description: "Abos und regelmäßige Zahlungen erkennen",
@@ -67,16 +62,6 @@
       key: "review",
       label: "Rückblick",
       description: "Monatliche Zusammenfassung und Analyse",
-    },
-    {
-      key: "goals",
-      label: "Sparziele",
-      description: "Sparziele setzen und Fortschritt verfolgen",
-    },
-    {
-      key: "tax",
-      label: "Steuern",
-      description: "Steuerlich absetzbare Ausgaben erkennen",
     },
   ];
 

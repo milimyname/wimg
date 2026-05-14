@@ -185,16 +185,6 @@
         }
       }
     },
-    "%@ %@ %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ %2$@ %3$@"
-          }
-        }
-      }
-    },
     "%@ → %@" : {
       "localizations" : {
         "de" : {
@@ -209,9 +199,6 @@
 
     },
     "%@ Rückblick" : {
-
-    },
-    "%@ übrig" : {
 
     },
     "%@: +%@ (%lld%% mehr)" : {
@@ -270,9 +257,6 @@
     "%lld €" : {
 
     },
-    "%lld Aktiv" : {
-
-    },
     "%lld Buchungen gefunden" : {
 
     },
@@ -294,16 +278,6 @@
     "%lld%%" : {
 
     },
-    "%lld%% %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld%% %2$@"
-          }
-        }
-      }
-    },
     "%lldT überfällig" : {
 
     },
@@ -319,16 +293,10 @@
     "✨" : {
 
     },
-    "⭐" : {
-
-    },
     "🐛" : {
 
     },
     "💬" : {
-
-    },
-    "💳" : {
 
     },
     "📆" : {
@@ -340,13 +308,8 @@
     "🔄" : {
 
     },
-    "🧾" : {
-
-    },
-    "0" : {
-
-    },
     "6 €/Tag (max. 210 Tage)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -381,10 +344,8 @@
     "50 – 200 €" : {
 
     },
-    "220" : {
-
-    },
     "Abbezahlt" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -500,6 +461,7 @@
       }
     },
     "Absetzbare Ausgaben" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1707,9 +1669,6 @@
         }
       }
     },
-    "Betrag (€)" : {
-
-    },
     "Betrag (z.B. 50)" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1728,6 +1687,7 @@
       }
     },
     "Bezahlen" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1744,6 +1704,7 @@
       }
     },
     "Bezahlt" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2344,6 +2305,7 @@
       }
     },
     "Deadline (optional)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2494,6 +2456,7 @@
       }
     },
     "Deine Schulden" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2510,6 +2473,7 @@
       }
     },
     "Deine Sparziele" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3212,6 +3176,7 @@
       }
     },
     "Einzahlen" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3329,6 +3294,7 @@
       }
     },
     "Erkannte Ausgaben" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3357,6 +3323,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "detected patterns"
+          }
+        }
+      }
+    },
+    "Erkenne Abos und Fixkosten automatisch. Sieh, was monatlich fällig wird." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erkenne Abos und Fixkosten automatisch. Sieh, was monatlich fällig wird."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatically detect subscriptions and fixed costs. See what's due each month."
           }
         }
       }
@@ -3411,10 +3394,8 @@
         }
       }
     },
-    "erledigt" : {
-
-    },
     "Erreicht" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3697,23 +3678,6 @@
         }
       }
     },
-    "Finde absetzbare Ausgaben für deine Steuererklärung. Synchronisiere optional zwischen Geräten — Ende-zu-Ende verschlüsselt." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Finde absetzbare Ausgaben für deine Steuererklärung. Synchronisiere optional zwischen Geräten — Ende-zu-Ende verschlüsselt."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Find deductible expenses for your tax return. Optionally sync between devices — end-to-end encrypted."
-          }
-        }
-      }
-    },
     "FinTS direkt zur Bank" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3752,6 +3716,7 @@
       }
     },
     "Fortschritt" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3785,6 +3750,7 @@
       }
     },
     "Füge Schulden hinzu um den Fortschritt zu tracken" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -3985,6 +3951,23 @@
         }
       }
     },
+    "Geräte synchronisieren" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geräte synchronisieren"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync Devices"
+          }
+        }
+      }
+    },
     "Gesamt" : {
       "localizations" : {
         "de" : {
@@ -4002,6 +3985,7 @@
       }
     },
     "Gesamtbetrag" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4035,6 +4019,7 @@
       }
     },
     "Gesamtfortschritt" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4067,10 +4052,8 @@
         }
       }
     },
-    "Geschätztes Steuerjahr %@" : {
-
-    },
     "gespart" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4325,6 +4308,7 @@
       }
     },
     "Hinzufügen" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4378,6 +4362,7 @@
 
     },
     "Homeoffice" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4394,6 +4379,7 @@
       }
     },
     "Homeoffice-Tage" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4410,6 +4396,7 @@
       }
     },
     "Icon" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4528,6 +4515,7 @@
       }
     },
     "Importiere Bankdaten um steuerrelevante Ausgaben zu finden" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5004,6 +4992,7 @@
       }
     },
     "Jahr" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5639,6 +5628,7 @@
       }
     },
     "Keine Schulden" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5655,6 +5645,7 @@
       }
     },
     "Keine Sparziele" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5671,6 +5662,7 @@
       }
     },
     "Keine Transaktionen" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5816,9 +5808,6 @@
           }
         }
       }
-    },
-    "km" : {
-
     },
     "Komma, UTF-8" : {
       "extractionState" : "stale",
@@ -6727,9 +6716,6 @@
         }
       }
     },
-    "Monatlich: %@" : {
-
-    },
     "Monatliche Ausgaben im Zeitverlauf" : {
       "localizations" : {
         "de" : {
@@ -6763,6 +6749,7 @@
       }
     },
     "Monatliche Rate (optional)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7058,6 +7045,7 @@
       }
     },
     "Neues Sparziel" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7261,6 +7249,7 @@
       }
     },
     "Pendlerpauschale" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7812,6 +7801,7 @@
       }
     },
     "Schuld hinzufügen" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7862,6 +7852,7 @@
       }
     },
     "Schulden" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -7997,6 +7988,7 @@
       }
     },
     "Setze dir Sparziele und verfolge deinen Fortschritt" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8025,23 +8017,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Set savings goals and track your progress."
-          }
-        }
-      }
-    },
-    "Setze Sparziele, verfolge deinen Fortschritt und sieh dein Nettovermögen über die Zeit." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Setze Sparziele, verfolge deinen Fortschritt und sieh dein Nettovermögen über die Zeit."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Set savings goals, track your progress and see your net worth over time."
           }
         }
       }
@@ -8199,6 +8174,7 @@
       }
     },
     "Sparen" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8231,6 +8207,7 @@
       }
     },
     "Sparziel erstellen" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8332,6 +8309,7 @@
       }
     },
     "Sparziele" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8343,23 +8321,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Savings Goals"
-          }
-        }
-      }
-    },
-    "Sparziele & Vermögen" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sparziele & Vermögen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Savings Goals & Net Worth"
           }
         }
       }
@@ -8617,6 +8578,7 @@
       }
     },
     "Steuern" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8628,23 +8590,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Taxes"
-          }
-        }
-      }
-    },
-    "Steuern & Sync" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Steuern & Sync"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Taxes & Sync"
           }
         }
       }
@@ -8983,6 +8928,23 @@
         }
       }
     },
+    "Synchronisiere optional zwischen Geräten — Ende-zu-Ende verschlüsselt." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronisiere optional zwischen Geräten — Ende-zu-Ende verschlüsselt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optionally sync between devices — end-to-end encrypted."
+          }
+        }
+      }
+    },
     "Synchronisiere..." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -9037,6 +8999,7 @@
 
     },
     "Tage" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9878,6 +9841,7 @@
       }
     },
     "Verbleibende Schulden" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10131,6 +10095,7 @@
       }
     },
     "von" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -10820,6 +10785,23 @@
         }
       }
     },
+    "Wiederkehrend erkennen" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiederkehrend erkennen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detect Recurring Payments"
+          }
+        }
+      }
+    },
     "Wiederkehrend:" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -11041,22 +11023,7 @@
         }
       }
     },
-    "z.B. 50,00" : {
-
-    },
-    "z.B. 1234,56" : {
-
-    },
-    "z.B. 5000" : {
-
-    },
     "z.B. Bargeld, Haushalt..." : {
-
-    },
-    "z.B. FOM, Klarna" : {
-
-    },
-    "z.B. Urlaub 2027" : {
 
     },
     "Zahlung" : {
@@ -11094,6 +11061,7 @@
       }
     },
     "Zahlung eintragen" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -11243,6 +11211,7 @@
       }
     },
     "Zielbetrag" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

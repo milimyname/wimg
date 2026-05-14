@@ -131,11 +131,8 @@ fun WimgNavigation() {
                 composable("more") { MoreScreen(navController = navController) }
                 composable("import") { ImportScreen(navController = navController) }
                 composable("analysis") { AnalysisScreen(selectedAccount = selectedAccount) }
-                composable("debts") { DebtsScreen() }
-                composable("goals") { GoalsScreen() }
                 composable("recurring") { RecurringScreen() }
                 composable("review") { ReviewScreen(selectedAccount = selectedAccount) }
-                composable("tax") { TaxScreen() }
                 composable("fints") { FinTSScreen() }
                 composable("feedback") { FeedbackScreen() }
                 composable("settings") { SettingsScreen() }

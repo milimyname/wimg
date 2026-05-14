@@ -84,33 +84,15 @@ object TranslationMap {
 
         // More
         "Analyse" to "Analysis",
-        "Schulden" to "Debts",
-        "Sparziele" to "Savings Goals",
         "Wiederkehrend" to "Recurring",
-        "Steuern" to "Tax",
         "Rückblick" to "Review",
         "Bankverbindung" to "Bank Connection",
         "Import" to "Import",
         "Einstellungen" to "Settings",
         "Über wimg" to "About wimg",
         "Feedback" to "Feedback",
-
-        // Debts
-        "Keine Schulden" to "No Debts",
-        "Verbleibend" to "Remaining",
-        "Schuld hinzufügen" to "Add Debt",
         "Hinzufügen" to "Add",
-        "Zahlen" to "Pay",
         "Löschen" to "Delete",
-        "Gesamtbetrag (€)" to "Total Amount (€)",
-        "Monatliche Rate (€)" to "Monthly Rate (€)",
-
-        // Goals
-        "Keine Sparziele" to "No Savings Goals",
-        "Sparziel erstellen" to "Create Savings Goal",
-        "Erstellen" to "Create",
-        "Einzahlen" to "Deposit",
-        "Zielbetrag (€)" to "Target Amount (€)",
 
         // Recurring
         "Abonnements" to "Subscriptions",
@@ -129,17 +111,6 @@ object TranslationMap {
         "Gespart" to "Saved",
         "Defizit" to "Deficit",
         "Top Kategorien" to "Top Categories",
-
-        // Tax
-        "Gesamtabzug" to "Total Deduction",
-        "Pendler" to "Commuter",
-        "Homeoffice" to "Home Office",
-        "Gesamt" to "Total",
-        "Pendlerpauschale" to "Commuter Allowance",
-        "Homeoffice-Pauschale" to "Home Office Allowance",
-        "Entfernung (km, einfach)" to "Distance (km, one way)",
-        "Arbeitstage pro Jahr" to "Work Days per Year",
-        "Homeoffice-Tage (max. 210)" to "Home Office Days (max. 210)",
 
         // Settings
         "Darstellung" to "Appearance",
@@ -204,10 +175,10 @@ object TranslationMap {
         "Keine Cloud, kein Konto. Deine Daten bleiben auf deinem Gerät — lokal, privat, offline." to "No cloud, no account. Your data stays on your device — local, private, offline.",
         "Importiere deine Bankdaten" to "Import your bank data",
         "Lade eine CSV-Datei von Comdirect, Trade Republic oder Scalable Capital hoch." to "Upload a CSV file from Comdirect, Trade Republic, or Scalable Capital.",
-        "Sparziele & Vermögen" to "Savings Goals & Net Worth",
-        "Setze Sparziele, verfolge deinen Fortschritt und sieh dein Nettovermögen über die Zeit." to "Set savings goals, track your progress, and see your net worth over time.",
-        "Steuern & Sync" to "Tax & Sync",
-        "Finde absetzbare Ausgaben für deine Steuererklärung. Synchronisiere optional zwischen Geräten." to "Find deductible expenses for your tax return. Optionally sync between devices.",
+        "Wiederkehrend erkennen" to "Detect Recurring Payments",
+        "Erkenne Abos und Fixkosten automatisch. Sieh, was monatlich fällig wird." to "Automatically detect subscriptions and fixed costs. See what's due each month.",
+        "Geräte synchronisieren" to "Sync Devices",
+        "Synchronisiere optional zwischen Geräten — Ende-zu-Ende verschlüsselt." to "Optionally sync between devices — end-to-end encrypted.",
         "Weiter" to "Next",
         "Los geht's" to "Let's go",
 

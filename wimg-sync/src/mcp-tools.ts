@@ -1,6 +1,5 @@
 /**
  * MCP tool definitions for remote wimg server.
- * 11 read tools + 13 write tools = 24 total.
  */
 
 import { z } from "zod/v4";
@@ -358,39 +357,6 @@ export function getToolDefinitions(): ToolDef[] {
     },
 
     {
-      name: "get_debt_status",
-      description: "Get all debts with progress (total, paid, remaining, percentage)",
-      schema: {},
-      handler: (_args, wasm) => {
-        const debts = wasm.getDebts();
-        const formatted = debts.map((d) => ({
-          id: d.id,
-          name: d.name,
-          total: formatAmount(d.total),
-          paid: formatAmount(d.paid),
-          remaining: formatAmount(d.total - d.paid),
-          progress_pct: d.total > 0 ? Math.round((d.paid / d.total) * 100) : 0,
-          monthly_payment: d.monthly ? formatAmount(d.monthly) : null,
-        }));
-        const totalDebt = debts.reduce((s, d) => s + d.total, 0);
-        const totalPaid = debts.reduce((s, d) => s + d.paid, 0);
-        return {
-          text: JSON.stringify(
-            {
-              count: debts.length,
-              total_debt: formatAmount(totalDebt),
-              total_paid: formatAmount(totalPaid),
-              total_remaining: formatAmount(totalDebt - totalPaid),
-              debts: formatted,
-            },
-            null,
-            2,
-          ),
-        };
-      },
-    },
-
-    {
       name: "get_accounts",
       description: "Get all bank accounts",
       schema: {},
@@ -508,40 +474,6 @@ export function getToolDefinitions(): ToolDef[] {
         return {
           text: JSON.stringify(
             { category: categoryName(wasm.categories, catId), months: results },
-            null,
-            2,
-          ),
-        };
-      },
-    },
-
-    {
-      name: "get_savings_goals",
-      description: "Get all savings goals with progress (target, current, remaining, percentage, deadline)",
-      schema: {},
-      handler: (_args, wasm) => {
-        const goals = wasm.getGoals();
-        const formatted = goals.map((g) => ({
-          id: g.id,
-          name: g.name,
-          icon: g.icon,
-          target: formatAmount(g.target),
-          current: formatAmount(g.current),
-          remaining: formatAmount(g.target - g.current),
-          progress_pct: g.target > 0 ? Math.round((g.current / g.target) * 100) : 0,
-          deadline: g.deadline,
-        }));
-        const totalTarget = goals.reduce((s, g) => s + g.target, 0);
-        const totalSaved = goals.reduce((s, g) => s + g.current, 0);
-        return {
-          text: JSON.stringify(
-            {
-              count: goals.length,
-              total_target: formatAmount(totalTarget),
-              total_saved: formatAmount(totalSaved),
-              total_remaining: formatAmount(totalTarget - totalSaved),
-              goals: formatted,
-            },
             null,
             2,
           ),
@@ -773,95 +705,6 @@ export function getToolDefinitions(): ToolDef[] {
     },
 
     {
-      name: "add_debt",
-      description: "Add a new debt to track (e.g. loan, installment, recurring bill)",
-      schema: {
-        name: z.string().describe("Name of the debt (e.g. 'FOM Studiengebühren', 'Klarna')"),
-        total: z.number().positive().describe("Total amount in euros (e.g. 5000.00)"),
-        monthly: z.number().positive().optional().describe("Monthly payment in euros (optional)"),
-      },
-      handler: (args, wasm) => {
-        const totalCents = Math.round((args.total as number) * 100);
-        const monthlyCents = args.monthly ? Math.round((args.monthly as number) * 100) : undefined;
-        const id = wasm.addDebt(args.name as string, totalCents, monthlyCents);
-        return {
-          text: JSON.stringify({ success: true, id, name: args.name, total: args.total }),
-        };
-      },
-    },
-
-    {
-      name: "mark_debt_paid",
-      description:
-        "Record a payment towards a debt. Use get_debt_status first to find the debt ID.",
-      schema: {
-        debt_id: z.string().describe("Debt ID"),
-        amount: z.number().positive().describe("Payment amount in euros (e.g. 200.00)"),
-      },
-      handler: (args, wasm) => {
-        const amountCents = Math.round((args.amount as number) * 100);
-        wasm.markDebtPaid(args.debt_id as string, amountCents);
-        return {
-          text: JSON.stringify({ success: true, debt_id: args.debt_id, amount_paid: args.amount }),
-        };
-      },
-    },
-
-    {
-      name: "add_savings_goal",
-      description: "Add a new savings goal to track (e.g. vacation, car, emergency fund)",
-      schema: {
-        name: z.string().describe("Name of the goal (e.g. 'Urlaub 2027', 'Notgroschen')"),
-        icon: z.string().default("🎯").describe("Emoji icon (default: 🎯)"),
-        target: z.number().positive().describe("Target amount in euros (e.g. 5000.00)"),
-        deadline: z.string().optional().describe("Target date ISO format (e.g. '2027-06-01', optional)"),
-      },
-      handler: (args, wasm) => {
-        const targetCents = Math.round((args.target as number) * 100);
-        const id = wasm.addGoal(
-          args.name as string,
-          (args.icon as string) || "🎯",
-          targetCents,
-          (args.deadline as string) || null,
-        );
-        return {
-          text: JSON.stringify({ success: true, id, name: args.name, target: args.target }),
-        };
-      },
-    },
-
-    {
-      name: "contribute_to_goal",
-      description:
-        "Record a contribution towards a savings goal. Use get_savings_goals first to find the goal ID.",
-      schema: {
-        goal_id: z.string().describe("Savings goal ID"),
-        amount: z.number().positive().describe("Contribution amount in euros (e.g. 200.00)"),
-      },
-      handler: (args, wasm) => {
-        const amountCents = Math.round((args.amount as number) * 100);
-        wasm.contributeGoal(args.goal_id as string, amountCents);
-        return {
-          text: JSON.stringify({ success: true, goal_id: args.goal_id, amount_contributed: args.amount }),
-        };
-      },
-    },
-
-    {
-      name: "delete_savings_goal",
-      description: "Delete a savings goal. Use get_savings_goals first to find the goal ID.",
-      schema: {
-        goal_id: z.string().describe("Savings goal ID to delete"),
-      },
-      handler: (args, wasm) => {
-        wasm.deleteGoal(args.goal_id as string);
-        return {
-          text: JSON.stringify({ success: true, goal_id: args.goal_id }),
-        };
-      },
-    },
-
-    {
       name: "add_account",
       description: "Add a new bank account for tracking",
       schema: {
@@ -927,11 +770,6 @@ export const WRITE_TOOL_NAMES = new Set([
   "batch_set_category",
   "batch_categorize_by_pattern",
   "set_excluded",
-  "add_debt",
-  "mark_debt_paid",
-  "add_savings_goal",
-  "contribute_to_goal",
-  "delete_savings_goal",
   "add_account",
   "update_account",
   "undo",

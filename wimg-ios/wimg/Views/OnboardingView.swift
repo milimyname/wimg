@@ -20,16 +20,16 @@ struct OnboardingView: View {
             Color.blue.opacity(0.12)
         ),
         (
-            "Sparziele & Vermögen",
-            "Setze Sparziele, verfolge deinen Fortschritt und sieh dein Nettovermögen über die Zeit.",
-            "star.fill",
-            .teal,
-            Color.teal.opacity(0.12)
+            "Wiederkehrend erkennen",
+            "Erkenne Abos und Fixkosten automatisch. Sieh, was monatlich fällig wird.",
+            "arrow.triangle.2.circlepath",
+            .green,
+            Color.green.opacity(0.12)
         ),
         (
-            "Steuern & Sync",
-            "Finde absetzbare Ausgaben für deine Steuererklärung. Synchronisiere optional zwischen Geräten — Ende-zu-Ende verschlüsselt.",
-            "doc.text.fill",
+            "Geräte synchronisieren",
+            "Synchronisiere optional zwischen Geräten — Ende-zu-Ende verschlüsselt.",
+            "arrow.triangle.2.circlepath.circle.fill",
             .orange,
             Color.orange.opacity(0.12)
         ),

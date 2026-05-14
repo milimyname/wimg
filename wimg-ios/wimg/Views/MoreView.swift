@@ -7,10 +7,7 @@ struct MoreView: View {
 
     private let allItems: [(title: String, icon: String, color: Color, destination: Destination)] = [
         ("Analyse", "chart.bar", .indigo, .analysis),
-        ("Schulden", "creditcard", .pink, .debts),
         ("Wiederkehrend", "arrow.triangle.2.circlepath", .green, .recurring),
-        ("Sparziele", "target", .yellow, .goals),
-        ("Steuern", "doc.text", .orange, .tax),
         ("Import", "square.and.arrow.down", .blue, .import_),
         ("Bankkonto", "building.columns", .teal, .fints),
         ("Rückblick", "calendar", .purple, .review),
@@ -21,18 +18,15 @@ struct MoreView: View {
     private var items: [(title: String, icon: String, color: Color, destination: Destination)] {
         allItems.filter { item in
             switch item.destination {
-            case .debts: return FeatureFlags.shared.isEnabled("debts")
             case .recurring: return FeatureFlags.shared.isEnabled("recurring")
             case .review: return FeatureFlags.shared.isEnabled("review")
-            case .goals: return FeatureFlags.shared.isEnabled("goals")
-            case .tax: return FeatureFlags.shared.isEnabled("tax")
             default: return true
             }
         }
     }
 
     enum Destination: String, Hashable {
-        case analysis, debts, recurring, goals, tax, import_, fints, review, settings, about
+        case analysis, recurring, import_, fints, review, settings, about
     }
 
     var body: some View {
@@ -88,14 +82,8 @@ struct MoreView: View {
         switch destination {
         case .analysis:
             AnalysisView(selectedAccount: $selectedAccount)
-        case .debts:
-            DebtsView()
         case .recurring:
             RecurringView()
-        case .goals:
-            GoalsView()
-        case .tax:
-            TaxView()
         case .import_:
             ImportView()
         case .fints:

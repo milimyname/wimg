@@ -23,10 +23,7 @@ enum WimgConfig {
     // MARK: - Feature Flags (default: all ON for existing users)
 
     static let defaultFeatures: [String: Bool] = [
-        "debts": true,
         "recurring": true,
         "review": true,
-        "goals": true,
-        "tax": true,
     ]
 }

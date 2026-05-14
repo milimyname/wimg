@@ -25,7 +25,7 @@ export interface SyncEvent {
 }
 
 export interface ActionEntry {
-  action: string; // "setCategory", "importCsv", "addDebt", etc.
+  action: string; // "setCategory", "importCsv", "detectRecurring", etc.
   details: string; // human-readable summary
   timestamp: number;
 }

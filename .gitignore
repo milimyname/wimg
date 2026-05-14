@@ -53,6 +53,7 @@ DerivedData/
 # IDE / tooling
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~
