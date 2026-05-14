@@ -16,7 +16,13 @@ struct NetWorthCard: View {
         }
     }
 
-    private static let monthNames = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
+    // Locale-aware month abbreviations — never hardcode (see CLAUDE.md).
+    private static var monthNames: [String] {
+        let fmt = DateFormatter()
+        let isEn = UserDefaults.standard.string(forKey: "wimg_locale") == "en"
+        fmt.locale = Locale(identifier: isEn ? "en_US" : "de_DE")
+        return fmt.shortStandaloneMonthSymbols ?? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    }
 
     var body: some View {
         let data = chartData
