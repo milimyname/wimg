@@ -419,7 +419,7 @@
 
 <!-- Gesamtsaldo hero card (sticky below app header) -->
 {#if transactions.length > 0 && filtered.length > 0}
-  <div class="sticky top-14 z-10 mb-5 bg-white/95 backdrop-blur-xl rounded-3xl p-5 shadow-[var(--shadow-card)] border border-gray-100/80">
+  <div class="sticky top-16 z-10 mb-5 bg-white rounded-3xl p-5 shadow-[var(--shadow-soft)] border border-gray-100/80">
     <div class="flex flex-col gap-1 min-w-0">
       <span class="text-[10px] font-bold uppercase tracking-wider text-(--color-text-secondary)">
         Gesamtsaldo
