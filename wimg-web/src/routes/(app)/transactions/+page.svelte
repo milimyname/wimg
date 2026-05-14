@@ -312,16 +312,16 @@
   </button>
 </div>
 
-<!-- Gesamtsaldo hero card -->
+<!-- Gesamtsaldo hero card (sticky below app header) -->
 {#if transactions.length > 0}
-  <div class="mb-5 bg-white rounded-3xl p-6 shadow-[var(--shadow-card)] border border-gray-100/80">
+  <div class="sticky top-14 z-10 mb-5 bg-white/95 backdrop-blur-xl rounded-3xl p-5 shadow-[var(--shadow-card)] border border-gray-100/80">
     <div class="flex items-start justify-between gap-3">
       <div class="flex flex-col gap-1 min-w-0">
         <span class="text-[10px] font-bold uppercase tracking-wider text-(--color-text-secondary)">
           Gesamtsaldo
         </span>
         <p
-          class="text-4xl font-display font-black tabular-nums tracking-tight truncate"
+          class="text-3xl font-display font-black tabular-nums tracking-tight truncate"
           class:text-emerald-600={totalBalance > 0}
           class:text-rose-500={totalBalance < 0}
           class:text-(--color-text)={totalBalance === 0}
