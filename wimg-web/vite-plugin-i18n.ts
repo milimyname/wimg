@@ -17,7 +17,7 @@ import MagicString from "magic-string";
 import type { Plugin } from "vite";
 
 /** Template attributes worth translating */
-const I18N_ATTRS = new Set(["placeholder", "title", "aria-label", "alt"]);
+const I18N_ATTRS = new Set(["placeholder", "title", "aria-label", "alt", "text"]);
 
 /** Object property names to wrap when accessed in template expressions like {item.label} */
 const I18N_EXPR_PROPS = new Set([
