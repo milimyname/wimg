@@ -852,8 +852,9 @@ pub const Db = struct {
         next_due: ?[*]const u8,
         next_due_len: u32,
         prev_amount: ?i64,
+        active: i32,
     ) DbError!void {
-        const sql = "INSERT OR REPLACE INTO recurring_patterns (id, merchant, amount, interval, category, last_seen, next_due, active, prev_amount, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1, ?8, ?9);";
+        const sql = "INSERT OR REPLACE INTO recurring_patterns (id, merchant, amount, interval, category, last_seen, next_due, active, prev_amount, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10);";
 
         var stmt: ?*c.sqlite3_stmt = null;
         const rc0 = c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null);
@@ -872,12 +873,13 @@ pub const Db = struct {
         } else {
             if (c.sqlite3_bind_null(s, 7) != c.SQLITE_OK) return DbError.BindFailed;
         }
+        if (c.sqlite3_bind_int(s, 8, active) != c.SQLITE_OK) return DbError.BindFailed;
         if (prev_amount) |pa| {
-            if (c.sqlite3_bind_int64(s, 8, pa) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_int64(s, 9, pa) != c.SQLITE_OK) return DbError.BindFailed;
         } else {
-            if (c.sqlite3_bind_null(s, 8) != c.SQLITE_OK) return DbError.BindFailed;
+            if (c.sqlite3_bind_null(s, 9) != c.SQLITE_OK) return DbError.BindFailed;
         }
-        if (c.sqlite3_bind_int64(s, 9, nowMs()) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 10, nowMs()) != c.SQLITE_OK) return DbError.BindFailed;
         if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
     }
 

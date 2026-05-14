@@ -282,6 +282,12 @@ pub fn detectRecurring(database: *Db) DbError!i32 {
     var buckets: [MAX_MERCHANTS]MerchantBucket = @splat(MerchantBucket{});
     var bucket_count: usize = 0;
 
+    // Global max date across all transactions. Used as the "as-of" reference
+    // for staleness checks: a pattern whose `last_seen` lags far behind this
+    // date is no longer active in the user's life.
+    var max_date: DateTriple = .{ .year = 0, .month = 0, .day = 0 };
+    var max_julian: i32 = std.math.minInt(i32);
+
     while (c.sqlite3_step(s) == c.SQLITE_ROW) {
         const desc_ptr = c.sqlite3_column_text(s, 0) orelse continue;
         const desc_len: usize = @intCast(c.sqlite3_column_bytes(s, 0));
@@ -290,6 +296,13 @@ pub fn detectRecurring(database: *Db) DbError!i32 {
         const month = c.sqlite3_column_int(s, 3);
         const day = c.sqlite3_column_int(s, 4);
         const category = c.sqlite3_column_int(s, 5);
+
+        const row_date: DateTriple = .{ .year = year, .month = month, .day = day };
+        const row_julian = julianDay(row_date);
+        if (row_julian > max_julian) {
+            max_julian = row_julian;
+            max_date = row_date;
+        }
 
         // Normalize merchant
         var norm_buf: [128]u8 = undefined;
@@ -303,7 +316,7 @@ pub fn detectRecurring(database: *Db) DbError!i32 {
         // Add entry (sorted by date since query is ORDER BY date ASC)
         if (b.entry_count < MAX_TX_PER_MERCHANT) {
             b.entries[b.entry_count] = .{
-                .date = .{ .year = year, .month = month, .day = day },
+                .date = row_date,
                 .amount = amount,
                 .category = category,
             };
@@ -315,7 +328,7 @@ pub fn detectRecurring(database: *Db) DbError!i32 {
     var detected: i32 = 0;
     for (&buckets) |*b| {
         if (!b.used or b.entry_count < MIN_OCCURRENCES) continue;
-        if (processGroup(database, b.name[0..b.name_len], b.entries[0..b.entry_count]) catch false) {
+        if (processGroup(database, b.name[0..b.name_len], b.entries[0..b.entry_count], max_julian) catch false) {
             detected += 1;
         }
     }
@@ -356,7 +369,75 @@ fn findOrCreateBucket(buckets: *[MAX_MERCHANTS]MerchantBucket, count: *usize, na
     }
 }
 
-fn processGroup(database: *Db, merchant: []const u8, entries: []const TxEntry) DbError!bool {
+/// Required number of recent entries within the canonical-amount band for the
+/// "amount consistency" check. Cheaper than scanning the entire history: subs
+/// often have intro pricing followed by a steady-state price, and only the
+/// steady-state matters for "is this currently a recurring charge".
+const RECENT_AMOUNT_WINDOW: usize = 4;
+
+/// ±15% band around the recent-window median.
+const RECENT_AMOUNT_BAND_LO: i64 = 85;
+const RECENT_AMOUNT_BAND_HI: i64 = 115;
+
+/// Returns true if the last `RECENT_AMOUNT_WINDOW` (or fewer) entries are
+/// consistent enough that we trust the most recent amount as the canonical
+/// charge. Required share inside the band is ceil(2/3) — for n=3 → 2, n=4 → 3.
+fn recentAmountsConsistent(entries: []const TxEntry) bool {
+    const n = @min(entries.len, RECENT_AMOUNT_WINDOW);
+    if (n == 0) return false;
+
+    var recent: [RECENT_AMOUNT_WINDOW]i64 = undefined;
+    const start = entries.len - n;
+    for (entries[start..], 0..) |e, i| {
+        recent[i] = if (e.amount < 0) -e.amount else e.amount;
+    }
+
+    // Selection sort over the small window.
+    for (0..n) |i| {
+        var min_idx = i;
+        for (i + 1..n) |j| {
+            if (recent[j] < recent[min_idx]) min_idx = j;
+        }
+        const tmp = recent[i];
+        recent[i] = recent[min_idx];
+        recent[min_idx] = tmp;
+    }
+
+    const median = recent[n / 2];
+    if (median == 0) return false;
+    const lo = @divTrunc(median * RECENT_AMOUNT_BAND_LO, 100);
+    const hi = @divTrunc(median * RECENT_AMOUNT_BAND_HI, 100);
+
+    var in_range: usize = 0;
+    for (recent[0..n]) |a| {
+        if (a >= lo and a <= hi) in_range += 1;
+    }
+    // Threshold: n=1 → 1, n=2 → 2, n=3 → 2, n=4 → 3. Approximates ceil(2n/3)
+    // but written as a switch so the compiler does not need to prove the
+    // arithmetic does not overflow at the call site.
+    const required: usize = switch (n) {
+        0 => return false,
+        1 => 1,
+        2 => 2,
+        3 => 2,
+        4 => 3,
+        else => (n + (n + 2) / 3),
+    };
+    return in_range >= required;
+}
+
+/// A pattern is "active" only if its `last_seen` is recent relative to the
+/// global max transaction date. We allow up to 2× the typical interval of
+/// silence before declaring the sub dead. Without this, a subscription that
+/// ended a year ago lingers forever as "500T überfällig".
+fn isPatternActive(last_seen_julian: i32, global_max_julian: i32, interval: Interval) bool {
+    if (global_max_julian == std.math.minInt(i32)) return true;
+    const gap = global_max_julian - last_seen_julian;
+    const threshold = interval.typicalDays() * 2;
+    return gap <= threshold;
+}
+
+fn processGroup(database: *Db, merchant: []const u8, entries: []const TxEntry, global_max_julian: i32) DbError!bool {
     if (entries.len < MIN_OCCURRENCES) return false;
 
     // Calculate intervals between consecutive dates
@@ -412,31 +493,11 @@ fn processGroup(database: *Db, merchant: []const u8, entries: []const TxEntry) D
     }
     if (in_range * 100 < interval_count * 60) return false;
 
-    // Check amount consistency: ≥70% within ±10% of median amount
-    var amounts: [MAX_TX_PER_MERCHANT]i64 = undefined;
-    for (entries, 0..) |e, i| {
-        amounts[i] = if (e.amount < 0) -e.amount else e.amount;
-    }
-    // Sort amounts for median
-    for (0..entries.len) |i| {
-        var min_idx = i;
-        for (i + 1..entries.len) |j| {
-            if (amounts[j] < amounts[min_idx]) min_idx = j;
-        }
-        const tmp = amounts[i];
-        amounts[i] = amounts[min_idx];
-        amounts[min_idx] = tmp;
-    }
-    const median_amount = amounts[entries.len / 2];
-
-    var amount_in_range: usize = 0;
-    const amt_lo = @divTrunc(median_amount * 90, 100);
-    const amt_hi = @divTrunc(median_amount * 110, 100);
-    for (entries) |e| {
-        const abs_amt = if (e.amount < 0) -e.amount else e.amount;
-        if (abs_amt >= amt_lo and abs_amt <= amt_hi) amount_in_range += 1;
-    }
-    if (amount_in_range * 100 < entries.len * 70) return false;
+    // Amount consistency: check only the most recent window. A sub with intro
+    // pricing or a one-time hike still counts if its *current* price is
+    // stable. The previous full-history check rejected bimodal pricing and
+    // made half-year-old subs disappear once new patterns showed up.
+    if (!recentAmountsConsistent(entries)) return false;
 
     // Compute values
     const last_entry = entries[entries.len - 1];
@@ -453,6 +514,12 @@ fn processGroup(database: *Db, merchant: []const u8, entries: []const TxEntry) D
 
     // Calculate next_due
     const next_due_date = addDays(last_entry.date, interval.typicalDays());
+
+    // Activity check: if last_seen is too stale relative to the user's most
+    // recent transaction, mark the pattern inactive so it won't show as
+    // "500T überfällig" in the UI. Still inserted so detection is stable
+    // across reruns and resurfaces if new payments arrive.
+    const active: i32 = if (isPatternActive(julianDay(last_entry.date), global_max_julian, interval)) 1 else 0;
 
     // Generate deterministic ID from merchant hash
     var id_buf: [32]u8 = undefined;
@@ -482,9 +549,10 @@ fn processGroup(database: *Db, merchant: []const u8, entries: []const TxEntry) D
         &nd_buf,
         @intCast(nd_len),
         prev_amount,
+        active,
     );
 
-    return true;
+    return active == 1;
 }
 
 fn hashMerchantId(merchant: []const u8, out: *[32]u8) void {
@@ -565,4 +633,63 @@ test "hashMerchantId produces 32 hex chars" {
     for (id) |ch| {
         try std.testing.expect((ch >= '0' and ch <= '9') or (ch >= 'a' and ch <= 'f'));
     }
+}
+
+test "recentAmountsConsistent: stable price passes" {
+    const entries = [_]TxEntry{
+        .{ .date = .{ .year = 2026, .month = 1, .day = 1 }, .amount = -1000, .category = 0 },
+        .{ .date = .{ .year = 2026, .month = 2, .day = 1 }, .amount = -1000, .category = 0 },
+        .{ .date = .{ .year = 2026, .month = 3, .day = 1 }, .amount = -1000, .category = 0 },
+    };
+    try std.testing.expect(recentAmountsConsistent(&entries));
+}
+
+test "recentAmountsConsistent: intro pricing then full price passes" {
+    // Three months of €5 intro, then three months of €15 full price.
+    // Old algorithm rejected this (50% within ±10% of full-history median).
+    // New algorithm only inspects the last 4 entries — 3/4 are stable at €15.
+    const entries = [_]TxEntry{
+        .{ .date = .{ .year = 2026, .month = 1, .day = 1 }, .amount = -500, .category = 0 },
+        .{ .date = .{ .year = 2026, .month = 2, .day = 1 }, .amount = -500, .category = 0 },
+        .{ .date = .{ .year = 2026, .month = 3, .day = 1 }, .amount = -500, .category = 0 },
+        .{ .date = .{ .year = 2026, .month = 4, .day = 1 }, .amount = -1500, .category = 0 },
+        .{ .date = .{ .year = 2026, .month = 5, .day = 1 }, .amount = -1500, .category = 0 },
+        .{ .date = .{ .year = 2026, .month = 6, .day = 1 }, .amount = -1500, .category = 0 },
+    };
+    try std.testing.expect(recentAmountsConsistent(&entries));
+}
+
+test "recentAmountsConsistent: chaotic recent amounts fail" {
+    const entries = [_]TxEntry{
+        .{ .date = .{ .year = 2026, .month = 1, .day = 1 }, .amount = -1000, .category = 0 },
+        .{ .date = .{ .year = 2026, .month = 2, .day = 1 }, .amount = -3000, .category = 0 },
+        .{ .date = .{ .year = 2026, .month = 3, .day = 1 }, .amount = -500, .category = 0 },
+        .{ .date = .{ .year = 2026, .month = 4, .day = 1 }, .amount = -8000, .category = 0 },
+    };
+    try std.testing.expect(!recentAmountsConsistent(&entries));
+}
+
+test "isPatternActive: recent monthly sub stays active" {
+    // last_seen 25 days ago — well within 2× monthly (60 days).
+    const last_seen = DateTriple{ .year = 2026, .month = 4, .day = 6 };
+    const max_date = DateTriple{ .year = 2026, .month = 5, .day = 1 };
+    try std.testing.expect(isPatternActive(julianDay(last_seen), julianDay(max_date), .monthly));
+}
+
+test "isPatternActive: stale monthly sub goes inactive" {
+    // last_seen 500 days ago — fixes the "500T überfällig" UI bug.
+    const last_seen = DateTriple{ .year = 2024, .month = 12, .day = 18 };
+    const max_date = DateTriple{ .year = 2026, .month = 5, .day = 1 };
+    try std.testing.expect(!isPatternActive(julianDay(last_seen), julianDay(max_date), .monthly));
+}
+
+test "isPatternActive: annual sub tolerates 18-month gap up to threshold" {
+    // 700 days ago — within 2× annual (730 days), still active.
+    const last_seen = DateTriple{ .year = 2024, .month = 6, .day = 1 };
+    const max_date = DateTriple{ .year = 2026, .month = 5, .day = 1 };
+    try std.testing.expect(isPatternActive(julianDay(last_seen), julianDay(max_date), .annual));
+
+    // 800 days ago — beyond 2× annual (730 days), inactive.
+    const old_last = DateTriple{ .year = 2024, .month = 2, .day = 1 };
+    try std.testing.expect(!isPatternActive(julianDay(old_last), julianDay(max_date), .annual));
 }
