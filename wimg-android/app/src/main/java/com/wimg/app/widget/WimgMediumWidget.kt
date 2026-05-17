@@ -71,7 +71,7 @@ private fun MediumWidgetContent(data: WidgetData) {
             Spacer(modifier = GlanceModifier.height(4.dp))
             if (data.hasData) {
                 Text(
-                    text = formatAmountWidget(data.available),
+                    text = formatAmountWidget(data.available, data.maskAmounts),
                     style = TextStyle(
                         color = heroText,
                         fontSize = 24.sp,
@@ -132,7 +132,7 @@ private fun MediumWidgetContent(data: WidgetData) {
                 )
                 Spacer(modifier = GlanceModifier.defaultWeight())
                 Text(
-                    text = formatAmountWidget(abs(data.nextAmount)),
+                    text = formatAmountWidget(abs(data.nextAmount), data.maskAmounts),
                     style = TextStyle(
                         color = heroText,
                         fontSize = 12.sp,

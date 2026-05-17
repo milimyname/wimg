@@ -33,7 +33,8 @@ internal val widgetBg = Color(0xFFFFE97D)
 internal val heroText = ColorProvider(Color(0xFF1A1A1A))
 internal val heroTextDim = ColorProvider(Color(0x991A1A1A))
 
-internal fun formatAmountWidget(value: Double): String {
+internal fun formatAmountWidget(value: Double, masked: Boolean = false): String {
+    if (masked) return "\u2022\u2022\u2022 \u20AC"
     val formatter = NumberFormat.getNumberInstance(Locale.GERMANY)
     formatter.minimumFractionDigits = 2
     formatter.maximumFractionDigits = 2
@@ -70,7 +71,7 @@ private fun SmallWidgetContent(data: WidgetData) {
         Spacer(modifier = GlanceModifier.height(4.dp))
         if (data.hasData) {
             Text(
-                text = formatAmountWidget(data.available),
+                text = formatAmountWidget(data.available, data.maskAmounts),
                 style = TextStyle(
                     color = heroText,
                     fontSize = 22.sp,

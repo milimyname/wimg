@@ -23,6 +23,13 @@ import androidx.fragment.app.FragmentActivity
 object BiometricLock {
     private const val PREFS = "wimg_settings"
     private const val KEY_ENABLED = "wimg_lock_enabled"
+    /**
+     * Quick context switches (notification shade, control center, hop to a
+     * password manager) shouldn't fire the biometric prompt every time.
+     * Only background spans longer than this trigger re-lock. Mirrors the
+     * iOS BiometricLock + web LockScreen grace.
+     */
+    private const val BACKGROUND_GRACE_MS = 30_000L
 
     /** True when the gate is up and the main UI should be hidden. */
     var isLocked by mutableStateOf(false)
@@ -31,6 +38,9 @@ object BiometricLock {
     /** Loaded once at process start by [initialize]. */
     var isEnabled by mutableStateOf(false)
         private set
+
+    /** Unix-millis when the activity last went to background. 0 = foreground. */
+    private var backgroundedAt: Long = 0L
 
     enum class AvailableMethod { BIOMETRIC_STRONG, BIOMETRIC_WEAK, DEVICE_CREDENTIAL, NONE }
 
@@ -114,9 +124,25 @@ object BiometricLock {
         prompt.authenticate(info)
     }
 
-    /** Called from Activity lifecycle — re-lock when returning from background. */
+    /** Called from Activity.onPause — record when we leave the foreground. */
+    fun onPause() {
+        if (isEnabled && backgroundedAt == 0L) {
+            backgroundedAt = System.currentTimeMillis()
+        }
+    }
+
+    /** Called from Activity.onResume — re-lock only after a real absence. */
     fun onResume() {
-        if (isEnabled) isLocked = true
+        if (!isEnabled) {
+            backgroundedAt = 0L
+            return
+        }
+        val at = backgroundedAt
+        backgroundedAt = 0L
+        if (at == 0L) return
+        if (System.currentTimeMillis() - at >= BACKGROUND_GRACE_MS) {
+            isLocked = true
+        }
     }
 
     private fun prefs(context: Context): SharedPreferences =

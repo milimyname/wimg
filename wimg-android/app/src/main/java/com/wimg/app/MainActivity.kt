@@ -40,6 +40,11 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        BiometricLock.onPause()
+    }
+
     override fun onResume() {
         super.onResume()
         applySecureFlag()

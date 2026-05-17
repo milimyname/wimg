@@ -62,7 +62,7 @@ private fun LargeWidgetContent(data: WidgetData) {
                     style = TextStyle(color = heroTextDim, fontSize = 10.sp, fontWeight = FontWeight.Bold),
                 )
                 Text(
-                    text = formatAmountWidget(data.available),
+                    text = formatAmountWidget(data.available, data.maskAmounts),
                     style = TextStyle(color = heroText, fontSize = 26.sp, fontWeight = FontWeight.Bold),
                     maxLines = 1,
                 )
@@ -89,7 +89,7 @@ private fun LargeWidgetContent(data: WidgetData) {
                     style = TextStyle(color = heroTextFaint, fontSize = 9.sp, fontWeight = FontWeight.Bold),
                 )
                 Text(
-                    text = formatAmountWidget(data.income),
+                    text = formatAmountWidget(data.income, data.maskAmounts),
                     style = TextStyle(color = incomeGreen, fontSize = 14.sp, fontWeight = FontWeight.Bold),
                     maxLines = 1,
                 )
@@ -101,7 +101,7 @@ private fun LargeWidgetContent(data: WidgetData) {
                     style = TextStyle(color = heroTextFaint, fontSize = 9.sp, fontWeight = FontWeight.Bold),
                 )
                 Text(
-                    text = formatAmountWidget(abs(data.expenses)),
+                    text = formatAmountWidget(abs(data.expenses), data.maskAmounts),
                     style = TextStyle(color = expenseRed, fontSize = 14.sp, fontWeight = FontWeight.Bold),
                     maxLines = 1,
                 )
@@ -136,7 +136,7 @@ private fun LargeWidgetContent(data: WidgetData) {
                     )
                     Spacer(modifier = GlanceModifier.width(8.dp))
                     Text(
-                        text = formatAmountWidget(tx.amount),
+                        text = formatAmountWidget(tx.amount, data.maskAmounts),
                         style = TextStyle(
                             color = if (tx.amount >= 0) incomeGreen else heroText,
                             fontSize = 12.sp,

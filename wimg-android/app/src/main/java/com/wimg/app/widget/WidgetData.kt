@@ -21,11 +21,18 @@ data class WidgetData(
     val nextDate: String? = null,
     val recent: List<RecentTx> = emptyList(),
     val hasData: Boolean = false,
+    /** User opted to hide € amounts. Lives in SharedPreferences "wimg_settings"
+     *  under "wimg_widget_mask_amounts". Read on every load so the Settings
+     *  toggle only needs `updateAll()` to be reflected. */
+    val maskAmounts: Boolean = false,
 ) {
     companion object {
         fun load(context: Context): WidgetData {
+            val mask = context.getSharedPreferences("wimg_settings", Context.MODE_PRIVATE)
+                .getBoolean("wimg_widget_mask_amounts", false)
             val prefs = context.getSharedPreferences("wimg_widget", Context.MODE_PRIVATE)
-            val jsonStr = prefs.getString("wimg_widget_data", null) ?: return WidgetData()
+            val jsonStr = prefs.getString("wimg_widget_data", null)
+                ?: return WidgetData(maskAmounts = mask)
             return try {
                 val obj = Json.parseToJsonElement(jsonStr).jsonObject
                 WidgetData(
@@ -43,9 +50,10 @@ data class WidgetData(
                         RecentTx(d, a)
                     } ?: emptyList(),
                     hasData = true,
+                    maskAmounts = mask,
                 )
             } catch (_: Exception) {
-                WidgetData()
+                WidgetData(maskAmounts = mask)
             }
         }
     }

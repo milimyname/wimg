@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.launch
 import com.wimg.app.bridge.LibWimg
 import com.wimg.app.ui.theme.WimgShapes
@@ -334,6 +335,42 @@ private fun SecuritySection() {
                     L("Kein biometrischer Schutz auf diesem Gerät verfügbar."),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(12.dp))
+
+            // Widget masking — mirrors iOS "Beträge in Widgets ausblenden".
+            val maskPrefs = remember {
+                context.getSharedPreferences("wimg_settings", android.content.Context.MODE_PRIVATE)
+            }
+            var maskAmounts by remember {
+                mutableStateOf(maskPrefs.getBoolean("wimg_widget_mask_amounts", false))
+            }
+            val scope = rememberCoroutineScope()
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(L("Beträge in Widgets ausblenden"), fontWeight = FontWeight.Bold)
+                    Text(
+                        L("Zeigt ••• € statt echter Beträge."),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = maskAmounts,
+                    onCheckedChange = { newValue ->
+                        maskAmounts = newValue
+                        maskPrefs.edit().putBoolean("wimg_widget_mask_amounts", newValue).apply()
+                        // Force every widget instance to re-read SharedPreferences.
+                        scope.launch {
+                            com.wimg.app.widget.WimgSmallWidget().updateAll(context)
+                            com.wimg.app.widget.WimgMediumWidget().updateAll(context)
+                            com.wimg.app.widget.WimgLargeWidget().updateAll(context)
+                        }
+                    },
                 )
             }
         }
