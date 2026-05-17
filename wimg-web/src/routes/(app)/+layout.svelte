@@ -77,6 +77,40 @@
     window.addEventListener("pointerdown", armIdle, { passive: true });
     window.addEventListener("keydown", armIdle, { passive: true });
 
+    // Cmd/Ctrl+Shift+L — manual lock. Convention used by 1Password,
+    // Bitwarden. Listed in non-passive so we can preventDefault.
+    const onLockShortcut = (e: KeyboardEvent) => {
+      if (!lock.isEnabled || lock.isLocked) return;
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "l") {
+        e.preventDefault();
+        lock.lockNow();
+      }
+    };
+    window.addEventListener("keydown", onLockShortcut);
+
+    // Auto-lock after the tab has been hidden for >30s. Quick context
+    // switches (peek at a password manager, glance at notifications,
+    // brief app-switcher) don't lock; longer absences and OS lock-screen
+    // events do. We compare timestamps on resume rather than running a
+    // background setTimeout because browsers throttle/pause timers while
+    // the tab is hidden, especially on mobile.
+    const BACKGROUND_GRACE_MS = 30_000;
+    let hiddenAt = 0;
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+        return;
+      }
+      if (hiddenAt === 0) return;
+      const elapsed = Date.now() - hiddenAt;
+      hiddenAt = 0;
+      if (elapsed < BACKGROUND_GRACE_MS) return;
+      if (!lock.isEnabled || lock.isLocked) return;
+      if (lock.autoLockMinutes === 0) return;
+      lock.lockNow();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     // iOS Safari aggressively bf-caches the page when the user swipes
     // back from another app. The cached DOM still shows the unlocked
     // state. `pageshow` with `persisted=true` fires on bf-cache restore —
@@ -92,6 +126,8 @@
     lockCleanup = () => {
       window.removeEventListener("pointerdown", armIdle);
       window.removeEventListener("keydown", armIdle);
+      window.removeEventListener("keydown", onLockShortcut);
+      document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pageshow", onPageShow);
     };
 

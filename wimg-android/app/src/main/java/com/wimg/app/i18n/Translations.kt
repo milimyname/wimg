@@ -80,6 +80,8 @@ private val translations: Map<String, String> = mapOf(
     "Nächste Zahlung" to "Next payment",
     "Letzte Buchungen" to "Recent transactions",
     "Verfügbares Einkommen, Sparquote & letzte Buchungen" to "Available income, savings rate & recent transactions",
+    "Beträge in Widgets ausblenden" to "Hide amounts in widgets",
+    "Zeigt ••• € statt echter Beträge. Sperrbildschirm-Widget wird zusätzlich von iOS verdeckt, wenn das Gerät gesperrt ist." to "Shows ••• € instead of real amounts. The lock-screen widget is additionally redacted by iOS while the device is locked.",
     "Für diesen Monat liegen keine Ausgaben vor" to "No expenses for this month",
     "Änderungen gespeichert" to "Changes saved",
     "Gesamtsaldo" to "Total Balance",

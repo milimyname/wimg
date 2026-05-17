@@ -435,6 +435,10 @@ struct SettingsView: View {
 
     @ObservedObject private var biometricLock = BiometricLock.shared
     @AppStorage("wimg_lock_enabled") private var lockEnabled = false
+    // Mirrored from App Group on appear so the widget process sees the same
+    // value. Writes also go through the App Group store (see toggle binding).
+    @State private var widgetMaskAmounts: Bool =
+        UserDefaults(suiteName: "group.com.wimg.app")?.bool(forKey: "wimg_widget_mask_amounts") ?? false
 
     private var securitySection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -475,6 +479,28 @@ struct SettingsView: View {
                     .font(.caption2)
                     .foregroundStyle(WimgTheme.textSecondary)
             }
+
+            Divider().opacity(0.4)
+
+            Toggle(isOn: Binding(
+                get: { widgetMaskAmounts },
+                set: { newValue in
+                    widgetMaskAmounts = newValue
+                    UserDefaults(suiteName: "group.com.wimg.app")?
+                        .set(newValue, forKey: "wimg_widget_mask_amounts")
+                    WidgetCenter.shared.reloadAllTimelines()
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(#L("Beträge in Widgets ausblenden"))
+                        .font(.system(.subheadline, design: .rounded, weight: .medium))
+                        .foregroundStyle(WimgTheme.text)
+                    Text(#L("Zeigt ••• € statt echter Beträge. Sperrbildschirm-Widget wird zusätzlich von iOS verdeckt, wenn das Gerät gesperrt ist."))
+                        .font(.caption2)
+                        .foregroundStyle(WimgTheme.textSecondary)
+                }
+            }
+            .tint(WimgTheme.accent)
         }
         .padding(20)
         .wimgCard(radius: WimgTheme.radiusMedium)

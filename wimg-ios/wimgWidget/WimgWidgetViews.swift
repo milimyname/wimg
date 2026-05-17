@@ -12,7 +12,8 @@ private func currentLocale() -> Locale {
     return Locale(identifier: lang == "en" ? "en_US" : "de_DE")
 }
 
-private func formatAmount(_ value: Double) -> String {
+private func formatAmount(_ value: Double, masked: Bool = false) -> String {
+    if masked { return "••• \u{20AC}" }
     let formatter = NumberFormatter()
     formatter.numberStyle = .decimal
     formatter.locale = currentLocale()
@@ -41,7 +42,7 @@ struct WimgSmallWidgetView: View {
                 .textCase(.uppercase)
 
             if entry.data.hasData {
-                Text(formatAmount(entry.data.available))
+                Text(formatAmount(entry.data.available, masked: entry.data.maskAmounts))
                     .font(.system(size: 22, weight: .black, design: .rounded))
                     .foregroundStyle(heroText)
                     .minimumScaleFactor(0.6)
@@ -82,11 +83,13 @@ struct WimgLockScreenWidgetView: View {
                     Text("wimg")
                         .font(.system(.caption2, design: .rounded, weight: .bold))
                         .widgetAccentable()
-                    Text(formatAmount(entry.data.available))
+                    Text(formatAmount(entry.data.available, masked: entry.data.maskAmounts))
                         .font(.system(.headline, design: .rounded, weight: .black))
+                        .privacySensitive()
                     Text("\(L("Sparquote")) \(entry.data.savingsRate)%")
                         .font(.system(.caption2, design: .rounded, weight: .medium))
                         .foregroundStyle(.secondary)
+                        .privacySensitive()
                 }
             } else {
                 Text(#L("wimg — Öffne App"))
@@ -120,7 +123,7 @@ struct WimgMediumWidgetView: View {
                     .textCase(.uppercase)
 
                 if entry.data.hasData {
-                    Text(formatAmount(entry.data.available))
+                    Text(formatAmount(entry.data.available, masked: entry.data.maskAmounts))
                         .font(.system(size: 24, weight: .black, design: .rounded))
                         .foregroundStyle(heroText)
                         .minimumScaleFactor(0.6)
@@ -166,7 +169,7 @@ struct WimgMediumWidgetView: View {
 
                     Spacer()
 
-                    Text(formatAmount(abs(amount)))
+                    Text(formatAmount(abs(amount), masked: entry.data.maskAmounts))
                         .font(.system(.caption, design: .rounded, weight: .bold))
                         .foregroundStyle(heroText.opacity(0.8))
 
@@ -206,7 +209,7 @@ struct WimgLargeWidgetView: View {
                         .font(.system(.caption2, design: .rounded, weight: .bold))
                         .foregroundStyle(heroText.opacity(0.6))
                         .textCase(.uppercase)
-                    Text(formatAmount(entry.data.available))
+                    Text(formatAmount(entry.data.available, masked: entry.data.maskAmounts))
                         .font(.system(size: 26, weight: .black, design: .rounded))
                         .foregroundStyle(heroText)
                         .minimumScaleFactor(0.6)
@@ -230,7 +233,7 @@ struct WimgLargeWidgetView: View {
                         .font(.system(.caption2, design: .rounded, weight: .bold))
                         .foregroundStyle(heroText.opacity(0.5))
                         .textCase(.uppercase)
-                    Text(formatAmount(entry.data.income))
+                    Text(formatAmount(entry.data.income, masked: entry.data.maskAmounts))
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(.green.opacity(0.8))
                 }
@@ -239,7 +242,7 @@ struct WimgLargeWidgetView: View {
                         .font(.system(.caption2, design: .rounded, weight: .bold))
                         .foregroundStyle(heroText.opacity(0.5))
                         .textCase(.uppercase)
-                    Text(formatAmount(abs(entry.data.expenses)))
+                    Text(formatAmount(abs(entry.data.expenses), masked: entry.data.maskAmounts))
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(.red.opacity(0.8))
                 }
@@ -266,7 +269,7 @@ struct WimgLargeWidgetView: View {
                             .foregroundStyle(heroText)
                             .lineLimit(1)
                         Spacer()
-                        Text(formatAmount(tx.amount))
+                        Text(formatAmount(tx.amount, masked: entry.data.maskAmounts))
                             .font(.system(.caption, design: .rounded, weight: .bold))
                             .foregroundStyle(tx.amount >= 0 ? .green.opacity(0.8) : heroText)
                     }

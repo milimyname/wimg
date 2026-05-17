@@ -74,6 +74,8 @@ internal let translations: [String: String] = [
     "Nächste Zahlung": "Next payment",
     "Letzte Buchungen": "Recent transactions",
     "Verfügbares Einkommen, Sparquote & letzte Buchungen": "Available income, savings rate & recent transactions",
+    "Beträge in Widgets ausblenden": "Hide amounts in widgets",
+    "Zeigt ••• € statt echter Beträge. Sperrbildschirm-Widget wird zusätzlich von iOS verdeckt, wenn das Gerät gesperrt ist.": "Shows ••• € instead of real amounts. The lock-screen widget is additionally redacted by iOS while the device is locked.",
     "Für diesen Monat liegen keine Ausgaben vor": "No expenses for this month",
     "Änderungen gespeichert": "Changes saved",
     "Gesamtsaldo": "Total Balance",

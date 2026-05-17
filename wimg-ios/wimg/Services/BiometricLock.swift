@@ -23,6 +23,14 @@ final class BiometricLock: ObservableObject {
     /// gate shown when coming back.
     @Published var showPrivacyOverlay: Bool = false
 
+    /// When the app was last sent to background. `nil` while foreground.
+    /// Used to apply a grace period before re-locking — quick context
+    /// switches (control center, glance at a notification, brief tab to
+    /// password manager) don't fire the lock; only absences longer than
+    /// `backgroundGrace` do. Mirrors the web build's 30-second grace.
+    private var backgroundedAt: Date?
+    private let backgroundGrace: TimeInterval = 30
+
     var isEnabled: Bool {
         UserDefaults.standard.bool(forKey: "wimg_lock_enabled")
     }
@@ -80,12 +88,23 @@ final class BiometricLock: ObservableObject {
         switch phase {
         case .background:
             showPrivacyOverlay = true
-            if isEnabled { isLocked = true }
+            // Record the start of a background interval instead of locking
+            // immediately. The lock is decided when we come back to .active.
+            if isEnabled, backgroundedAt == nil {
+                backgroundedAt = Date()
+            }
         case .inactive:
             // App switcher snapshot is taken in `.inactive` — cover the UI.
             showPrivacyOverlay = true
         case .active:
             showPrivacyOverlay = false
+            if isEnabled, let at = backgroundedAt {
+                let elapsed = Date().timeIntervalSince(at)
+                if elapsed >= backgroundGrace {
+                    isLocked = true
+                }
+            }
+            backgroundedAt = nil
         @unknown default:
             break
         }
