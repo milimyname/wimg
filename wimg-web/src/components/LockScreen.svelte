@@ -29,6 +29,16 @@
     document.body.style.overflow = "hidden";
     document.body.style.overscrollBehavior = "contain";
 
+    // If a passkey is registered, prompt the biometric sheet on mount so the
+    // user doesn't have to tap the fingerprint button first. Cancellation
+    // falls through silently — the PIN pad stays available.
+    if (lock.hasPasskey && !isCooldown) {
+      // Defer one frame so the DOM is painted before the OS sheet appears.
+      requestAnimationFrame(() => {
+        if (!busy && !isCooldown) void autoTryPasskey();
+      });
+    }
+
     // Physical keyboard input — digits append, Backspace deletes, Enter
     // tries the passkey when no PIN typed yet (banking-app convention).
     const onKey = (e: KeyboardEvent) => {
@@ -88,6 +98,15 @@
     busy = true;
     const ok = await lock.verifyPasskey();
     if (!ok) error = true;
+    busy = false;
+  }
+
+  // Like tryPasskey but quiet on cancel — used by the on-mount auto-prompt
+  // where a "Cancel" tap shouldn't flash the red error state at the user.
+  async function autoTryPasskey() {
+    if (busy || isCooldown) return;
+    busy = true;
+    await lock.verifyPasskey();
     busy = false;
   }
 </script>

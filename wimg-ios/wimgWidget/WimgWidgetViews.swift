@@ -1,13 +1,21 @@
 import SwiftUI
 import WidgetKit
+import WimgI18n
 
 private let accent = Color(red: 1.0, green: 0.914, blue: 0.49) // #FFE97D
 private let heroText = Color(red: 0.102, green: 0.102, blue: 0.102) // #1A1A1A
 
+private func currentLocale() -> Locale {
+    let lang = UserDefaults(suiteName: "group.com.wimg.app")?.string(forKey: "wimg_locale")
+        ?? UserDefaults.standard.string(forKey: "wimg_locale")
+        ?? "de"
+    return Locale(identifier: lang == "en" ? "en_US" : "de_DE")
+}
+
 private func formatAmount(_ value: Double) -> String {
     let formatter = NumberFormatter()
     formatter.numberStyle = .decimal
-    formatter.locale = Locale(identifier: "de_DE")
+    formatter.locale = currentLocale()
     formatter.minimumFractionDigits = 2
     formatter.maximumFractionDigits = 2
     return (formatter.string(from: NSNumber(value: value)) ?? "0,00") + " \u{20AC}"
@@ -27,7 +35,7 @@ struct WimgSmallWidgetView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Verfügbar")
+            Text(#L("Verfügbar"))
                 .font(.system(.caption2, design: .rounded, weight: .bold))
                 .foregroundStyle(heroText.opacity(0.6))
                 .textCase(.uppercase)
@@ -45,13 +53,13 @@ struct WimgSmallWidgetView: View {
                     Circle()
                         .fill(sparColor)
                         .frame(width: 8, height: 8)
-                    Text("Sparquote \(entry.data.savingsRate)%")
+                    Text("\(L("Sparquote")) \(entry.data.savingsRate)%")
                         .font(.system(.caption2, design: .rounded, weight: .semibold))
                         .foregroundStyle(heroText.opacity(0.7))
                 }
             } else {
                 Spacer()
-                Text("Öffne wimg")
+                Text(#L("Öffne wimg"))
                     .font(.system(.caption, design: .rounded, weight: .medium))
                     .foregroundStyle(heroText.opacity(0.5))
             }
@@ -76,12 +84,12 @@ struct WimgLockScreenWidgetView: View {
                         .widgetAccentable()
                     Text(formatAmount(entry.data.available))
                         .font(.system(.headline, design: .rounded, weight: .black))
-                    Text("Sparquote \(entry.data.savingsRate)%")
+                    Text("\(L("Sparquote")) \(entry.data.savingsRate)%")
                         .font(.system(.caption2, design: .rounded, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
             } else {
-                Text("wimg — Öffne App")
+                Text(#L("wimg — Öffne App"))
                     .font(.system(.caption, design: .rounded))
             }
         }
@@ -106,7 +114,7 @@ struct WimgMediumWidgetView: View {
         HStack(spacing: 0) {
             // Left: available + savings rate
             VStack(alignment: .leading, spacing: 6) {
-                Text("Verfügbar")
+                Text(#L("Verfügbar"))
                     .font(.system(.caption2, design: .rounded, weight: .bold))
                     .foregroundStyle(heroText.opacity(0.6))
                     .textCase(.uppercase)
@@ -124,13 +132,13 @@ struct WimgMediumWidgetView: View {
                         Circle()
                             .fill(sparColor)
                             .frame(width: 8, height: 8)
-                        Text("Sparquote \(entry.data.savingsRate)%")
+                        Text("\(L("Sparquote")) \(entry.data.savingsRate)%")
                             .font(.system(.caption2, design: .rounded, weight: .semibold))
                             .foregroundStyle(heroText.opacity(0.7))
                     }
                 } else {
                     Spacer()
-                    Text("Öffne wimg")
+                    Text(#L("Öffne wimg"))
                         .font(.system(.caption, design: .rounded, weight: .medium))
                         .foregroundStyle(heroText.opacity(0.5))
                 }
@@ -146,7 +154,7 @@ struct WimgMediumWidgetView: View {
                     .opacity(0.3)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Nächste Zahlung")
+                    Text(#L("Nächste Zahlung"))
                         .font(.system(.caption2, design: .rounded, weight: .bold))
                         .foregroundStyle(heroText.opacity(0.6))
                         .textCase(.uppercase)
@@ -194,9 +202,10 @@ struct WimgLargeWidgetView: View {
             // Header
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("VERFÜGBAR")
+                    Text(#L("Verfügbar"))
                         .font(.system(.caption2, design: .rounded, weight: .bold))
                         .foregroundStyle(heroText.opacity(0.6))
+                        .textCase(.uppercase)
                     Text(formatAmount(entry.data.available))
                         .font(.system(size: 26, weight: .black, design: .rounded))
                         .foregroundStyle(heroText)
@@ -206,7 +215,7 @@ struct WimgLargeWidgetView: View {
                 Spacer()
                 HStack(spacing: 4) {
                     Circle().fill(sparColor).frame(width: 8, height: 8)
-                    Text("Sparquote \(entry.data.savingsRate)%")
+                    Text("\(L("Sparquote")) \(entry.data.savingsRate)%")
                         .font(.system(.caption2, design: .rounded, weight: .semibold))
                         .foregroundStyle(heroText.opacity(0.7))
                 }
@@ -217,17 +226,19 @@ struct WimgLargeWidgetView: View {
             // Income / Expenses
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("EINNAHMEN")
+                    Text(#L("Einnahmen"))
                         .font(.system(.caption2, design: .rounded, weight: .bold))
                         .foregroundStyle(heroText.opacity(0.5))
+                        .textCase(.uppercase)
                     Text(formatAmount(entry.data.income))
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(.green.opacity(0.8))
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("AUSGABEN")
+                    Text(#L("Ausgaben"))
                         .font(.system(.caption2, design: .rounded, weight: .bold))
                         .foregroundStyle(heroText.opacity(0.5))
+                        .textCase(.uppercase)
                     Text(formatAmount(abs(entry.data.expenses)))
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(.red.opacity(0.8))
@@ -238,12 +249,13 @@ struct WimgLargeWidgetView: View {
             Divider().opacity(0.2)
 
             // Recent transactions
-            Text("LETZTE BUCHUNGEN")
+            Text(#L("Letzte Buchungen"))
                 .font(.system(.caption2, design: .rounded, weight: .bold))
                 .foregroundStyle(heroText.opacity(0.5))
+                .textCase(.uppercase)
 
             if entry.data.recentTransactions.isEmpty {
-                Text("Keine Transaktionen")
+                Text(#L("Keine Transaktionen"))
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(heroText.opacity(0.4))
             } else {

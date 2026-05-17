@@ -88,6 +88,14 @@ export const en: Record<string, string> = {
   Kategorien: "Categories",
   "Keine Transaktionen": "No transactions",
   "Keine Daten": "No data",
+
+  // Widget (iOS WidgetKit / Android Glance)
+  "Öffne wimg": "Open wimg",
+  "wimg — Öffne App": "wimg — Open app",
+  "Nächste Zahlung": "Next payment",
+  "Letzte Buchungen": "Recent transactions",
+  "Verfügbares Einkommen, Sparquote & letzte Buchungen":
+    "Available income, savings rate & recent transactions",
   "Für diesen Monat liegen keine Ausgaben vor": "No expenses for this month",
 
   // Transactions

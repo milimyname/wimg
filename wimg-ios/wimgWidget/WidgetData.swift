@@ -52,9 +52,12 @@ struct WidgetData {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         guard let date = formatter.date(from: nextDate) else { return nil }
+        let lang = UserDefaults(suiteName: "group.com.wimg.app")?.string(forKey: "wimg_locale")
+            ?? UserDefaults.standard.string(forKey: "wimg_locale")
+            ?? "de"
         let display = DateFormatter()
         display.dateFormat = "d. MMM"
-        display.locale = Locale(identifier: "de_DE")
+        display.locale = Locale(identifier: lang == "en" ? "en_US" : "de_DE")
         return display.string(from: date)
     }
 }

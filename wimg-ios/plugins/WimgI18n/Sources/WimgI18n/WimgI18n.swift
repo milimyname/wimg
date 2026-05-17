@@ -24,11 +24,14 @@ public macro L(_ key: String) -> String =
 @inlinable
 public func L(_ key: String) -> String { __t(key) }
 
-/// Runtime lookup. Reads `wimg_locale` from `UserDefaults` — when the key is
-/// `"en"` we resolve via the `translations` table; otherwise the German key
-/// is returned verbatim (German is the source language).
+/// Runtime lookup. Reads `wimg_locale` — prefers the App Group store so the
+/// widget extension (separate process, separate `UserDefaults.standard`) sees
+/// the same value the host app wrote. Falls back to standard defaults, then
+/// to German.
 public func __t(_ key: String) -> String {
-    let loc = UserDefaults.standard.string(forKey: "wimg_locale") ?? "de"
+    let loc = UserDefaults(suiteName: "group.com.wimg.app")?.string(forKey: "wimg_locale")
+        ?? UserDefaults.standard.string(forKey: "wimg_locale")
+        ?? "de"
     if loc == "de" { return key }
     return translations[key] ?? key
 }

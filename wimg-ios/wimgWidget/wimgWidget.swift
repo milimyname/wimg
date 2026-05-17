@@ -1,5 +1,6 @@
 import SwiftUI
 import WidgetKit
+import WimgI18n
 
 struct WimgWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
@@ -29,7 +30,7 @@ struct WimgWidget: Widget {
             WimgWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("wimg")
-        .description("Verfügbares Einkommen, Sparquote & letzte Buchungen")
+        .description(#L("Verfügbares Einkommen, Sparquote & letzte Buchungen"))
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 import WimgI18n
 
 struct SettingsView: View {
@@ -255,6 +256,8 @@ struct SettingsView: View {
                     .pickerStyle(.segmented)
                     .onChange(of: currentLocale) { _, newValue in
                         UserDefaults.standard.set(newValue, forKey: "wimg_locale")
+                        UserDefaults(suiteName: "group.com.wimg.app")?.set(newValue, forKey: "wimg_locale")
+                        WidgetCenter.shared.reloadAllTimelines()
                     }
                 }
                 .padding(20)
