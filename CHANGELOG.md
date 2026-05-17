@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.8.4 (2026-05-17)
+
+- feat: native i18n macro, app-lock, supply-chain defense
+
 ## v0.8.3 (2026-05-15)
 
 - fix: i18n plugin now translates text="..." attributes
