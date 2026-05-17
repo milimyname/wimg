@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.8.5 (2026-05-17)
+
+- feat: Android parity — 30s background grace + widget masking
+- feat: 30s background grace, Cmd+Shift+L lock, widget privacy controls
+- feat: localize iOS widget + auto-trigger biometric on web lock screen
+- feat: MCP server now exposes one Code Mode `code` tool
+
 ## v0.8.4 (2026-05-17)
 
 - feat: native i18n macro, app-lock, supply-chain defense
