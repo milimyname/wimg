@@ -122,6 +122,10 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Download SQLite amalgamation
         working-directory: libwimg/vendor
         run: |
@@ -325,6 +329,10 @@ jobs:
       - uses: actions/checkout@v6
 
       - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Download compact WASM
         uses: actions/download-artifact@v8
