@@ -3,34 +3,34 @@
  *
  * Each sync key maps to one McpSession DO. The DO:
  * 1. Instantiates libwimg.wasm on first request
- * 2. Pulls data from SyncRoom DO (DO SQLite storage)
+ * 2. Pulls data from SyncRoom DO (DO SQLite storage) on init + when stale
  * 3. Decrypts + applies to in-memory SQLite
- * 4. Handles MCP JSON-RPC requests (tools/list, tools/call)
- * 5. For write tools: syncs changes back to SyncRoom → DO SQLite + WS broadcast
+ * 4. Builds a fresh McpServer per request — the SDK requires stateless
+ *    construction (it errors "Server is already connected to transport"
+ *    when reused). Each server's `onWrite` callback closes over `this` and
+ *    increments a SHARED `this.writeCount` on the DO, so even closures from
+ *    earlier requests that complete late (sandbox RPCs queued in the
+ *    Dynamic Worker isolate) still register their writes against the same
+ *    counter.
+ * 5. After each request, if `writeCount` advanced past the last push
+ *    watermark, coalesces all pending mutations into one pushToSync().
  */
 
+import { createMcpHandler } from "agents/mcp";
 import { WasmInstance, type SyncRow } from "./mcp-wasm";
-import { getToolDefinitions, WRITE_TOOL_NAMES } from "./mcp-tools";
+import { buildMcpServer } from "./mcp-tools";
+import { wrapWithCodeMode } from "./code-runner";
 
 interface Env {
   SYNC_ROOM: DurableObjectNamespace;
+  LOADER: WorkerLoader;
 }
 
-interface JsonRpcRequest {
-  jsonrpc: "2.0";
-  id?: number | string;
-  method: string;
-  params?: Record<string, unknown>;
-}
-
-interface JsonRpcResponse {
-  jsonrpc: "2.0";
-  id?: number | string | null;
-  result?: unknown;
-  error?: { code: number; message: string; data?: unknown };
-}
-
-const REFRESH_INTERVAL_MS = 60_000; // Re-pull from SyncRoom every 60s on read
+const REFRESH_INTERVAL_MS = 60_000;
+// Grace period after handler returns to let any queued sandbox RPCs complete
+// (Code Mode dispatches tool calls via Workers RPC, which may settle slightly
+// after `await handler(...)` resolves).
+const POST_HANDLER_GRACE_MS = 100;
 
 export class McpSession implements DurableObject {
   private syncKey: string | null = null;
@@ -38,7 +38,10 @@ export class McpSession implements DurableObject {
   private encryptionKey: Uint8Array | null = null;
   private lastRefreshTs = 0;
   private lastSyncTs = 0;
-  private sessionId: string | null = null;
+  /** Total writes seen since this DO instance started. Monotonic. */
+  private writeCount = 0;
+  /** Highest writeCount we've already pushed to SyncRoom. */
+  private pushedUpTo = 0;
 
   constructor(
     private state: DurableObjectState,
@@ -47,25 +50,17 @@ export class McpSession implements DurableObject {
 
   async fetch(request: Request): Promise<Response> {
     if (request.method === "DELETE") {
-      // Evict: close WASM, clear state
       this.wasm?.close();
       this.wasm = null;
       this.encryptionKey = null;
       this.syncKey = null;
-      this.sessionId = null;
       this.lastRefreshTs = 0;
       this.lastSyncTs = 0;
+      this.writeCount = 0;
+      this.pushedUpTo = 0;
       return new Response("OK");
     }
 
-    if (request.method !== "POST") {
-      return Response.json(
-        { jsonrpc: "2.0", error: { code: -32600, message: "Method not allowed" } },
-        { status: 405 },
-      );
-    }
-
-    // Extract sync key from header
     const key = request.headers.get("X-Sync-Key");
     if (!key) {
       return Response.json(
@@ -74,7 +69,6 @@ export class McpSession implements DurableObject {
       );
     }
 
-    // Initialize WASM + load data if needed
     if (!this.wasm || this.syncKey !== key) {
       try {
         await this.initialize(key);
@@ -87,68 +81,59 @@ export class McpSession implements DurableObject {
       }
     }
 
-    // Validate session ID if one was sent (post-initialize requests)
-    const clientSessionId = request.headers.get("Mcp-Session-Id");
-    if (this.sessionId && clientSessionId && clientSessionId !== this.sessionId) {
-      return new Response("Session not found", { status: 404 });
-    }
-
-    // Parse JSON-RPC
-    let rpc: JsonRpcRequest;
-    try {
-      rpc = (await request.json()) as JsonRpcRequest;
-    } catch {
-      return Response.json({
-        jsonrpc: "2.0",
-        id: null,
-        error: { code: -32700, message: "Parse error" },
-      });
-    }
-
-    // Handle notifications (no id = notification, return 202)
-    if (rpc.method === "notifications/initialized") {
-      return new Response(null, { status: 202 });
-    }
-
-    // Refresh data periodically on reads
-    if (!WRITE_TOOL_NAMES.has(rpc.params?.name as string)) {
-      const now = Date.now();
-      if (now - this.lastRefreshTs > REFRESH_INTERVAL_MS) {
-        try {
-          await this.pullFromSync();
-          this.lastRefreshTs = now;
-        } catch {
-          // Continue with stale data rather than failing
-        }
+    // Best-effort refresh from SyncRoom when stale.
+    const now = Date.now();
+    if (now - this.lastRefreshTs > REFRESH_INTERVAL_MS) {
+      try {
+        await this.pullFromSync();
+        this.lastRefreshTs = now;
+      } catch {
+        // continue with stale data
       }
     }
 
-    const response = this.handleRpc(rpc);
+    // Per-request server: SDK requires fresh McpServer per call (transport
+    // state can't be reused). onWrite closes over `this` so every closure —
+    // current or leaked from prior requests — mutates the same counter.
+    const baseServer = buildMcpServer({
+      wasm: this.wasm!,
+      onWrite: () => {
+        this.writeCount++;
+      },
+    });
+    const wrapped = await wrapWithCodeMode({
+      server: baseServer,
+      loader: this.env.LOADER,
+    });
+    const handler = createMcpHandler(wrapped, { route: "/mcp" });
 
-    // For initialize, attach Mcp-Session-Id header
-    if (rpc.method === "initialize") {
-      this.sessionId = crypto.randomUUID();
-      return new Response(JSON.stringify(response), {
-        headers: {
-          "Content-Type": "application/json",
-          "Mcp-Session-Id": this.sessionId,
-        },
-      });
+    // DOs don't get a real ExecutionContext; expose one that proxies waitUntil
+    // back to the DO state so createMcpHandler can schedule background work.
+    const ctx = {
+      waitUntil: (promise: Promise<unknown>) => this.state.waitUntil(promise),
+      passThroughOnException: () => {
+        /* no-op in DO context */
+      },
+    } as unknown as ExecutionContext;
+
+    const response = await handler(request, this.env, ctx);
+
+    // Brief grace period for queued sandbox RPCs to land their onWrite.
+    await new Promise((r) => setTimeout(r, POST_HANDLER_GRACE_MS));
+
+    if (this.writeCount > this.pushedUpTo) {
+      const upTo = this.writeCount;
+      this.pushedUpTo = upTo;
+      this.state.waitUntil(this.pushToSync());
     }
 
-    return Response.json(response);
+    return response;
   }
 
   private async initialize(syncKey: string): Promise<void> {
     this.syncKey = syncKey;
-
-    // Create fresh WASM instance
     this.wasm = await WasmInstance.create();
-
-    // Derive encryption key from sync key
     this.encryptionKey = this.wasm.deriveEncryptionKey(syncKey);
-
-    // Pull all data from SyncRoom DO
     await this.pullFromSync();
     this.lastRefreshTs = Date.now();
   }
@@ -172,7 +157,6 @@ export class McpSession implements DurableObject {
     const decrypted = this.wasm.decryptRows(rows, this.encryptionKey);
     this.wasm.applyChanges(decrypted);
 
-    // Track latest timestamp for incremental pulls
     const maxTs = rows.reduce((max, r) => Math.max(max, r.updated_at), this.lastSyncTs);
     this.lastSyncTs = maxTs;
   }
@@ -183,7 +167,6 @@ export class McpSession implements DurableObject {
     const rows = this.wasm.getChanges(this.lastSyncTs);
     if (!rows.length) return;
 
-    // Encrypt each row's data
     const encrypted: SyncRow[] = rows.map((row) => ({
       ...row,
       data: this.wasm!.encryptField(
@@ -192,7 +175,6 @@ export class McpSession implements DurableObject {
       ) as unknown as Record<string, unknown>,
     }));
 
-    // Push to SyncRoom DO → SQLite + WebSocket broadcast
     const stub = this.getSyncRoomStub();
     const res = await stub.fetch(
       new Request(`https://internal/sync/${this.syncKey}`, {
@@ -209,7 +191,6 @@ export class McpSession implements DurableObject {
       throw new Error(`Sync push failed: ${res.status}`);
     }
 
-    // Update timestamp
     const maxTs = rows.reduce((max, r) => Math.max(max, r.updated_at), this.lastSyncTs);
     this.lastSyncTs = maxTs;
   }
@@ -217,112 +198,5 @@ export class McpSession implements DurableObject {
   private getSyncRoomStub() {
     const id = this.env.SYNC_ROOM.idFromName(this.syncKey!);
     return this.env.SYNC_ROOM.get(id);
-  }
-
-  private handleRpc(rpc: JsonRpcRequest): JsonRpcResponse {
-    const { method, params, id } = rpc;
-
-    switch (method) {
-      case "initialize":
-        return {
-          jsonrpc: "2.0",
-          id,
-          result: {
-            protocolVersion: "2025-03-26",
-            capabilities: { tools: {} },
-            serverInfo: { name: "wimg", version: "0.1.0" },
-          },
-        };
-
-      case "tools/list":
-        return {
-          jsonrpc: "2.0",
-          id,
-          result: {
-            tools: getToolDefinitions().map((t) => ({
-              name: t.name,
-              description: t.description,
-              inputSchema: {
-                type: "object",
-                properties: this.zodSchemasToJsonSchema(t.schema),
-              },
-            })),
-          },
-        };
-
-      case "tools/call":
-        return this.handleToolCall(
-          id,
-          params as { name: string; arguments?: Record<string, unknown> },
-        );
-
-      case "ping":
-        return { jsonrpc: "2.0", id, result: {} };
-
-      default:
-        return {
-          jsonrpc: "2.0",
-          id,
-          error: { code: -32601, message: `Method not found: ${method}` },
-        };
-    }
-  }
-
-  private handleToolCall(
-    id: number | string | undefined,
-    params: { name: string; arguments?: Record<string, unknown> },
-  ): JsonRpcResponse {
-    const tools = getToolDefinitions();
-    const tool = tools.find((t) => t.name === params.name);
-    if (!tool) {
-      return {
-        jsonrpc: "2.0",
-        id,
-        error: { code: -32602, message: `Unknown tool: ${params.name}` },
-      };
-    }
-
-    try {
-      const result = tool.handler(params.arguments ?? {}, this.wasm!);
-
-      // If this was a write tool, sync changes back
-      if (WRITE_TOOL_NAMES.has(params.name)) {
-        // Fire-and-forget push — don't block the response
-        this.state.waitUntil(this.pushToSync());
-      }
-
-      return {
-        jsonrpc: "2.0",
-        id,
-        result: {
-          content: [{ type: "text", text: result.text }],
-        },
-      };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Tool execution failed";
-      return {
-        jsonrpc: "2.0",
-        id,
-        result: {
-          content: [{ type: "text", text: JSON.stringify({ error: msg }) }],
-          isError: true,
-        },
-      };
-    }
-  }
-
-  /** Convert Zod schemas to JSON Schema for tools/list response */
-  private zodSchemasToJsonSchema(
-    schemas: Record<string, unknown>,
-  ): Record<string, { type: string; description?: string }> {
-    const result: Record<string, { type: string; description?: string }> = {};
-    for (const [key, zodSchema] of Object.entries(schemas)) {
-      const z = zodSchema as { _def?: { typeName?: string; description?: string } };
-      let type = "string";
-      if (z._def?.typeName === "ZodNumber") type = "number";
-      if (z._def?.typeName === "ZodBoolean") type = "boolean";
-      result[key] = { type, description: z._def?.description };
-    }
-    return result;
   }
 }

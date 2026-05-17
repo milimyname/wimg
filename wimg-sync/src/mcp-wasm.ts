@@ -1,67 +1,31 @@
 /**
  * libwimg WASM loader for Cloudflare Workers.
- * Adapted from wimg-mcp/src/wasm.ts — no filesystem, uses bundled WASM module.
+ *
+ * Surfaces only what wimg-sync actually uses today:
+ *   - Lifecycle: `WasmInstance.create()`, `close()`
+ *   - Read:      `query(sql)`        — raw SQL for the Code Mode `query` tool
+ *   - Write:     `setCategory(...)`  — the only mutation exposed via MCP
+ *   - Sync:      `applyChanges`, `getChanges`, `decryptRows` (pull + push paths in McpSession)
+ *   - Crypto:    `deriveEncryptionKey`, `encryptField`, `decryptField`
+ *   - Metadata:  `categories` (loaded once from `wimg_get_categories` at init)
+ *
+ * Other libwimg exports (get_transactions/get_summary/get_accounts/get_recurring/
+ * undo/redo/etc.) used to be needed by the old 14-tool MCP surface and are
+ * intentionally not wrapped here. Code Mode composes any read access via `query`
+ * over the SQLite tables those exports used to wrap.
  */
 
 // Cloudflare bundles .wasm files as WebAssembly.Module via [[rules]]
-// Uses compact build (smaller memory buffers) to fit CF Workers 128MB limit
+// Uses compact build (smaller memory buffers) to fit CF Workers 128MB limit.
 import wasmModule from "../libwimg-compact.wasm";
 
 // --- Types ---
-
-export interface Transaction {
-  id: string;
-  date: string;
-  description: string;
-  amount: number;
-  currency: string;
-  category: number;
-  account: string;
-  excluded: number;
-}
-
-export interface Account {
-  id: string;
-  name: string;
-  bank: string;
-  color: string;
-}
-
-export interface MonthlySummary {
-  year: number;
-  month: number;
-  income: number;
-  expenses: number;
-  available: number;
-  tx_count: number;
-  by_category: CategoryBreakdown[];
-}
-
-export interface CategoryBreakdown {
-  id: number;
-  name: string;
-  amount: number;
-  count: number;
-}
 
 export interface CategoryInfo {
   id: number;
   name: string;
   color: string;
   icon: string;
-}
-
-export interface RecurringPattern {
-  id: string;
-  merchant: string;
-  amount: number;
-  interval: string;
-  category: number;
-  last_seen: string;
-  next_due: string | null;
-  active: number;
-  prev_amount: number | null;
-  price_change: number | null;
 }
 
 export interface SyncRow {
@@ -71,54 +35,43 @@ export interface SyncRow {
   updated_at: number;
 }
 
-interface UndoResult {
-  action: string;
-  detail: string;
+export interface QueryResult {
+  columns: string[];
+  rows: unknown[][];
+  count: number;
+  truncated: boolean;
 }
 
 interface WasmExports {
   memory: WebAssembly.Memory;
+
+  // Lifecycle
   wimg_init: (path: number) => number;
   wimg_close: () => void;
   wimg_free: (ptr: number, len: number) => void;
   wimg_alloc: (size: number) => number;
   wimg_get_error: () => number;
 
-  // Read
-  wimg_get_transactions: () => number;
-  wimg_get_transactions_filtered: (acct: number, acct_len: number) => number;
-  wimg_get_summary: (year: number, month: number) => number;
-  wimg_get_summary_filtered: (
-    year: number,
-    month: number,
-    acct: number,
-    acct_len: number,
-  ) => number;
-  wimg_get_debts: () => number;
-  wimg_get_goals: () => number;
-  wimg_get_accounts: () => number;
+  // Metadata (called once at init)
   wimg_get_categories: () => number;
-  wimg_get_recurring: () => number;
-  wimg_detect_recurring: () => number;
-  wimg_auto_categorize: () => number;
 
-  // Write
+  // The only write tool
   wimg_set_category: (id: number, id_len: number, category: number) => number;
-  wimg_set_excluded: (id: number, id_len: number, excluded: number) => number;
-  wimg_undo: () => number;
-  wimg_redo: () => number;
 
-  // Sync
+  // Sync — pull + push paths in McpSession
   wimg_get_changes: (since_ts: bigint) => number;
   wimg_apply_changes: (data: number, len: number) => number;
 
-  // Encryption
+  // E2E encryption
   wimg_derive_key: (sync_key: number, sync_key_len: number) => number;
   wimg_encrypt_field: (pt: number, pt_len: number, key: number, nonce: number) => number;
   wimg_decrypt_field: (ct: number, ct_len: number, key: number) => number;
+
+  // Raw SQL — backs the Code Mode `query` tool
+  wimg_query: (sql: number, sql_len: number) => number;
 }
 
-// --- WasmInstance: encapsulates one WASM instance ---
+// --- WasmInstance ---
 
 export class WasmInstance {
   private wasm: WasmExports;
@@ -146,7 +99,7 @@ export class WasmInstance {
       },
     };
 
-    // Fill in missing imports with stubs
+    // Fill in any other imports the WASM declares with no-op stubs.
     const neededImports = WebAssembly.Module.imports(wasmModule);
     for (const imp of neededImports) {
       if (!importObject[imp.module]) importObject[imp.module] = {};
@@ -162,14 +115,14 @@ export class WasmInstance {
 
     const w = new WasmInstance(resultExports);
 
-    // Init database
+    // Init database (in-memory VFS path doesn't actually touch disk in WASM)
     const pathPtr = w.writeString("/mcp.db");
     const rc = resultExports.wimg_init(pathPtr);
     if (rc !== 0) {
       throw new Error(w.getLastError("Failed to initialize wimg database"));
     }
 
-    // Load categories
+    // Load categories (static Zig-side constants — not a SQLite table)
     const catPtr = resultExports.wimg_get_categories();
     if (catPtr !== 0) {
       const catJson = w.readLengthPrefixedString(catPtr);
@@ -218,71 +171,24 @@ export class WasmInstance {
     return ptr;
   }
 
-  // --- Read API ---
+  // --- Public API ---
 
-  getTransactions(): Transaction[] {
-    const ptr = this.wasm.wimg_get_transactions();
-    if (ptr === 0) return [];
-    const json = this.readLengthPrefixedString(ptr);
-    this.wasm.wimg_free(ptr, 0);
-    return JSON.parse(json) as Transaction[];
-  }
-
-  getTransactionsFiltered(account?: string | null): Transaction[] {
-    if (!account) return this.getTransactions();
-    const acctEncoded = new TextEncoder().encode(account);
-    const acctPtr = this.writeBytes(acctEncoded);
-    const ptr = this.wasm.wimg_get_transactions_filtered(acctPtr, acctEncoded.length);
-    if (ptr === 0) return [];
-    const json = this.readLengthPrefixedString(ptr);
-    this.wasm.wimg_free(ptr, 0);
-    return JSON.parse(json) as Transaction[];
-  }
-
-  getSummary(year: number, month: number): MonthlySummary {
-    const ptr = this.wasm.wimg_get_summary(year, month);
-    if (ptr === 0) {
-      return { year, month, income: 0, expenses: 0, available: 0, tx_count: 0, by_category: [] };
+  /**
+   * Run arbitrary SQL via libwimg's `wimg_query` C ABI.
+   * Caller is responsible for any safety enforcement (read-only, etc).
+   * Result shape: `{ columns, rows, count, truncated }`.
+   */
+  query(sql: string): QueryResult {
+    const encoded = new TextEncoder().encode(sql);
+    const ptr = this.writeBytes(encoded);
+    const resultPtr = this.wasm.wimg_query(ptr, encoded.length);
+    if (resultPtr === 0) {
+      throw new Error(this.getLastError("wimg_query: failed"));
     }
-    const json = this.readLengthPrefixedString(ptr);
-    this.wasm.wimg_free(ptr, 0);
-    return JSON.parse(json) as MonthlySummary;
+    const json = this.readLengthPrefixedString(resultPtr);
+    this.wasm.wimg_free(resultPtr, 0);
+    return JSON.parse(json) as QueryResult;
   }
-
-  getSummaryFiltered(year: number, month: number, account?: string | null): MonthlySummary {
-    if (!account) return this.getSummary(year, month);
-    const acctEncoded = new TextEncoder().encode(account);
-    const acctPtr = this.writeBytes(acctEncoded);
-    const ptr = this.wasm.wimg_get_summary_filtered(year, month, acctPtr, acctEncoded.length);
-    if (ptr === 0) {
-      return { year, month, income: 0, expenses: 0, available: 0, tx_count: 0, by_category: [] };
-    }
-    const json = this.readLengthPrefixedString(ptr);
-    this.wasm.wimg_free(ptr, 0);
-    return JSON.parse(json) as MonthlySummary;
-  }
-
-  getAccounts(): Account[] {
-    const ptr = this.wasm.wimg_get_accounts();
-    if (ptr === 0) return [];
-    const json = this.readLengthPrefixedString(ptr);
-    this.wasm.wimg_free(ptr, 0);
-    return JSON.parse(json) as Account[];
-  }
-
-  detectRecurring(): number {
-    return this.wasm.wimg_detect_recurring();
-  }
-
-  getRecurring(): RecurringPattern[] {
-    const ptr = this.wasm.wimg_get_recurring();
-    if (ptr === 0) return [];
-    const json = this.readLengthPrefixedString(ptr);
-    this.wasm.wimg_free(ptr, 0);
-    return JSON.parse(json) as RecurringPattern[];
-  }
-
-  // --- Write API ---
 
   setCategory(id: string, category: number): void {
     const idPtr = this.writeString(id);
@@ -290,29 +196,7 @@ export class WasmInstance {
     if (rc !== 0) throw new Error(this.getLastError("Failed to set category"));
   }
 
-  setExcluded(id: string, excluded: boolean): void {
-    const idPtr = this.writeString(id);
-    const rc = this.wasm.wimg_set_excluded(idPtr, id.length, excluded ? 1 : 0);
-    if (rc !== 0) throw new Error(this.getLastError("Failed to set excluded"));
-  }
-
-  undo(): UndoResult | null {
-    const ptr = this.wasm.wimg_undo();
-    if (ptr === 0) return null;
-    const json = this.readLengthPrefixedString(ptr);
-    this.wasm.wimg_free(ptr, 0);
-    return JSON.parse(json) as UndoResult;
-  }
-
-  redo(): UndoResult | null {
-    const ptr = this.wasm.wimg_redo();
-    if (ptr === 0) return null;
-    const json = this.readLengthPrefixedString(ptr);
-    this.wasm.wimg_free(ptr, 0);
-    return JSON.parse(json) as UndoResult;
-  }
-
-  // --- Sync API ---
+  // --- Sync ---
 
   getChanges(sinceTs: number): SyncRow[] {
     const ptr = this.wasm.wimg_get_changes(BigInt(sinceTs));
@@ -332,7 +216,17 @@ export class WasmInstance {
     return rc;
   }
 
-  // --- Encryption API ---
+  decryptRows(rows: SyncRow[], key: Uint8Array): SyncRow[] {
+    return rows.map((row) => {
+      if (typeof row.data === "string") {
+        const plaintext = this.decryptField(row.data, key);
+        return { ...row, data: JSON.parse(plaintext) as Record<string, unknown> };
+      }
+      return row;
+    });
+  }
+
+  // --- E2E encryption ---
 
   deriveEncryptionKey(syncKey: string): Uint8Array {
     const encoded = new TextEncoder().encode(syncKey);
@@ -373,16 +267,6 @@ export class WasmInstance {
     const result = this.readLengthPrefixedString(resultPtr);
     this.wasm.wimg_free(resultPtr, 0);
     return result;
-  }
-
-  decryptRows(rows: SyncRow[], key: Uint8Array): SyncRow[] {
-    return rows.map((row) => {
-      if (typeof row.data === "string") {
-        const plaintext = this.decryptField(row.data, key);
-        return { ...row, data: JSON.parse(plaintext) as Record<string, unknown> };
-      }
-      return row;
-    });
   }
 
   close(): void {
