@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 struct SpendingHeatmap: View {
     @State private var selectedCell: (year: Int, month: Int)?
@@ -63,12 +64,12 @@ struct SpendingHeatmap: View {
                 // Header
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
-                        Text("Ausgaben-Heatmap")
+                        Text(#L("Ausgaben-Heatmap"))
                             .font(.system(.title2, design: .rounded, weight: .black))
                             .foregroundStyle(WimgTheme.text)
-                        InfoTooltip(text: "Deine monatlichen Ausgaben als Farbgitter — inspiriert vom GitHub Contribution Graph. Dunklere Farben bedeuten höhere Ausgaben.")
+                        InfoTooltip(text: #L("Deine monatlichen Ausgaben als Farbgitter — inspiriert vom GitHub Contribution Graph. Dunklere Farben bedeuten höhere Ausgaben."))
                     }
-                    Text("Monatliche Ausgaben im Zeitverlauf")
+                    Text(#L("Monatliche Ausgaben im Zeitverlauf"))
                         .font(.system(.caption, design: .rounded, weight: .medium))
                         .foregroundStyle(WimgTheme.textSecondary)
                 }
@@ -148,7 +149,7 @@ struct SpendingHeatmap: View {
                 // Legend
                 HStack(spacing: 6) {
                     Spacer()
-                    Text("Wenig")
+                    Text(#L("Wenig"))
                         .font(.system(size: 9, weight: .bold, design: .rounded))
                         .foregroundStyle(WimgTheme.textSecondary)
                     HStack(spacing: 2) {
@@ -158,7 +159,7 @@ struct SpendingHeatmap: View {
                         RoundedRectangle(cornerRadius: 2).fill(Color(red: 0.388, green: 0.4, blue: 0.945)).frame(width: 10, height: 10)
                         RoundedRectangle(cornerRadius: 2).fill(Color(red: 0.263, green: 0.22, blue: 0.792)).frame(width: 10, height: 10)
                     }
-                    Text("Viel")
+                    Text(#L("Viel"))
                         .font(.system(size: 9, weight: .bold, design: .rounded))
                         .foregroundStyle(WimgTheme.textSecondary)
                 }

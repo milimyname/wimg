@@ -14,6 +14,8 @@
   import { localeTag } from "$lib/format";
   import { i18n } from "$lib/i18n.svelte";
   import Drawer from "../../../components/Drawer.svelte";
+  import InfoTooltip from "../../../components/InfoTooltip.svelte";
+  import { lock, AUTOLOCK_OPTIONS, type AutoLockMinutes } from "$lib/lock.svelte";
   import { pushState, replaceState } from "$app/navigation";
   import { page } from "$app/state";
   import {
@@ -99,6 +101,57 @@
   let pendingSyncKey = $state("");
   let showLinkConfirm = $derived(page.state.sheet === "link-confirm");
   let showSyncInfo = $derived(page.state.sheet === "sync-info");
+
+  // PIN-lock setup flow. `pinStep` drives the wizard:
+  //   "set"     → first PIN entry
+  //   "confirm" → re-enter to confirm
+  let pinStep = $state<"set" | "confirm" | null>(null);
+  let pinDraft = $state("");
+  let pinConfirm = $state("");
+  let pinError = $state("");
+
+  function startPinSetup() {
+    pinDraft = "";
+    pinConfirm = "";
+    pinError = "";
+    pinStep = "set";
+  }
+
+  function cancelPinSetup() {
+    pinStep = null;
+    pinDraft = "";
+    pinConfirm = "";
+    pinError = "";
+  }
+
+  async function submitPin() {
+    if (pinStep === "set") {
+      if (pinDraft.length < 4) {
+        pinError = "PIN muss mindestens 4 Stellen haben.";
+        return;
+      }
+      pinStep = "confirm";
+      return;
+    }
+    if (pinStep === "confirm") {
+      if (pinConfirm !== pinDraft) {
+        pinError = "PINs stimmen nicht überein.";
+        pinConfirm = "";
+        return;
+      }
+      await lock.setupPin(pinDraft);
+      cancelPinSetup();
+    }
+  }
+
+  async function enableBiometric() {
+    const ok = await lock.enablePasskey();
+    if (!ok) pinError = "Biometrie konnte nicht aktiviert werden.";
+  }
+
+  function disableLock() {
+    lock.disable();
+  }
 
   function onOnline() {
     isOnline = true;
@@ -815,6 +868,171 @@
           </div>
         {/if}
       {/if}
+    {/if}
+  </div>
+
+  <!-- Sicherheit / App-Sperre -->
+  <div class="bg-white rounded-3xl p-5 shadow-sm">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center shrink-0">
+        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"
+            d="M12 11c-1.1 0-2-.9-2-2V7a2 2 0 014 0v2a2 2 0 01-2 2zm-6 8a6 6 0 0112 0v1H6v-1z" />
+        </svg>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-1.5">
+          <h3 class="font-bold text-(--color-text)">App-Sperre</h3>
+          <InfoTooltip
+            text="Sperrt wimg mit einer PIN (4–6 Ziffern), optional zusätzlich mit Face ID / Touch ID / Windows Hello via WebAuthn. Beim Tab-Wechsel oder Minimieren wird der Inhalt verschleiert, damit Vorschaubilder im Tab-Switcher deine Daten nicht zeigen. PIN-Hash bleibt lokal im Browser (PBKDF2-SHA256, 100k Iterationen)."
+          />
+        </div>
+        <p class="text-xs text-(--color-text-secondary)">
+          {#if lock.isEnabled}
+            {#if lock.hasPasskey}
+              Mit PIN und Biometrie geschützt
+            {:else}
+              Mit PIN geschützt
+            {/if}
+          {:else}
+            Mit PIN und optional Biometrie schützen
+          {/if}
+        </p>
+      </div>
+    </div>
+
+    {#if pinStep !== null}
+      <!-- Inline PIN wizard -->
+      <div class="flex flex-col gap-3">
+        <p class="text-sm text-(--color-text-secondary)">
+          {#if pinStep === "set"}Neue PIN festlegen (4–6 Ziffern){:else}PIN bestätigen{/if}
+        </p>
+        {#if pinStep === "set"}
+          <input
+            type="password"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="6"
+            autocomplete="off"
+            autofocus
+            bind:value={pinDraft}
+            placeholder="••••••"
+            class="text-center text-2xl tracking-[0.4em] py-3 rounded-2xl bg-(--color-bg) border border-gray-200 outline-none focus:border-(--color-text)"
+          />
+        {:else}
+          <input
+            type="password"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="6"
+            autocomplete="off"
+            autofocus
+            bind:value={pinConfirm}
+            placeholder="••••••"
+            class="text-center text-2xl tracking-[0.4em] py-3 rounded-2xl bg-(--color-bg) border border-gray-200 outline-none focus:border-(--color-text)"
+          />
+        {/if}
+        {#if pinError}
+          <p class="text-xs text-rose-600">{pinError}</p>
+        {/if}
+        <div class="flex gap-2">
+          <button
+            type="button"
+            onclick={cancelPinSetup}
+            class="flex-1 py-3 rounded-2xl bg-gray-100 text-(--color-text) text-sm font-bold active:scale-[0.98] transition-transform"
+          >
+            Abbrechen
+          </button>
+          <button
+            type="button"
+            onclick={submitPin}
+            class="flex-1 py-3 rounded-2xl bg-(--color-text) text-white text-sm font-bold active:scale-[0.98] transition-transform"
+          >
+            {pinStep === "set" ? "Weiter" : "Speichern"}
+          </button>
+        </div>
+      </div>
+    {:else if !lock.isEnabled}
+      <button
+        type="button"
+        onclick={startPinSetup}
+        class="w-full py-3 rounded-2xl bg-(--color-text) text-white text-sm font-bold active:scale-[0.98] transition-transform"
+      >
+        PIN einrichten
+      </button>
+    {:else}
+      <!-- Auto-lock selector — only visible when PIN is enabled -->
+      <div class="flex items-center justify-between gap-3 mb-2 px-1">
+        <label for="autolock" class="text-sm text-(--color-text)">Auto-Sperre nach</label>
+        <div class="relative">
+          <select
+            id="autolock"
+            value={lock.autoLockMinutes}
+            onchange={(e) =>
+              lock.setAutoLockMinutes(
+                Number((e.target as HTMLSelectElement).value) as AutoLockMinutes,
+              )}
+            class="appearance-none rounded-xl bg-(--color-bg) border border-gray-200 pl-3 pr-9 py-2 text-sm"
+          >
+            {#each AUTOLOCK_OPTIONS as opt}
+              <option value={opt}>
+                {opt === 0 ? "nie" : opt === 60 ? "1 Stunde" : `${opt} min`}
+              </option>
+            {/each}
+          </select>
+          <svg
+            class="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none text-(--color-text-secondary)"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        {#if lock.supportsPasskey && !lock.hasPasskey}
+          <button
+            type="button"
+            onclick={enableBiometric}
+            class="w-full py-3 rounded-2xl bg-(--color-accent) text-(--color-text) text-sm font-bold active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                d="M9 11V8a3 3 0 016 0v3m-7 0h8a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2v-6a2 2 0 012-2z" />
+            </svg>
+            Face ID / Touch ID aktivieren
+          </button>
+        {:else if lock.hasPasskey}
+          <button
+            type="button"
+            onclick={() => lock.removePasskey()}
+            class="w-full py-3 rounded-2xl bg-gray-100 text-(--color-text) text-sm font-medium active:scale-[0.98] transition-transform"
+          >
+            Biometrie entfernen
+          </button>
+        {/if}
+        <button
+          type="button"
+          onclick={startPinSetup}
+          class="w-full py-3 rounded-2xl bg-gray-100 text-(--color-text) text-sm font-medium active:scale-[0.98] transition-transform"
+        >
+          PIN ändern
+        </button>
+        <button
+          type="button"
+          onclick={disableLock}
+          class="w-full py-3 rounded-2xl bg-rose-50 text-rose-700 text-sm font-medium active:scale-[0.98] transition-transform"
+        >
+          App-Sperre deaktivieren
+        </button>
+      </div>
+    {/if}
+
+    {#if !lock.supportsPasskey && !lock.hasPasskey && lock.isEnabled}
+      <p class="text-xs text-(--color-text-secondary) mt-3">
+        Dieser Browser unterstützt keine biometrische Entsperrung (WebAuthn).
+      </p>
     {/if}
   </div>
 

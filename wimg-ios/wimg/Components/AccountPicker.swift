@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 struct AccountPicker: View {
     @Binding var selectedAccount: String?
@@ -23,9 +24,9 @@ struct AccountPicker: View {
                 selectedAccount = nil
             } label: {
                 if selectedAccount == nil {
-                    Label("Alle Konten", systemImage: "checkmark")
+                    Label(#L("Alle Konten"), systemImage: "checkmark")
                 } else {
-                    Text("Alle Konten")
+                    Text(#L("Alle Konten"))
                 }
             }
 
@@ -37,19 +38,19 @@ struct AccountPicker: View {
                         Button {
                             selectedAccount = acct.id
                         } label: {
-                            Label("Auswählen", systemImage: selectedAccount == acct.id ? "checkmark.circle.fill" : "circle")
+                            Label(#L("Auswählen"), systemImage: selectedAccount == acct.id ? "checkmark.circle.fill" : "circle")
                         }
 
                         Button {
                             editingAccount = acct
                         } label: {
-                            Label("Bearbeiten", systemImage: "pencil")
+                            Label(#L("Bearbeiten"), systemImage: "pencil")
                         }
 
                         Button(role: .destructive) {
                             accountToDelete = acct
                         } label: {
-                            Label("Löschen", systemImage: "trash")
+                            Label(#L("Löschen"), systemImage: "trash")
                         }
                     } label: {
                         if selectedAccount == acct.id {
@@ -66,7 +67,7 @@ struct AccountPicker: View {
             Button {
                 showAddSheet = true
             } label: {
-                Label("Konto hinzufügen", systemImage: "plus")
+                Label(#L("Konto hinzufügen"), systemImage: "plus")
             }
         } label: {
             HStack(spacing: 6) {
@@ -98,14 +99,14 @@ struct AccountPicker: View {
                 onAccountsChanged?()
             }
         }
-        .alert("Konto löschen?", isPresented: Binding(
+        .alert(#L("Konto löschen?"), isPresented: Binding(
             get: { accountToDelete != nil },
             set: { if !$0 { accountToDelete = nil } }
         )) {
-            Button("Abbrechen", role: .cancel) {
+            Button(#L("Abbrechen"), role: .cancel) {
                 accountToDelete = nil
             }
-            Button("Löschen", role: .destructive) {
+            Button(#L("Löschen"), role: .destructive) {
                 if let acct = accountToDelete {
                     if selectedAccount == acct.id {
                         selectedAccount = nil
@@ -118,7 +119,7 @@ struct AccountPicker: View {
             }
         } message: {
             if let acct = accountToDelete {
-                Text("\u{201E}\(acct.name)\u{201C} wird entfernt. Transaktionen bleiben erhalten.")
+                Text(#L("\u{201E}\(acct.name)\u{201C} wird entfernt. Transaktionen bleiben erhalten."))
             }
         }
     }
@@ -165,12 +166,12 @@ struct AccountFormSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Name") {
+                Section(#L("Name")) {
                     TextField("z.B. Bargeld, Haushalt...", text: $name)
                         .font(.system(.body, design: .rounded))
                 }
 
-                Section("Farbe") {
+                Section(#L("Farbe")) {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 8), spacing: 12) {
                         ForEach(presetColors, id: \.self) { color in
                             Circle()
@@ -196,7 +197,7 @@ struct AccountFormSheet: View {
                         } label: {
                             HStack {
                                 Spacer()
-                                Label("Konto löschen", systemImage: "trash")
+                                Label(#L("Konto löschen"), systemImage: "trash")
                                 Spacer()
                             }
                         }
@@ -207,7 +208,7 @@ struct AccountFormSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { dismiss() }
+                    Button(#L("Abbrechen")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isEditing ? "Sichern" : "Erstellen") {
@@ -217,9 +218,9 @@ struct AccountFormSheet: View {
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
-            .alert("Konto löschen?", isPresented: $showDeleteConfirm) {
-                Button("Abbrechen", role: .cancel) {}
-                Button("Löschen", role: .destructive) {
+            .alert(#L("Konto löschen?"), isPresented: $showDeleteConfirm) {
+                Button(#L("Abbrechen"), role: .cancel) {}
+                Button(#L("Löschen"), role: .destructive) {
                     if let acct = editAccount {
                         try? LibWimg.deleteAccount(id: acct.id)
                         onDone()
@@ -229,7 +230,7 @@ struct AccountFormSheet: View {
                 }
             } message: {
                 if let acct = editAccount {
-                    Text("\u{201E}\(acct.name)\u{201C} wird entfernt. Transaktionen bleiben erhalten.")
+                    Text(#L("\u{201E}\(acct.name)\u{201C} wird entfernt. Transaktionen bleiben erhalten."))
                 }
             }
             .onAppear {

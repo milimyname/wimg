@@ -18,6 +18,9 @@
   import AccountSwitcher from "../../components/AccountSwitcher.svelte";
   import GlobalDropOverlay from "../../components/GlobalDropOverlay.svelte";
   import OnboardingOverlay from "../../components/OnboardingOverlay.svelte";
+  import LockScreen from "../../components/LockScreen.svelte";
+  import PrivacyOverlay from "../../components/PrivacyOverlay.svelte";
+  import { lock } from "$lib/lock.svelte";
 
   let { children } = $props();
   let loading = $state(true);
@@ -26,6 +29,7 @@
   let showOnboarding = $state(false);
   let showDevTools = $state(false);
   let dragCounter = 0;
+  let lockCleanup: (() => void) | null = null;
 
   function hasFiles(e: DragEvent): boolean {
     return e.dataTransfer?.types.includes("Files") ?? false;
@@ -61,6 +65,35 @@
   onMount(async () => {
     // Load locale before anything renders
     i18n.init();
+
+    // Hydrate the lock store before any UI renders, so the LockScreen
+    // gate is in place before transaction data could flash on screen.
+    lock.hydrate();
+    lock.armIdleTimer();
+
+    // Reset idle timer on any real user activity. Passive listeners so
+    // we don't block scrolling.
+    const armIdle = () => lock.armIdleTimer();
+    window.addEventListener("pointerdown", armIdle, { passive: true });
+    window.addEventListener("keydown", armIdle, { passive: true });
+
+    // iOS Safari aggressively bf-caches the page when the user swipes
+    // back from another app. The cached DOM still shows the unlocked
+    // state. `pageshow` with `persisted=true` fires on bf-cache restore —
+    // re-hydrate so the lock re-evaluates the session.
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        lock.hydrate();
+        lock.armIdleTimer();
+      }
+    };
+    window.addEventListener("pageshow", onPageShow);
+
+    lockCleanup = () => {
+      window.removeEventListener("pointerdown", armIdle);
+      window.removeEventListener("keydown", armIdle);
+      window.removeEventListener("pageshow", onPageShow);
+    };
 
     try {
       await init();
@@ -104,13 +137,23 @@
       // Silently ignore snapshot errors
     }
 
-    // DevTools: enabled in dev mode or via ?devtools URL param
-    if (
+    // DevTools: enabled in dev mode or via ?devtools URL param. The URL
+    // param explicitly opens the panel — without `toggle()` we'd only flip
+    // the internal `devtoolsEnabled` flag (used for instrumentation), and
+    // the panel would stay closed until the user pressed Ctrl+Shift+D.
+    const wantsDevTools =
       import.meta.env.DEV ||
-      new URLSearchParams(window.location.search).has("devtools")
-    ) {
+      new URLSearchParams(window.location.search).has("devtools");
+    if (wantsDevTools) {
       showDevTools = true;
-      import("$lib/devtools.svelte").then((m) => m.devtoolsStore.enable());
+      import("$lib/devtools.svelte").then((m) => {
+        m.devtoolsStore.enable();
+        // Auto-open only via the URL param (not in dev mode — otherwise
+        // every page reload would shove the panel in your face).
+        if (new URLSearchParams(window.location.search).has("devtools")) {
+          if (!m.devtoolsStore.open) m.devtoolsStore.toggle();
+        }
+      });
     }
 
     // Dev mode: unregister stale service workers so rebuilt WASM isn't served from cache
@@ -131,6 +174,7 @@
 
   onDestroy(() => {
     disconnectSync();
+    lockCleanup?.();
   });
 
   // Scroll to top on page navigation (skip shallow routing like sheets)
@@ -200,6 +244,14 @@
   {/if}
   <BottomNav />
 </div>
+
+<!-- Lock gate: covers everything once hydrated and lock is engaged.
+     Ordered above the privacy overlay so the OS snapshot (taken on
+     visibility change) sees the privacy view, not the PIN pad. -->
+{#if lock.isReady && lock.isLocked}
+  <LockScreen />
+{/if}
+<PrivacyOverlay />
 
 <Toast />
 

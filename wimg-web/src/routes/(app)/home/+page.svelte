@@ -51,12 +51,6 @@
     summary.by_category.filter((c) => c.id !== 10 && c.id !== 11),
   );
 
-  // Lifetime balance across the selected account (or all accounts).
-  // Sum of every transaction's signed amount in scope.
-  let totalBalance = $derived(
-    data.transactions(accountStore.selected).reduce((s, t) => s + t.amount, 0),
-  );
-
   function greeting(): string {
     const h = new Date().getHours();
     if (h < 12) return "Guten Morgen";
@@ -122,26 +116,6 @@
 {:else}
 
 <MonthPicker bind:year={dateNav.year} bind:month={dateNav.month} />
-
-<!-- Gesamtsaldo — centered, no card chrome -->
-<div class="flex flex-col items-center text-center pt-2 mb-6">
-  <div class="flex items-center gap-1.5 mb-2">
-    <svg class="w-4 h-4 text-(--color-text-secondary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-    </svg>
-    <p class="text-[10px] text-(--color-text-secondary) font-bold uppercase tracking-widest">
-      Gesamtsaldo
-    </p>
-  </div>
-  <h1
-    class="text-5xl font-display font-black tracking-tight tabular-nums"
-    class:text-emerald-600={totalBalance > 0}
-    class:text-rose-500={totalBalance < 0}
-    class:text-(--color-text)={totalBalance === 0}
-  >
-    {Math.abs(totalBalance) >= 100000 ? formatEurCompact(totalBalance) : formatEur(totalBalance)}
-  </h1>
-</div>
 
 <!-- Hero: Verfügbares Einkommen -->
 <div class="bg-(--color-accent) rounded-[2rem] p-7 mb-5 shadow-[var(--shadow-soft)] relative overflow-hidden" style="color: #1a1a1a">

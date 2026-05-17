@@ -20,7 +20,7 @@ remain in libwimg for cheap resurrection but no platform renders them.
 ## Android Minor Gaps
 
 - Spending Heatmap tap-to-select (iOS has inline amount label on tap)
-- TText not yet wired into all remaining Text() calls (partial coverage)
+- (resolved 2026-05-15) i18n now uniform across all 3 platforms via macro/Composable `L()` from one `en.ts` source.
 
 ## iOS Missing
 

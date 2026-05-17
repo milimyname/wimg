@@ -80,7 +80,14 @@ npm-debug.log*
 
 docs/wimg-full.md
 
-# i18n — .xcstrings is committed (Apple needs it in the Xcode project)
+# i18n — Translations.swift / Translations.kt are committed (generated from
+# en.ts by scripts/i18n-codegen.ts; .xcstrings was removed in favor of the
+# WimgI18n SPM package's #L macro).
+
+# WimgI18n SPM package — build artifacts only, source is committed
+# (Package.resolved IS committed for reproducible swift-syntax pin)
+wimg-ios/plugins/WimgI18n/.build/
+wimg-ios/plugins/WimgI18n/.swiftpm/
 
 # Root-level (no deps here, everything lives in wimg-web/ or wimg-sync/)
 /node_modules/

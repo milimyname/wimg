@@ -30,7 +30,7 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 | Search          | SQL LIKE (planned: FTS5 if needed at scale)        |
 | FinTS           | Pure Zig (native-only, iOS + Android)              |
 | MCP server      | CF Worker DO + libwimg-compact.wasm                |
-| i18n            | Custom Vite plugin (compile-time) + .xcstrings (iOS) |
+| i18n            | Vite plugin (web) + Swift macro `#L` (iOS) + `L()` (Android), single `en.ts` source |
 
 ---
 
@@ -40,13 +40,14 @@ Inspired by libghostty: the library is the product. The UIs are just renderers.
 - **Linter:** oxlint (`.oxlintrc.json`) — correctness/error, suspicious/warn, perf/warn
 - **Pre-commit:** lefthook (`zig fmt`, `oxfmt`, `oxlint`, commit-msg validation)
 - **Commit format:** conventional commits (`feat:`, `fix:`, `refactor:`, etc.) — enforced by lefthook
+- **Supply-chain defense:** `bunfig.toml` at repo root sets `minimumReleaseAge = 604800` (7 days). Bun refuses to install any package version published less than a week ago, blocking ~half of historical smash-and-grab attacks at install time. Bypass for urgent upgrades with `BUN_INSTALL_MINIMUM_RELEASE_AGE=0 bun install`.
 - **Tests:** `bun test` — format utils + changelog logic
 - **Release:** `scripts/release.sh` — bump versions, changelog (filters chore/ci/build), commit, tag, `--push`
 - **Build WASM:** `scripts/build-wasm.sh` — two variants (web 209MB + compact 53MB)
 - **Build iOS:** `scripts/build-ios.sh` — XCFramework
 - **CI:** `.github/workflows/release.yml` — check → build → GitHub release (TestFlight upload commented out — manual via Xcode)
 - **Feedback CI:** `.github/workflows/feedback-triage.yml` — Claude Code Action triages user-feedback issues
-- **i18n:** custom Vite plugin (`vite-plugin-i18n.ts`) — compile-time string replacement, `src/lib/translations/en.ts` source of truth, `scripts/i18n-xcstrings.ts` for iOS `.xcstrings`
+- **i18n:** `wimg-web/src/lib/translations/en.ts` is the single source of truth. Web: `vite-plugin-i18n.ts` rewrites template/script strings at compile time. iOS: Swift Macro `#L("German")` (SPM package `wimg-ios/plugins/WimgI18n`) + runtime `L(variable)` function — both expand to lookups against the codegen'd `Translations.swift`. Android: top-level `L(...)` Composable in `com.wimg.app.i18n` reading `LocaleState.locale`. One codegen: `scripts/i18n-codegen.ts` writes both runtime tables.
 
 ---
 
@@ -84,21 +85,32 @@ BottomNav has 3 tabs (Home, Umsätze, Mehr). Analyse moved to More page.
 Landing page (`+page.svelte`) is German default. Import and About pages redesigned
 with card-based layouts, border styling, and project design tokens.
 
-i18n via custom Vite plugin (`vite-plugin-i18n.ts`, ~200 lines). Compile-time
-string replacement — source stays German, plugin wraps with `__t$()` at build.
-Handles template text, attributes, `.name`/`.label`/`.description` expressions,
-ternaries, script string literals, template literals, and `.svelte.ts` files.
-German default, English first (~392 keys). Auto-detects browser language.
-Reactive switching via `$state` — no page reload. `format.ts` locale-aware.
-Translations in `src/lib/translations/en.ts` (single source of truth).
-iOS: `scripts/i18n-xcstrings.ts` generates `.xcstrings` from `en.ts`.
-`Category.swift` uses `String(localized:)` for 16 category names.
-**iOS i18n rule:** `Text("literal")` auto-localizes via `.xcstrings`, but
-`Text(variable)` does NOT. Always use `TText(variable)` (custom wrapper
-using `LocalizedStringKey`) for any string passed as a variable, ternary,
-or computed property. For programmatic strings use `String(localized:)`.
-For dates use `DateFormatter` with locale from `wimg_locale` UserDefaults.
-Never hardcode German month/day names — use `DateFormatter.standaloneMonthSymbols`.
+i18n: one source of truth (`wimg-web/src/lib/translations/en.ts`, ~600 keys),
+three platform-specific consumers, no per-platform translation maintenance.
+
+- **Web:** `vite-plugin-i18n.ts` (~200 lines) rewrites Svelte source at
+  compile time — `>Gesamtsaldo<` becomes `>{__t$("Gesamtsaldo")}<`. Handles
+  template text, attributes, `.name`/`.label` expressions, ternaries, script
+  literals, template literals, `.svelte.ts` files.
+- **iOS:** Swift Macro `#L("German")` (SPM package at
+  `wimg-ios/plugins/WimgI18n`) expands at compile time to `__t("German")`.
+  Interpolation extracts a template: `#L("\(count) Transaktionen")` →
+  `__t("%@ Transaktionen", count)`. For runtime strings (e.g.
+  `category.name`), use the plain function `L(variable)` — same lookup.
+- **Android:** Top-level Composable `L(key)` in `com.wimg.app.i18n` reads
+  `LocaleState.locale`. Single call shape everywhere: `Text(L("German"))`.
+
+Codegen: `scripts/i18n-codegen.ts` writes both runtime tables
+(`wimg-ios/plugins/WimgI18n/Sources/WimgI18n/Translations.swift` +
+`wimg-android/app/src/main/java/com/wimg/app/i18n/Translations.kt`) from
+`en.ts`. Reactive locale switching via `wimg_locale` UserDefaults (iOS) /
+`LocaleState` (Android). For dates, `DateFormatter` with locale from
+`wimg_locale` — never hardcode German month/day names.
+
+Migration notes: `TText`, `.xcstrings`, `String(localized:)`, and the
+hand-maintained Android `TranslationMap` were all removed during this
+refactor (May 2026). Source stays vanilla German on disk — `Text("X")` or
+`Text(#L("X"))` (iOS) / `Text(L("X"))` (Android) at call sites only.
 
 Conventional commits enforced by lefthook `commit-msg` hook.
 
@@ -184,8 +196,9 @@ search, credentials, TAN, statement fetch, 2MB stack thread, Quick Refresh
 with PIN storage), Feedback (POST to wimg-sync), Onboarding (4-card
 carousel), More (grid). Sync via OkHttp WebSocket + HTTP push/pull + E2E
 encryption. Undo snackbar wired globally. Coachmarks (2 first-visit
-tooltips). Account switcher in top bar. i18n via TText component (runtime
-German→English, 150+ translated strings). Update checker with changelog
+tooltips). Account switcher in top bar. i18n via `L()` Composable
+(`com.wimg.app.i18n`) reading `LocaleState.locale`; 546 keys generated from
+`en.ts`. Update checker with changelog
 from GitHub Releases API. Demo data service. Material 3 theme with
 `wimgCard()`/`wimgHero()` modifiers, custom Typography, subtle shadows.
 4-tab bottom nav (Search, Home, Umsätze, Mehr). Sideload APK distribution.

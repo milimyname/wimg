@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 struct ReviewView: View {
     @Binding var selectedAccount: String?
@@ -96,15 +97,15 @@ struct ReviewView: View {
                         VStack(spacing: 8) {
                             Text("\u{1F4CB}")
                                 .font(.system(size: 48))
-                            Text("Keine Daten für diesen Monat")
+                            Text(#L("Keine Daten für diesen Monat"))
                                 .font(.system(.title3, design: .rounded, weight: .bold))
                                 .foregroundStyle(WimgTheme.text)
-                            Text("Importiere Bankdaten um den Rückblick zu sehen")
+                            Text(#L("Importiere Bankdaten um den Rückblick zu sehen"))
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundStyle(WimgTheme.textSecondary)
 
                             NavigationLink(destination: ImportView()) {
-                                Text("CSV importieren")
+                                Text(#L("CSV importieren"))
                                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                                     .foregroundStyle(WimgTheme.bg)
                                     .padding(.horizontal, 20)
@@ -120,7 +121,7 @@ struct ReviewView: View {
                 .padding(.bottom, 24)
             }
             .background(WimgTheme.bg)
-            .navigationTitle("\(monthNames[month - 1]) Rückblick")
+            .navigationTitle(#L("\(monthNames[month - 1]) Rückblick"))
             .onChange(of: year) { reload() }
             .onChange(of: month) { reload() }
             .onChange(of: selectedAccount) { reload() }
@@ -141,7 +142,7 @@ struct ReviewView: View {
                 .offset(x: 40, y: -40)
 
             VStack(spacing: 8) {
-                TText(saved >= 0 ? "Gespart" : "Defizit")
+                Text(saved >= 0 ? #L("Gespart") : #L("Defizit"))
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.heroText.opacity(0.7))
                     .textCase(.uppercase)
@@ -156,7 +157,7 @@ struct ReviewView: View {
                     HStack(spacing: 4) {
                         Image(systemName: delta >= 0 ? "arrow.up.right" : "arrow.down.right")
                             .font(.system(size: 10, weight: .bold))
-                        Text("\(delta >= 0 ? "+" : "")\(delta)% vs. \(monthNames[month == 1 ? 11 : month - 2])")
+                        Text(#L("\(delta >= 0 ? "+" : "")\(delta)% vs. \(monthNames[month == 1 ? 11 : month - 2])"))
                             .font(.system(.caption, design: .rounded, weight: .bold))
                     }
                     .foregroundStyle(.white)
@@ -182,9 +183,9 @@ struct ReviewView: View {
     }
 
     private var savingsMessage: String {
-        if saved > 0 { return String(localized: "Dein Sparziel wurde erreicht. Super!") }
-        if saved == 0 { return String(localized: "Einnahmen und Ausgaben waren ausgeglichen.") }
-        return String(localized: "Diesen Monat hast du mehr ausgegeben als eingenommen.")
+        if saved > 0 { return #L("Dein Sparziel wurde erreicht. Super!") }
+        if saved == 0 { return #L("Einnahmen und Ausgaben waren ausgeglichen.") }
+        return #L("Diesen Monat hast du mehr ausgegeben als eingenommen.")
     }
 
     // MARK: - Income / Expenses
@@ -192,7 +193,7 @@ struct ReviewView: View {
     private var incomeExpenseRow: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Einnahmen")
+                Text(#L("Einnahmen"))
                     .font(.system(.caption, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.textSecondary)
                     .textCase(.uppercase)
@@ -206,7 +207,7 @@ struct ReviewView: View {
             .wimgCard(radius: WimgTheme.radiusMedium)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Ausgaben")
+                Text(#L("Ausgaben"))
                     .font(.system(.caption, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.textSecondary)
                     .textCase(.uppercase)
@@ -226,7 +227,7 @@ struct ReviewView: View {
 
     private var topCategoriesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Top Kategorien")
+            Text(#L("Top Kategorien"))
                 .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal)
@@ -250,7 +251,7 @@ struct ReviewView: View {
 
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
-                                TText(cat.name)
+                                Text(L(cat.name))
                                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                                     .foregroundStyle(WimgTheme.text)
                                 Spacer()
@@ -291,7 +292,7 @@ struct ReviewView: View {
 
     private var checklistSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Zahlungs-Checkliste")
+            Text(#L("Zahlungs-Checkliste"))
                 .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal)
@@ -313,7 +314,7 @@ struct ReviewView: View {
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .lineLimit(1)
                                 .foregroundStyle(WimgTheme.text)
-                            Text("am \(formatDateShort(item.date))")
+                            Text(#L("am \(formatDateShort(item.date))"))
                                 .font(.system(.caption, design: .rounded, weight: .medium))
                                 .foregroundStyle(WimgTheme.textSecondary)
                         }
@@ -336,7 +337,7 @@ struct ReviewView: View {
 
     private var anomalySection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Markierte Anomalien")
+            Text(#L("Markierte Anomalien"))
                 .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal)
@@ -352,10 +353,10 @@ struct ReviewView: View {
                             .foregroundStyle(.green)
                     }
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Keine Auffälligkeiten")
+                        Text(#L("Keine Auffälligkeiten"))
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .foregroundStyle(Color.green)
-                        Text("Keine ungewöhnlichen Preiserhöhungen erkannt.")
+                        Text(#L("Keine ungewöhnlichen Preiserhöhungen erkannt."))
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(Color.green.opacity(0.7))
                     }
@@ -382,25 +383,21 @@ struct ReviewView: View {
                             }
 
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Preiserhöhung erkannt")
+                                Text(#L("Preiserhöhung erkannt"))
                                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                                     .foregroundStyle(.white)
                                 // Interpolated strings never match a static
-                                // .xcstrings key — branch on locale and run the
-                                // category name through Translations.t().
-                                let catName = Translations.t(category.name)
+                                let catName = L(category.name)
                                 let amt = formatAmountShort(item.increase)
-                                Text(RecurringPattern.isEnglish
-                                    ? "\(catName): +\(amt) (\(pct)% more)"
-                                    : "\(catName): +\(amt) (\(pct)% mehr)")
+                                Text(#L("\(catName): +\(amt) (\(pct)% mehr)"))
                                     .font(.system(.caption, design: .rounded))
                                     .foregroundStyle(.white.opacity(0.7))
                             }
                         }
 
                         HStack(spacing: 16) {
-                            Text("Vormonat: \(formatAmountShort(item.previous))")
-                            Text("Aktuell: \(formatAmountShort(item.current))")
+                            Text(#L("Vormonat: \(formatAmountShort(item.previous))"))
+                            Text(#L("Aktuell: \(formatAmountShort(item.current))"))
                         }
                         .font(.system(.caption2, design: .rounded, weight: .medium))
                         .foregroundStyle(.white.opacity(0.5))
@@ -420,7 +417,7 @@ struct ReviewView: View {
 
     private var statsGrid: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Statistiken")
+            Text(#L("Statistiken"))
                 .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal)
@@ -446,7 +443,7 @@ struct ReviewView: View {
 
     private func statTile(title: String, value: String, color: Color? = nil) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            TText(title)
+            Text(L(title))
                 .font(.system(.caption, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.textSecondary)
                 .textCase(.uppercase)

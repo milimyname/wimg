@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 struct RecurringView: View {
     @State private var patterns: [RecurringPattern] = []
@@ -41,7 +42,7 @@ struct RecurringView: View {
             .padding(.bottom, 24)
         }
         .background(WimgTheme.bg)
-        .navigationTitle("Wiederkehrend")
+        .navigationTitle(#L("Wiederkehrend"))
         .onAppear { reload() }
         .onChange(of: patterns) { recompute() }
     }
@@ -62,10 +63,10 @@ struct RecurringView: View {
 
         // Section header
         HStack(spacing: 8) {
-            Text("Abonnements")
+            Text(#L("Abonnements"))
                 .font(.system(.title2, design: .rounded, weight: .black))
                 .foregroundStyle(WimgTheme.text)
-            InfoTooltip(text: "Scannt deine Transaktionen nach wiederkehrenden Mustern (mind. 3 ähnliche Beträge in regelmäßigen Abständen). Erkennt Abos, Mieten und Fixkosten.")
+            InfoTooltip(text: #L("Scannt deine Transaktionen nach wiederkehrenden Mustern (mind. 3 ähnliche Beträge in regelmäßigen Abständen). Erkennt Abos, Mieten und Fixkosten."))
             Spacer()
 
             Button {
@@ -74,7 +75,7 @@ struct RecurringView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .font(.system(size: 12, weight: .bold))
-                    TText(detecting ? "Erkennung..." : "Erkennen")
+                    Text(detecting ? #L("Erkennung...") : #L("Erkennen"))
                 }
                 .font(.system(.caption, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.heroText)
@@ -91,10 +92,10 @@ struct RecurringView: View {
             VStack(spacing: 8) {
                 Text("🔄")
                     .font(.system(size: 48))
-                Text("Keine Muster erkannt")
+                Text(#L("Keine Muster erkannt"))
                     .font(.system(.title3, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
-                Text("Importiere Transaktionen und tippe auf Erkennen")
+                Text(#L("Importiere Transaktionen und tippe auf Erkennen"))
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(WimgTheme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -103,7 +104,7 @@ struct RecurringView: View {
         } else {
             ForEach(grouped, id: \.0) { interval, items in
                 VStack(alignment: .leading, spacing: 12) {
-                    TText(intervalLabels[interval] ?? interval)
+                    Text(L(intervalLabels[interval] ?? interval))
                         .font(.system(.caption, design: .rounded, weight: .bold))
                         .foregroundStyle(WimgTheme.textSecondary)
                         .textCase(.uppercase)
@@ -130,12 +131,12 @@ struct RecurringView: View {
 
             VStack(spacing: 12) {
                 HStack(spacing: 6) {
-                    Text("Monatliche Fixkosten")
+                    Text(#L("Monatliche Fixkosten"))
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(.white.opacity(0.8))
                         .textCase(.uppercase)
                         .tracking(1)
-                    InfoTooltip(text: "Summe aller erkannten monatlichen Abos und Fixkosten. Quartals- und Jahresbeiträge werden nicht eingerechnet.")
+                    InfoTooltip(text: #L("Summe aller erkannten monatlichen Abos und Fixkosten. Quartals- und Jahresbeiträge werden nicht eingerechnet."))
                         .foregroundStyle(.white.opacity(0.8))
                 }
 
@@ -144,9 +145,7 @@ struct RecurringView: View {
                     .foregroundStyle(.white)
                     .tracking(-1)
 
-                Text(RecurringPattern.isEnglish
-                    ? "\(activePatterns.count) detected patterns"
-                    : "\(activePatterns.count) erkannte Muster")
+                Text(#L("\(activePatterns.count) erkannte Muster"))
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(.white.opacity(0.7))
             }
@@ -164,10 +163,10 @@ struct RecurringView: View {
     private var priceAlertsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Text("Preisänderungen")
+                Text(#L("Preisänderungen"))
                     .font(.system(.headline, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
-                InfoTooltip(text: "Wenn ein erkanntes Abo seinen Preis ändert, erscheint hier eine Warnung mit altem und neuem Betrag. So bemerkst du schleichende Preiserhöhungen frühzeitig.")
+                InfoTooltip(text: #L("Wenn ein erkanntes Abo seinen Preis ändert, erscheint hier eine Warnung mit altem und neuem Betrag. So bemerkst du schleichende Preiserhöhungen frühzeitig."))
             }
             .padding(.horizontal)
 
@@ -233,7 +232,7 @@ struct RecurringView: View {
                             .font(.system(.caption2, design: .rounded, weight: .medium))
                             .foregroundStyle(WimgTheme.textSecondary)
                     }
-                    Text("· \(RecurringPattern.isEnglish ? "Last" : "Zuletzt"): \(pattern.lastSeenFormatted)")
+                    Text(#L("· Zuletzt: \(pattern.lastSeenFormatted)"))
                         .font(.system(.caption2, design: .rounded, weight: .medium))
                         .foregroundStyle(WimgTheme.textSecondary)
                 }

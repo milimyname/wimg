@@ -3,6 +3,7 @@
   import { syncWS } from "$lib/sync-ws.svelte";
   import { getWasmMemoryBytes, getWasmDbSize, getTransactions, getAccounts, getRecurring, getSnapshots, close, queryRaw, type QueryResult } from "$lib/wasm";
   import { clearSyncKey, getSyncKey } from "$lib/sync";
+  import { lock } from "$lib/lock.svelte";
 
   const TABS = ["wasm", "memory", "sync", "data", "sql"] as const;
   const TAB_LABELS: Record<(typeof TABS)[number], string> = {
@@ -368,6 +369,25 @@
     document.removeEventListener("pointerup", onResizeEnd);
   }
 
+  // Lock state ticker — both idle countdown and cooldown read Date.now()
+  // through getters, so we need a state nudge once a second to recompute.
+  let lockTick = $state(0);
+  $effect(() => {
+    if (!devtoolsStore.open || devtoolsStore.activeTab !== "data") return;
+    const id = setInterval(() => { lockTick++; }, 1000);
+    return () => clearInterval(id);
+  });
+
+  let lockIdleSec = $derived.by(() => { void lockTick; return lock.idleSecondsRemaining; });
+  let lockCooldownSec = $derived.by(() => { void lockTick; return lock.cooldownSecondsRemaining; });
+
+  function fmtMmSs(secs: number): string {
+    if (secs <= 0) return "—";
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
   // Danger zone
   let confirmAction = $state<string | null>(null);
 
@@ -700,6 +720,53 @@
                 {/each}
               </div>
             {/if}
+
+            <!-- Lock state -->
+            <div class="mt-4 pt-3 border-t border-(--color-border)">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-semibold text-(--color-text)">App Lock</span>
+                {#if lock.isEnabled}
+                  <button
+                    onclick={() => lock.lockNow()}
+                    class="text-[10px] font-medium text-(--color-text-secondary) hover:text-(--color-text) cursor-pointer px-1.5 py-0.5 rounded hover:bg-(--color-bg) transition-colors"
+                  >
+                    lock now
+                  </button>
+                {/if}
+              </div>
+              <div class="rounded-xl border border-(--color-border) overflow-hidden divide-y divide-(--color-border)/50">
+                <div class="px-2.5 py-1.5 flex items-center justify-between bg-(--color-card)">
+                  <span class="text-[10px] text-(--color-text-secondary)">Enabled</span>
+                  <span class="text-[10px] font-bold text-(--color-text)">{lock.isEnabled ? "yes" : "no"}</span>
+                </div>
+                <div class="px-2.5 py-1.5 flex items-center justify-between bg-(--color-card)">
+                  <span class="text-[10px] text-(--color-text-secondary)">Currently locked</span>
+                  <span class="text-[10px] font-bold {lock.isLocked ? 'text-amber-600' : 'text-(--color-text)'}">{lock.isLocked ? "yes" : "no"}</span>
+                </div>
+                <div class="px-2.5 py-1.5 flex items-center justify-between bg-(--color-card)">
+                  <span class="text-[10px] text-(--color-text-secondary)">Passkey enrolled</span>
+                  <span class="text-[10px] font-bold text-(--color-text)">{lock.hasPasskey ? "yes" : "no"}</span>
+                </div>
+                <div class="px-2.5 py-1.5 flex items-center justify-between bg-(--color-card)">
+                  <span class="text-[10px] text-(--color-text-secondary)">Auto-lock after</span>
+                  <span class="text-[10px] font-bold text-(--color-text)">
+                    {lock.autoLockMinutes === 0 ? "never" : lock.autoLockMinutes === 60 ? "1 h" : `${lock.autoLockMinutes} min`}
+                  </span>
+                </div>
+                <div class="px-2.5 py-1.5 flex items-center justify-between bg-(--color-card)">
+                  <span class="text-[10px] text-(--color-text-secondary)">Idle countdown</span>
+                  <span class="text-[10px] font-mono font-bold {lockIdleSec > 0 && lockIdleSec < 30 ? 'text-amber-600' : 'text-(--color-text)'}">{fmtMmSs(lockIdleSec)}</span>
+                </div>
+                <div class="px-2.5 py-1.5 flex items-center justify-between bg-(--color-card)">
+                  <span class="text-[10px] text-(--color-text-secondary)">Wrong-PIN attempts</span>
+                  <span class="text-[10px] font-bold {lock.failCount > 0 ? 'text-rose-600' : 'text-(--color-text)'}">{lock.failCount}</span>
+                </div>
+                <div class="px-2.5 py-1.5 flex items-center justify-between bg-(--color-card)">
+                  <span class="text-[10px] text-(--color-text-secondary)">Cooldown</span>
+                  <span class="text-[10px] font-mono font-bold {lockCooldownSec > 0 ? 'text-rose-600' : 'text-(--color-text)'}">{fmtMmSs(lockCooldownSec)}</span>
+                </div>
+              </div>
+            </div>
 
             <!-- OPFS File Browser -->
             <div class="mt-4 pt-3 border-t border-(--color-border)">

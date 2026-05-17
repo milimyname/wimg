@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 struct MoreView: View {
     @Binding var selectedAccount: String?
@@ -23,7 +24,7 @@ struct MoreView: View {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(spacing: 20) {
-                    Text("Mehr")
+                    Text(#L("Mehr"))
                         .font(.system(.title, design: .rounded, weight: .bold))
                         .foregroundStyle(WimgTheme.text)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -44,7 +45,7 @@ struct MoreView: View {
                                                 .foregroundStyle(item.color)
                                         }
 
-                                    TText(item.title)
+                                    Text(L(item.title))
                                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                                         .foregroundStyle(WimgTheme.text)
                                 }

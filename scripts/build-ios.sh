@@ -33,9 +33,9 @@ rm -rf "$IOS_FRAMEWORKS/libwimg.xcframework"
 cp -R "$BUILD_DIR/libwimg.xcframework" "$IOS_FRAMEWORKS/"
 echo "=== Copied to $IOS_FRAMEWORKS/libwimg.xcframework ==="
 
-# Generate i18n String Catalog for iOS (skip in CI — file is committed)
+# Generate i18n runtime + catalog files (skip in CI — files are committed)
 if command -v bun &>/dev/null; then
-  echo "=== Generating Localizable.xcstrings ==="
+  echo "=== Generating i18n runtime files ==="
   cd "$ROOT"
-  bun scripts/i18n-xcstrings.ts
+  bun scripts/i18n-codegen.ts
 fi

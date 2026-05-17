@@ -1,0 +1,23 @@
+# Minimum Release Age — supply-chain defense.
+#
+# Bun refuses to install any package version published less than 7 days ago.
+# Most malicious package publishes (the recent ones in eslint-config-prettier,
+# `ua-parser-js`, `node-ipc`, `event-stream`, etc.) are caught and removed by
+# the registry / community within a few hours. A 7-day delay turns the vast
+# majority of "smash-and-grab" supply-chain attacks into non-events for us
+# at install time.
+#
+# Background: https://daniakash.com/posts/simplest-supply-chain-defense/
+# Bun docs:   https://bun.sh/docs/runtime/bunfig#install-minimumreleaseage
+#
+# Applies to every `bun install` in this repo (wimg-web, wimg-sync, root) —
+# Bun walks up from CWD until it finds this file.
+#
+# To bypass for a specific urgent upgrade:
+#   bun install --no-cache <pkg>@<exact-version>
+# or temporarily set the env var:
+#   BUN_INSTALL_MINIMUM_RELEASE_AGE=0 bun install
+#
+# Value is in seconds. 7 days = 7 * 24 * 60 * 60 = 604800.
+[install]
+minimumReleaseAge = 604800

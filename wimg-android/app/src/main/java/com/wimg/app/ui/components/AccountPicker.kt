@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.wimg.app.bridge.LibWimg
 import com.wimg.app.models.Account
+import com.wimg.app.i18n.L
 
 @Composable
 fun AccountPicker(
@@ -33,7 +34,7 @@ fun AccountPicker(
 
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
-                text = { Text("Alle Konten") },
+                text = { Text(L("Alle Konten")) },
                 onClick = { onAccountChanged(null); expanded = false },
             )
             accounts.forEach { account ->

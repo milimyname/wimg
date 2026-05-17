@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 struct TransactionCard: View {
     let transaction: Transaction
@@ -30,7 +31,7 @@ struct TransactionCard: View {
                         .lineLimit(1)
                         .foregroundStyle(WimgTheme.text)
 
-                    TText(category.name)
+                    Text(L(category.name))
                         .font(.caption)
                         .foregroundStyle(WimgTheme.textSecondary)
                 }

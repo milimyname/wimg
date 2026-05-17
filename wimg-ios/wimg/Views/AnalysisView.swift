@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import WimgI18n
 
 struct AnalysisView: View {
     @Binding var selectedAccount: String?
@@ -35,10 +36,10 @@ struct AnalysisView: View {
                             }
 
                             VStack(spacing: 8) {
-                                Text("Noch keine Daten")
+                                Text(#L("Noch keine Daten"))
                                     .font(.system(.title2, design: .rounded, weight: .bold))
                                     .foregroundStyle(WimgTheme.text)
-                                Text("Importiere eine CSV-Datei, um deine Ausgaben zu analysieren.")
+                                Text(#L("Importiere eine CSV-Datei, um deine Ausgaben zu analysieren."))
                                     .font(.system(.subheadline, design: .rounded))
                                     .foregroundStyle(WimgTheme.textSecondary)
                                     .multilineTextAlignment(.center)
@@ -46,7 +47,7 @@ struct AnalysisView: View {
                             }
 
                             NavigationLink(destination: ImportView()) {
-                                Text("CSV importieren")
+                                Text(#L("CSV importieren"))
                                     .font(.system(.body, design: .rounded, weight: .bold))
                                     .foregroundStyle(WimgTheme.heroText)
                                     .frame(maxWidth: .infinity)
@@ -65,10 +66,10 @@ struct AnalysisView: View {
                     if let cats = summary?.by_category, !cats.isEmpty {
                         // Section header for donut
                         HStack(spacing: 8) {
-                            Text("Ausgaben nach Kategorie")
+                            Text(#L("Ausgaben nach Kategorie"))
                                 .font(.system(.title3, design: .rounded, weight: .black))
                                 .foregroundStyle(WimgTheme.text)
-                            InfoTooltip(text: "Zeigt deine Ausgaben des Monats aufgeschlüsselt nach Kategorie. Tippe ein Segment für Details.")
+                            InfoTooltip(text: #L("Zeigt deine Ausgaben des Monats aufgeschlüsselt nach Kategorie. Tippe ein Segment für Details."))
                             Spacer()
                         }
                         .padding(.horizontal)
@@ -98,7 +99,7 @@ struct AnalysisView: View {
                                         Image(systemName: wmCat.icon)
                                             .font(.system(size: 16))
                                             .foregroundStyle(wmCat.color)
-                                        TText(sel.name)
+                                        Text(L(sel.name))
                                             .font(.system(size: 11, weight: .bold, design: .rounded))
                                             .foregroundStyle(WimgTheme.text)
                                         Text(formatAmountShort(sel.amount))
@@ -110,7 +111,7 @@ struct AnalysisView: View {
                                             .font(.system(size: 10, weight: .bold, design: .rounded))
                                             .foregroundStyle(WimgTheme.textSecondary)
                                     } else {
-                                        Text("Gesamt")
+                                        Text(#L("Gesamt"))
                                             .font(.system(size: 10, weight: .bold, design: .rounded))
                                             .foregroundStyle(WimgTheme.textSecondary)
                                             .textCase(.uppercase)
@@ -136,10 +137,10 @@ struct AnalysisView: View {
 
                         // Section header for categories
                         HStack(spacing: 8) {
-                            Text("Kategorien")
+                            Text(#L("Kategorien"))
                                 .font(.system(.title3, design: .rounded, weight: .black))
                                 .foregroundStyle(WimgTheme.text)
-                            InfoTooltip(text: "Alle Ausgabenkategorien dieses Monats, absteigend nach Betrag. Tippe eine Kategorie für ihre Transaktionen.")
+                            InfoTooltip(text: #L("Alle Ausgabenkategorien dieses Monats, absteigend nach Betrag. Tippe eine Kategorie für ihre Transaktionen."))
                             Spacer()
                         }
                         .padding(.horizontal)
@@ -160,7 +161,7 @@ struct AnalysisView: View {
                         ContentUnavailableView(
                             "Keine Ausgaben",
                             systemImage: "chart.pie",
-                            description: Text("Keine Daten für diesen Monat.")
+                            description: Text(#L("Keine Daten für diesen Monat."))
                         )
                     }
 
@@ -169,7 +170,7 @@ struct AnalysisView: View {
                 .padding(.bottom, 24)
             }
             .background(WimgTheme.bg)
-            .navigationTitle("Analyse")
+            .navigationTitle(#L("Analyse"))
             .onChange(of: year) { reload() }
             .onChange(of: month) { reload() }
             .onChange(of: selectedAccount) { reload() }
@@ -195,7 +196,7 @@ struct AnalysisView: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    TText(cat.name)
+                    Text(L(cat.name))
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(WimgTheme.text)
                     Spacer()
@@ -217,9 +218,7 @@ struct AnalysisView: View {
                 .frame(height: 6)
 
                 HStack {
-                    Text(RecurringPattern.isEnglish
-                        ? "\(cat.count) transactions"
-                        : "\(cat.count) Umsätze")
+                    Text(#L("\(cat.count) Umsätze"))
                         .font(.system(.caption2, design: .rounded, weight: .medium))
                         .foregroundStyle(WimgTheme.textSecondary)
                     Spacer()

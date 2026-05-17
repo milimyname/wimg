@@ -1,5 +1,4 @@
 package com.wimg.app.ui.screens
-import com.wimg.app.ui.components.TText
 
 import android.content.Intent
 import androidx.compose.foundation.background
@@ -20,6 +19,7 @@ import kotlinx.coroutines.launch
 import com.wimg.app.bridge.LibWimg
 import com.wimg.app.ui.theme.WimgShapes
 import java.io.File
+import com.wimg.app.i18n.L
 
 private enum class ThemeMode(val label: String, val value: Int) {
     SYSTEM("System", -1),
@@ -43,13 +43,13 @@ fun SettingsScreen() {
     ) {
         // Appearance
         item {
-            TText("Darstellung", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(L("Darstellung"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         item {
             Card(shape = WimgShapes.small, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    TText("Design", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    Text(L("Design"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     ThemeMode.entries.forEach { mode ->
                         Row(
@@ -64,7 +64,7 @@ fun SettingsScreen() {
                                     com.wimg.app.ui.theme.ThemeState.mode = mode.value
                                 },
                             )
-                            Text(mode.label, style = MaterialTheme.typography.bodyMedium)
+                            Text(L(mode.label), style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
@@ -74,7 +74,7 @@ fun SettingsScreen() {
         item {
             Card(shape = WimgShapes.small, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    TText("Sprache", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    Text(L("Sprache"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     listOf("de" to "Deutsch", "en" to "English").forEach { (code, label) ->
                         Row(
@@ -89,17 +89,20 @@ fun SettingsScreen() {
                                     com.wimg.app.ui.theme.LocaleState.locale = code
                                 },
                             )
-                            Text(label, style = MaterialTheme.typography.bodyMedium)
+                            Text(L(label), style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
             }
         }
 
+        // Security section (Face ID / Fingerprint / device credential)
+        item { SecuritySection() }
+
         // Sync section
         item {
             Spacer(Modifier.height(8.dp))
-            TText("Synchronisierung", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(L("Synchronisierung"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         item {
@@ -119,13 +122,13 @@ fun SettingsScreen() {
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onBackground, contentColor = MaterialTheme.colorScheme.background),
                         ) {
-                            TText("Sync aktivieren", fontWeight = FontWeight.Bold)
+                            Text(L("Sync aktivieren"), fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(
                             value = linkInput,
                             onValueChange = { linkInput = it },
-                            label = { Text("Sync-Schlüssel einfügen") },
+                            label = { Text(L("Sync-Schlüssel einfügen")) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -135,11 +138,11 @@ fun SettingsScreen() {
                                 com.wimg.app.services.SyncService.setSyncKey(context, linkInput.trim())
                                 linkInput = ""
                             }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Verknüpfen")
+                                Text(L("Verknüpfen"))
                             }
                         }
                     } else {
-                        TText("Sync aktiv", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                        Text(L("Sync aktiv"), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(4.dp))
                         Text(syncKey ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(12.dp))
@@ -157,7 +160,7 @@ fun SettingsScreen() {
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onBackground, contentColor = MaterialTheme.colorScheme.background),
                             ) {
-                                Text(if (syncing) "Synchronisiere..." else "Jetzt synchronisieren", fontWeight = FontWeight.Bold)
+                                Text(L(if (syncing) "Synchronisiere..." else "Jetzt synchronisieren"), fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -168,7 +171,7 @@ fun SettingsScreen() {
         // Data section
         item {
             Spacer(Modifier.height(8.dp))
-            TText("Daten", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(L("Daten"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         item {
@@ -190,7 +193,7 @@ fun SettingsScreen() {
         // Danger zone
         item {
             Spacer(Modifier.height(8.dp))
-            TText("Danger Zone", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+            Text(L("Danger Zone"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
         }
 
         item {
@@ -204,8 +207,8 @@ fun SettingsScreen() {
                 if (showConfirm) {
                     AlertDialog(
                         onDismissRequest = { showConfirm = false },
-                        title = { Text("Alle Daten löschen?") },
-                        text = { Text("Diese Aktion kann nicht rückgängig gemacht werden.") },
+                        title = { Text(L("Alle Daten löschen?")) },
+                        text = { Text(L("Diese Aktion kann nicht rückgängig gemacht werden.")) },
                         confirmButton = {
                             TextButton(onClick = {
                                 showConfirm = false
@@ -220,12 +223,12 @@ fun SettingsScreen() {
                                     LibWimg.initialize(context)
                                 } catch (_: Exception) {}
                             }) {
-                                Text("Löschen", color = MaterialTheme.colorScheme.error)
+                                Text(L("Löschen"), color = MaterialTheme.colorScheme.error)
                             }
                         },
                         dismissButton = {
                             TextButton(onClick = { showConfirm = false }) {
-                                Text("Abbrechen", color = MaterialTheme.colorScheme.onSurface)
+                                Text(L("Abbrechen"), color = MaterialTheme.colorScheme.onSurface)
                             }
                         },
                     )
@@ -258,7 +261,7 @@ private fun SettingsRow(
             )
             Spacer(Modifier.width(16.dp))
             Text(
-                title,
+                L(title),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
@@ -277,4 +280,62 @@ private fun shareText(context: android.content.Context, content: String, filenam
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
     context.startActivity(Intent.createChooser(intent, "Exportieren"))
+}
+
+@Composable
+private fun SecuritySection() {
+    val context = LocalContext.current
+    val lock = com.wimg.app.services.BiometricLock
+    val method = remember { lock.availableMethod(context) }
+    val canUseLock = method != com.wimg.app.services.BiometricLock.AvailableMethod.NONE
+
+    Spacer(Modifier.height(8.dp))
+    Text(
+        L("Sicherheit"),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(8.dp))
+    Card(
+        shape = WimgShapes.small,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Outlined.Fingerprint,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(L("App-Sperre"), fontWeight = FontWeight.Bold)
+                    Text(
+                        when (method) {
+                            com.wimg.app.services.BiometricLock.AvailableMethod.BIOMETRIC_STRONG -> L("Mit Fingerabdruck oder Gesicht schützen")
+                            com.wimg.app.services.BiometricLock.AvailableMethod.BIOMETRIC_WEAK -> L("Mit Fingerabdruck oder Gesicht schützen")
+                            com.wimg.app.services.BiometricLock.AvailableMethod.DEVICE_CREDENTIAL -> L("Mit Gerätecode schützen")
+                            com.wimg.app.services.BiometricLock.AvailableMethod.NONE -> L("Nicht verfügbar")
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = lock.isEnabled,
+                    enabled = canUseLock,
+                    onCheckedChange = { lock.setEnabled(context, it) },
+                )
+            }
+            if (!canUseLock) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    L("Kein biometrischer Schutz auf diesem Gerät verfügbar."),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
 }

@@ -21,6 +21,7 @@ import com.wimg.app.bridge.LibWimg
 import com.wimg.app.models.ImportResult
 import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
+import com.wimg.app.i18n.L
 
 @Composable
 fun ImportScreen(navController: NavController) {
@@ -63,7 +64,7 @@ fun ImportScreen(navController: NavController) {
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
+                    modifier = Modifier.fillMaxWidth().padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Box(
@@ -76,16 +77,15 @@ fun ImportScreen(navController: NavController) {
                         Text("✓", fontSize = MaterialTheme.typography.headlineMedium.fontSize, color = WimgCategory.INCOME.color)
                     }
                     Spacer(Modifier.height(16.dp))
-                    Text(
-                        "Import erfolgreich!",
+                    Text(L("Import erfolgreich!"),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
                     Spacer(Modifier.height(12.dp))
-                    ResultRow("Format", r.format)
-                    ResultRow("Importiert", "${r.imported}")
-                    if (r.skipped_duplicates > 0) ResultRow("Duplikate", "${r.skipped_duplicates}")
-                    if (r.categorized > 0) ResultRow("Kategorisiert", "${r.categorized}")
+                    ResultRow(L("Format"), r.format)
+                    ResultRow(L("Importiert"), "${r.imported}")
+                    if (r.skipped_duplicates > 0) ResultRow(L("Duplikate"), "${r.skipped_duplicates}")
+                    if (r.categorized > 0) ResultRow(L("Kategorisiert"), "${r.categorized}")
                 }
             }
 
@@ -104,7 +104,7 @@ fun ImportScreen(navController: NavController) {
                 ),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Zum Dashboard", modifier = Modifier.padding(vertical = 8.dp), fontWeight = FontWeight.Bold)
+                Text(L("Zum Dashboard"), modifier = Modifier.padding(vertical = 8.dp), fontWeight = FontWeight.Bold)
             }
 
             OutlinedButton(
@@ -116,7 +116,7 @@ fun ImportScreen(navController: NavController) {
                 shape = WimgShapes.small,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Transaktionen ansehen", modifier = Modifier.padding(vertical = 8.dp))
+                Text(L("Transaktionen ansehen"), modifier = Modifier.padding(vertical = 8.dp))
             }
         } else {
             // Upload card
@@ -126,7 +126,7 @@ fun ImportScreen(navController: NavController) {
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(
-                    modifier = Modifier.padding(28.dp),
+                    modifier = Modifier.fillMaxWidth().padding(28.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Box(
@@ -144,14 +144,12 @@ fun ImportScreen(navController: NavController) {
                         )
                     }
                     Spacer(Modifier.height(20.dp))
-                    Text(
-                        "CSV-Datei importieren",
+                    Text(L("CSV-Datei importieren"),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
                     Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Comdirect, Trade Republic oder Scalable Capital",
+                    Text(L("Comdirect, Trade Republic oder Scalable Capital"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -177,9 +175,9 @@ fun ImportScreen(navController: NavController) {
                         color = MaterialTheme.colorScheme.background,
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Importiere...", fontWeight = FontWeight.Bold)
+                    Text(L("Importiere..."), fontWeight = FontWeight.Bold)
                 } else {
-                    Text("Datei auswählen", modifier = Modifier.padding(vertical = 8.dp), fontWeight = FontWeight.Bold)
+                    Text(L("Datei auswählen"), modifier = Modifier.padding(vertical = 8.dp), fontWeight = FontWeight.Bold)
                 }
             }
 

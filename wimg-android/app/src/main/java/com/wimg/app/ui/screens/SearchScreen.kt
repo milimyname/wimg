@@ -32,6 +32,7 @@ import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
 import com.wimg.app.ui.theme.wimgCard
 import kotlin.math.abs
+import com.wimg.app.i18n.L
 
 @Composable
 fun SearchScreen(selectedAccount: String?, navController: NavController) {
@@ -64,7 +65,7 @@ fun SearchScreen(selectedAccount: String?, navController: NavController) {
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            placeholder = { Text("Transaktionen suchen...") },
+            placeholder = { Text(L("Transaktionen suchen...")) },
             leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
             trailingIcon = {
                 if (query.isNotEmpty()) {
@@ -101,7 +102,7 @@ fun SearchScreen(selectedAccount: String?, navController: NavController) {
                             selectedCategories = if (selected) selectedCategories - cat.id
                             else selectedCategories + cat.id
                         },
-                        label = { Text(cat.label, fontSize = 12.sp) },
+                        label = { Text(L(cat.label), fontSize = 12.sp, maxLines = 1) },
                     )
                 }
             }
@@ -111,7 +112,7 @@ fun SearchScreen(selectedAccount: String?, navController: NavController) {
             // Search results
             if (grouped.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Keine Ergebnisse", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(L("Keine Ergebnisse"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 LazyColumn(

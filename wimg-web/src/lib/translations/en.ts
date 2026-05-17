@@ -3,6 +3,19 @@
  * Only strings that differ need entries. Missing keys fall back to German.
  */
 export const en: Record<string, string> = {
+  // Interpolated keys (iOS #L macro uses %@ placeholders; web plugin ignores these)
+  "%@ Transaktionen": "%@ transactions",
+  "%@ Umsätze": "%@ transactions",
+  "%@ erkannte Muster": "%@ detected patterns",
+  "Du sparst %@ von %@": "You save %@ of %@",
+  "· Zuletzt: %@": "· Last: %@",
+  "Mehr laden (%@ weitere)": "Load more (%@ more)",
+  "%@: +%@ (%@% mehr)": "%@: +%@ (%@% more)",
+  "Vormonat: %@": "Last month: %@",
+  "Aktuell: %@": "Current: %@",
+  "am %@": "on %@",
+  "%@ Rückblick": "%@ Review",
+
   // Navigation / Bottom Nav
   Umsätze: "Transactions",
   Mehr: "More",
@@ -719,4 +732,29 @@ export const en: Record<string, string> = {
   // iOS-only: other views
   "Wähle ein Export-Format": "Choose export format",
   "Backup (JSON)": "Backup (JSON)",
+
+  // App lock (web LockScreen + Settings security card)
+  "App-Sperre": "App Lock",
+  "App ist gesperrt": "App is locked",
+  "Mit PIN und Biometrie geschützt": "Protected with PIN and biometric",
+  "Mit PIN geschützt": "Protected with PIN",
+  "Mit PIN und optional Biometrie schützen": "Protect with PIN and optional biometric",
+  "Neue PIN festlegen (4–6 Ziffern)": "Set a new PIN (4–6 digits)",
+  "PIN bestätigen": "Confirm PIN",
+  "PIN muss mindestens 4 Stellen haben.": "PIN must be at least 4 digits.",
+  "PINs stimmen nicht überein.": "PINs do not match.",
+  "Biometrie konnte nicht aktiviert werden.": "Could not enable biometric unlock.",
+  "PIN einrichten": "Set up PIN",
+  "Face ID / Touch ID aktivieren": "Enable Face ID / Touch ID",
+  "Biometrie entfernen": "Remove biometric",
+  "PIN ändern": "Change PIN",
+  "App-Sperre deaktivieren": "Disable app lock",
+  "Dieser Browser unterstützt keine biometrische Entsperrung (WebAuthn).":
+    "This browser does not support biometric unlock (WebAuthn).",
+  "Sperrt wimg mit einer PIN (4–6 Ziffern), optional zusätzlich mit Face ID / Touch ID / Windows Hello via WebAuthn. Beim Tab-Wechsel oder Minimieren wird der Inhalt verschleiert, damit Vorschaubilder im Tab-Switcher deine Daten nicht zeigen. PIN-Hash bleibt lokal im Browser (PBKDF2-SHA256, 100k Iterationen).":
+    "Locks wimg with a PIN (4–6 digits), and optionally also with Face ID / Touch ID / Windows Hello via WebAuthn. When you switch tabs or minimize, the content is blurred so tab-switcher thumbnails don't reveal your data. The PIN hash stays local in the browser (PBKDF2-SHA256, 100k iterations).",
+  "Auto-Sperre nach": "Auto-lock after",
+  nie: "never",
+  "1 Stunde": "1 hour",
+  "Zu viele falsche Versuche. Erneut versuchen in": "Too many wrong attempts. Try again in",
 };

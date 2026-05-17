@@ -5,12 +5,10 @@ options:
     iOS: "17.0"
   xcodeVersion: "16.0"
   defaultConfig: Release
-settings:
-  base:
-    SWIFT_EMIT_LOC_STRINGS: "YES"
-localizations:
-  - de
-  - en
+
+packages:
+  WimgI18n:
+    path: plugins/WimgI18n
 
 targets:
   wimg:
@@ -50,12 +48,15 @@ targets:
       - framework: Frameworks/libwimg.xcframework
         embed: false
       - target: wimgWidget
+      - package: WimgI18n
+        product: WimgI18n
     info:
       path: wimg/Info.plist
       properties:
         UILaunchScreen: {}
         ITSAppUsesNonExemptEncryption: false
         CFBundleDisplayName: wimg
+        NSFaceIDUsageDescription: "wimg verwendet Face ID, um deine Finanzdaten zu schützen."
         UIBackgroundModes:
           - fetch
           - processing
@@ -88,6 +89,9 @@ targets:
         CODE_SIGN_IDENTITY: "Apple Development"
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: W5N395VNYH
+    dependencies:
+      - package: WimgI18n
+        product: WimgI18n
     info:
       path: wimgWidget/Info.plist
       properties:

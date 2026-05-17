@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import WimgI18n
 
 struct ImportView: View {
     var onViewTransactions: (() -> Void)?
@@ -45,7 +46,7 @@ struct ImportView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     if fileQueue.count > 1 {
-                        Text("Datei \(queueIndex + 1) von \(fileQueue.count)")
+                        Text(#L("Datei \(queueIndex + 1) von \(fileQueue.count)"))
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .foregroundStyle(WimgTheme.textSecondary)
                     }
@@ -99,11 +100,11 @@ struct ImportView: View {
             }
 
             VStack(spacing: 6) {
-                Text("CSV-Datei importieren")
+                Text(#L("CSV-Datei importieren"))
                     .font(.system(.title3, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
 
-                Text("Comdirect, Trade Republic oder Scalable Capital")
+                Text(#L("Comdirect, Trade Republic oder Scalable Capital"))
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(WimgTheme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -112,7 +113,7 @@ struct ImportView: View {
             Button {
                 isPickerPresented = true
             } label: {
-                Label("Datei auswählen", systemImage: "folder")
+                Label(#L("Datei auswählen"), systemImage: "folder")
                     .font(.system(.headline, design: .rounded, weight: .bold))
                     .frame(maxWidth: .infinity)
                     .padding(16)
@@ -148,10 +149,10 @@ struct ImportView: View {
                             .foregroundStyle(.green)
                     }
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("\(formatLabel(result.format)) CSV erkannt")
+                        Text(#L("\(formatLabel(result.format)) CSV erkannt"))
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .foregroundStyle(WimgTheme.text)
-                        Text("\(result.total_rows) Zeilen gelesen")
+                        Text(#L("\(result.total_rows) Zeilen gelesen"))
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(WimgTheme.textSecondary)
                     }
@@ -165,7 +166,7 @@ struct ImportView: View {
 
             // Summary
             VStack(spacing: 8) {
-                Text("\(result.transactions.count) Buchungen gefunden")
+                Text(#L("\(result.transactions.count) Buchungen gefunden"))
                     .font(.system(.headline, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
 
@@ -197,7 +198,7 @@ struct ImportView: View {
                 }
 
                 if result.transactions.count > 10 {
-                    Text("... und \(result.transactions.count - 10) weitere")
+                    Text(#L("... und \(result.transactions.count - 10) weitere"))
                         .font(.system(.caption, design: .rounded, weight: .medium))
                         .foregroundStyle(WimgTheme.textSecondary)
                         .padding(.vertical, 14)
@@ -216,7 +217,7 @@ struct ImportView: View {
                             ProgressView()
                                 .tint(WimgTheme.heroText)
                         } else {
-                            Text("Importieren (\(result.transactions.count))")
+                            Text(#L("Importieren (\(result.transactions.count))"))
                         }
                     }
                     .font(.system(.headline, design: .rounded, weight: .bold))
@@ -231,7 +232,7 @@ struct ImportView: View {
                 Button {
                     cancelPreview()
                 } label: {
-                    Text("Abbrechen")
+                    Text(#L("Abbrechen"))
                         .font(.system(.headline, design: .rounded, weight: .bold))
                         .padding(.horizontal, 20)
                         .padding(.vertical, 16)
@@ -260,26 +261,26 @@ struct ImportView: View {
                         .foregroundStyle(.green)
                 }
 
-                Text("Import erfolgreich!")
+                Text(#L("Import erfolgreich!"))
                     .font(.system(.headline, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
 
                 Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
                     GridRow {
-                        Text("Format")
+                        Text(#L("Format"))
                             .foregroundStyle(WimgTheme.textSecondary)
                         Text(formatLabel(result.format))
                             .fontWeight(.semibold)
                     }
                     GridRow {
-                        Text("Importiert")
+                        Text(#L("Importiert"))
                             .foregroundStyle(WimgTheme.textSecondary)
                         Text("\(result.imported)")
                             .fontWeight(.semibold)
                     }
                     if result.categorized > 0 {
                         GridRow {
-                            Text("Kategorisiert")
+                            Text(#L("Kategorisiert"))
                                 .foregroundStyle(WimgTheme.textSecondary)
                             Text("\(result.categorized)")
                                 .fontWeight(.semibold)
@@ -287,7 +288,7 @@ struct ImportView: View {
                     }
                     if result.skipped_duplicates > 0 {
                         GridRow {
-                            Text("Duplikate")
+                            Text(#L("Duplikate"))
                                 .foregroundStyle(.orange)
                             Text("\(result.skipped_duplicates)")
                                 .fontWeight(.semibold)
@@ -295,7 +296,7 @@ struct ImportView: View {
                     }
                     if result.errors > 0 {
                         GridRow {
-                            Text("Fehler")
+                            Text(#L("Fehler"))
                                 .foregroundStyle(.red)
                             Text("\(result.errors)")
                                 .fontWeight(.semibold)
@@ -314,7 +315,7 @@ struct ImportView: View {
                 Button {
                     loadNextFile()
                 } label: {
-                    Text("Nächste Datei laden (\(queueIndex + 2)/\(fileQueue.count))")
+                    Text(#L("Nächste Datei laden (\(queueIndex + 2)/\(fileQueue.count))"))
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .frame(maxWidth: .infinity)
                         .padding(16)
@@ -331,7 +332,7 @@ struct ImportView: View {
                 queueIndex = 0
                 resetToIdle()
             } label: {
-                Label("Weitere Datei importieren", systemImage: "plus.circle")
+                Label(#L("Weitere Datei importieren"), systemImage: "plus.circle")
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .frame(maxWidth: .infinity)
                     .padding(16)
@@ -345,7 +346,7 @@ struct ImportView: View {
                 Button {
                     onViewTransactions()
                 } label: {
-                    Label("Transaktionen ansehen", systemImage: "list.bullet")
+                    Label(#L("Transaktionen ansehen"), systemImage: "list.bullet")
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .frame(maxWidth: .infinity)
                         .padding(16)
@@ -362,7 +363,7 @@ struct ImportView: View {
 
     private var categorizationSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Kategorisierung")
+            Text(#L("Kategorisierung"))
                 .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal)
@@ -380,17 +381,17 @@ struct ImportView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Regel-Engine")
+                        Text(#L("Regel-Engine"))
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .foregroundStyle(WimgTheme.text)
-                        Text("Keyword-Regeln anwenden")
+                        Text(#L("Keyword-Regeln anwenden"))
                             .font(.system(.caption, design: .rounded))
                             .foregroundStyle(WimgTheme.textSecondary)
                     }
 
                     Spacer()
 
-                    Button("Starten") {
+                    Button(#L("Starten")) {
                         let count = LibWimg.autoCategorize()
                         rulesCategorizedCount = count
                         if count > 0 {
@@ -406,7 +407,7 @@ struct ImportView: View {
                 }
 
                 if let count = rulesCategorizedCount {
-                    Text("\(count) Buchungen kategorisiert")
+                    Text(#L("\(count) Buchungen kategorisiert"))
                         .font(.system(.caption, design: .rounded, weight: .medium))
                         .foregroundStyle(.green)
                         .padding(.leading, 58)
@@ -440,7 +441,7 @@ struct ImportView: View {
 
     private var supportedFormats: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Unterstützte Formate")
+            Text(#L("Unterstützte Formate"))
                 .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.text)
 
@@ -464,10 +465,10 @@ struct ImportView: View {
                     .foregroundStyle(color)
             }
             VStack(alignment: .leading, spacing: 3) {
-                TText(name)
+                Text(L(name))
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
-                TText(detail)
+                Text(L(detail))
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(WimgTheme.textSecondary)
             }

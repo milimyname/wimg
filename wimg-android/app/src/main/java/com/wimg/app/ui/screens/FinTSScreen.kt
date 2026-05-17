@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import com.wimg.app.i18n.L
 
 @Serializable
 private data class BankInfo(val blz: String, val name: String, val url: String)
@@ -143,11 +144,11 @@ fun FinTSScreen() {
                             Icon(Icons.Outlined.AccountBalance, contentDescription = null, modifier = Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary)
                         }
                         Spacer(Modifier.height(12.dp))
-                        Text("Bank verbinden", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(L("Bank verbinden"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                 }
                 item {
-                    OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, placeholder = { Text("Bank suchen...") }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                    OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it }, placeholder = { Text(L("Bank suchen...")) }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
                 }
                 items(filteredBanks) { bank ->
                     Row(
@@ -229,10 +230,10 @@ fun FinTSScreen() {
                 item {
                     Card(modifier = Modifier.fillMaxWidth(), shape = WimgShapes.large, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                         Column(modifier = Modifier.padding(24.dp)) {
-                            Text("Anmeldung", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(L("Anmeldung"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             selectedBank?.let { Text(it.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                             Spacer(Modifier.height(16.dp))
-                            OutlinedTextField(value = kennung, onValueChange = { kennung = it }, label = { Text("Kennung") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(value = kennung, onValueChange = { kennung = it }, label = { Text(L("Kennung")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                             Spacer(Modifier.height(8.dp))
                             OutlinedTextField(value = pin, onValueChange = { pin = it }, label = { Text("PIN") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
                             Spacer(Modifier.height(8.dp))
@@ -281,7 +282,7 @@ fun FinTSScreen() {
                             ) {
                                 Text(if (connecting) "Verbinde..." else "Verbinden", fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 4.dp))
                             }
-                            TextButton(onClick = { stage = "banks" }) { Text("Andere Bank wählen") }
+                            TextButton(onClick = { stage = "banks" }) { Text(L("Andere Bank wählen")) }
                         }
                     }
                 }
@@ -348,7 +349,7 @@ fun FinTSScreen() {
                         Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Outlined.CalendarMonth, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.height(12.dp))
-                            Text("Kontoauszüge abrufen", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(L("Kontoauszüge abrufen"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             Text("Letzte 90 Tage", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.height(16.dp))
                             Button(
@@ -388,7 +389,7 @@ fun FinTSScreen() {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator()
                             Spacer(Modifier.height(16.dp))
-                            Text("Lade Kontoauszüge...", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            Text(L("Lade Kontoauszüge..."), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -402,13 +403,13 @@ fun FinTSScreen() {
                                 Text("✓", fontSize = 28.sp, color = com.wimg.app.models.WimgCategory.INCOME.color)
                             }
                             Spacer(Modifier.height(16.dp))
-                            Text("Abruf erfolgreich!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(L("Abruf erfolgreich!"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(8.dp))
                             Text("$importedCount importiert", style = MaterialTheme.typography.bodySmall)
                             if (duplicateCount > 0) Text("$duplicateCount Duplikate", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.height(16.dp))
                             OutlinedButton(onClick = { stage = "banks"; kennung = ""; pin = "" }, modifier = Modifier.fillMaxWidth(), shape = WimgShapes.small) {
-                                Text("Weitere Bank verbinden")
+                                Text(L("Weitere Bank verbinden"))
                             }
                         }
                     }

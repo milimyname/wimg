@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 struct UndoToast: View {
     let message: String
@@ -12,7 +13,7 @@ struct UndoToast: View {
 
             Spacer()
 
-            Button("Rückgängig") {
+            Button(#L("Rückgängig")) {
                 onUndo()
             }
             .font(.system(.subheadline, design: .rounded, weight: .bold))

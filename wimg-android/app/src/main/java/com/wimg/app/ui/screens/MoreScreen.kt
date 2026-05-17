@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.wimg.app.i18n.L
 
 private data class MoreItem(
     val title: String,
@@ -46,8 +47,7 @@ fun MoreScreen(navController: NavController) {
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
     ) {
-        Text(
-            "Mehr",
+        Text(L("Mehr"),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp),
@@ -88,7 +88,7 @@ fun MoreScreen(navController: NavController) {
                             )
                         }
                         Text(
-                            item.title,
+                            L(item.title),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp,

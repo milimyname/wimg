@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import WimgI18n
 
 struct NetWorthCard: View {
     private var snapshots: [Snapshot] {
@@ -39,10 +40,10 @@ struct NetWorthCard: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
-                            Text("Vermögen")
+                            Text(#L("Vermögen"))
                                 .font(.system(.title2, design: .rounded, weight: .black))
                                 .foregroundStyle(WimgTheme.text)
-                            InfoTooltip(text: "Kumulatives Nettovermögen über die Zeit, berechnet aus monatlichen Snapshots (Einnahmen − Ausgaben). Mindestens 2 Snapshots erforderlich.")
+                            InfoTooltip(text: #L("Kumulatives Nettovermögen über die Zeit, berechnet aus monatlichen Snapshots (Einnahmen − Ausgaben). Mindestens 2 Snapshots erforderlich."))
                         }
                         Text(formatAmountShort(currentValue))
                             .font(.system(size: 32, weight: .black, design: .rounded))

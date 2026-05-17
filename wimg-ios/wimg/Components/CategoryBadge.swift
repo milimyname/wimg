@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 struct CategoryBadge: View {
     let category: WimgCategory
@@ -7,7 +8,7 @@ struct CategoryBadge: View {
         HStack(spacing: 5) {
             Image(systemName: category.icon)
                 .font(.caption2)
-            TText(category.name)
+            Text(L(category.name))
                 .font(.system(.caption, design: .rounded, weight: .semibold))
         }
         .padding(.horizontal, 10)

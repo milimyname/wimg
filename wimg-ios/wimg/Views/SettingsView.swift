@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 struct SettingsView: View {
     @State private var syncEnabled = false
@@ -39,7 +40,7 @@ struct SettingsView: View {
 
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 6) {
-                                Text("Synchronisierung")
+                                Text(#L("Synchronisierung"))
                                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                                     .foregroundStyle(WimgTheme.text)
                                 if syncEnabled {
@@ -56,7 +57,7 @@ struct SettingsView: View {
                                     .clipShape(Capsule())
                                 }
                             }
-                            Text("Daten zwischen Geräten synchronisieren")
+                            Text(#L("Daten zwischen Geräten synchronisieren"))
                                 .font(.caption2)
                                 .foregroundStyle(WimgTheme.textSecondary)
                         }
@@ -86,7 +87,7 @@ struct SettingsView: View {
                         Button {
                             Task { await handleEnableSync() }
                         } label: {
-                            TText(syncing ? "Aktiviere..." : "Sync aktivieren")
+                            Text(syncing ? #L("Aktiviere...") : #L("Sync aktivieren"))
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(WimgTheme.bg)
                                 .frame(maxWidth: .infinity)
@@ -99,7 +100,7 @@ struct SettingsView: View {
                         VStack(spacing: 12) {
                             // Sync Key
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Sync-Schlüssel")
+                                Text(#L("Sync-Schlüssel"))
                                     .font(.caption2)
                                     .foregroundStyle(WimgTheme.textSecondary)
 
@@ -128,7 +129,7 @@ struct SettingsView: View {
 
                             // Status
                             HStack {
-                                Text("Letzte Sync")
+                                Text(#L("Letzte Sync"))
                                     .font(.subheadline)
                                     .foregroundStyle(WimgTheme.textSecondary)
                                 Spacer()
@@ -147,7 +148,7 @@ struct SettingsView: View {
                                             .tint(WimgTheme.bg)
                                             .scaleEffect(0.8)
                                     }
-                                    TText(syncing ? "Synchronisiere..." : "Jetzt synchronisieren")
+                                    Text(syncing ? #L("Synchronisiere...") : #L("Jetzt synchronisieren"))
                                 }
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(WimgTheme.bg)
@@ -160,12 +161,12 @@ struct SettingsView: View {
 
                             // Link Device
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Gerät verknüpfen")
+                                Text(#L("Gerät verknüpfen"))
                                     .font(.caption2)
                                     .foregroundStyle(WimgTheme.textSecondary)
 
                                 HStack(spacing: 8) {
-                                    TextField("Sync-Schlüssel einfügen", text: $linkInput)
+                                    TextField(#L("Sync-Schlüssel einfügen"), text: $linkInput)
                                         .font(.subheadline)
                                         .padding(10)
                                         .background(WimgTheme.bg)
@@ -174,7 +175,7 @@ struct SettingsView: View {
                                     Button {
                                         Task { await handleLink() }
                                     } label: {
-                                        Text("Verknüpfen")
+                                        Text(#L("Verknüpfen"))
                                             .font(.system(.caption, design: .rounded, weight: .bold))
                                             .foregroundStyle(.white)
                                             .padding(.horizontal, 14)
@@ -203,10 +204,10 @@ struct SettingsView: View {
                             }
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Design")
+                            Text(#L("Design"))
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(WimgTheme.text)
-                            Text("Hell, Dunkel oder System")
+                            Text(#L("Hell, Dunkel oder System"))
                                 .font(.caption2)
                                 .foregroundStyle(WimgTheme.textSecondary)
                         }
@@ -217,7 +218,7 @@ struct SettingsView: View {
                         set: { ThemeManager.shared.mode = $0 }
                     )) {
                         ForEach(ThemeMode.allCases, id: \.self) { mode in
-                            TText(mode.label).tag(mode)
+                            Text(L(mode.label)).tag(mode)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -237,18 +238,18 @@ struct SettingsView: View {
                             }
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Sprache")
+                            Text(#L("Sprache"))
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(WimgTheme.text)
-                            Text("Language / Sprache")
+                            Text(#L("Language / Sprache"))
                                 .font(.caption2)
                                 .foregroundStyle(WimgTheme.textSecondary)
                         }
                     }
 
-                    Picker("Sprache", selection: $currentLocale) {
+                    Picker(#L("Sprache"), selection: $currentLocale) {
                         ForEach(localeOptions, id: \.code) { lang in
-                            TText(lang.label).tag(lang.code)
+                            Text(L(lang.label)).tag(lang.code)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -258,6 +259,9 @@ struct SettingsView: View {
                 }
                 .padding(20)
                 .wimgCard(radius: WimgTheme.radiusMedium)
+
+                // MARK: - Security Section
+                securitySection
 
                 // MARK: - About Section
                 VStack(alignment: .leading, spacing: 12) {
@@ -271,10 +275,10 @@ struct SettingsView: View {
                             }
 
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Über")
+                            Text(#L("Über"))
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(WimgTheme.text)
-                            Text("Version & Links")
+                            Text(#L("Version & Links"))
                                 .font(.caption2)
                                 .foregroundStyle(WimgTheme.textSecondary)
                         }
@@ -283,7 +287,7 @@ struct SettingsView: View {
                     Divider()
 
                     HStack {
-                        Text("Version")
+                        Text(#L("Version"))
                             .font(.subheadline)
                             .foregroundStyle(WimgTheme.textSecondary)
                         Spacer()
@@ -298,7 +302,7 @@ struct SettingsView: View {
                         showExportSheet = true
                     } label: {
                         HStack {
-                            Text("Daten exportieren")
+                            Text(#L("Daten exportieren"))
                                 .font(.subheadline)
                                 .foregroundStyle(WimgTheme.textSecondary)
                             Spacer()
@@ -307,12 +311,12 @@ struct SettingsView: View {
                                 .foregroundStyle(WimgTheme.textSecondary)
                         }
                     }
-                    .confirmationDialog("Daten exportieren", isPresented: $showExportSheet) {
-                        Button("Transaktionen (CSV)") { exportData(format: "csv") }
-                        Button("Backup (JSON)") { exportData(format: "json") }
-                        Button("Abbrechen", role: .cancel) {}
+                    .confirmationDialog(#L("Daten exportieren"), isPresented: $showExportSheet) {
+                        Button(#L("Transaktionen (CSV)")) { exportData(format: "csv") }
+                        Button(#L("Backup (JSON)")) { exportData(format: "json") }
+                        Button(#L("Abbrechen"), role: .cancel) {}
                     } message: {
-                        Text("Wähle ein Export-Format")
+                        Text(#L("Wähle ein Export-Format"))
                     }
 
                     Divider()
@@ -346,10 +350,10 @@ struct SettingsView: View {
 
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(spacing: 6) {
-                                    Text("Demo-Daten")
+                                    Text(#L("Demo-Daten"))
                                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                                         .foregroundStyle(WimgTheme.text)
-                                    Text("Aktiv")
+                                    Text(#L("Aktiv"))
                                         .font(.system(.caption2, design: .rounded, weight: .bold))
                                         .foregroundStyle(.orange)
                                         .padding(.horizontal, 8)
@@ -357,7 +361,7 @@ struct SettingsView: View {
                                         .background(Color.orange.opacity(0.1))
                                         .clipShape(Capsule())
                                 }
-                                Text("Beispieldaten sind geladen")
+                                Text(#L("Beispieldaten sind geladen"))
                                     .font(.caption2)
                                     .foregroundStyle(WimgTheme.textSecondary)
                             }
@@ -366,7 +370,7 @@ struct SettingsView: View {
                         Button {
                             handleResetData()
                         } label: {
-                            Text("Demo-Daten löschen")
+                            Text(#L("Demo-Daten löschen"))
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(.orange)
                                 .frame(maxWidth: .infinity)
@@ -388,31 +392,30 @@ struct SettingsView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "trash")
                             .font(.caption)
-                        Text("Alle Daten löschen")
+                        Text(#L("Alle Daten löschen"))
                             .font(.system(.subheadline, design: .rounded, weight: .medium))
                     }
                     .foregroundStyle(.red)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                 }
-                .confirmationDialog(
-                    "Alle Daten löschen?",
+                .confirmationDialog(#L("Alle Daten löschen?"),
                     isPresented: $confirmReset,
                     titleVisibility: .visible
                 ) {
-                    Button("Ja, alles löschen", role: .destructive) {
+                    Button(#L("Ja, alles löschen"), role: .destructive) {
                         handleResetData()
                     }
-                    Button("Abbrechen", role: .cancel) {}
+                    Button(#L("Abbrechen"), role: .cancel) {}
                 } message: {
-                    Text("Alle lokalen Daten werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.")
+                    Text(#L("Alle lokalen Daten werden unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."))
                 }
             }
             .padding(.horizontal, 20)
             .padding(.top, 8)
         }
         .background(WimgTheme.bg)
-        .navigationTitle("Einstellungen")
+        .navigationTitle(#L("Einstellungen"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             Task {
@@ -422,6 +425,73 @@ struct SettingsView: View {
                 }
                 lastSync = await SyncService.shared.lastSyncTimestamp
             }
+        }
+    }
+
+    // MARK: - Security Section
+
+    @ObservedObject private var biometricLock = BiometricLock.shared
+    @AppStorage("wimg_lock_enabled") private var lockEnabled = false
+
+    private var securitySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.blue.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                    .overlay {
+                        Image(systemName: lockIconName)
+                            .foregroundStyle(.blue)
+                    }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(#L("App-Sperre"))
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(WimgTheme.text)
+                    Text(lockSubtitle)
+                        .font(.caption2)
+                        .foregroundStyle(WimgTheme.textSecondary)
+                }
+                Spacer()
+            }
+            Toggle(isOn: Binding(
+                get: { lockEnabled },
+                set: { newValue in
+                    lockEnabled = newValue
+                    biometricLock.setEnabled(newValue)
+                }
+            )) {
+                Text(#L("App beim Öffnen sperren"))
+                    .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    .foregroundStyle(WimgTheme.text)
+            }
+            .tint(WimgTheme.accent)
+            .disabled(biometricLock.availableMethod == .none)
+
+            if biometricLock.availableMethod == .none {
+                Text(#L("Kein biometrischer Schutz auf diesem Gerät verfügbar."))
+                    .font(.caption2)
+                    .foregroundStyle(WimgTheme.textSecondary)
+            }
+        }
+        .padding(20)
+        .wimgCard(radius: WimgTheme.radiusMedium)
+    }
+
+    private var lockIconName: String {
+        switch biometricLock.availableMethod {
+        case .faceID: return "faceid"
+        case .touchID: return "touchid"
+        case .passcode: return "lock.fill"
+        case .none: return "lock.slash"
+        }
+    }
+
+    private var lockSubtitle: String {
+        switch biometricLock.availableMethod {
+        case .faceID: return #L("Mit Face ID schützen")
+        case .touchID: return #L("Mit Touch ID schützen")
+        case .passcode: return #L("Mit Gerätecode schützen")
+        case .none: return #L("Nicht verfügbar")
         }
     }
 

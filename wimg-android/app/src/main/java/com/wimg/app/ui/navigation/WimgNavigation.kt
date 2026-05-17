@@ -18,6 +18,7 @@ import androidx.navigation.compose.rememberNavController
 import com.wimg.app.bridge.LibWimg
 import com.wimg.app.ui.components.AccountPicker
 import com.wimg.app.ui.screens.*
+import com.wimg.app.i18n.L
 
 private const val ONBOARDING_KEY = "wimg_onboarding_done"
 
@@ -87,7 +88,7 @@ fun WimgNavigation() {
                         navController.navigate("search") { popUpTo("dashboard") }
                     },
                     icon = { Icon(Icons.Outlined.Search, contentDescription = "Suche") },
-                    label = { Text("Suche") },
+                    label = { Text(L("Suche")) },
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
@@ -105,7 +106,7 @@ fun WimgNavigation() {
                         navController.navigate("transactions") { popUpTo("dashboard") }
                     },
                     icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Umsätze") },
-                    label = { Text("Umsätze") },
+                    label = { Text(L("Umsätze")) },
                 )
                 NavigationBarItem(
                     selected = selectedTab == 3,
@@ -114,7 +115,7 @@ fun WimgNavigation() {
                         navController.navigate("more") { popUpTo("dashboard") }
                     },
                     icon = { Icon(Icons.Filled.MoreHoriz, contentDescription = "Mehr") },
-                    label = { Text("Mehr") },
+                    label = { Text(L("Mehr")) },
                 )
             }
         },
@@ -129,7 +130,7 @@ fun WimgNavigation() {
                 composable("transactions") { TransactionsScreen(selectedAccount = selectedAccount) }
                 composable("more") { MoreScreen(navController = navController) }
                 composable("import") { ImportScreen(navController = navController) }
-                composable("analysis") { AnalysisScreen(selectedAccount = selectedAccount) }
+                composable("analysis") { AnalysisScreen(selectedAccount = selectedAccount, navController = navController) }
                 composable("recurring") { RecurringScreen() }
                 composable("review") { ReviewScreen(selectedAccount = selectedAccount) }
                 composable("fints") { FinTSScreen() }

@@ -8,7 +8,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -36,6 +35,7 @@ import com.wimg.app.ui.theme.WimgShapes
 import com.wimg.app.ui.theme.wimgCard
 import com.wimg.app.ui.theme.wimgHero
 import java.util.Calendar
+import com.wimg.app.i18n.L
 
 @Composable
 fun HomeScreen(
@@ -46,14 +46,11 @@ fun HomeScreen(
     var year by remember { mutableIntStateOf(calendar.get(Calendar.YEAR)) }
     var month by remember { mutableIntStateOf(calendar.get(Calendar.MONTH) + 1) }
     var summary by remember { mutableStateOf<MonthlySummary?>(null) }
-    var totalBalance by remember { mutableStateOf(0.0) }
     var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(year, month, selectedAccount) {
         summary = LibWimg.getSummaryFiltered(year, month, selectedAccount)
-        val all = LibWimg.getTransactionsFiltered(selectedAccount)
-        totalBalance = all.sumOf { it.amount }
         com.wimg.app.services.WidgetDataWriter.writeSummary(context)
     }
 
@@ -84,8 +81,7 @@ fun HomeScreen(
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "Neue Version verfügbar",
+                                Text(L("Neue Version verfügbar"),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
                                 )
@@ -159,42 +155,6 @@ fun HomeScreen(
                         }
                     }
                 }
-            }
-        }
-
-        // Gesamtsaldo — centered, no card chrome
-        item {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Outlined.AccountBalance,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        "GESAMTSALDO",
-                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.6.sp),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    formatAmountShort(totalBalance),
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-1).sp,
-                    color = when {
-                        totalBalance > 0 -> Color(0xFF34C759)
-                        totalBalance < 0 -> Color(0xFFFF3B30)
-                        else -> MaterialTheme.colorScheme.onSurface
-                    },
-                )
             }
         }
 
@@ -281,8 +241,7 @@ fun HomeScreen(
                     Spacer(Modifier.width(16.dp))
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                "Sparquote",
+                            Text(L("Sparquote"),
                                 style = MaterialTheme.typography.titleSmall,
                             )
                             InfoTooltip("Prozent deines Einkommens, das du sparst: (Einnahmen − Ausgaben) ÷ Einnahmen × 100. Ab 20 % gilt als gut.")
@@ -324,8 +283,7 @@ fun HomeScreen(
         val categories = summary?.by_category ?: emptyList()
         if (categories.isNotEmpty()) {
             item {
-                Text(
-                    "Kategorien",
+                Text(L("Kategorien"),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp),
@@ -375,13 +333,11 @@ fun HomeScreen(
                 ) {
                     Text("📋", fontSize = 48.sp)
                     Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Keine Daten",
+                    Text(L("Keine Daten"),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
-                    Text(
-                        "Importiere eine CSV-Datei um loszulegen",
+                    Text(L("Importiere eine CSV-Datei um loszulegen"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -437,7 +393,7 @@ private fun QuickLinkTile(
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.width(12.dp))
-        com.wimg.app.ui.components.TText(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+        Text(L(label), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
     }
 }
 

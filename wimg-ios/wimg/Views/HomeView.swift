@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import WimgI18n
 
 struct HomeView: View {
     @Binding var selectedAccount: String?
@@ -10,7 +11,7 @@ struct HomeView: View {
     @State private var recentTransactions: [Transaction] = []
     @State private var hasAnyData = false
     @State private var loadingDemo = false
-    @State private var totalBalance: Double = 0
+    @State private var selectedAngle: Double?
 
     init(selectedAccount: Binding<String?>, accounts: Binding<[Account]>) {
         _selectedAccount = selectedAccount
@@ -39,10 +40,10 @@ struct HomeView: View {
                         }
 
                         VStack(spacing: 8) {
-                            Text("Willkommen bei wimg")
+                            Text(#L("Willkommen bei wimg"))
                                 .font(.system(.title2, design: .rounded, weight: .bold))
                                 .foregroundStyle(WimgTheme.text)
-                            Text("Importiere eine CSV-Datei oder lade Beispieldaten, um loszulegen.")
+                            Text(#L("Importiere eine CSV-Datei oder lade Beispieldaten, um loszulegen."))
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundStyle(WimgTheme.textSecondary)
                                 .multilineTextAlignment(.center)
@@ -51,7 +52,7 @@ struct HomeView: View {
 
                         VStack(spacing: 12) {
                             NavigationLink(destination: ImportView()) {
-                                Text("CSV importieren")
+                                Text(#L("CSV importieren"))
                                     .font(.system(.body, design: .rounded, weight: .bold))
                                     .foregroundStyle(WimgTheme.heroText)
                                     .frame(maxWidth: .infinity)
@@ -66,7 +67,7 @@ struct HomeView: View {
                                 loadingDemo = false
                                 reload()
                             } label: {
-                                TText(loadingDemo ? "Lade..." : "Beispieldaten laden")
+                                Text(loadingDemo ? #L("Lade...") : #L("Beispieldaten laden"))
                                     .font(.system(.body, design: .rounded, weight: .bold))
                                     .foregroundStyle(WimgTheme.text)
                                     .frame(maxWidth: .infinity)
@@ -83,9 +84,6 @@ struct HomeView: View {
                 VStack(spacing: 20) {
                     MonthPicker(year: $year, month: $month)
                         .padding(.top, 8)
-
-                    // Gesamtsaldo header sits right above the available-income hero card
-                    gesamtsaldoHeader
 
                     // Hero: Verfügbares Einkommen
                     availableCard
@@ -125,7 +123,7 @@ struct HomeView: View {
                 }
             }
             .background(WimgTheme.bg)
-            .navigationTitle("Übersicht")
+            .navigationTitle(#L("Übersicht"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     AccountPicker(selectedAccount: $selectedAccount, accounts: accounts) {
@@ -144,30 +142,6 @@ struct HomeView: View {
     }
 
     // MARK: - Cards
-
-    // Lifetime balance header (centered, no card chrome — like the web layout).
-    private var gesamtsaldoHeader: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "building.columns")
-                    .font(.system(size: 12))
-                    .foregroundStyle(WimgTheme.textSecondary)
-                Text("GESAMTSALDO")
-                    .font(.system(.caption2, design: .rounded, weight: .bold))
-                    .foregroundStyle(WimgTheme.textSecondary)
-                    .tracking(1.6)
-            }
-            Text(formatAmountShort(totalBalance))
-                .font(.system(size: 40, weight: .black, design: .rounded))
-                .foregroundStyle(
-                    totalBalance > 0 ? Color.green
-                        : totalBalance < 0 ? Color.red
-                        : WimgTheme.text
-                )
-                .tracking(-1)
-        }
-        .frame(maxWidth: .infinity)
-    }
 
     // Rückblick + Wiederkehrend quick-link tiles.
     private var quickLinks: some View {
@@ -196,7 +170,7 @@ struct HomeView: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(color)
                 }
-            TText(label)
+            Text(L(label))
                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.text)
             Spacer()
@@ -206,17 +180,10 @@ struct HomeView: View {
         .wimgCard(radius: WimgTheme.radiusMedium)
     }
 
-    // Sparquote subtitle is fully dynamic (two amounts interpolated), so
-    // `Text("Du sparst \(a) von \(b)")` never localizes — Swift uses the
-    // formatted string as the runtime catalog key, which never matches a
-    // static .xcstrings entry. Branch on `RecurringPattern.isEnglish`
-    // manually, matching the pattern used for recurring labels.
     private var sparquoteSubtitle: String {
         let available = formatAmountShort(summary?.available ?? 0)
         let income = formatAmountShort(summary?.income ?? 0)
-        return RecurringPattern.isEnglish
-            ? "You save \(available) of \(income)"
-            : "Du sparst \(available) von \(income)"
+        return #L("Du sparst \(available) von \(income)")
     }
 
     // expenses comes as positive from Zig (negated for display)
@@ -238,12 +205,12 @@ struct HomeView: View {
 
                 VStack(spacing: 6) {
                     HStack(spacing: 6) {
-                        Text("Verfügbar")
+                        Text(#L("Verfügbar"))
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .foregroundStyle(WimgTheme.heroText.opacity(0.7))
                             .textCase(.uppercase)
                             .tracking(1)
-                        InfoTooltip(text: "Einnahmen minus Ausgaben in diesem Monat. Was dir zum Sparen oder Investieren bleibt.")
+                        InfoTooltip(text: #L("Einnahmen minus Ausgaben in diesem Monat. Was dir zum Sparen oder Investieren bleibt."))
                             .foregroundStyle(WimgTheme.heroText.opacity(0.7))
                     }
 
@@ -252,10 +219,8 @@ struct HomeView: View {
                         .foregroundStyle(WimgTheme.heroText)
                         .tracking(-1)
 
-                    // Interpolated -> branch on locale instead of relying on
-                    // the static .xcstrings catalog.
                     let txCount = summary?.tx_count ?? 0
-                    Text(RecurringPattern.isEnglish ? "\(txCount) transactions" : "\(txCount) Transaktionen")
+                    Text(#L("\(txCount) Transaktionen"))
                         .font(.system(.caption, design: .rounded, weight: .medium))
                         .foregroundStyle(WimgTheme.heroText.opacity(0.6))
                 }
@@ -288,10 +253,10 @@ struct HomeView: View {
 
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
-                            Text("Sparquote")
+                            Text(#L("Sparquote"))
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(WimgTheme.text)
-                            InfoTooltip(text: "Prozent deines Einkommens, das du sparst: (Einnahmen − Ausgaben) ÷ Einnahmen × 100. Ab 20 % gilt als gut.")
+                            InfoTooltip(text: #L("Prozent deines Einkommens, das du sparst: (Einnahmen − Ausgaben) ÷ Einnahmen × 100. Ab 20 % gilt als gut."))
                         }
                         Text(sparquoteSubtitle)
                             .font(.system(.caption, design: .rounded, weight: .medium))
@@ -313,7 +278,7 @@ struct HomeView: View {
                 Image(systemName: icon)
                     .font(.system(size: 16))
                     .foregroundStyle(iconColor)
-                TText(title)
+                Text(L(title))
                     .font(.system(.caption, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.textSecondary)
                     .textCase(.uppercase)
@@ -331,8 +296,11 @@ struct HomeView: View {
     // MARK: - Donut
 
     private func donutSection(_ categories: [CategoryBreakdown]) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Ausgaben nach Kategorie")
+        let total = categories.reduce(0) { $0 + abs($1.amount) }
+        let selected = selectedCategory(in: categories)
+
+        return VStack(alignment: .leading, spacing: 16) {
+            Text(#L("Ausgaben nach Kategorie"))
                 .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal, 20)
@@ -345,44 +313,71 @@ struct HomeView: View {
                         angularInset: 1
                     )
                     .foregroundStyle(WimgCategory.from(cat.id).color)
+                    .opacity(selected == nil || selected?.id == cat.id ? 1.0 : 0.35)
                 }
+                .chartAngleSelection(value: $selectedAngle)
                 .chartLegend(.hidden)
                 .frame(maxWidth: .infinity)
                 .frame(height: 220)
+                .animation(.easeInOut(duration: 0.2), value: selected?.id)
 
-                // Center total overlay
+                // Center overlay — shows tapped category, falls back to total
                 VStack(spacing: 2) {
-                    Text("Total")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(WimgTheme.textSecondary)
-                        .textCase(.uppercase)
-                        .tracking(0.5)
-                    Text(formatAmountShort(categories.reduce(0) { $0 + $1.amount }))
-                        .font(.system(.headline, design: .rounded, weight: .black))
-                        .foregroundStyle(WimgTheme.text)
+                    if let selected {
+                        Text(L(selected.name))
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundStyle(WimgCategory.from(selected.id).color)
+                            .textCase(.uppercase)
+                            .tracking(0.5)
+                        Text(formatAmountShort(abs(selected.amount)))
+                            .font(.system(.headline, design: .rounded, weight: .black))
+                            .foregroundStyle(WimgTheme.text)
+                        if total > 0 {
+                            Text(#L("\(Int((abs(selected.amount) / total) * 100))%"))
+                                .font(.system(.caption2, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.textSecondary)
+                        }
+                    } else {
+                        Text(#L("Total"))
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                            .textCase(.uppercase)
+                            .tracking(0.5)
+                        Text(formatAmountShort(total))
+                            .font(.system(.headline, design: .rounded, weight: .black))
+                            .foregroundStyle(WimgTheme.text)
+                    }
                 }
                 .allowsHitTesting(false)
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 20)
 
-            // Legend
+            // Legend — tap a row to highlight its slice
             VStack(spacing: 0) {
                 ForEach(categories.prefix(5)) { cat in
-                    HStack(spacing: 10) {
-                        Circle()
-                            .fill(WimgCategory.from(cat.id).color)
-                            .frame(width: 10, height: 10)
-                        TText(cat.name)
-                            .font(.system(.subheadline, design: .rounded, weight: .medium))
-                            .foregroundStyle(WimgTheme.text)
-                        Spacer()
-                        Text(formatAmountShort(cat.amount))
-                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                            .foregroundStyle(WimgTheme.textSecondary)
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedAngle = (selected?.id == cat.id) ? nil : midAngleValue(for: cat, in: categories)
+                        }
+                    } label: {
+                        HStack(spacing: 10) {
+                            Circle()
+                                .fill(WimgCategory.from(cat.id).color)
+                                .frame(width: 10, height: 10)
+                            Text(L(cat.name))
+                                .font(.system(.subheadline, design: .rounded, weight: selected?.id == cat.id ? .bold : .medium))
+                                .foregroundStyle(WimgTheme.text)
+                            Spacer()
+                            Text(formatAmountShort(cat.amount))
+                                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                .foregroundStyle(WimgTheme.textSecondary)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .contentShape(Rectangle())
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
+                    .buttonStyle(.plain)
 
                     if cat.id != categories.prefix(5).last?.id {
                         Divider().padding(.leading, 40)
@@ -395,11 +390,30 @@ struct HomeView: View {
         .padding(.horizontal)
     }
 
+    private func selectedCategory(in categories: [CategoryBreakdown]) -> CategoryBreakdown? {
+        guard let angle = selectedAngle else { return nil }
+        var cumulative: Double = 0
+        for cat in categories {
+            cumulative += abs(cat.amount)
+            if angle <= cumulative { return cat }
+        }
+        return categories.last
+    }
+
+    private func midAngleValue(for target: CategoryBreakdown, in categories: [CategoryBreakdown]) -> Double {
+        var cumulative: Double = 0
+        for cat in categories {
+            if cat.id == target.id { return cumulative + abs(cat.amount) / 2 }
+            cumulative += abs(cat.amount)
+        }
+        return cumulative
+    }
+
     // MARK: - Recent Transactions
 
     private var recentSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Letzte Umsätze")
+            Text(#L("Letzte Umsätze"))
                 .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.text)
                 .padding(.horizontal, 20)
@@ -431,12 +445,10 @@ struct HomeView: View {
             let recent = all
                 .filter { $0.date.hasPrefix(monthStr) }
                 .sorted { $0.date > $1.date }
-            let total = all.reduce(0) { $0 + $1.amount }
             await MainActor.run {
                 hasAnyData = !allTx.isEmpty
                 summary = s
                 recentTransactions = recent
-                totalBalance = total
             }
         }
     }

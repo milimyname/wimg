@@ -1,28 +1,49 @@
 import SwiftUI
+import WimgI18n
 
 @main
 struct wimgApp: App {
     @State private var initError: String?
+    @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var lock = BiometricLock.shared
 
     var body: some Scene {
         WindowGroup {
-            if let error = initError {
-                VStack(spacing: 16) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.largeTitle)
-                        .foregroundStyle(.red)
-                    Text("Initialisierung fehlgeschlagen")
-                        .font(.system(.headline, design: .rounded, weight: .bold))
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(WimgTheme.textSecondary)
+            ZStack {
+                if let error = initError {
+                    VStack(spacing: 16) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.largeTitle)
+                            .foregroundStyle(.red)
+                        Text(#L("Initialisierung fehlgeschlagen"))
+                            .font(.system(.headline, design: .rounded, weight: .bold))
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(WimgTheme.textSecondary)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(WimgTheme.bg)
+                } else {
+                    ContentView()
                 }
-                .padding()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(WimgTheme.bg)
-            } else {
-                ContentView()
+
+                // Order matters: privacy overlay sits above lock so the
+                // app-switcher snapshot never reveals even the lock screen.
+                if lock.isLocked {
+                    LockScreen(lock: lock)
+                        .transition(.opacity)
+                }
+                if lock.showPrivacyOverlay {
+                    PrivacyOverlay()
+                        .transition(.opacity)
+                }
             }
+            .animation(.easeInOut(duration: 0.15), value: lock.isLocked)
+            .animation(.easeInOut(duration: 0.10), value: lock.showPrivacyOverlay)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            lock.handleScenePhase(newPhase)
         }
     }
 
@@ -85,7 +106,7 @@ struct ContentView: View {
         TabView(selection: tabSelection) {
             SearchView(selectedAccount: $selectedAccount, popToRoot: popToRoot)
                 .tabItem {
-                    Label("Suche", systemImage: "magnifyingglass")
+                    Label(#L("Suche"), systemImage: "magnifyingglass")
                 }
                 .tag(0)
 
@@ -97,13 +118,13 @@ struct ContentView: View {
 
             TransactionsView(selectedAccount: $selectedAccount)
                 .tabItem {
-                    Label("Umsätze", systemImage: "list.bullet")
+                    Label(#L("Umsätze"), systemImage: "list.bullet")
                 }
                 .tag(2)
 
             MoreView(selectedAccount: $selectedAccount, popToRoot: popToRoot)
                 .tabItem {
-                    Label("Mehr", systemImage: "square.grid.2x2")
+                    Label(#L("Mehr"), systemImage: "square.grid.2x2")
                 }
                 .tag(3)
         }

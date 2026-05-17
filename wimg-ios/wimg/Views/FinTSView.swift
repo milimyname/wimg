@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 struct FinTSView: View {
     var onViewTransactions: (() -> Void)?
@@ -82,7 +83,7 @@ struct FinTSView: View {
             .padding(.bottom, 40)
         }
         .background(WimgTheme.bg)
-        .navigationTitle("Bankkonto")
+        .navigationTitle(#L("Bankkonto"))
         .navigationBarTitleDisplayMode(.inline)
         .task(id: searchText) {
             try? await Task.sleep(for: .milliseconds(150))
@@ -150,11 +151,11 @@ struct FinTSView: View {
                 }
 
                 VStack(spacing: 6) {
-                    Text("Bank verbinden")
+                    Text(#L("Bank verbinden"))
                         .font(.system(.title3, design: .rounded, weight: .bold))
                         .foregroundStyle(WimgTheme.text)
 
-                    Text("Kontoauszüge direkt per FinTS abrufen")
+                    Text(#L("Kontoauszüge direkt per FinTS abrufen"))
                         .font(.system(.subheadline, design: .rounded))
                         .foregroundStyle(WimgTheme.textSecondary)
                         .multilineTextAlignment(.center)
@@ -168,7 +169,7 @@ struct FinTSView: View {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(WimgTheme.textSecondary)
-                TextField("Bank suchen...", text: $searchText)
+                TextField(#L("Bank suchen..."), text: $searchText)
                     .font(.system(.subheadline, design: .rounded))
             }
             .padding(12)
@@ -181,7 +182,7 @@ struct FinTSView: View {
                 if loadingBanks {
                     HStack(spacing: 10) {
                         ProgressView()
-                        Text("Lade Banken...")
+                        Text(#L("Lade Banken..."))
                             .font(.system(.subheadline, design: .rounded))
                             .foregroundStyle(WimgTheme.textSecondary)
                     }
@@ -211,7 +212,7 @@ struct FinTSView: View {
                                 Text(bank.name)
                                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                                     .foregroundStyle(WimgTheme.text)
-                                Text("BLZ: \(bank.blz)")
+                                Text(#L("BLZ: \(bank.blz)"))
                                     .font(.system(.caption, design: .rounded))
                                     .foregroundStyle(WimgTheme.textSecondary)
                             }
@@ -231,7 +232,7 @@ struct FinTSView: View {
                 }
 
                 if searchText.isEmpty {
-                    Text("Suche eingeben, um alle Banken zu sehen")
+                    Text(#L("Suche eingeben, um alle Banken zu sehen"))
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(WimgTheme.textSecondary)
                         .padding(.vertical, 12)
@@ -261,7 +262,7 @@ struct FinTSView: View {
                         .foregroundStyle(.teal)
                 }
 
-                Text("Anmeldung")
+                Text(#L("Anmeldung"))
                     .font(.system(.title3, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
 
@@ -289,10 +290,10 @@ struct FinTSView: View {
 
                 // Kennung
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Kennung")
+                    Text(#L("Kennung"))
                         .font(.caption2)
                         .foregroundStyle(WimgTheme.textSecondary)
-                    TextField("Benutzername / Anmeldekennung", text: $kennung)
+                    TextField(#L("Benutzername / Anmeldekennung"), text: $kennung)
                         .font(.subheadline)
                         .textContentType(.username)
                         .autocapitalization(.none)
@@ -336,10 +337,10 @@ struct FinTSView: View {
                     .font(.subheadline)
                     .padding(.top, 2)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Bitte PIN sorgfältig eingeben")
+                    Text(#L("Bitte PIN sorgfältig eingeben"))
                         .font(.system(.caption, design: .rounded, weight: .bold))
                         .foregroundStyle(Color.orange.opacity(0.9))
-                    Text("Mehrere fehlgeschlagene Anmeldungen können dein Konto bei der Bank sperren. Die PIN wird nicht gespeichert.")
+                    Text(#L("Mehrere fehlgeschlagene Anmeldungen können dein Konto bei der Bank sperren. Die PIN wird nicht gespeichert."))
                         .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(Color.orange.opacity(0.8))
                 }
@@ -361,7 +362,7 @@ struct FinTSView: View {
                         ProgressView()
                             .tint(WimgTheme.bg)
                     } else {
-                        Text("Verbinden")
+                        Text(#L("Verbinden"))
                     }
                 }
                 .font(.system(.headline, design: .rounded, weight: .bold))
@@ -377,7 +378,7 @@ struct FinTSView: View {
             Button {
                 resetToBank()
             } label: {
-                Text("Andere Bank wählen")
+                Text(#L("Andere Bank wählen"))
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(WimgTheme.textSecondary)
             }
@@ -402,11 +403,11 @@ struct FinTSView: View {
                         .foregroundStyle(.purple)
                 }
 
-                Text("TAN-Medium wählen")
+                Text(#L("TAN-Medium wählen"))
                     .font(.system(.title3, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
 
-                Text("Ihre Bank unterstützt mehrere TAN-Verfahren. Bitte wählen Sie das gewünschte Medium.")
+                Text(#L("Ihre Bank unterstützt mehrere TAN-Verfahren. Bitte wählen Sie das gewünschte Medium."))
                     .font(.system(.subheadline, design: .rounded))
                     .foregroundStyle(WimgTheme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -415,7 +416,7 @@ struct FinTSView: View {
             if loadingTanMedia {
                 HStack(spacing: 10) {
                     ProgressView()
-                    Text("Lade TAN-Medien...")
+                    Text(#L("Lade TAN-Medien..."))
                         .font(.system(.subheadline, design: .rounded))
                         .foregroundStyle(WimgTheme.textSecondary)
                 }
@@ -440,7 +441,7 @@ struct FinTSView: View {
                                     Text(medium.name)
                                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                                         .foregroundStyle(WimgTheme.text)
-                                    TText(medium.status == 1 ? "Aktiv" : "Inaktiv")
+                                    Text(medium.status == 1 ? #L("Aktiv") : #L("Inaktiv"))
                                         .font(.system(.caption, design: .rounded))
                                         .foregroundStyle(medium.status == 1 ? .green : WimgTheme.textSecondary)
                                 }
@@ -470,7 +471,7 @@ struct FinTSView: View {
                 Button {
                     stage = .dateRange
                 } label: {
-                    Text("Weiter ohne Auswahl")
+                    Text(#L("Weiter ohne Auswahl"))
                         .font(.system(.headline, design: .rounded, weight: .bold))
                         .frame(maxWidth: .infinity)
                         .padding(16)
@@ -483,7 +484,7 @@ struct FinTSView: View {
             Button {
                 stage = .credentials
             } label: {
-                Text("Zurück")
+                Text(#L("Zurück"))
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(WimgTheme.textSecondary)
             }
@@ -507,7 +508,7 @@ struct FinTSView: View {
                         .foregroundStyle(.orange)
                 }
 
-                TText(isDecoupledChallenge ? "Freigabe in Banking-App" : "TAN-Eingabe")
+                Text(isDecoupledChallenge ? #L("Freigabe in Banking-App") : #L("TAN-Eingabe"))
                     .font(.system(.title3, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
             }
@@ -542,7 +543,7 @@ struct FinTSView: View {
                     }
                     .font(.system(.caption, design: .rounded, weight: .medium))
                     .foregroundStyle(WimgTheme.textSecondary)
-                    Text("Scannen Sie dieses Bild mit Ihrer photoTAN-App")
+                    Text(#L("Scannen Sie dieses Bild mit Ihrer photoTAN-App"))
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(WimgTheme.textSecondary)
                         .multilineTextAlignment(.center)
@@ -553,7 +554,7 @@ struct FinTSView: View {
             // Challenge text
             if !challengeText.isEmpty && photoTanImage == nil {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Challenge")
+                    Text(#L("Challenge"))
                         .font(.caption2)
                         .foregroundStyle(WimgTheme.textSecondary)
                     Text(challengeText)
@@ -567,7 +568,7 @@ struct FinTSView: View {
             }
 
             if photoTanImage == nil && challengeText.localizedCaseInsensitiveContains("siehe grafik") {
-                Text("Diese TAN-Freigabe erwartet eine scanbare Grafik. Wenn kein Bild angezeigt wird, liefert die Bank ggf. ein nicht direkt darstellbares photoTAN-Format.")
+                Text(#L("Diese TAN-Freigabe erwartet eine scanbare Grafik. Wenn kein Bild angezeigt wird, liefert die Bank ggf. ein nicht direkt darstellbares photoTAN-Format."))
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(WimgTheme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -576,11 +577,11 @@ struct FinTSView: View {
 
             if isDecoupledChallenge {
                 VStack(spacing: 8) {
-                    Text("Bitte in Ihrer Banking-App bestätigen.")
+                    Text(#L("Bitte in Ihrer Banking-App bestätigen."))
                         .font(.system(.subheadline, design: .rounded, weight: .medium))
                         .foregroundStyle(WimgTheme.text)
                         .multilineTextAlignment(.center)
-                    Text("wimg prüft den Status automatisch. Falls nötig, können Sie manuell erneut prüfen.")
+                    Text(#L("wimg prüft den Status automatisch. Falls nötig, können Sie manuell erneut prüfen."))
                         .font(.system(.caption, design: .rounded))
                         .foregroundStyle(WimgTheme.textSecondary)
                         .multilineTextAlignment(.center)
@@ -594,7 +595,7 @@ struct FinTSView: View {
                     Text("TAN")
                         .font(.caption2)
                         .foregroundStyle(WimgTheme.textSecondary)
-                    TextField("TAN eingeben", text: $tanInput)
+                    TextField(#L("TAN eingeben"), text: $tanInput)
                         .font(.system(.subheadline, design: .monospaced))
                         .keyboardType(.numberPad)
                         .padding(12)
@@ -611,7 +612,7 @@ struct FinTSView: View {
                         ProgressView()
                             .tint(WimgTheme.bg)
                     } else {
-                        TText(isDecoupledChallenge ? "Status prüfen" : "TAN senden")
+                        Text(isDecoupledChallenge ? #L("Status prüfen") : #L("TAN senden"))
                     }
                 }
                 .font(.system(.headline, design: .rounded, weight: .bold))
@@ -642,7 +643,7 @@ struct FinTSView: View {
                         .foregroundStyle(.blue)
                 }
 
-                Text("Zeitraum wählen")
+                Text(#L("Zeitraum wählen"))
                     .font(.system(.title3, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
 
@@ -654,11 +655,11 @@ struct FinTSView: View {
             }
 
             VStack(spacing: 12) {
-                DatePicker("Von", selection: $dateFrom, displayedComponents: .date)
+                DatePicker(#L("Von"), selection: $dateFrom, displayedComponents: .date)
                     .font(.system(.subheadline, design: .rounded))
                     .environment(\.locale, Locale(identifier: UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE"))
 
-                DatePicker("Bis", selection: $dateTo, displayedComponents: .date)
+                DatePicker(#L("Bis"), selection: $dateTo, displayedComponents: .date)
                     .font(.system(.subheadline, design: .rounded))
                     .environment(\.locale, Locale(identifier: UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE"))
             }
@@ -670,7 +671,7 @@ struct FinTSView: View {
                 stage = .fetching
                 Task { await handleFetch() }
             } label: {
-                Label("Kontoauszüge abrufen", systemImage: "arrow.down.doc")
+                Label(#L("Kontoauszüge abrufen"), systemImage: "arrow.down.doc")
                     .font(.system(.headline, design: .rounded, weight: .bold))
                     .frame(maxWidth: .infinity)
                     .padding(16)
@@ -692,7 +693,7 @@ struct FinTSView: View {
                 .scaleEffect(1.5)
                 .tint(WimgTheme.text)
 
-            Text("Lade Kontoauszüge...")
+            Text(#L("Lade Kontoauszüge..."))
                 .font(.system(.headline, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.text)
 
@@ -722,28 +723,28 @@ struct FinTSView: View {
                         .foregroundStyle(.green)
                 }
 
-                Text("Abruf erfolgreich!")
+                Text(#L("Abruf erfolgreich!"))
                     .font(.system(.headline, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
 
                 Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
                     if let bank = selectedBank {
                         GridRow {
-                            Text("Bank")
+                            Text(#L("Bank"))
                                 .foregroundStyle(WimgTheme.textSecondary)
                             Text(bank.name)
                                 .fontWeight(.semibold)
                         }
                     }
                     GridRow {
-                        Text("Importiert")
+                        Text(#L("Importiert"))
                             .foregroundStyle(WimgTheme.textSecondary)
                         Text("\(importedCount)")
                             .fontWeight(.semibold)
                     }
                     if duplicateCount > 0 {
                         GridRow {
-                            Text("Duplikate")
+                            Text(#L("Duplikate"))
                                 .foregroundStyle(.orange)
                             Text("\(duplicateCount)")
                                 .fontWeight(.semibold)
@@ -759,7 +760,7 @@ struct FinTSView: View {
             Button {
                 resetToBank()
             } label: {
-                Label("Weitere Bank verbinden", systemImage: "plus.circle")
+                Label(#L("Weitere Bank verbinden"), systemImage: "plus.circle")
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .frame(maxWidth: .infinity)
                     .padding(16)
@@ -791,7 +792,7 @@ struct FinTSView: View {
                 Button {
                     onViewTransactions()
                 } label: {
-                    Label("Transaktionen ansehen", systemImage: "list.bullet")
+                    Label(#L("Transaktionen ansehen"), systemImage: "list.bullet")
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .frame(maxWidth: .infinity)
                         .padding(16)
@@ -818,7 +819,7 @@ struct FinTSView: View {
             }
 
             VStack(spacing: 6) {
-                Text("Schnellabfrage")
+                Text(#L("Schnellabfrage"))
                     .font(.system(.title3, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.text)
                 Text(bank.name)
@@ -856,7 +857,7 @@ struct FinTSView: View {
                 pin = ""
                 rememberPIN = false
             } label: {
-                Text("Manuell anmelden")
+                Text(#L("Manuell anmelden"))
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(WimgTheme.textSecondary)
             }

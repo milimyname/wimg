@@ -28,6 +28,7 @@ import com.wimg.app.models.WimgCategory
 import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
 import com.wimg.app.ui.theme.wimgCard
+import com.wimg.app.i18n.L
 
 private data class FAQ(val q: String, val a: String)
 
@@ -104,14 +105,14 @@ fun AboutScreen() {
                 Text("wimg", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Persönliche Finanzverwaltung.\nLokal. Privat. Offen.",
+                    L("Persönliche Finanzverwaltung.\nLokal. Privat. Offen."),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Von Komiljon Maksudov · Zig + Kotlin + SQLite",
+                    L("Von Komiljon Maksudov · Zig + Kotlin + SQLite"),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
@@ -125,15 +126,15 @@ fun AboutScreen() {
                     modifier = Modifier.weight(1f),
                     icon = Icons.Outlined.Shield,
                     iconTint = WimgCategory.INCOME.color,
-                    title = "Privatsphäre",
-                    body = "Keine Werbung. Kein Tracking. Niemals.",
+                    title = L("Privatsphäre"),
+                    body = L("Keine Werbung. Kein Tracking. Niemals."),
                 )
                 QuickInfoCard(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Outlined.Code,
                     iconTint = WimgCategory.SUBSCRIPTIONS.color,
-                    title = "Open Source",
-                    body = "Quellcode offen auf GitHub verfügbar.",
+                    title = L("Open Source"),
+                    body = L("Quellcode offen auf GitHub verfügbar."),
                 )
             }
         }
@@ -144,8 +145,7 @@ fun AboutScreen() {
                 modifier = Modifier.fillMaxWidth().wimgCard().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    "Datenschutz im Detail",
+                Text(L("Datenschutz im Detail"),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                 )
@@ -158,9 +158,9 @@ fun AboutScreen() {
                             modifier = Modifier.size(18.dp).padding(top = 2.dp),
                         )
                         Column {
-                            Text(row.title, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                            Text(L(row.title), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                             Text(
-                                row.desc,
+                                L(row.desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -183,7 +183,7 @@ fun AboutScreen() {
             ) {
                 Icon(Icons.Outlined.Code, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Auf GitHub ansehen", fontWeight = FontWeight.Bold)
+                Text(L("Auf GitHub ansehen"), fontWeight = FontWeight.Bold)
             }
         }
 
@@ -195,19 +195,19 @@ fun AboutScreen() {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Outlined.Link, null, tint = WimgCategory.SUBSCRIPTIONS.color, modifier = Modifier.size(18.dp))
-                    Text("MCP-Verbindung", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(L("MCP-Verbindung"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 }
                 Text(
-                    "Verbinde Claude.ai mit deinem wimg, um Finanzfragen mit deinen echten Daten zu beantworten. Aktiviere zuerst Sync unter Einstellungen, dann nutze:",
+                    L("Verbinde Claude.ai mit deinem wimg, um Finanzfragen mit deinen echten Daten zu beantworten. Aktiviere zuerst Sync unter Einstellungen, dann nutze:"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 MonoLine(label = "URL:", value = "https://wimg-sync.mili-my.name/mcp")
-                MonoLine(label = "Auth:", value = "Bearer <dein Sync-Schlüssel>")
+                MonoLine(label = L("Auth:"), value = L("Bearer <dein Sync-Schlüssel>"))
                 Spacer(Modifier.height(4.dp))
-                Bullet("Sync-Schlüssel = MCP-Zugang, kein extra Setup")
-                Bullet("Ende-zu-Ende verschlüsselt, Echtzeit-Synchronisierung")
-                Bullet("PII wird automatisch aus MCP-Antworten entfernt")
+                Bullet(L("Sync-Schlüssel = MCP-Zugang, kein extra Setup"))
+                Bullet(L("Ende-zu-Ende verschlüsselt, Echtzeit-Synchronisierung"))
+                Bullet(L("PII wird automatisch aus MCP-Antworten entfernt"))
             }
         }
 
@@ -216,8 +216,7 @@ fun AboutScreen() {
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Outlined.HelpOutline, null, tint = WimgColors.accent, modifier = Modifier.size(18.dp))
-                Text(
-                    "Häufig gestellte Fragen",
+                Text(L("Häufig gestellte Fragen"),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                 )
@@ -235,7 +234,7 @@ fun AboutScreen() {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        faq.q,
+                        L(faq.q),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f),
@@ -249,7 +248,7 @@ fun AboutScreen() {
                 }
                 AnimatedVisibility(visible = isExpanded) {
                     Text(
-                        faq.a,
+                        L(faq.a),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp),
@@ -268,8 +267,7 @@ fun AboutScreen() {
                 TextButton(
                     onClick = { openUrl("https://github.com/milimyname/wimg/releases") },
                 ) {
-                    Text(
-                        "Was ist neu?",
+                    Text(L("Was ist neu?"),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = WimgColors.accent,

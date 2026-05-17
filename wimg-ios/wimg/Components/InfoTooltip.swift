@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 /// Tiny "i" icon that pops a one-sentence explanation when tapped.
 /// Replaces the dedicated About FAQ for first-encounter inline help.
@@ -15,7 +16,7 @@ struct InfoTooltip: View {
             .contentShape(Rectangle())
             .onTapGesture { show.toggle() }
             .popover(isPresented: $show, arrowEdge: .top) {
-                TText(text)
+                Text(L(text))
                     .font(.system(.footnote, design: .rounded))
                     .foregroundStyle(WimgTheme.text)
                     .lineLimit(nil)

@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.wimg.app.models.Snapshot
 import java.text.DateFormatSymbols
 import kotlin.math.abs
+import com.wimg.app.i18n.L
 
 /**
  * GitHub-style spending heatmap showing monthly expenses from snapshots.
@@ -32,8 +33,7 @@ fun SpendingHeatmap(
 
     Column(modifier = modifier) {
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            Text(
-                "Ausgaben-Heatmap",
+            Text(L("Ausgaben-Heatmap"),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,

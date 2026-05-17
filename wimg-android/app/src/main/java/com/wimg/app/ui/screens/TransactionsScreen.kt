@@ -1,8 +1,8 @@
 package com.wimg.app.ui.screens
-import com.wimg.app.ui.components.TText
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,6 +30,7 @@ import com.wimg.app.ui.theme.WimgColors
 import com.wimg.app.ui.theme.WimgShapes
 import com.wimg.app.ui.theme.wimgCard
 import kotlin.math.abs
+import com.wimg.app.i18n.L
 
 enum class TxFilter(val label: String) {
     ALL("Alle"),
@@ -45,6 +46,7 @@ fun TransactionsScreen(selectedAccount: String?) {
     var selectedTx by remember { mutableStateOf<Transaction?>(null) }
     var showFilterSheet by remember { mutableStateOf(false) }
     var filterCategories by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var quickCategory by remember { mutableStateOf<Int?>(null) }
     var searchText by remember { mutableStateOf("") }
     var amountMin by remember { mutableFloatStateOf(0f) }
     var amountMax by remember { mutableFloatStateOf(1000f) }
@@ -66,7 +68,13 @@ fun TransactionsScreen(selectedAccount: String?) {
             TxFilter.INCOME -> tx.isIncome && !tx.isExcluded
         }
         val matchesSearch = searchText.isBlank() || tx.description.contains(searchText, ignoreCase = true)
-        val matchesCat = filterCategories.isEmpty() || filterCategories.contains(tx.category)
+        // Either an advanced multi-category set OR a single quick-bar selection,
+        // mirroring iOS where `quickCategoryBar` and the filter sheet share scope.
+        val matchesCat = when {
+            filterCategories.isNotEmpty() -> filterCategories.contains(tx.category)
+            quickCategory != null -> tx.category == quickCategory
+            else -> true
+        }
         val matchesAmount = kotlin.math.abs(tx.amount) >= amountMin && (amountMax >= 1000 || kotlin.math.abs(tx.amount) <= amountMax)
         matchesFilter && matchesSearch && matchesCat && matchesAmount
     }
@@ -115,7 +123,13 @@ fun TransactionsScreen(selectedAccount: String?) {
                         FilterChip(
                             selected = filter == f,
                             onClick = { filter = f },
-                            label = { Text(f.label) },
+                            label = {
+                                Text(
+                                    L(f.label),
+                                    maxLines = 1,
+                                    fontSize = 13.sp,
+                                )
+                            },
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -137,6 +151,15 @@ fun TransactionsScreen(selectedAccount: String?) {
                         }
                     }
                 }
+            }
+
+            // Quick category bar — 5 most common categories for fast filtering,
+            // mirrors iOS `quickCategoryBar`.
+            item(key = "quick_categories") {
+                QuickCategoryBar(
+                    selected = quickCategory,
+                    onSelect = { id -> quickCategory = if (quickCategory == id) null else id },
+                )
             }
 
             // Sticky Gesamtsaldo card — mirrors the web's `sticky top-16`.
@@ -176,10 +199,14 @@ fun TransactionsScreen(selectedAccount: String?) {
                 grouped.forEach { (date, txs) ->
                     item(key = "header_$date") {
                         Text(
-                            date,
+                            formatDateHeader(date),
                             style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp)
+                                .padding(top = 16.dp, bottom = 6.dp),
                         )
                     }
                     items(txs, key = { it.id }) { tx ->
@@ -398,7 +425,7 @@ private fun AdvancedFilterSheet(
             // Search
             OutlinedTextField(
                 value = searchText, onValueChange = onSearchTextChange,
-                placeholder = { Text("Suchen nach...") },
+                placeholder = { Text(L("Suchen nach...")) },
                 leadingIcon = { Icon(Icons.Outlined.Search, null) },
                 singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
             )
@@ -406,7 +433,7 @@ private fun AdvancedFilterSheet(
             // Amount
             Column {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TText("Betrag", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(L("Betrag"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text("${amountMin.toInt()} – ${if (amountMax >= 1000) "∞" else amountMax.toInt().toString()} €", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text("Min", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -418,9 +445,9 @@ private fun AdvancedFilterSheet(
             // Categories grid
             Column {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TText("Kategorien", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Text(L("Kategorien"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     if (filterCategories.isNotEmpty()) {
-                        TextButton(onClick = { onFilterCategoriesChange(emptySet()) }) { Text("Zurücksetzen", style = MaterialTheme.typography.labelSmall) }
+                        TextButton(onClick = { onFilterCategoriesChange(emptySet()) }) { Text(L("Zurücksetzen"), style = MaterialTheme.typography.labelSmall) }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -438,7 +465,14 @@ private fun AdvancedFilterSheet(
                                 ) {
                                     Icon(cat.icon, null, tint = cat.color, modifier = Modifier.size(18.dp))
                                 }
-                                Text(cat.label, style = MaterialTheme.typography.labelSmall, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal, maxLines = 1, fontSize = 10.sp)
+                                Text(
+                                    L(cat.label),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                                    maxLines = 2,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    fontSize = 10.sp,
+                                )
                             }
                         }
                         repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
@@ -449,10 +483,10 @@ private fun AdvancedFilterSheet(
             // Actions
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (filterCategories.isNotEmpty() || searchText.isNotBlank() || amountMin > 0 || amountMax < 1000) {
-                    OutlinedButton(onClick = onReset, modifier = Modifier.weight(1f), shape = WimgShapes.small) { Text("Zurücksetzen") }
+                    OutlinedButton(onClick = onReset, modifier = Modifier.weight(1f), shape = WimgShapes.small) { Text(L("Zurücksetzen")) }
                 }
                 Button(onClick = onDismiss, modifier = Modifier.weight(1f), shape = WimgShapes.small, colors = ButtonDefaults.buttonColors(containerColor = WimgColors.accent, contentColor = WimgColors.heroText)) {
-                    Text("Ergebnisse anzeigen", fontWeight = FontWeight.Bold)
+                    Text(L("Ergebnisse anzeigen"), fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -481,8 +515,7 @@ private fun GesamtsaldoCard(sum: Double, count: Int) {
             .wimgCard()
             .padding(20.dp),
     ) {
-        TText(
-            "Gesamtsaldo",
+        Text(L("Gesamtsaldo"),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -501,11 +534,81 @@ private fun GesamtsaldoCard(sum: Double, count: Int) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            TText(
-                if (count == 1) "Transaktion im Blickfeld" else "Transaktionen im Blickfeld",
+            Text(
+                L(if (count == 1) "Transaktion im Blickfeld" else "Transaktionen im Blickfeld"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
+}
+
+@Composable
+private fun QuickCategoryBar(selected: Int?, onSelect: (Int) -> Unit) {
+    val quickCategories = listOf(
+        WimgCategory.GROCERIES,
+        WimgCategory.DINING,
+        WimgCategory.TRANSPORT,
+        WimgCategory.SHOPPING,
+        WimgCategory.ENTERTAINMENT,
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+    ) {
+        quickCategories.forEach { cat ->
+            val active = selected == cat.id
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onSelect(cat.id) }
+                    .padding(vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(cat.color.copy(alpha = 0.12f))
+                        .then(
+                            if (active) Modifier.border(
+                                2.5.dp,
+                                cat.color,
+                                androidx.compose.foundation.shape.CircleShape,
+                            ) else Modifier,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(cat.icon, contentDescription = null, tint = cat.color, modifier = Modifier.size(18.dp))
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    L(cat.label),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                    fontSize = 10.sp,
+                    maxLines = 2,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    color = if (active) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/// Format "YYYY-MM-DD" into a locale-aware day-month-year header,
+/// matching iOS `formatDateHeader`.
+private fun formatDateHeader(dateStr: String): String {
+    val parts = dateStr.split("-")
+    if (parts.size != 3) return dateStr
+    val day = parts[2].toIntOrNull() ?: return dateStr
+    val monthIdx = parts[1].toIntOrNull() ?: return dateStr
+    if (monthIdx !in 1..12) return dateStr
+
+    val isEn = com.wimg.app.ui.theme.LocaleState.locale == "en"
+    val locale = if (isEn) java.util.Locale.US else java.util.Locale.GERMAN
+    val symbols = java.text.DateFormatSymbols(locale).months
+    val monthName = symbols.getOrNull(monthIdx - 1) ?: return dateStr
+    return if (isEn) "$monthName $day, ${parts[0]}" else "$day. $monthName ${parts[0]}"
 }

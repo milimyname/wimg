@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 struct TransactionsView: View {
     @Binding var selectedAccount: String?
@@ -129,9 +130,9 @@ struct TransactionsView: View {
         NavigationStack {
             mainContent
                 .background(WimgTheme.bg)
-                .navigationTitle("Umsätze")
+                .navigationTitle(#L("Umsätze"))
                 .toolbar { filterToolbar }
-                .searchable(text: $searchText, prompt: "Suchen...")
+                .searchable(text: $searchText, prompt: #L("Suchen..."))
                 .task(id: searchText) {
                     try? await Task.sleep(for: .milliseconds(300))
                     guard !Task.isCancelled else { return }
@@ -191,15 +192,15 @@ struct TransactionsView: View {
                 VStack(spacing: 8) {
                     Text("📋")
                         .font(.system(size: 48))
-                    Text("Keine Umsätze")
+                    Text(#L("Keine Umsätze"))
                         .font(.system(.title3, design: .rounded, weight: .bold))
                         .foregroundStyle(WimgTheme.text)
-                    Text("Importiere eine CSV-Datei um loszulegen")
+                    Text(#L("Importiere eine CSV-Datei um loszulegen"))
                         .font(.system(.subheadline, design: .rounded))
                         .foregroundStyle(WimgTheme.textSecondary)
 
                     NavigationLink(destination: ImportView()) {
-                        Text("CSV importieren")
+                        Text(#L("CSV importieren"))
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .foregroundStyle(WimgTheme.bg)
                             .padding(.horizontal, 20)
@@ -246,7 +247,7 @@ struct TransactionsView: View {
         let stats = visibleSumStats
         let amountColor: Color = stats.sum > 0 ? .green : (stats.sum < 0 ? .red : WimgTheme.text)
         return VStack(alignment: .leading, spacing: 4) {
-            TText("Gesamtsaldo")
+            Text(#L("Gesamtsaldo"))
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .foregroundStyle(WimgTheme.textSecondary)
                 .textCase(.uppercase)
@@ -260,7 +261,7 @@ struct TransactionsView: View {
                 .animation(.easeInOut(duration: 0.2), value: stats.sum)
             HStack(spacing: 4) {
                 Text("\(stats.count)")
-                TText(stats.count == 1 ? "Transaktion im Blickfeld" : "Transaktionen im Blickfeld")
+                Text(stats.count == 1 ? #L("Transaktion im Blickfeld") : #L("Transaktionen im Blickfeld"))
             }
             .font(.system(.caption, design: .rounded, weight: .medium))
             .foregroundStyle(WimgTheme.textSecondary)
@@ -297,9 +298,9 @@ struct TransactionsView: View {
     }
 
     private var segmentedFilter: some View {
-        Picker("Filter", selection: $filter) {
+        Picker(#L("Filter"), selection: $filter) {
             ForEach(TxFilter.allCases, id: \.self) { f in
-                TText(f.rawValue).tag(f)
+                Text(L(f.rawValue)).tag(f)
             }
         }
         .pickerStyle(.segmented)
@@ -330,7 +331,7 @@ struct TransactionsView: View {
                                 .font(.system(size: 18))
                                 .foregroundStyle(cat.color)
                         }
-                        TText(cat.name)
+                        Text(L(cat.name))
                             .font(.system(size: 10, weight: active ? .bold : .medium, design: .rounded))
                             .foregroundStyle(active ? WimgTheme.text : WimgTheme.textSecondary)
                     }
@@ -405,9 +406,7 @@ struct TransactionsView: View {
                             displayLimit += 30
                         } label: {
                             let remaining = totalFilteredCount - displayLimit
-                            Text(RecurringPattern.isEnglish
-                                ? "Load more (\(remaining) more)"
-                                : "Mehr laden (\(remaining) weitere)")
+                            Text(#L("Mehr laden (\(remaining) weitere)"))
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundStyle(WimgTheme.textSecondary)
                                 .frame(maxWidth: .infinity)
@@ -560,11 +559,11 @@ struct CategoryEditorSheet: View {
                 .padding(.bottom, 24)
             }
             .background(WimgTheme.bg)
-            .navigationTitle("Kategorie")
+            .navigationTitle(#L("Kategorie"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { dismiss() }
+                    Button(#L("Abbrechen")) { dismiss() }
                 }
             }
         }
@@ -590,7 +589,7 @@ struct CategoryEditorSheet: View {
 
     private var categoryList: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Kategorie wählen")
+            Text(#L("Kategorie wählen"))
                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.textSecondary)
                 .textCase(.uppercase)
@@ -630,7 +629,7 @@ struct CategoryEditorSheet: View {
                         .foregroundStyle(cat.color)
                 }
 
-                TText(cat.name)
+                Text(L(cat.name))
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(WimgTheme.text)
 
@@ -672,11 +671,11 @@ struct AdvancedFilterSheet: View {
                 filterContent
             }
             .background(WimgTheme.bg)
-            .navigationTitle("Erweiterte Suche")
+            .navigationTitle(#L("Erweiterte Suche"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { dismiss() }
+                    Button(#L("Abbrechen")) { dismiss() }
                 }
             }
             .safeAreaInset(edge: .bottom) {
@@ -704,7 +703,7 @@ struct AdvancedFilterSheet: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(WimgTheme.textSecondary)
-            TextField("Suchen nach...", text: $searchText)
+            TextField(#L("Suchen nach..."), text: $searchText)
                 .font(.system(.body, design: .rounded))
         }
         .padding(14)
@@ -714,7 +713,7 @@ struct AdvancedFilterSheet: View {
 
     private var dateSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Zeitraum")
+            Text(#L("Zeitraum"))
                 .font(.system(.headline, design: .rounded, weight: .bold))
 
             HStack(spacing: 8) {
@@ -727,7 +726,7 @@ struct AdvancedFilterSheet: View {
             if dateQuick == nil {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Von")
+                        Text(#L("Von"))
                             .font(.system(size: 10, weight: .bold, design: .rounded))
                             .foregroundStyle(WimgTheme.textSecondary)
                             .textCase(.uppercase)
@@ -739,7 +738,7 @@ struct AdvancedFilterSheet: View {
                         .datePickerStyle(.compact)
                     }
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Bis")
+                        Text(#L("Bis"))
                             .font(.system(size: 10, weight: .bold, design: .rounded))
                             .foregroundStyle(WimgTheme.textSecondary)
                             .textCase(.uppercase)
@@ -752,7 +751,7 @@ struct AdvancedFilterSheet: View {
                     }
                 }
                 if dateFrom != nil || dateTo != nil {
-                    Button("Datum zurücksetzen") {
+                    Button(#L("Datum zurücksetzen")) {
                         dateFrom = nil
                         dateTo = nil
                     }
@@ -766,11 +765,11 @@ struct AdvancedFilterSheet: View {
     private var categorySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Kategorien")
+                Text(#L("Kategorien"))
                     .font(.system(.headline, design: .rounded, weight: .bold))
                 Spacer()
                 if !filterCategorySet.isEmpty {
-                    Button("Zurücksetzen") {
+                    Button(#L("Zurücksetzen")) {
                         filterCategorySet.removeAll()
                     }
                     .font(.system(.caption, design: .rounded, weight: .bold))
@@ -815,7 +814,7 @@ struct AdvancedFilterSheet: View {
                         .font(.system(size: 18))
                         .foregroundStyle(cat.color)
                 }
-                TText(cat.name)
+                Text(L(cat.name))
                     .font(.system(size: 10, weight: active ? .bold : .medium, design: .rounded))
                     .foregroundStyle(active ? WimgTheme.text : WimgTheme.textSecondary)
                     .lineLimit(1)
@@ -826,7 +825,7 @@ struct AdvancedFilterSheet: View {
     private var amountSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Betrag")
+                Text(#L("Betrag"))
                     .font(.system(.headline, design: .rounded, weight: .bold))
                 Spacer()
                 Text("\(Int(amountMin)) – \(amountMax >= 1000 ? "∞" : String(Int(amountMax))) €")
@@ -864,7 +863,7 @@ struct AdvancedFilterSheet: View {
 
     private var excludedToggle: some View {
         Toggle(isOn: $showExcluded) {
-            Text("Ausgeblendete anzeigen")
+            Text(#L("Ausgeblendete anzeigen"))
                 .font(.system(.subheadline, design: .rounded, weight: .medium))
                 .foregroundStyle(WimgTheme.textSecondary)
         }
@@ -883,7 +882,7 @@ struct AdvancedFilterSheet: View {
                     amountMax = 1000
                     filterCategorySet.removeAll()
                 } label: {
-                    Text("Zurücksetzen")
+                    Text(#L("Zurücksetzen"))
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(WimgTheme.textSecondary)
                         .frame(maxWidth: .infinity)
@@ -895,7 +894,7 @@ struct AdvancedFilterSheet: View {
             Button {
                 dismiss()
             } label: {
-                Text("Ergebnisse anzeigen")
+                Text(#L("Ergebnisse anzeigen"))
                     .font(.system(.headline, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.heroText)
                     .frame(maxWidth: .infinity)
@@ -917,7 +916,7 @@ struct AdvancedFilterSheet: View {
                 dateTo = nil
             }
         } label: {
-            TText(label)
+            Text(L(label))
                 .font(.system(.caption, design: .rounded, weight: .bold))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)

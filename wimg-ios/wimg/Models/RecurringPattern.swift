@@ -1,4 +1,5 @@
 import Foundation
+import WimgI18n
 
 struct RecurringPattern: Codable, Identifiable, Equatable {
     let id: String
@@ -18,10 +19,10 @@ struct RecurringPattern: Codable, Identifiable, Equatable {
 
     var intervalLabel: String {
         switch interval {
-        case "weekly": String(localized: "Wöchentlich")
-        case "monthly": String(localized: "Monatlich")
-        case "quarterly": String(localized: "Vierteljährlich")
-        case "annual": String(localized: "Jährlich")
+        case "weekly": #L("Wöchentlich")
+        case "monthly": #L("Monatlich")
+        case "quarterly": #L("Vierteljährlich")
+        case "annual": #L("Jährlich")
         default: interval
         }
     }

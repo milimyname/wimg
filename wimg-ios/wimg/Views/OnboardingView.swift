@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
@@ -40,7 +41,7 @@ struct OnboardingView: View {
             // Skip button
             HStack {
                 Spacer()
-                Button("Überspringen") {
+                Button(#L("Überspringen")) {
                     complete()
                 }
                 .font(.system(.subheadline, design: .rounded, weight: .medium))
@@ -66,12 +67,12 @@ struct OnboardingView: View {
                         }
 
                         VStack(spacing: 12) {
-                            TText(cards[i].title)
+                            Text(L(cards[i].title))
                                 .font(.system(.title2, design: .rounded, weight: .bold))
                                 .multilineTextAlignment(.center)
                                 .foregroundStyle(WimgTheme.text)
 
-                            TText(cards[i].subtitle)
+                            Text(L(cards[i].subtitle))
                                 .font(.system(.body, design: .rounded))
                                 .multilineTextAlignment(.center)
                                 .foregroundStyle(WimgTheme.textSecondary)
@@ -94,7 +95,7 @@ struct OnboardingView: View {
                     complete()
                 }
             } label: {
-                TText(step < cards.count - 1 ? "Weiter" : "Los geht's")
+                Text(step < cards.count - 1 ? #L("Weiter") : #L("Los geht's"))
                     .font(.system(.body, design: .rounded, weight: .bold))
                     .foregroundStyle(WimgTheme.heroText)
                     .frame(maxWidth: .infinity)

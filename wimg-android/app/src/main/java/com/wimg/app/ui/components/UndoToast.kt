@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.wimg.app.bridge.LibWimg
 import kotlinx.coroutines.delay
+import com.wimg.app.i18n.L
 
 /**
  * Manages undo toast state. Use as a shared instance across screens.
@@ -49,7 +50,7 @@ fun UndoSnackbarHost(undoState: UndoState) {
         shape = RoundedCornerShape(16.dp),
         action = {
             TextButton(onClick = { undoState.undo() }) {
-                Text("Rückgängig", color = MaterialTheme.colorScheme.primary)
+                Text(L("Rückgängig"), color = MaterialTheme.colorScheme.primary)
             }
         },
         dismissAction = {

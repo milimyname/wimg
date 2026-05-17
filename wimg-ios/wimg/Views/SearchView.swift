@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 struct SearchView: View {
     @Binding var selectedAccount: String?
@@ -110,7 +111,7 @@ struct SearchView: View {
                         if loadingTransactions {
                             VStack(spacing: 10) {
                                 ProgressView()
-                                Text("Lade Transaktionen...")
+                                Text(#L("Lade Transaktionen..."))
                                     .font(.system(.subheadline, design: .rounded))
                                     .foregroundStyle(WimgTheme.textSecondary)
                             }
@@ -147,8 +148,8 @@ struct SearchView: View {
                 }
             }
             .background(WimgTheme.bg)
-            .navigationTitle("Suche")
-            .searchable(text: $searchText, prompt: "Transaktionen suchen...")
+            .navigationTitle(#L("Suche"))
+            .searchable(text: $searchText, prompt: #L("Transaktionen suchen..."))
             .task(id: searchText) {
                 try? await Task.sleep(for: .milliseconds(300))
                 guard !Task.isCancelled else { return }
@@ -194,7 +195,7 @@ struct SearchView: View {
         ScrollView {
             VStack(spacing: 24) {
                 // Navigation
-                actionSection("Navigation") {
+                actionSection(#L("Navigation")) {
                     navLink("Analyse", icon: "chart.bar", color: .indigo) {
                         AnalysisView(selectedAccount: $selectedAccount)
                     }
@@ -219,20 +220,20 @@ struct SearchView: View {
                 }
 
                 // Categorization
-                actionSection("Kategorisierung") {
-                    actionButton("Auto-Kategorisieren", icon: "tag", color: .orange) {
+                actionSection(#L("Kategorisierung")) {
+                    actionButton(#L("Auto-Kategorisieren"), icon: "tag", color: .orange) {
                         let n = LibWimg.autoCategorize()
                         showUndo(n > 0 ? "\(n) kategorisiert" : "Keine neuen Kategorien")
                     }
-                    actionButton("Wiederkehrende erkennen", icon: "arrow.triangle.2.circlepath", color: .green) {
+                    actionButton(#L("Wiederkehrende erkennen"), icon: "arrow.triangle.2.circlepath", color: .green) {
                         let n = LibWimg.detectRecurring()
                         showUndo(n > 0 ? "\(n) Muster erkannt" : "Keine neuen Muster")
                     }
                 }
 
                 // Data
-                actionSection("Daten") {
-                    actionButton("Snapshot erstellen", icon: "camera", color: .blue) {
+                actionSection(#L("Daten")) {
+                    actionButton(#L("Snapshot erstellen"), icon: "camera", color: .blue) {
                         let now = Date()
                         let cal = Calendar.current
                         try? LibWimg.takeSnapshot(
@@ -241,7 +242,7 @@ struct SearchView: View {
                         )
                         showUndo("Snapshot erstellt")
                     }
-                    actionButton("Snapshots für alle Monate", icon: "camera.fill", color: .blue) {
+                    actionButton(#L("Snapshots für alle Monate"), icon: "camera.fill", color: .blue) {
                         let txns = (try? LibWimg.getTransactions()) ?? []
                         guard !txns.isEmpty else {
                             showUndo("Keine Transaktionen vorhanden")
@@ -258,24 +259,24 @@ struct SearchView: View {
                         }
                         showUndo("\(count) Snapshots erstellt")
                     }
-                    actionButton("CSV exportieren", icon: "square.and.arrow.up", color: .indigo) {
+                    actionButton(#L("CSV exportieren"), icon: "square.and.arrow.up", color: .indigo) {
                         exportCsv()
                     }
-                    actionButton("Datenbank exportieren", icon: "externaldrive", color: .purple) {
+                    actionButton(#L("Datenbank exportieren"), icon: "externaldrive", color: .purple) {
                         exportDb()
                     }
                 }
 
                 // Undo/Redo
-                actionSection("Bearbeiten") {
-                    actionButton("Rückgängig", icon: "arrow.uturn.backward", color: .gray) {
+                actionSection(#L("Bearbeiten")) {
+                    actionButton(#L("Rückgängig"), icon: "arrow.uturn.backward", color: .gray) {
                         if let result = LibWimg.undo() {
                             reload()
                             NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
                             showUndo("Rückgängig: \(result.op) \(result.table)")
                         }
                     }
-                    actionButton("Wiederherstellen", icon: "arrow.uturn.forward", color: .gray) {
+                    actionButton(#L("Wiederherstellen"), icon: "arrow.uturn.forward", color: .gray) {
                         if let result = LibWimg.redo() {
                             reload()
                             NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
@@ -291,7 +292,7 @@ struct SearchView: View {
 
     private func actionSection(_ title: String, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            TText(title)
+            Text(L(title))
                 .font(.system(.caption, design: .rounded, weight: .bold))
                 .foregroundStyle(WimgTheme.textSecondary)
                 .textCase(.uppercase)
@@ -320,7 +321,7 @@ struct SearchView: View {
                         .foregroundStyle(color)
                 }
 
-                TText(label)
+                Text(L(label))
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(WimgTheme.text)
                     .multilineTextAlignment(.leading)
@@ -351,7 +352,7 @@ struct SearchView: View {
                         .foregroundStyle(color)
                 }
 
-                TText(label)
+                Text(L(label))
                     .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundStyle(WimgTheme.text)
 
@@ -374,21 +375,21 @@ struct SearchView: View {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Menu("Zeitraum") {
-                    Button("Letzte 30 Tage") {
+                    Button(#L("Letzte 30 Tage")) {
                         dateFrom = Calendar.current.date(byAdding: .day, value: -30, to: Date())
                         dateTo = nil
                     }
-                    Button("Aktueller Monat") {
+                    Button(#L("Aktueller Monat")) {
                         dateFrom = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date()))
                         dateTo = nil
                     }
-                    Button("Letztes Quartal") {
+                    Button(#L("Letztes Quartal")) {
                         dateFrom = Calendar.current.date(byAdding: .month, value: -3, to: Date())
                         dateTo = nil
                     }
                     if dateFrom != nil {
                         Divider()
-                        Button("Zurücksetzen", role: .destructive) {
+                        Button(#L("Zurücksetzen"), role: .destructive) {
                             dateFrom = nil
                             dateTo = nil
                         }
@@ -401,7 +402,7 @@ struct SearchView: View {
                     Button("> 200 €") { amountMin = 200; amountMax = 1000 }
                     if amountMin > 0 || amountMax < 1000 {
                         Divider()
-                        Button("Zurücksetzen", role: .destructive) { amountMin = 0; amountMax = 1000 }
+                        Button(#L("Zurücksetzen"), role: .destructive) { amountMin = 0; amountMax = 1000 }
                     }
                 }
 
@@ -418,7 +419,7 @@ struct SearchView: View {
                             // variable title; build the Label manually so the
                             // category name flows through TText/.xcstrings.
                             Label {
-                                TText(cat.name)
+                                Text(L(cat.name))
                             } icon: {
                                 Image(systemName: filterCategories.contains(cat.rawValue) ? "checkmark.circle.fill" : "circle")
                             }
@@ -426,13 +427,13 @@ struct SearchView: View {
                     }
                     if !filterCategories.isEmpty {
                         Divider()
-                        Button("Zurücksetzen", role: .destructive) { filterCategories.removeAll() }
+                        Button(#L("Zurücksetzen"), role: .destructive) { filterCategories.removeAll() }
                     }
                 }
 
                 if hasActiveFilters {
                     Divider()
-                    Button("Alle Filter zurücksetzen", role: .destructive) {
+                    Button(#L("Alle Filter zurücksetzen"), role: .destructive) {
                         dateFrom = nil
                         dateTo = nil
                         amountMin = 0

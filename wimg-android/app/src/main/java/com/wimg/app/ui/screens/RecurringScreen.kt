@@ -23,6 +23,7 @@ import com.wimg.app.ui.theme.WimgShapes
 import com.wimg.app.ui.theme.wimgCard
 import com.wimg.app.ui.theme.wimgHero
 import kotlin.math.abs
+import com.wimg.app.i18n.L
 
 private val INTERVAL_LABELS = mapOf(
     "weekly" to "Wöchentlich",
@@ -76,11 +77,11 @@ private fun SubscriptionsTab(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("🔄", fontSize = 48.sp)
                         Spacer(Modifier.height(8.dp))
-                        Text("Keine Muster erkannt", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("Importiere Transaktionen und tippe Erkennen", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(L("Keine Muster erkannt"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(L("Importiere Transaktionen und tippe auf Erkennen"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(16.dp))
                         Button(onClick = onDetect, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onBackground, contentColor = MaterialTheme.colorScheme.background)) {
-                            Text(if (detecting) "Erkennung..." else "Erkennen", fontWeight = FontWeight.Bold)
+                            Text(L(if (detecting) "Erkennung..." else "Erkennen"), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -91,12 +92,12 @@ private fun SubscriptionsTab(
                 Box(modifier = Modifier.fillMaxWidth().wimgHero()) {
                     Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Monatliche Fixkosten", style = MaterialTheme.typography.labelMedium, color = WimgColors.heroText.copy(alpha = 0.7f))
-                            InfoTooltip("Summe aller erkannten monatlichen Abos und Fixkosten. Quartals- und Jahresbeiträge werden nicht eingerechnet.")
+                            Text(L("Monatliche Fixkosten"), style = MaterialTheme.typography.labelMedium, color = WimgColors.heroText.copy(alpha = 0.7f))
+                            InfoTooltip(L("Summe aller erkannten monatlichen Abos und Fixkosten. Quartals- und Jahresbeiträge werden nicht eingerechnet."))
                         }
                         Spacer(Modifier.height(4.dp))
                         Text(formatAmountShort(monthlyTotal), fontSize = 32.sp, fontWeight = FontWeight.Black, color = WimgColors.heroText)
-                        Text("${active.size} aktive Muster", style = MaterialTheme.typography.bodySmall, color = WimgColors.heroText.copy(alpha = 0.7f))
+                        Text(L("${active.size} erkannte Muster"), style = MaterialTheme.typography.bodySmall, color = WimgColors.heroText.copy(alpha = 0.7f))
                     }
                 }
             }
@@ -104,15 +105,15 @@ private fun SubscriptionsTab(
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(onClick = onDetect, modifier = Modifier.weight(1f), shape = WimgShapes.small) {
-                        Text(if (detecting) "Erkennung..." else "Erneut erkennen", fontWeight = FontWeight.Bold)
+                        Text(L(if (detecting) "Erkennung..." else "Erneut erkennen"), fontWeight = FontWeight.Bold)
                     }
-                    InfoTooltip("Scannt deine Transaktionen nach wiederkehrenden Mustern (mind. 3 ähnliche Beträge in regelmäßigen Abständen). Erkennt Abos, Mieten und Fixkosten.")
+                    InfoTooltip(L("Scannt deine Transaktionen nach wiederkehrenden Mustern (mind. 3 ähnliche Beträge in regelmäßigen Abständen). Erkennt Abos, Mieten und Fixkosten."))
                 }
             }
 
             grouped.forEach { (interval, items) ->
                 item {
-                    Text(INTERVAL_LABELS[interval] ?: interval, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+                    Text(L(INTERVAL_LABELS[interval] ?: interval), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
                 }
                 items(items, key = { it.id }) { pattern ->
                     PatternRow(pattern)

@@ -1,4 +1,5 @@
 import SwiftUI
+import WimgI18n
 
 struct AboutView: View {
     var scrollToFAQ: String?
@@ -83,7 +84,7 @@ struct AboutView: View {
                             .font(.system(.title, design: .rounded, weight: .bold))
                             .foregroundStyle(WimgTheme.text)
 
-                        Text("Persönliche Finanzverwaltung.\nLokal. Privat. Offen.")
+                        Text(#L("Persönliche Finanzverwaltung.\nLokal. Privat. Offen."))
                             .font(.subheadline)
                             .foregroundStyle(WimgTheme.textSecondary)
                             .multilineTextAlignment(.center)
@@ -92,7 +93,7 @@ struct AboutView: View {
                 .padding(.top, 8)
 
                 // MARK: - About Text
-                Text("Ein Open-Source-Projekt von **Komiljon Maksudov**. Gebaut mit **Zig**, **SwiftUI** und **SQLite**.")
+                Text(#L("Ein Open-Source-Projekt von **Komiljon Maksudov**. Gebaut mit **Zig**, **SwiftUI** und **SQLite**."))
                     .font(.subheadline)
                     .foregroundStyle(WimgTheme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -110,10 +111,10 @@ struct AboutView: View {
                         }
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Privatsphäre zuerst")
+                        Text(#L("Privatsphäre zuerst"))
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .foregroundStyle(WimgTheme.text)
-                        Text("Keine Werbung. Kein Tracking. Niemals.")
+                        Text(#L("Keine Werbung. Kein Tracking. Niemals."))
                             .font(.caption)
                             .foregroundStyle(WimgTheme.textSecondary)
                     }
@@ -125,7 +126,7 @@ struct AboutView: View {
 
                 // MARK: - Privacy Details
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Datenschutz im Detail")
+                    Text(#L("Datenschutz im Detail"))
                         .font(.system(.subheadline, design: .rounded, weight: .bold))
                         .foregroundStyle(WimgTheme.text)
 
@@ -164,12 +165,12 @@ struct AboutView: View {
                         Image(systemName: "link")
                             .font(.title3)
                             .foregroundStyle(.purple)
-                        Text("MCP-Verbindung")
+                        Text(#L("MCP-Verbindung"))
                             .font(.system(.title3, design: .rounded, weight: .bold))
                             .foregroundStyle(WimgTheme.text)
                     }
 
-                    Text("Mit aktivierter Sync kannst du KI-Assistenten (Claude, etc.) per MCP-Protokoll Zugriff auf deine Finanzdaten geben.")
+                    Text(#L("Mit aktivierter Sync kannst du KI-Assistenten (Claude, etc.) per MCP-Protokoll Zugriff auf deine Finanzdaten geben."))
                         .font(.subheadline)
                         .foregroundStyle(WimgTheme.textSecondary)
 
@@ -212,10 +213,10 @@ struct AboutView: View {
                             .padding(.top, 2)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Datenschutz-Hinweis")
+                            Text(#L("Datenschutz-Hinweis"))
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(Color.orange.opacity(0.9))
-                            Text("Wenn du wimg mit einem MCP-Client verbindest, werden deine Finanzdaten an diesen Client weitergegeben. Die Daten sind Ende-zu-Ende verschlüsselt zwischen deinen Geräten und dem Server, aber der MCP-Client selbst kann die entschlüsselten Daten lesen. Verwende nur vertrauenswürdige MCP-Clients und teile deinen Sync-Schlüssel niemals mit Dritten.")
+                            Text(#L("Wenn du wimg mit einem MCP-Client verbindest, werden deine Finanzdaten an diesen Client weitergegeben. Die Daten sind Ende-zu-Ende verschlüsselt zwischen deinen Geräten und dem Server, aber der MCP-Client selbst kann die entschlüsselten Daten lesen. Verwende nur vertrauenswürdige MCP-Clients und teile deinen Sync-Schlüssel niemals mit Dritten."))
                                 .font(.caption)
                                 .foregroundStyle(Color.orange.opacity(0.8))
                         }
@@ -235,7 +236,7 @@ struct AboutView: View {
                         Image(systemName: "questionmark.circle")
                             .font(.title3)
                             .foregroundStyle(.orange)
-                        Text("Häufig gestellte Fragen")
+                        Text(#L("Häufig gestellte Fragen"))
                             .font(.system(.title3, design: .rounded, weight: .bold))
                             .foregroundStyle(WimgTheme.text)
                     }
@@ -248,12 +249,12 @@ struct AboutView: View {
                                     set: { expandedFAQ = $0 ? faq.q : nil }
                                 )
                             ) {
-                                TText(faq.a)
+                                Text(L(faq.a))
                                     .font(.subheadline)
                                     .foregroundStyle(WimgTheme.textSecondary)
                                     .padding(.bottom, 4)
                             } label: {
-                                TText(faq.q)
+                                Text(L(faq.q))
                                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
                                     .foregroundStyle(WimgTheme.text)
                                     .multilineTextAlignment(.leading)
@@ -267,11 +268,13 @@ struct AboutView: View {
 
                 // MARK: - Footer
                 VStack(spacing: 8) {
-                    Link("Was ist neu?", destination: URL(string: WimgConfig.releasesURL)!)
-                        .font(.system(.caption, design: .rounded, weight: .bold))
-                        .foregroundStyle(.orange)
+                    Link(destination: URL(string: WimgConfig.releasesURL)!) {
+                        Text(#L("Was ist neu?"))
+                            .font(.system(.caption, design: .rounded, weight: .bold))
+                            .foregroundStyle(.orange)
+                    }
 
-                    Text("Version \(appVersion)")
+                    Text(#L("Version \(appVersion)"))
                         .font(.system(.caption2, design: .monospaced))
                         .foregroundStyle(WimgTheme.textSecondary.opacity(0.6))
                 }
@@ -290,7 +293,7 @@ struct AboutView: View {
         }
         }
         .background(WimgTheme.bg)
-        .navigationTitle("Über wimg")
+        .navigationTitle(#L("Über wimg"))
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -303,10 +306,10 @@ struct AboutView: View {
                 .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 2) {
-                TText(title)
+                Text(L(title))
                     .font(.system(.caption, design: .rounded, weight: .semibold))
                     .foregroundStyle(WimgTheme.text)
-                TText(detail)
+                Text(L(detail))
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(WimgTheme.textSecondary)
             }
@@ -323,10 +326,10 @@ struct AboutView: View {
                 .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 2) {
-                TText(title)
+                Text(L(title))
                     .font(.system(.subheadline, design: .rounded, weight: .semibold))
                     .foregroundStyle(WimgTheme.text)
-                TText(detail)
+                Text(L(detail))
                     .font(.caption)
                     .foregroundStyle(WimgTheme.textSecondary)
             }

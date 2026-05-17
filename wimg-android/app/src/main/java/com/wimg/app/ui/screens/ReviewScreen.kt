@@ -28,6 +28,7 @@ import com.wimg.app.ui.theme.wimgHero
 import java.text.DateFormatSymbols
 import java.util.Calendar
 import kotlin.math.abs
+import com.wimg.app.i18n.L
 
 @Composable
 fun ReviewScreen(selectedAccount: String?) {
@@ -62,7 +63,7 @@ fun ReviewScreen(selectedAccount: String?) {
             Box(modifier = Modifier.fillMaxWidth().wimgHero()) {
                 Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        if (saved >= 0) "Gespart" else "Defizit",
+                        L(if (saved >= 0) "Gespart" else "Defizit"),
                         style = MaterialTheme.typography.labelMedium,
                         color = WimgColors.heroText.copy(alpha = 0.7f),
                     )
@@ -75,11 +76,11 @@ fun ReviewScreen(selectedAccount: String?) {
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        when {
+                        L(when {
                             saved > 0 -> "Dein Sparziel wurde erreicht. Super!"
                             saved == 0.0 -> "Einnahmen und Ausgaben waren ausgeglichen."
                             else -> "Diesen Monat hast du mehr ausgegeben als eingenommen."
-                        },
+                        }),
                         style = MaterialTheme.typography.bodySmall,
                         color = WimgColors.heroText.copy(alpha = 0.7f),
                     )
@@ -90,8 +91,8 @@ fun ReviewScreen(selectedAccount: String?) {
         // Income / Expenses
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCard("Einnahmen", income, Icons.Outlined.ArrowDownward, WimgCategory.INCOME.color, Modifier.weight(1f))
-                StatCard("Ausgaben", expenses, Icons.Outlined.ArrowUpward, MaterialTheme.colorScheme.error, Modifier.weight(1f))
+                StatCard(L("Einnahmen"), income, Icons.Outlined.ArrowDownward, WimgCategory.INCOME.color, Modifier.weight(1f))
+                StatCard(L("Ausgaben"), expenses, Icons.Outlined.ArrowUpward, MaterialTheme.colorScheme.error, Modifier.weight(1f))
             }
         }
 
@@ -99,7 +100,7 @@ fun ReviewScreen(selectedAccount: String?) {
         val categories = summary?.by_category?.sortedByDescending { abs(it.amount) }?.take(5) ?: emptyList()
         if (categories.isNotEmpty()) {
             item {
-                Text("Top Kategorien", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+                Text(L("Top Kategorien"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
             }
             items(categories) { cat ->
                 val category = WimgCategory.fromId(cat.id)
@@ -109,7 +110,7 @@ fun ReviewScreen(selectedAccount: String?) {
                 ) {
                     Icon(category.icon, contentDescription = null, tint = category.color, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(12.dp))
-                    Text(category.label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                    Text(L(category.label), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
                     Text(formatAmountShort(cat.amount), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                 }
             }
@@ -118,9 +119,9 @@ fun ReviewScreen(selectedAccount: String?) {
         // Stats
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatCard("Transaktionen", (summary?.tx_count ?: 0).toDouble(), modifier = Modifier.weight(1f), isCount = true)
+                StatCard(L("Transaktionen"), (summary?.tx_count ?: 0).toDouble(), modifier = Modifier.weight(1f), isCount = true)
                 val savingsRate = if (income > 0) (saved / income * 100) else 0.0
-                StatCard("Sparquote", savingsRate, modifier = Modifier.weight(1f), suffix = "%")
+                StatCard(L("Sparquote"), savingsRate, modifier = Modifier.weight(1f), suffix = "%")
             }
         }
     }
