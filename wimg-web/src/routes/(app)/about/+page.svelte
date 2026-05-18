@@ -360,6 +360,67 @@
     </div>
   </div>
 
+  <!-- Credits -->
+  <div class="space-y-3">
+    <h3 class="text-lg font-display font-extrabold text-(--color-text) mb-1 flex items-center gap-2">
+      <svg class="w-4.5 h-4.5 text-pink-500" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+      </svg>
+      Mit Hilfe von
+    </h3>
+    <div class="space-y-2 p-4 rounded-2xl bg-(--color-card)">
+      <div class="flex gap-3 items-start">
+        <svg class="w-4 h-4 text-pink-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+        <div>
+          <div class="text-sm font-bold text-(--color-text)">Zig &amp; SQLite</div>
+          <div class="text-xs text-(--color-text-secondary)">
+            libwimg ist ein Zig-Kern mit eingebetteter SQLite-Amalgamation. Inspiriert von libghostty: Die Bibliothek IS die App.
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-3 items-start">
+        <svg class="w-4 h-4 text-pink-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <div>
+          <div class="text-sm font-bold text-(--color-text)">
+            <a href="https://github.com/raphaelm/python-fints" target="_blank" rel="noopener" class="underline decoration-dotted underline-offset-2">python-fints (Raphael Michel)</a>
+          </div>
+          <div class="text-xs text-(--color-text-secondary)">
+            Open-Source FinTS-3.0-Referenzimplementierung in Python — Wire-Format-Goldstandard für die Zig-Portierung.
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-3 items-start">
+        <svg class="w-4 h-4 text-pink-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+        <div>
+          <div class="text-sm font-bold text-(--color-text)">
+            <a href="https://www.fints.org/" target="_blank" rel="noopener" class="underline decoration-dotted underline-offset-2">FinTS-Bankenliste</a>
+          </div>
+          <div class="text-xs text-(--color-text-secondary)">
+            Offizielle Bankenliste von www.fints.org / Die Deutsche Kreditwirtschaft.
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-3 items-start">
+        <svg class="w-4 h-4 text-pink-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+        <div>
+          <div class="text-sm font-bold text-(--color-text)">Cloudflare Workers + Durable Objects</div>
+          <div class="text-xs text-(--color-text-secondary)">
+            Sync-Server, MCP-Endpunkt und Push — alles auf Cloudflares Edge.
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-3 items-start">
+        <svg class="w-4 h-4 text-pink-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" /></svg>
+        <div>
+          <div class="text-sm font-bold text-(--color-text)">SwiftUI · SvelteKit · Kotlin Compose</div>
+          <div class="text-xs text-(--color-text-secondary)">
+            Drei Plattform-Shells über einer Zig-Bibliothek.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- FAQ -->
   <div id="faq">
     <h3

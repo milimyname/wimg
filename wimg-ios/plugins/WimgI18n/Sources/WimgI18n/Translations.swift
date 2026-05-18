@@ -625,4 +625,6 @@ internal let translations: [String: String] = [
     "Sync-Server, MCP-Endpunkt und Push — alles auf Cloudflares Edge.": "Sync server, MCP endpoint, and push — all on Cloudflare's edge.",
     "SwiftUI · SvelteKit · Kotlin Compose": "SwiftUI · SvelteKit · Kotlin Compose",
     "Drei Plattform-Shells über einer Zig-Bibliothek.": "Three platform shells over one Zig library.",
+    "python-fints (Raphael Michel)": "python-fints (Raphael Michel)",
+    "Open-Source FinTS-3.0-Referenzimplementierung in Python — Wire-Format-Goldstandard für die Zig-Portierung.": "Open-source FinTS 3.0 reference implementation in Python — the wire-format gold standard for the Zig port.",
 ]

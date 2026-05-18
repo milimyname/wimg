@@ -1,3 +1,16 @@
+<script module lang="ts">
+  // Module-scoped flag: only auto-trigger the passkey sheet on the FIRST
+  // lock since page load. Subsequent re-mounts (returning to the tab after
+  // visibility-change re-lock, manual Cmd+Shift+L) require an explicit
+  // fingerprint-button tap.
+  // Why: the auto-trigger fires `navigator.credentials.get(...)`, which
+  // browser-side credential providers (Bitwarden, 1Password) hook into and
+  // pop their own sheet — extremely noisy when the user is just tabbing
+  // back and forth. First-load auto-trigger is still useful because the
+  // user just opened the app and most likely wants to unlock immediately.
+  let autoTriedThisSession = false;
+</script>
+
 <script lang="ts">
   import { onMount } from "svelte";
   import { lock } from "$lib/lock.svelte";
@@ -29,10 +42,13 @@
     document.body.style.overflow = "hidden";
     document.body.style.overscrollBehavior = "contain";
 
-    // If a passkey is registered, prompt the biometric sheet on mount so the
-    // user doesn't have to tap the fingerprint button first. Cancellation
-    // falls through silently — the PIN pad stays available.
-    if (lock.hasPasskey && !isCooldown) {
+    // If a passkey is registered AND this is the first lock since page load,
+    // prompt the biometric sheet automatically so the user doesn't have to
+    // tap the fingerprint button. Cancellation falls through silently — the
+    // PIN pad stays available. Re-locks within the same session require an
+    // explicit tap (see autoTriedThisSession above).
+    if (lock.hasPasskey && !isCooldown && !autoTriedThisSession) {
+      autoTriedThisSession = true;
       // Defer one frame so the DOM is painted before the OS sheet appears.
       requestAnimationFrame(() => {
         if (!busy && !isCooldown) void autoTryPasskey();
