@@ -265,13 +265,32 @@ function chooseAtruviaRepresentative(banks: Map<string, BankInfo>): BankInfo | n
 
 function buildTargetList(banks: Map<string, BankInfo>): Array<[string, BankInfo]> {
 	const targets: Array<[string, string]> = [
+		// Direct/online banks
 		["Comdirect", "20041177"],
-		["Berliner Sparkasse", "10050000"],
 		["Deutsche Bank", "10070000"],
 		["Commerzbank", "10040000"],
 		["Postbank", "10010010"],
 		["ING", "50010517"],
 		["DKB", "12030000"],
+		["HypoVereinsbank (HVB)", "20030000"],
+		["Consorsbank", "76030080"],
+		["norisbank", "76026000"],
+
+		// Sparkassen — one per Finanz Informatik tenant prefix
+		// (banking-be-, hh-, ni-, rl-, hs-, by-, li-, sn- etc.)
+		["Berliner Sparkasse", "10050000"],
+		["Hamburger Sparkasse", "20050550"],
+		["Sparkasse Hannover", "25050180"],
+		["Sparkasse Göttingen", "26050001"],
+		["Stadt-Sparkasse Düsseldorf", "30050110"],
+		["Sparkasse KölnBonn", "37050198"],
+		["Frankfurter Sparkasse", "50050201"],
+		["BW-Bank (LBBW)", "60050101"],
+		["Sparkasse Nürnberg", "76050101"],
+		["Sparkasse Leipzig", "86055592"],
+
+		// Genossenschaft (Atruvia)
+		["Berliner Volksbank", "10090000"],
 	];
 
 	const out: Array<[string, BankInfo]> = [];
