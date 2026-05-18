@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var lastSync = 0
     @State private var showSyncKey = false
     @State private var showQRSheet = false
+    @State private var showLinkSheet = false
 
     /// Matches the web mask: first 4 + middle hyphenated dots + last 4.
     private var maskedSyncKey: String {
@@ -93,18 +94,85 @@ struct SettingsView: View {
                     }
 
                     if !syncEnabled {
-                        Button {
-                            Task { await handleEnableSync() }
-                        } label: {
-                            Text(syncing ? #L("Aktiviere...") : #L("Sync aktivieren"))
+                        // Two paths: link an existing wimg account, or
+                        // generate a fresh sync key. Mirrors the onboarding
+                        // overlay so users hit the same decision twice.
+                        VStack(spacing: 10) {
+                            Button {
+                                showLinkSheet = true
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "arrow.left.arrow.right")
+                                        .font(.system(.caption, weight: .bold))
+                                    Text(#L("Schon wimg-User? Sync-Schlüssel einfügen"))
+                                }
+                                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                                .foregroundStyle(WimgTheme.text)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(WimgTheme.cardBg)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(WimgTheme.text, lineWidth: 1.5)
+                                }
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            }
+                            .disabled(syncing)
+
+                            // Divider with label
+                            HStack(spacing: 10) {
+                                Rectangle()
+                                    .fill(WimgTheme.border)
+                                    .frame(height: 1)
+                                Text(#L("oder"))
+                                    .font(.system(.caption2, design: .rounded, weight: .heavy))
+                                    .foregroundStyle(WimgTheme.textSecondary)
+                                    .textCase(.uppercase)
+                                    .tracking(1)
+                                Rectangle()
+                                    .fill(WimgTheme.border)
+                                    .frame(height: 1)
+                            }
+                            .padding(.vertical, 2)
+
+                            // Info card: what generating a key does
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(#L("Neuen Sync-Schlüssel erstellen"))
+                                    .font(.system(.caption, design: .rounded, weight: .heavy))
+                                    .foregroundStyle(WimgTheme.text)
+                                Text(#L("Erstellt einen zufälligen Schlüssel und lädt deine Daten hoch. Du kannst ihn auf weiteren Geräten verwenden, um sie zu verknüpfen."))
+                                    .font(.system(.caption2, design: .rounded))
+                                    .foregroundStyle(WimgTheme.textSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(WimgTheme.bg)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                            Button {
+                                Task { await handleEnableSync() }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    if syncing {
+                                        ProgressView()
+                                            .tint(WimgTheme.bg)
+                                            .scaleEffect(0.85)
+                                    } else {
+                                        Image(systemName: "sparkles")
+                                            .font(.system(.caption, weight: .bold))
+                                    }
+                                    Text(syncing ? #L("Aktiviere...") : #L("Sync aktivieren"))
+                                }
                                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                                 .foregroundStyle(WimgTheme.bg)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
                                 .background(WimgTheme.text)
                                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            }
+                            .disabled(syncing)
                         }
-                        .disabled(syncing)
                     } else {
                         VStack(spacing: 12) {
                             // Sync Key — mask/reveal + copy + QR (parity with web)
@@ -463,6 +531,20 @@ struct SettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showQRSheet) {
             SyncQRSheet(syncKey: syncKey)
+        }
+        .sheet(isPresented: $showLinkSheet) {
+            SyncLinkSheet(onLinked: {
+                // After SyncLinkSheet pulls successfully it stores the key
+                // and dismisses; refresh local state so the UI flips into
+                // the "enabled" branch.
+                Task {
+                    if let key = await SyncService.shared.syncKey {
+                        syncEnabled = true
+                        syncKey = key
+                    }
+                    lastSync = await SyncService.shared.lastSyncTimestamp
+                }
+            })
         }
         .onAppear {
             Task {

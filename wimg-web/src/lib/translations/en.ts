@@ -751,9 +751,9 @@ export const en: Record<string, string> = {
   "Mit PIN und Biometrie geschützt": "Protected with PIN and biometric",
   "Mit PIN geschützt": "Protected with PIN",
   "Mit PIN und optional Biometrie schützen": "Protect with PIN and optional biometric",
-  "Neue PIN festlegen (4–6 Ziffern)": "Set a new PIN (4–6 digits)",
+  "Neue PIN festlegen (4 Ziffern)": "Set a new PIN (4 digits)",
   "PIN bestätigen": "Confirm PIN",
-  "PIN muss mindestens 4 Stellen haben.": "PIN must be at least 4 digits.",
+  "PIN muss 4 Stellen haben.": "PIN must be 4 digits.",
   "PINs stimmen nicht überein.": "PINs do not match.",
   "Biometrie konnte nicht aktiviert werden.": "Could not enable biometric unlock.",
   "PIN einrichten": "Set up PIN",
@@ -763,8 +763,8 @@ export const en: Record<string, string> = {
   "App-Sperre deaktivieren": "Disable app lock",
   "Dieser Browser unterstützt keine biometrische Entsperrung (WebAuthn).":
     "This browser does not support biometric unlock (WebAuthn).",
-  "Sperrt wimg mit einer PIN (4–6 Ziffern), optional zusätzlich mit Face ID / Touch ID / Windows Hello via WebAuthn. Beim Tab-Wechsel oder Minimieren wird der Inhalt verschleiert, damit Vorschaubilder im Tab-Switcher deine Daten nicht zeigen. PIN-Hash bleibt lokal im Browser (PBKDF2-SHA256, 100k Iterationen).":
-    "Locks wimg with a PIN (4–6 digits), and optionally also with Face ID / Touch ID / Windows Hello via WebAuthn. When you switch tabs or minimize, the content is blurred so tab-switcher thumbnails don't reveal your data. The PIN hash stays local in the browser (PBKDF2-SHA256, 100k iterations).",
+  "Sperrt wimg mit einer 4-stelligen PIN, optional zusätzlich mit Face ID / Touch ID / Windows Hello via WebAuthn. Beim Tab-Wechsel oder Minimieren wird der Inhalt verschleiert, damit Vorschaubilder im Tab-Switcher deine Daten nicht zeigen. PIN-Hash bleibt lokal im Browser (PBKDF2-SHA256, 100k Iterationen).":
+    "Locks wimg with a 4-digit PIN, and optionally also with Face ID / Touch ID / Windows Hello via WebAuthn. When you switch tabs or minimize, the content is blurred so tab-switcher thumbnails don't reveal your data. The PIN hash stays local in the browser (PBKDF2-SHA256, 100k iterations).",
   "Auto-Sperre nach": "Auto-lock after",
   nie: "never",
   "1 Stunde": "1 hour",

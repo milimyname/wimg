@@ -126,8 +126,8 @@
 
   async function submitPin() {
     if (pinStep === "set") {
-      if (pinDraft.length < 4) {
-        pinError = "PIN muss mindestens 4 Stellen haben.";
+      if (pinDraft.length !== 4) {
+        pinError = "PIN muss 4 Stellen haben.";
         return;
       }
       pinStep = "confirm";
@@ -196,6 +196,34 @@
       pushState("", { sheet: "link-confirm" });
     }
   });
+
+  // Settings-side paste-link panel (separate state from the onboarding overlay).
+  let showSettingsLinkPanel = $state(false);
+  let settingsLinkInput = $state("");
+  let settingsLinking = $state(false);
+  let settingsLinkError = $state("");
+
+  async function handleSettingsLink() {
+    const key = settingsLinkInput.trim();
+    if (!key) return;
+    settingsLinking = true;
+    settingsLinkError = "";
+    try {
+      setSyncKey(key);
+      const pulled = await syncPull(key);
+      connectSync();
+      syncKey = key;
+      syncEnabled = true;
+      lastSync = getLastSyncTimestamp();
+      syncSuccess = `Verknüpft — ${pulled} Einträge übernommen`;
+      showSettingsLinkPanel = false;
+    } catch (e) {
+      settingsLinkError = e instanceof Error ? e.message : String(e);
+      clearSyncKey();
+    } finally {
+      settingsLinking = false;
+    }
+  }
 
   async function handleEnableSync() {
     const key = generateUUID();
@@ -458,13 +486,80 @@
     {/if}
 
     {#if !syncEnabled}
-      <button
-        onclick={() => pushState("", { sheet: "sync-info" })}
-        disabled={!isOnline}
-        class="w-full py-3 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50"
-      >
-        Sync aktivieren
-      </button>
+      <div class="space-y-2.5">
+        <!-- Path 1: paste existing sync key (returning wimg user) -->
+        {#if !showSettingsLinkPanel}
+          <button
+            onclick={() => (showSettingsLinkPanel = true)}
+            disabled={!isOnline}
+            class="w-full py-3 rounded-2xl bg-(--color-card-bg) border border-(--color-text)/15 text-(--color-text) font-bold text-sm flex items-center justify-center gap-2 transition-transform active:scale-[0.98] disabled:opacity-50"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m-4 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            Schon wimg-User? Sync-Schlüssel einfügen
+          </button>
+        {:else}
+          <div class="rounded-2xl bg-(--color-card-bg) p-3 space-y-2 border border-(--color-text)/10">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-(--color-text)">Sync-Schlüssel einfügen</span>
+              <button
+                onclick={() => {
+                  showSettingsLinkPanel = false;
+                  settingsLinkInput = "";
+                  settingsLinkError = "";
+                }}
+                class="text-xs text-(--color-text-secondary) hover:text-(--color-text)"
+              >
+                Abbrechen
+              </button>
+            </div>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                bind:value={settingsLinkInput}
+                placeholder="XXXX-XXXX-XXXX-XXXX"
+                class="flex-1 bg-(--color-bg) rounded-xl px-3 py-2 text-xs font-mono text-(--color-text) outline-none border border-(--color-border) focus:border-(--color-text)"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+              />
+              <button
+                onclick={handleSettingsLink}
+                disabled={settingsLinking || !settingsLinkInput.trim() || !isOnline}
+                class="px-3 py-2 rounded-xl bg-(--color-text) text-(--color-bg) text-xs font-bold disabled:opacity-50 transition-opacity"
+              >
+                {settingsLinking ? "..." : "Verknüpfen"}
+              </button>
+            </div>
+            {#if settingsLinkError}
+              <p class="text-xs text-red-600">{settingsLinkError}</p>
+            {/if}
+          </div>
+        {/if}
+
+        <!-- "Or" divider -->
+        <div class="flex items-center gap-2 py-1">
+          <div class="flex-1 h-px bg-(--color-text)/10"></div>
+          <span class="text-[10px] font-extrabold uppercase tracking-widest text-(--color-text-secondary)">oder</span>
+          <div class="flex-1 h-px bg-(--color-text)/10"></div>
+        </div>
+
+        <!-- Path 2: generate new sync key -->
+        <div class="rounded-xl bg-(--color-bg) p-3 space-y-1">
+          <p class="text-xs font-bold text-(--color-text)">Neuen Sync-Schlüssel erstellen</p>
+          <p class="text-[11px] text-(--color-text-secondary) leading-snug">
+            Erstellt einen zufälligen Schlüssel und lädt deine Daten hoch. Du kannst ihn auf weiteren Geräten verwenden, um sie zu verknüpfen.
+          </p>
+        </div>
+        <button
+          onclick={() => pushState("", { sheet: "sync-info" })}
+          disabled={!isOnline}
+          class="w-full py-3 rounded-2xl bg-(--color-text) text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-50"
+        >
+          Sync aktivieren
+        </button>
+      </div>
     {:else}
       <div class="space-y-3">
         <!-- Sync Key (masked) -->
@@ -884,7 +979,7 @@
         <div class="flex items-center gap-1.5">
           <h3 class="font-bold text-(--color-text)">App-Sperre</h3>
           <InfoTooltip
-            text="Sperrt wimg mit einer PIN (4–6 Ziffern), optional zusätzlich mit Face ID / Touch ID / Windows Hello via WebAuthn. Beim Tab-Wechsel oder Minimieren wird der Inhalt verschleiert, damit Vorschaubilder im Tab-Switcher deine Daten nicht zeigen. PIN-Hash bleibt lokal im Browser (PBKDF2-SHA256, 100k Iterationen)."
+            text="Sperrt wimg mit einer 4-stelligen PIN, optional zusätzlich mit Face ID / Touch ID / Windows Hello via WebAuthn. Beim Tab-Wechsel oder Minimieren wird der Inhalt verschleiert, damit Vorschaubilder im Tab-Switcher deine Daten nicht zeigen. PIN-Hash bleibt lokal im Browser (PBKDF2-SHA256, 100k Iterationen)."
           />
         </div>
         <p class="text-xs text-(--color-text-secondary)">
@@ -905,18 +1000,18 @@
       <!-- Inline PIN wizard -->
       <div class="flex flex-col gap-3">
         <p class="text-sm text-(--color-text-secondary)">
-          {#if pinStep === "set"}Neue PIN festlegen (4–6 Ziffern){:else}PIN bestätigen{/if}
+          {#if pinStep === "set"}Neue PIN festlegen (4 Ziffern){:else}PIN bestätigen{/if}
         </p>
         {#if pinStep === "set"}
           <input
             type="password"
             inputmode="numeric"
             pattern="[0-9]*"
-            maxlength="6"
+            maxlength="4"
             autocomplete="off"
             autofocus
             bind:value={pinDraft}
-            placeholder="••••••"
+            placeholder="••••"
             class="text-center text-2xl tracking-[0.4em] py-3 rounded-2xl bg-(--color-bg) border border-gray-200 outline-none focus:border-(--color-text)"
           />
         {:else}
@@ -924,11 +1019,11 @@
             type="password"
             inputmode="numeric"
             pattern="[0-9]*"
-            maxlength="6"
+            maxlength="4"
             autocomplete="off"
             autofocus
             bind:value={pinConfirm}
-            placeholder="••••••"
+            placeholder="••••"
             class="text-center text-2xl tracking-[0.4em] py-3 rounded-2xl bg-(--color-bg) border border-gray-200 outline-none focus:border-(--color-text)"
           />
         {/if}

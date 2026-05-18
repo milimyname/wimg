@@ -82,13 +82,17 @@
     };
   });
 
+  // iOS-style fixed 4-digit PIN. The lock store still accepts variable
+  // length, but new setups are constrained to 4 digits in the Settings
+  // wizard so this matches.
+  const PIN_LEN = 4;
+
   async function append(d: string) {
     if (busy || isCooldown) return;
-    if (pin.length >= 6) return;
+    if (pin.length >= PIN_LEN) return;
     pin = pin + d;
     error = false;
-    // Submit at 4 minimum on next "Enter" — for now just at 6 like before
-    if (pin.length === 6) {
+    if (pin.length === PIN_LEN) {
       busy = true;
       const ok = await lock.verifyPin(pin);
       if (!ok) {
@@ -127,47 +131,48 @@
   }
 </script>
 
-<div class="fixed inset-0 z-100 bg-bg flex flex-col items-center justify-center px-8">
-  <!-- Mark -->
-  <div class="w-24 h-24 rounded-full bg-accent/20 flex items-center justify-center mb-6">
-    <svg class="w-10 h-10 text-(--color-text)/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-        d="M12 11a3 3 0 100-6 3 3 0 000 6zm-6 8a6 6 0 1112 0H6z" />
-    </svg>
+<div class="fixed inset-0 z-100 bg-(--color-bg) flex flex-col items-center justify-center px-6">
+  <!-- Brand mark -->
+  <div class="mb-8 flex flex-col items-center">
+    <h1 class="text-4xl font-display font-black tracking-tight text-(--color-text)">wimg</h1>
+    {#if isCooldown}
+      <p class="mt-1.5 text-xs font-medium text-rose-600">
+        Zu viele falsche Versuche · {cooldownSec}s
+      </p>
+    {:else}
+      <p class="mt-1.5 text-xs font-medium text-(--color-text-secondary)">
+        PIN eingeben
+      </p>
+    {/if}
   </div>
 
-  <h1 class="text-3xl font-display font-black mb-1">wimg</h1>
-  {#if isCooldown}
-    <p class="text-sm text-rose-600 mb-8">
-      Zu viele falsche Versuche. Erneut versuchen in {cooldownSec}s
-    </p>
-  {:else}
-    <p class="text-sm text-text-secondary mb-8">App ist gesperrt</p>
-  {/if}
-
-  <!-- PIN dots -->
+  <!-- PIN dots — iOS-style: ring when empty, filled when active -->
   <div
-    class="flex gap-3 mb-10 transition-transform"
+    class="flex gap-5 mb-12 transition-transform"
     class:animate-shake={shake}
   >
-    {#each Array(6) as _, i}
-      {@const cls = error
-        ? "bg-rose-500"
-        : i < pin.length
-          ? "bg-(--color-text)"
-          : "bg-(--color-text)/15"}
-      <span class="w-3.5 h-3.5 rounded-full transition-colors {cls}"></span>
+    {#each Array(PIN_LEN) as _, i}
+      {@const filled = i < pin.length}
+      <span
+        class="w-3.5 h-3.5 rounded-full transition-all duration-150
+          {error
+            ? 'bg-rose-500 border-rose-500'
+            : filled
+              ? 'bg-(--color-text) border-(--color-text)'
+              : 'bg-transparent border-(--color-text)/35'}
+          border-[1.5px]"
+      ></span>
     {/each}
   </div>
 
-  <!-- Number pad -->
-  <div class="grid grid-cols-3 gap-3 w-full max-w-[280px]">
+  <!-- Number pad — iOS layout: 3-col grid, large round buttons, subtle press -->
+  <div class="grid grid-cols-3 gap-x-6 gap-y-4 w-full max-w-[260px]">
     {#each ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as n}
       <button
         type="button"
         onclick={() => append(n)}
         disabled={busy}
-        class="aspect-square rounded-full bg-(--color-card-bg) text-2xl font-display font-semibold active:scale-95 transition-transform disabled:opacity-50"
+        class="aspect-square rounded-full bg-(--color-text)/[0.06] hover:bg-(--color-text)/[0.10] active:bg-(--color-text)/[0.14] text-[28px] font-display font-light text-(--color-text) active:scale-[0.96] transition-all duration-100 disabled:opacity-50"
       >{n}</button>
     {/each}
 
@@ -178,11 +183,11 @@
         onclick={tryPasskey}
         disabled={busy}
         aria-label="Mit Face ID / Touch ID entsperren"
-        class="aspect-square rounded-full flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50"
+        class="aspect-square rounded-full flex items-center justify-center active:bg-(--color-text)/[0.08] transition-colors duration-100 disabled:opacity-50"
       >
-        <svg class="w-7 h-7 text-(--color-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"
-            d="M7 11V8a5 5 0 0110 0v3m-9 0a2 2 0 00-2 2v6a2 2 0 002 2h8a2 2 0 002-2v-6a2 2 0 00-2-2H8z" />
+        <svg class="w-7 h-7 text-(--color-text)" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M12 11v2m-5.5-6a5.5 5.5 0 0111 0M5 11v5a3 3 0 003 3h8a3 3 0 003-3v-5a3 3 0 00-3-3H8a3 3 0 00-3 3z" />
         </svg>
       </button>
     {:else}
@@ -193,7 +198,7 @@
       type="button"
       onclick={() => append("0")}
       disabled={busy}
-      class="aspect-square rounded-full bg-(--color-card-bg) text-2xl font-display font-semibold active:scale-95 transition-transform disabled:opacity-50"
+      class="aspect-square rounded-full bg-(--color-text)/[0.06] hover:bg-(--color-text)/[0.10] active:bg-(--color-text)/[0.14] text-[28px] font-display font-light text-(--color-text) active:scale-[0.96] transition-all duration-100 disabled:opacity-50"
     >0</button>
 
     <button
@@ -201,11 +206,11 @@
       onclick={backspace}
       disabled={busy || pin.length === 0}
       aria-label="Löschen"
-      class="aspect-square rounded-full flex items-center justify-center active:scale-95 transition-transform disabled:opacity-30"
+      class="aspect-square rounded-full flex items-center justify-center active:bg-(--color-text)/[0.08] transition-colors duration-100 disabled:opacity-30"
     >
-      <svg class="w-7 h-7 text-(--color-text)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-          d="M3 12l4-7h13a1 1 0 011 1v12a1 1 0 01-1 1H7l-4-7zm7-3l4 6m0-6l-4 6" />
+      <svg class="w-7 h-7 text-(--color-text)" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M22 6a2 2 0 00-2-2H10l-7 8 7 8h10a2 2 0 002-2V6zM18 9l-5 6m0-6l5 6" />
       </svg>
     </button>
   </div>
