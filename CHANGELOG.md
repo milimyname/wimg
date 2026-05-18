@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.9.0 (2026-05-19)
+
+- feat: settings sync prompt + 4-digit PIN with iOS-style LockScreen
+- fix: web credits page + stop passkey sheet popping on every re-lock
+- feat: FinTS hub redesign, background fetch, sync key UI, onboarding link
+
 ## v0.8.5 (2026-05-17)
 
 - feat: Android parity — 30s background grace + widget masking
