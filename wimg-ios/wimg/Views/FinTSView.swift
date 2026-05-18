@@ -23,6 +23,14 @@ struct FinTSView: View {
     @State private var selectedBank: BankInfo?
     @State private var errorMessage: String?
 
+    // Cached keychain reads — avoid sync XPC to securityd on every body re-render.
+    // Refreshed in onAppear and after writes (handleConnect, clearFintsPIN sites).
+    @State private var cachedSavedBank: BankInfo?
+    @State private var cachedHasPIN: Bool = false
+
+    @State private var showAllBanks = false
+    @FocusState private var searchFocused: Bool
+
     // Credentials
     @State private var kennung = ""
     @State private var pin = ""
@@ -58,6 +66,14 @@ struct FinTSView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                // Error banner — always at the top of the scroll content so
+                // the user actually sees it without scrolling.
+                if let error = errorMessage {
+                    errorBanner(classify(error))
+                        .padding(.horizontal, stage == .bankSelect ? 20 : 16)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+
                 switch stage {
                 case .bankSelect:
                     bankSelectSection
@@ -74,13 +90,10 @@ struct FinTSView: View {
                 case .result:
                     resultSection
                 }
-
-                if let error = errorMessage {
-                    errorCard(error)
-                }
             }
             .padding(.top, 20)
             .padding(.bottom, 40)
+            .animation(.easeInOut(duration: 0.18), value: errorMessage)
         }
         .background(WimgTheme.bg)
         .navigationTitle(#L("Bankkonto"))
@@ -109,168 +122,589 @@ struct FinTSView: View {
             displayBanks = filtered
         }
         .onAppear {
-            guard banks.isEmpty else { return }
-            loadingBanks = true
+            // Read keychain once on appear, on a background thread so the
+            // initial render doesn't block.
             Task.detached(priority: .userInitiated) {
-                let loaded = LibWimg.fintsGetBanks()
-                let lower = loaded.map { $0.name.lowercased() }
+                let savedBLZ = KeychainService.get(KeychainService.fintsBLZ)
+                let savedKennung = KeychainService.get(KeychainService.fintsKennung)
+                let savedPIN = KeychainService.get(KeychainService.fintsPIN)
+                let hasPIN = savedPIN != nil
+                let needsBankLoad = await MainActor.run { banks.isEmpty }
+                let loaded: [BankInfo]
+                let lower: [String]
+                if needsBankLoad {
+                    loaded = LibWimg.fintsGetBanks()
+                    lower = loaded.map { $0.name.lowercased() }
+                } else {
+                    loaded = []
+                    lower = []
+                }
                 await MainActor.run {
-                    banks = loaded
-                    banksLower = lower
-                    displayBanks = Array(loaded.prefix(50))
-                    loadingBanks = false
-                    // Restore saved bank + kennung from Keychain
-                    if let savedBLZ = KeychainService.get(KeychainService.fintsBLZ),
-                       let bank = loaded.first(where: { $0.blz == savedBLZ })
+                    if needsBankLoad {
+                        banks = loaded
+                        banksLower = lower
+                        displayBanks = Array(loaded.prefix(50))
+                        loadingBanks = false
+                    }
+                    if let blz = savedBLZ,
+                       let bank = (needsBankLoad ? loaded : banks).first(where: { $0.blz == blz })
                     {
                         selectedBank = bank
-                        kennung = KeychainService.get(KeychainService.fintsKennung) ?? ""
-                        if let savedPIN = KeychainService.get(KeychainService.fintsPIN) {
-                            pin = savedPIN
+                        kennung = savedKennung ?? ""
+                        if let pinValue = savedPIN {
+                            pin = pinValue
                             rememberPIN = true
                         }
-                        stage = .credentials
+                        cachedSavedBank = bank
+                    } else {
+                        cachedSavedBank = nil
                     }
+                    cachedHasPIN = hasPIN
                 }
+            }
+            if banks.isEmpty {
+                loadingBanks = true
             }
         }
     }
 
-    // MARK: - Bank Select
+    // MARK: - Hub helpers
+
+    private struct PopularBank: Identifiable {
+        let id: String  // BLZ or filter key
+        let label: String
+        let badge: String
+        let color: Color
+        let kind: Kind
+        enum Kind { case direct(blz: String); case filter(text: String) }
+    }
+
+    // Static — allocated once, never recomputed on body re-renders.
+    private static let popularBanks: [PopularBank] = [
+        .init(id: "20041177", label: "Comdirect", badge: "C",
+              color: Color(red: 1.0, green: 0.84, blue: 0.0),
+              kind: .direct(blz: "20041177")),
+        .init(id: "10070000", label: "Deutsche Bank", badge: "DB",
+              color: Color(red: 0.0, green: 0.094, blue: 0.659),
+              kind: .direct(blz: "10070000")),
+        .init(id: "Sparkasse", label: "Sparkasse", badge: "S",
+              color: Color(red: 0.91, green: 0.0, blue: 0.0),
+              kind: .filter(text: "Sparkasse")),
+        .init(id: "50010517", label: "ING-DiBa", badge: "ING",
+              color: Color(red: 1.0, green: 0.384, blue: 0.0),
+              kind: .direct(blz: "50010517")),
+        .init(id: "Volksbank", label: "Volksbank", badge: "VB",
+              color: Color(red: 0.0, green: 0.29, blue: 0.6),
+              kind: .filter(text: "Volksbank")),
+    ]
+
+    private static let sparkasseColor = Color(red: 0.91, green: 0.0, blue: 0.0)
+    private static let volksbankColor = Color(red: 0.0, green: 0.29, blue: 0.6)
+    private static let postbankColor = Color(red: 1.0, green: 0.8, blue: 0.0)
+    private static let deutscheBankColor = Color(red: 0.0, green: 0.094, blue: 0.659)
+    private static let ingColor = Color(red: 1.0, green: 0.384, blue: 0.0)
+    private static let dkbColor = Color(red: 0.0, green: 0.49, blue: 0.78)
+
+    private func brandColor(for bank: BankInfo) -> Color {
+        for p in Self.popularBanks {
+            if case .direct(let blz) = p.kind, blz == bank.blz { return p.color }
+        }
+        let lower = bank.name.lowercased()
+        if lower.contains("sparkasse") { return Self.sparkasseColor }
+        if lower.contains("volksbank") || lower.contains("raiffeisen") || lower.contains("vr ") {
+            return Self.volksbankColor
+        }
+        if lower.contains("postbank") { return Self.postbankColor }
+        if lower.contains("deutsche bank") { return Self.deutscheBankColor }
+        if lower.contains("commerzbank") { return Self.postbankColor }
+        if lower.contains("ing") { return Self.ingColor }
+        if lower.contains("dkb") { return Self.dkbColor }
+        return .teal
+    }
+
+    private func brandBadge(for bank: BankInfo) -> String {
+        let trimmed = bank.name.trimmingCharacters(in: .whitespaces)
+        guard let first = trimmed.first else { return "?" }
+        return String(first).uppercased()
+    }
+
+    private func formatShortDate(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        f.locale = Locale(identifier:
+            UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE")
+        return f.string(from: date)
+    }
+
+    /// Refresh keychain-backed cached state. Call from onAppear and after
+    /// any write/clear to Keychain so the hub stays in sync. Never call this
+    /// from inside `body` — keychain access is sync XPC and will stutter.
+    private func refreshCachedKeychainState() {
+        let blz = KeychainService.get(KeychainService.fintsBLZ)
+        let hasPIN = KeychainService.hasSavedPIN
+        let bank: BankInfo? = {
+            guard let blz else { return nil }
+            return banks.first(where: { $0.blz == blz }) ?? selectedBank
+        }()
+        cachedSavedBank = bank
+        cachedHasPIN = hasPIN
+    }
+
+    // MARK: - Bank Select (Hub)
 
     private var bankSelectSection: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(Color.teal.opacity(0.2))
-                        .frame(width: 80, height: 80)
-                    Image(systemName: "building.columns")
-                        .font(.system(size: 32))
-                        .foregroundStyle(WimgTheme.text)
-                }
+        VStack(alignment: .leading, spacing: 32) {
+            hubHeader
 
-                VStack(spacing: 6) {
-                    Text(#L("Bank verbinden"))
-                        .font(.system(.title3, design: .rounded, weight: .bold))
-                        .foregroundStyle(WimgTheme.text)
-
-                    Text(#L("Kontoauszüge direkt per FinTS abrufen"))
-                        .font(.system(.subheadline, design: .rounded))
-                        .foregroundStyle(WimgTheme.textSecondary)
-                        .multilineTextAlignment(.center)
-                }
+            if let bank = cachedSavedBank {
+                linkedAccountsSection(bank: bank)
             }
-            .padding(28)
-            .wimgCard(radius: WimgTheme.radiusLarge)
-            .padding(.horizontal)
 
-            // Search
-            HStack(spacing: 10) {
+            addAccountSection
+
+            secureInfoCard
+        }
+        .padding(.horizontal, 20)
+    }
+
+    private var hubHeader: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(#L("Banken & Konten"))
+                .font(.system(size: 34, weight: .heavy, design: .rounded))
+                .tracking(-0.5)
+                .foregroundStyle(WimgTheme.text)
+            Text(#L("Verwalte deine finanziellen Verbindungen sicher an einem Ort."))
+                .font(.system(.subheadline, design: .rounded, weight: .medium))
+                .foregroundStyle(WimgTheme.textSecondary)
+                .frame(maxWidth: 300, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 4)
+    }
+
+    private func linkedAccountsSection(bank: BankInfo) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .bottom) {
+                Text(#L("Verknüpfte Konten"))
+                    .font(.system(.title3, design: .rounded, weight: .heavy))
+                    .foregroundStyle(WimgTheme.text)
+                Spacer()
+                Text(#L("1 Aktiv"))
+                    .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    .tracking(1.5)
+                    .textCase(.uppercase)
+                    .foregroundStyle(WimgTheme.textSecondary)
+            }
+
+            connectedBankCard(bank: bank)
+        }
+    }
+
+    private func connectedBankCard(bank: BankInfo) -> some View {
+        let badge = brandBadge(for: bank)
+        let color = brandColor(for: bank)
+        let hasPIN = cachedHasPIN
+        let buttonEnabled = hasPIN && !refreshing && !connecting
+
+        return VStack(alignment: .leading, spacing: 24) {
+            HStack(alignment: .top, spacing: 14) {
+                ZStack {
+                    Circle().fill(color)
+                    Text(badge)
+                        .font(.system(.title3, design: .rounded, weight: .heavy))
+                        .italic()
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 48, height: 48)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(bank.name)
+                        .font(.system(.title3, design: .rounded, weight: .heavy))
+                        .foregroundStyle(WimgTheme.text)
+                        .lineLimit(2)
+                    Text("FinTS • BLZ \(bank.blz)")
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                }
+
+                Spacer(minLength: 8)
+
+                Text(hasPIN ? #L("Aktiv") : #L("PIN fehlt"))
+                    .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    .tracking(1)
+                    .textCase(.uppercase)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background((hasPIN ? Color.green : Color.orange).opacity(0.15))
+                    .foregroundStyle(hasPIN ? .green : .orange)
+                    .clipShape(Capsule())
+            }
+
+            Button {
+                if hasPIN {
+                    Task { await handleQuickRefresh() }
+                } else {
+                    stage = .credentials
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    if refreshing {
+                        ProgressView()
+                            .tint(WimgTheme.bg)
+                            .scaleEffect(0.9)
+                        Text(#L("Verbinde..."))
+                    } else {
+                        Image(systemName: hasPIN ? "arrow.clockwise" : "lock.shield")
+                            .font(.system(.subheadline, weight: .bold))
+                        Text(hasPIN ? #L("Schnellabfrage") : #L("Anmelden"))
+                    }
+                }
+                .font(.system(.headline, design: .rounded, weight: .bold))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(WimgTheme.text)
+                .foregroundStyle(WimgTheme.bg)
+                .clipShape(Capsule())
+            }
+            .disabled(!buttonEnabled && hasPIN)
+
+            if hasPIN {
+                Button {
+                    KeychainService.clearFintsPIN()
+                    pin = ""
+                    rememberPIN = false
+                    refreshCachedKeychainState()
+                    BackgroundRefresh.cancel()
+                } label: {
+                    Text(#L("Manuell anmelden"))
+                        .font(.system(.caption, design: .rounded, weight: .medium))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                }
+                .disabled(refreshing)
+            }
+        }
+        .padding(24)
+        .background(
+            // Static radial gradient → same visual hint as a blurred accent
+            // without the GPU blur cost. Compositor-cheap.
+            ZStack {
+                WimgTheme.cardBg
+                RadialGradient(
+                    colors: [WimgTheme.accent.opacity(0.35), WimgTheme.accent.opacity(0)],
+                    center: UnitPoint(x: 1.05, y: -0.15),
+                    startRadius: 0,
+                    endRadius: 180
+                )
+            }
+        )
+        .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusLarge, style: .continuous))
+        .shadow(color: .black.opacity(0.05), radius: 20, y: 4)
+    }
+
+    private var addAccountSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(#L("Neues Konto hinzufügen"))
+                .font(.system(.title3, design: .rounded, weight: .heavy))
+                .foregroundStyle(WimgTheme.text)
+
+            // Search bar (rounded full)
+            HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(WimgTheme.textSecondary)
                 TextField(#L("Bank suchen..."), text: $searchText)
-                    .font(.system(.subheadline, design: .rounded))
-            }
-            .padding(12)
-            .background(WimgTheme.cardBg)
-            .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusSmall, style: .continuous))
-            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
-            .padding(.horizontal)
-
-            LazyVStack(spacing: 0) {
-                if loadingBanks {
-                    HStack(spacing: 10) {
-                        ProgressView()
-                        Text(#L("Lade Banken..."))
-                            .font(.system(.subheadline, design: .rounded))
+                    .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    .submitLabel(.search)
+                    .focused($searchFocused)
+                if !searchText.isEmpty || showAllBanks {
+                    Button {
+                        searchText = ""
+                        showAllBanks = false
+                        searchFocused = false
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(WimgTheme.textSecondary)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
-                    Divider().padding(.leading, 70)
-                }
-
-                ForEach(displayBanks) { bank in
-                    Button {
-                        selectedBank = bank
-                        errorMessage = nil
-                        stage = .credentials
-                    } label: {
-                        HStack(spacing: 14) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.teal.opacity(0.1))
-                                    .frame(width: 40, height: 40)
-                                Image(systemName: "building.columns")
-                                    .font(.system(size: 16))
-                                    .foregroundStyle(.teal)
-                            }
-
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(bank.name)
-                                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                                    .foregroundStyle(WimgTheme.text)
-                                Text(#L("BLZ: \(bank.blz)"))
-                                    .font(.system(.caption, design: .rounded))
-                                    .foregroundStyle(WimgTheme.textSecondary)
-                            }
-
-                            Spacer()
-
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundStyle(WimgTheme.textSecondary)
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 16)
-                        .contentShape(Rectangle())
-                    }
-
-                    Divider().padding(.leading, 70)
-                }
-
-                if searchText.isEmpty {
-                    Text(#L("Suche eingeben, um alle Banken zu sehen"))
-                        .font(.system(.caption, design: .rounded))
-                        .foregroundStyle(WimgTheme.textSecondary)
-                        .padding(.vertical, 12)
                 }
             }
-            .wimgCard(radius: WimgTheme.radiusLarge)
-            .padding(.horizontal)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(WimgTheme.cardBg)
+            .clipShape(Capsule())
+            .shadow(color: .black.opacity(0.03), radius: 6, y: 1)
+
+            if !searchText.isEmpty || showAllBanks {
+                searchResultsList
+            } else {
+                popularBanksGrid
+            }
         }
+    }
+
+    private var popularBanksGrid: some View {
+        let featured = Self.popularBanks.first
+        let others = Array(Self.popularBanks.dropFirst())
+        let rows = stride(from: 0, to: others.count, by: 2).map {
+            Array(others[$0..<min($0 + 2, others.count)])
+        }
+
+        return VStack(spacing: 12) {
+            if let f = featured {
+                popularBankRow(p: f)
+            }
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                HStack(spacing: 12) {
+                    ForEach(row) { p in
+                        popularBankTile(p: p)
+                    }
+                    if row.count == 1 {
+                        Color.clear.frame(maxWidth: .infinity)
+                    }
+                }
+            }
+
+            // "Browse all" CTA — toggles full bank list + focuses search
+            Button {
+                showAllBanks = true
+                searchFocused = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "list.bullet")
+                        .font(.system(.caption, weight: .bold))
+                    Text(#L("Alle Banken durchsuchen"))
+                        .font(.system(.caption, design: .rounded, weight: .heavy))
+                }
+                .foregroundStyle(WimgTheme.text)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity)
+                .background(WimgTheme.cardBg)
+                .clipShape(Capsule())
+                .overlay {
+                    Capsule().stroke(WimgTheme.border, lineWidth: 1)
+                }
+            }
+            .padding(.top, 4)
+        }
+    }
+
+    private func popularBankRow(p: PopularBank) -> some View {
+        Button {
+            handlePopularTap(p)
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(p.color)
+                    Text(p.badge)
+                        .font(.system(.title3, design: .rounded, weight: .heavy))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 48, height: 48)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(p.label)
+                        .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                        .foregroundStyle(WimgTheme.text)
+                    Text(#L("Häufig gewählt"))
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "plus.circle")
+                    .font(.system(.title3))
+                    .foregroundStyle(WimgTheme.textSecondary)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
+            .background(WimgTheme.cardBg)
+            .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusMedium, style: .continuous))
+            .shadow(color: .black.opacity(0.03), radius: 6, y: 1)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func popularBankTile(p: PopularBank) -> some View {
+        Button {
+            handlePopularTap(p)
+        } label: {
+            VStack(alignment: .leading, spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(p.color)
+                    Text(p.badge)
+                        .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 40, height: 40)
+
+                Text(p.label)
+                    .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                    .foregroundStyle(WimgTheme.text)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(18)
+            .background(WimgTheme.cardBg)
+            .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusMedium, style: .continuous))
+            .shadow(color: .black.opacity(0.03), radius: 6, y: 1)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func handlePopularTap(_ p: PopularBank) {
+        switch p.kind {
+        case .direct(let blz):
+            if let bank = banks.first(where: { $0.blz == blz }) {
+                selectedBank = bank
+                errorMessage = nil
+                kennung = ""
+                pin = ""
+                rememberPIN = false
+                stage = .credentials
+            } else {
+                searchText = p.label
+            }
+        case .filter(let text):
+            searchText = text
+        }
+    }
+
+    private var searchResultsList: some View {
+        LazyVStack(spacing: 0) {
+            if loadingBanks {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text(#L("Lade Banken..."))
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+            }
+
+            ForEach(displayBanks) { bank in
+                Button {
+                    selectedBank = bank
+                    errorMessage = nil
+                    kennung = ""
+                    pin = ""
+                    rememberPIN = false
+                    stage = .credentials
+                } label: {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(brandColor(for: bank))
+                            Text(brandBadge(for: bank))
+                                .font(.system(.caption, design: .rounded, weight: .heavy))
+                                .foregroundStyle(.white)
+                        }
+                        .frame(width: 36, height: 36)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(bank.name)
+                                .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                                .foregroundStyle(WimgTheme.text)
+                                .lineLimit(1)
+                            Text("BLZ \(bank.blz)")
+                                .font(.system(.caption2, design: .rounded))
+                                .foregroundStyle(WimgTheme.textSecondary)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(WimgTheme.textSecondary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if bank.id != displayBanks.last?.id {
+                    Divider().padding(.leading, 66)
+                }
+            }
+
+            if displayBanks.isEmpty && !loadingBanks {
+                Text(#L("Keine Bank gefunden"))
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundStyle(WimgTheme.textSecondary)
+                    .padding(.vertical, 20)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .background(WimgTheme.cardBg)
+        .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusMedium, style: .continuous))
+        .shadow(color: .black.opacity(0.03), radius: 6, y: 1)
+    }
+
+    private var secureInfoCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(#L("Sicher verknüpft"))
+                .font(.system(.title3, design: .rounded, weight: .heavy))
+                .foregroundStyle(WimgTheme.text)
+            Text(#L("FinTS 3.0 — verschlüsselt direkt mit deiner Bank. Login-Daten verlassen dein Gerät nicht."))
+                .font(.system(.subheadline, design: .rounded))
+                .foregroundStyle(WimgTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.shield.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.green)
+                Text(#L("ENDE-ZU-ENDE VERSCHLÜSSELT"))
+                    .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    .tracking(1.5)
+                    .textCase(.uppercase)
+                    .foregroundStyle(WimgTheme.textSecondary)
+            }
+            .padding(.top, 4)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [WimgTheme.cardBg, WimgTheme.cardBg.opacity(0.5)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: WimgTheme.radiusLarge, style: .continuous))
+        .shadow(color: .black.opacity(0.03), radius: 6, y: 1)
     }
 
     // MARK: - Credentials
 
     private var credentialsSection: some View {
         VStack(spacing: 16) {
-            // Quick refresh card (when saved PIN exists)
-            if KeychainService.hasSavedPIN, let bank = selectedBank {
-                quickRefreshCard(bank: bank)
-            }
-
-            VStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(Color.teal.opacity(0.2))
-                        .frame(width: 64, height: 64)
-                    Image(systemName: "lock.shield")
-                        .font(.system(size: 28))
-                        .foregroundStyle(.teal)
+            if let bank = selectedBank {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(brandColor(for: bank))
+                        Text(brandBadge(for: bank))
+                            .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                            .foregroundStyle(.white)
+                    }
+                    .frame(width: 44, height: 44)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(#L("Anmeldung"))
+                            .font(.system(.title3, design: .rounded, weight: .heavy))
+                            .foregroundStyle(WimgTheme.text)
+                        Text(bank.name)
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                            .lineLimit(1)
+                    }
+                    Spacer()
                 }
-
-                Text(#L("Anmeldung"))
-                    .font(.system(.title3, design: .rounded, weight: .bold))
-                    .foregroundStyle(WimgTheme.text)
-
-                if let bank = selectedBank {
-                    Text(bank.name)
-                        .font(.system(.subheadline, design: .rounded))
-                        .foregroundStyle(WimgTheme.textSecondary)
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             VStack(alignment: .leading, spacing: 16) {
@@ -467,9 +901,10 @@ struct FinTSView: View {
             }
 
             if tanMedia.isEmpty && !loadingTanMedia {
-                // No media found — skip selection
+                // No media found — skip selection, go straight to fetching
                 Button {
-                    stage = .dateRange
+                    stage = .fetching
+                    Task { await handleFetch() }
                 } label: {
                     Text(#L("Weiter ohne Auswahl"))
                         .font(.system(.headline, design: .rounded, weight: .bold))
@@ -750,6 +1185,12 @@ struct FinTSView: View {
                                 .fontWeight(.semibold)
                         }
                     }
+                    GridRow {
+                        Text(#L("Zeitraum"))
+                            .foregroundStyle(WimgTheme.textSecondary)
+                        Text("\(formatShortDate(dateFrom)) – \(formatShortDate(dateTo))")
+                            .fontWeight(.semibold)
+                    }
                 }
                 .font(.system(.subheadline, design: .rounded))
             }
@@ -802,87 +1243,217 @@ struct FinTSView: View {
                 }
                 .padding(.horizontal)
             }
+
+            // Power-user escape hatch: re-fetch with a custom date range
+            Button {
+                stage = .dateRange
+            } label: {
+                Label(#L("Anderen Zeitraum wählen"), systemImage: "calendar.badge.clock")
+                    .font(.system(.caption, design: .rounded, weight: .medium))
+                    .foregroundStyle(WimgTheme.textSecondary)
+            }
+            .padding(.top, 4)
         }
     }
 
-    // MARK: - Quick Refresh
+    // MARK: - Error Banner
 
-    private func quickRefreshCard(bank: BankInfo) -> some View {
-        VStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(Color.teal.opacity(0.2))
-                    .frame(width: 64, height: 64)
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.teal)
+    private enum ErrorKind {
+        case network, auth, tan, bank, validation, internalError
+
+        var icon: String {
+            switch self {
+            case .network: return "wifi.exclamationmark"
+            case .auth: return "person.crop.circle.badge.exclamationmark"
+            case .tan: return "key.slash"
+            case .bank: return "building.columns"
+            case .validation: return "exclamationmark.bubble"
+            case .internalError: return "exclamationmark.triangle.fill"
             }
+        }
 
-            VStack(spacing: 6) {
-                Text(#L("Schnellabfrage"))
-                    .font(.system(.title3, design: .rounded, weight: .bold))
-                    .foregroundStyle(WimgTheme.text)
-                Text(bank.name)
-                    .font(.system(.subheadline, design: .rounded))
-                    .foregroundStyle(WimgTheme.textSecondary)
+        var color: Color {
+            switch self {
+            case .network, .tan, .validation: return .orange
+            case .auth, .bank, .internalError: return .red
             }
+        }
 
-            Button {
-                Task { await handleQuickRefresh() }
-            } label: {
-                Group {
-                    if refreshing {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                                .tint(WimgTheme.bg)
-                                .scaleEffect(0.8)
-                            Text("Verbinde...")
-                        }
-                    } else {
-                        Label("Aktualisieren", systemImage: "arrow.down.doc")
-                    }
+        var defaultTitle: String {
+            switch self {
+            case .network: return "Verbindungsproblem"
+            case .auth: return "Anmeldung fehlgeschlagen"
+            case .tan: return "TAN-Verfahren fehlgeschlagen"
+            case .bank: return "Bank-Fehler"
+            case .validation: return "Eingabe prüfen"
+            case .internalError: return "Etwas ist schiefgelaufen"
+            }
+        }
+    }
+
+    private struct ClassifiedError {
+        let kind: ErrorKind
+        let title: String
+        let detail: String
+        let retryLabel: String?
+    }
+
+    private func classify(_ raw: String) -> ClassifiedError {
+        let lower = raw.lowercased()
+        // Order matters — most specific first.
+        if lower.contains("http request failed")
+            || lower.contains("connection refused")
+            || lower.contains("network connection was lost")
+            || lower.contains("timed out")
+            || lower.contains("internet connection")
+        {
+            return ClassifiedError(
+                kind: .network,
+                title: ErrorKind.network.defaultTitle,
+                detail: "Die Bank ist gerade nicht erreichbar. Bitte prüfe deine Internetverbindung und versuche es erneut.",
+                retryLabel: "Erneut versuchen"
+            )
+        }
+        if lower.contains("unknown blz") {
+            return ClassifiedError(
+                kind: .validation,
+                title: "Bank nicht unterstützt",
+                detail: "Diese Bankleitzahl ist nicht in unserer FinTS-Liste. Bitte eine andere Bank wählen.",
+                retryLabel: "Andere Bank wählen"
+            )
+        }
+        if lower.contains("tan") && (lower.contains("falsch") || lower.contains("fehlgeschlagen") || lower.contains("invalid")) {
+            return ClassifiedError(
+                kind: .tan,
+                title: ErrorKind.tan.defaultTitle,
+                detail: raw,
+                retryLabel: "Neu versuchen"
+            )
+        }
+        if lower.contains("anmeldung fehlgeschlagen")
+            || lower.contains("pin")
+            || lower.contains("9050") // ING-style permission denied
+            || lower.contains("9400")
+        {
+            return ClassifiedError(
+                kind: .auth,
+                title: ErrorKind.auth.defaultTitle,
+                detail: "Kennung oder PIN passt nicht. Bitte sorgfältig eingeben — mehrere Fehlversuche können dein Online-Banking sperren.",
+                retryLabel: "Daten prüfen"
+            )
+        }
+        if lower.contains("9110") || lower.contains("9120") || lower.contains("9800") || lower.contains("hbci") {
+            return ClassifiedError(
+                kind: .bank,
+                title: "Bank lehnt Anfrage ab",
+                detail: raw,
+                retryLabel: nil
+            )
+        }
+        if lower.contains("failed to build") || lower.contains("decode") || lower.contains("parse") {
+            return ClassifiedError(
+                kind: .internalError,
+                title: ErrorKind.internalError.defaultTitle,
+                detail: raw,
+                retryLabel: "Erneut versuchen"
+            )
+        }
+        return ClassifiedError(
+            kind: .internalError,
+            title: ErrorKind.internalError.defaultTitle,
+            detail: raw,
+            retryLabel: nil
+        )
+    }
+
+    private func errorBanner(_ err: ClassifiedError) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle().fill(err.kind.color.opacity(0.18))
+                    Image(systemName: err.kind.icon)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(err.kind.color)
                 }
-                .font(.system(.headline, design: .rounded, weight: .bold))
-                .frame(maxWidth: .infinity)
-                .padding(16)
-                .background(WimgTheme.text)
-                .foregroundStyle(WimgTheme.bg)
-                .clipShape(Capsule())
-            }
-            .disabled(refreshing || connecting)
+                .frame(width: 36, height: 36)
 
-            Button {
-                // Clear saved PIN and show manual form
-                KeychainService.clearFintsPIN()
-                pin = ""
-                rememberPIN = false
-            } label: {
-                Text(#L("Manuell anmelden"))
-                    .font(.system(.subheadline, design: .rounded, weight: .medium))
-                    .foregroundStyle(WimgTheme.textSecondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(err.title)
+                        .font(.system(.subheadline, design: .rounded, weight: .heavy))
+                        .foregroundStyle(err.kind.color)
+                    Text(err.detail)
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(WimgTheme.text.opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 4)
+
+                Button {
+                    errorMessage = nil
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                        .padding(6)
+                        .background(WimgTheme.bg.opacity(0.6))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
             }
-            .disabled(refreshing)
+
+            if let retry = err.retryLabel {
+                Button {
+                    handleRetry(for: err.kind)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: err.kind == .auth || err.kind == .validation
+                              ? "arrow.uturn.backward" : "arrow.clockwise")
+                            .font(.system(size: 11, weight: .bold))
+                        Text(retry)
+                            .font(.system(.caption, design: .rounded, weight: .heavy))
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(err.kind.color)
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .padding(24)
-        .wimgCard(radius: WimgTheme.radiusLarge)
-        .padding(.horizontal)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(err.kind.color.opacity(0.08))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(err.kind.color.opacity(0.25), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
-    // MARK: - Error Card
-
-    private func errorCard(_ error: String) -> some View {
-        VStack(spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 28))
-                .foregroundStyle(.red)
-            Text(error)
-                .font(.system(.subheadline, design: .rounded))
-                .foregroundStyle(WimgTheme.textSecondary)
-                .multilineTextAlignment(.center)
+    private func handleRetry(for kind: ErrorKind) {
+        errorMessage = nil
+        switch kind {
+        case .network, .internalError:
+            // Retry whatever the user was last attempting based on current stage
+            switch stage {
+            case .credentials: Task { await handleConnect() }
+            case .tanChallenge: Task { await handleSendTan() }
+            case .dateRange, .fetching: Task { await handleFetch() }
+            case .tanMediumSelect: Task { await handleFetchTanMedia() }
+            default: break
+            }
+        case .auth, .validation:
+            // Send user back to fix their input
+            stage = .credentials
+        case .tan:
+            // Stay on TAN stage, just clear input so they re-type
+            tanInput = ""
+        case .bank:
+            // No automatic recovery — let user choose
+            stage = .bankSelect
         }
-        .padding(20)
-        .wimgCard(radius: WimgTheme.radiusMedium)
-        .padding(.horizontal)
     }
 
     // MARK: - Actions
@@ -953,6 +1524,8 @@ struct FinTSView: View {
                     KeychainService.clearFintsPIN()
                     pin = ""
                     rememberPIN = false
+                    refreshCachedKeychainState()
+                    BackgroundRefresh.cancel()
                     errorMessage = result.message ?? "Anmeldung fehlgeschlagen. Bitte erneut manuell anmelden."
                 }
             }
@@ -962,6 +1535,8 @@ struct FinTSView: View {
                 KeychainService.clearFintsPIN()
                 pin = ""
                 rememberPIN = false
+                refreshCachedKeychainState()
+                BackgroundRefresh.cancel()
                 errorMessage = friendlyError(error)
             }
         }
@@ -1013,6 +1588,12 @@ struct FinTSView: View {
                     if importedCount > 0 {
                         NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
                     }
+                    if cachedHasPIN {
+                        Task {
+                            await BackgroundRefresh.requestNotificationAuthIfNeeded()
+                            BackgroundRefresh.schedule()
+                        }
+                    }
                 }
             }
         } catch {
@@ -1053,12 +1634,15 @@ struct FinTSView: View {
                     } else {
                         KeychainService.clearFintsPIN()
                     }
+                    refreshCachedKeychainState()
                     if result.tan_medium_required == true {
                         // Bank requires TAN medium selection — fetch media list
                         stage = .tanMediumSelect
                         Task { await handleFetchTanMedia() }
                     } else {
-                        stage = .dateRange
+                        // Skip dateRange — fetch last 90d immediately
+                        stage = .fetching
+                        Task { await handleFetch() }
                     }
                 } else if result.needsTan {
                     isDecoupledChallenge = result.decoupled ?? false
@@ -1209,7 +1793,9 @@ struct FinTSView: View {
             await MainActor.run {
                 if result.isOk {
                     KeychainService.set(KeychainService.fintsTanMedium, value: name)
-                    stage = .dateRange
+                    // Skip dateRange — fetch last 90d immediately
+                    stage = .fetching
+                    Task { await handleFetch() }
                 } else {
                     errorMessage = result.message ?? "TAN-Medium konnte nicht gesetzt werden"
                 }
@@ -1261,7 +1847,7 @@ struct FinTSView: View {
                     }
                 } else if result.isError {
                     errorMessage = result.message ?? "Abruf fehlgeschlagen"
-                    stage = .dateRange
+                    stage = .bankSelect
                 } else {
                     importedCount = result.imported ?? 0
                     duplicateCount = result.duplicates ?? 0
@@ -1269,12 +1855,21 @@ struct FinTSView: View {
                     if importedCount > 0 {
                         NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
                     }
+                    // Schnellabfrage worked → opt user into weekly background
+                    // refresh. Ask for notification permission in this gesture
+                    // context (much higher accept rate than at app launch).
+                    if cachedHasPIN {
+                        Task {
+                            await BackgroundRefresh.requestNotificationAuthIfNeeded()
+                            BackgroundRefresh.schedule()
+                        }
+                    }
                 }
             }
         } catch {
             await MainActor.run {
                 errorMessage = error.localizedDescription
-                stage = .dateRange
+                stage = .bankSelect
             }
         }
     }
@@ -1297,5 +1892,6 @@ struct FinTSView: View {
         loadingTanMedia = false
         dateFrom = Calendar.current.date(byAdding: .day, value: -90, to: Date())!
         dateTo = Date()
+        refreshCachedKeychainState()
     }
 }

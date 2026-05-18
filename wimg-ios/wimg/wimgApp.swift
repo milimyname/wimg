@@ -51,6 +51,10 @@ struct wimgApp: App {
         // Migrate credentials from UserDefaults to Keychain (one-time on update)
         SyncService.shared.migrateIfNeeded()
 
+        // Register BGAppRefreshTask handler — must happen here, not later.
+        // iOS rejects late registrations.
+        BackgroundRefresh.register()
+
         // Opaque tab bar — prevent transparent flicker on navigation transitions
         let tabAppearance = UITabBarAppearance()
         tabAppearance.configureWithDefaultBackground()

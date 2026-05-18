@@ -56,6 +56,8 @@ targets:
         UILaunchScreen: {}
         ITSAppUsesNonExemptEncryption: false
         CFBundleDisplayName: wimg
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSFaceIDUsageDescription: "wimg verwendet Face ID, um deine Finanzdaten zu schützen."
         UIBackgroundModes:
           - fetch
@@ -96,6 +98,8 @@ targets:
       path: wimgWidget/Info.plist
       properties:
         CFBundleDisplayName: wimg
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
 

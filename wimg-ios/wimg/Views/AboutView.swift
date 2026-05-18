@@ -230,6 +230,43 @@ struct AboutView: View {
                     }
                 }
 
+                // MARK: - Credits
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "heart.circle")
+                            .font(.title3)
+                            .foregroundStyle(.pink)
+                        Text(#L("Mit Hilfe von"))
+                            .font(.system(.title3, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.text)
+                    }
+
+                    creditRow(
+                        "swift",
+                        "Zig & SQLite",
+                        "libwimg ist ein Zig-Kern mit eingebetteter SQLite-Amalgamation. Inspiriert von libghostty: Die Bibliothek IS die App."
+                    )
+                    creditRow(
+                        "building.columns",
+                        "FinTS-Bankenliste",
+                        "Offizielle Bankenliste von www.fints.org / Die Deutsche Kreditwirtschaft."
+                    )
+                    creditRow(
+                        "cloud",
+                        "Cloudflare Workers + Durable Objects",
+                        "Sync-Server, MCP-Endpunkt und Push — alles auf Cloudflares Edge."
+                    )
+                    creditRow(
+                        "swift",
+                        "SwiftUI · SvelteKit · Kotlin Compose",
+                        "Drei Plattform-Shells über einer Zig-Bibliothek."
+                    )
+                }
+                .padding(16)
+                .background(WimgTheme.cardBg)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+
                 // MARK: - FAQ
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 8) {
@@ -295,6 +332,25 @@ struct AboutView: View {
         .background(WimgTheme.bg)
         .navigationTitle(#L("Über wimg"))
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func creditRow(_ icon: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundStyle(.pink)
+                .frame(width: 20, alignment: .center)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L(title))
+                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                    .foregroundStyle(WimgTheme.text)
+                Text(L(detail))
+                    .font(.system(.caption2, design: .rounded))
+                    .foregroundStyle(WimgTheme.textSecondary)
+            }
+        }
     }
 
     private func privacyRow(_ icon: String, _ title: String, _ detail: String) -> some View {

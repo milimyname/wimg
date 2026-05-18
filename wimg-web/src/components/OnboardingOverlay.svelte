@@ -1,7 +1,37 @@
 <script lang="ts">
+  import { setSyncKey, syncPull, connectSync, clearSyncKey } from "$lib/sync";
+
   let { onclose }: { onclose: () => void } = $props();
 
   let step = $state(0);
+  let showLinkPanel = $state(false);
+  let pasteInput = $state("");
+  let linking = $state(false);
+  let linkError = $state("");
+  let linkSuccess = $state("");
+
+  async function handleLink() {
+    const key = pasteInput.trim();
+    if (!key) return;
+    linking = true;
+    linkError = "";
+    linkSuccess = "";
+    try {
+      setSyncKey(key);
+      const pulled = await syncPull(key);
+      connectSync();
+      linkSuccess = `Verknüpft — ${pulled} Einträge übernommen`;
+      // Brief beat for the user to see the success state.
+      setTimeout(() => onclose(), 600);
+    } catch (e) {
+      linkError = e instanceof Error ? e.message : String(e);
+      // Bogus key or pull failed — roll back so we don't leave a stale key
+      // (also clears LS_SYNC_LAST_TS and the in-memory encryption key).
+      clearSyncKey();
+    } finally {
+      linking = false;
+    }
+  }
 
   const cards = [
     {
@@ -125,5 +155,61 @@
     >
       {step < cards.length - 1 ? "Weiter" : "Los geht's"}
     </button>
+
+    <!-- Existing-user shortcut on the last (sync) card -->
+    {#if step === cards.length - 1}
+      {#if !showLinkPanel}
+        <button
+          onclick={() => (showLinkPanel = true)}
+          class="w-full mt-3 flex items-center justify-center gap-1.5 text-xs font-extrabold text-(--color-text) hover:opacity-70 transition-opacity"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m-4 6H4m0 0l4 4m-4-4l4-4" />
+          </svg>
+          Schon wimg-User? Sync-Schlüssel einfügen
+        </button>
+      {:else}
+        <div class="mt-4 pt-4 border-t border-(--color-border) space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-(--color-text)">Sync-Schlüssel einfügen</span>
+            <button
+              onclick={() => {
+                showLinkPanel = false;
+                pasteInput = "";
+                linkError = "";
+                linkSuccess = "";
+              }}
+              class="text-xs text-(--color-text-secondary) hover:text-(--color-text)"
+            >
+              Abbrechen
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <input
+              type="text"
+              bind:value={pasteInput}
+              placeholder="XXXX-XXXX-XXXX-XXXX"
+              class="flex-1 bg-(--color-bg) rounded-xl px-3 py-2 text-xs font-mono text-(--color-text) outline-none border border-(--color-border) focus:border-(--color-text)"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+            />
+            <button
+              onclick={handleLink}
+              disabled={linking || !pasteInput.trim()}
+              class="px-3 py-2 rounded-xl bg-(--color-text) text-(--color-bg) text-xs font-bold disabled:opacity-50 transition-opacity"
+            >
+              {linking ? "..." : "Verknüpfen"}
+            </button>
+          </div>
+          {#if linkError}
+            <p class="text-xs text-red-600">{linkError}</p>
+          {/if}
+          {#if linkSuccess}
+            <p class="text-xs text-emerald-600">{linkSuccess}</p>
+          {/if}
+        </div>
+      {/if}
+    {/if}
   </div>
 </div>

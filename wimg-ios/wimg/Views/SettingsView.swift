@@ -10,6 +10,14 @@ struct SettingsView: View {
     @State private var syncError = ""
     @State private var syncSuccess = ""
     @State private var lastSync = 0
+    @State private var showSyncKey = false
+    @State private var showQRSheet = false
+
+    /// Matches the web mask: first 4 + middle hyphenated dots + last 4.
+    private var maskedSyncKey: String {
+        guard syncKey.count > 8 else { return syncKey }
+        return syncKey.prefix(4) + "••••-••••-••••-" + syncKey.suffix(4)
+    }
 
     // Locale
     @State private var currentLocale: String = UserDefaults.standard.string(forKey: "wimg_locale") ?? "de"
@@ -99,21 +107,38 @@ struct SettingsView: View {
                         .disabled(syncing)
                     } else {
                         VStack(spacing: 12) {
-                            // Sync Key
+                            // Sync Key — mask/reveal + copy + QR (parity with web)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(#L("Sync-Schlüssel"))
                                     .font(.caption2)
                                     .foregroundStyle(WimgTheme.textSecondary)
 
                                 HStack(spacing: 8) {
-                                    Text(syncKey)
-                                        .font(.system(.caption, design: .monospaced))
-                                        .foregroundStyle(WimgTheme.text)
-                                        .lineLimit(1)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(10)
-                                        .background(WimgTheme.bg)
-                                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    ZStack(alignment: .trailing) {
+                                        Text(showSyncKey ? syncKey : maskedSyncKey)
+                                            .font(.system(.caption, design: .monospaced))
+                                            .foregroundStyle(WimgTheme.text)
+                                            .lineLimit(1)
+                                            .truncationMode(.middle)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(.leading, 10)
+                                            .padding(.trailing, 36)
+                                            .padding(.vertical, 10)
+                                            .background(WimgTheme.bg)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                                        Button {
+                                            showSyncKey.toggle()
+                                        } label: {
+                                            Image(systemName: showSyncKey ? "eye.slash" : "eye")
+                                                .font(.caption)
+                                                .foregroundStyle(WimgTheme.textSecondary)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 8)
+                                                .contentShape(Rectangle())
+                                        }
+                                        .accessibilityLabel(showSyncKey ? L("Sync-Schlüssel verbergen") : L("Sync-Schlüssel anzeigen"))
+                                    }
 
                                     Button {
                                         UIPasteboard.general.string = syncKey
@@ -125,6 +150,19 @@ struct SettingsView: View {
                                             .background(WimgTheme.bg)
                                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                                     }
+                                    .accessibilityLabel(L("Sync-Schlüssel kopieren"))
+
+                                    Button {
+                                        showQRSheet = true
+                                    } label: {
+                                        Image(systemName: "qrcode")
+                                            .font(.caption)
+                                            .foregroundStyle(WimgTheme.textSecondary)
+                                            .padding(10)
+                                            .background(WimgTheme.bg)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    }
+                                    .accessibilityLabel(L("QR-Code anzeigen"))
                                 }
                             }
 
@@ -192,6 +230,9 @@ struct SettingsView: View {
                 }
                 .padding(20)
                 .wimgCard()
+
+                // MARK: - FinTS Background Refresh
+                backgroundRefreshSection
 
                 // MARK: - Theme Section
                 VStack(alignment: .leading, spacing: 16) {
@@ -420,6 +461,9 @@ struct SettingsView: View {
         .background(WimgTheme.bg)
         .navigationTitle(#L("Einstellungen"))
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showQRSheet) {
+            SyncQRSheet(syncKey: syncKey)
+        }
         .onAppear {
             Task {
                 if let key = await SyncService.shared.syncKey {
@@ -428,6 +472,66 @@ struct SettingsView: View {
                 }
                 lastSync = await SyncService.shared.lastSyncTimestamp
             }
+        }
+    }
+
+    // MARK: - FinTS Background Refresh
+
+    @AppStorage(BackgroundRefresh.enabledKey) private var bgRefreshEnabled = true
+    @State private var hasSavedFintsCreds: Bool = KeychainService.hasFintsCredentials
+
+    private var backgroundRefreshSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.teal.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                    .overlay {
+                        Image(systemName: "arrow.clockwise.circle")
+                            .foregroundStyle(.teal)
+                    }
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(#L("Automatische Bank-Aktualisierung"))
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                            .foregroundStyle(WimgTheme.text)
+                        InfoTooltip(text: #L("iOS weckt die App regelmäßig (meist 1× pro Tag, abhängig von Akku, Netz und Nutzung) und ruft neue Umsätze von deiner Bank ab. Du bekommst eine Mitteilung bei neuen Umsätzen oder wenn eine TAN benötigt wird. Die PIN bleibt im Schlüsselbund deines Geräts. System­weit abschalten unter iOS-Einstellungen → wimg → Hintergrundaktualisierung."))
+                    }
+                    Text(#L("Holt im Hintergrund neue Umsätze"))
+                        .font(.caption2)
+                        .foregroundStyle(WimgTheme.textSecondary)
+                }
+                Spacer()
+            }
+
+            Toggle(isOn: Binding(
+                get: { bgRefreshEnabled },
+                set: { newValue in
+                    bgRefreshEnabled = newValue
+                    if newValue {
+                        BackgroundRefresh.schedule()
+                    } else {
+                        BackgroundRefresh.cancel()
+                    }
+                }
+            )) {
+                Text(#L("Schnellabfrage im Hintergrund"))
+                    .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    .foregroundStyle(WimgTheme.text)
+            }
+            .tint(WimgTheme.accent)
+            .disabled(!hasSavedFintsCreds)
+
+            if !hasSavedFintsCreds {
+                Text(#L("Verbinde zuerst eine Bank und speichere die PIN, um die automatische Aktualisierung zu aktivieren."))
+                    .font(.caption2)
+                    .foregroundStyle(WimgTheme.textSecondary)
+            }
+        }
+        .padding(20)
+        .wimgCard(radius: WimgTheme.radiusMedium)
+        .onAppear {
+            hasSavedFintsCreds = KeychainService.hasFintsCredentials
         }
     }
 
