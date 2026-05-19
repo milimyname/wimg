@@ -146,7 +146,10 @@
     try {
       const root = await navigator.storage.getDirectory();
       await root.removeEntry("wimg.db").catch(() => {});
-      lock.disable();
+      // clearStorage (not disable) so the overlay stays mounted until
+      // reload — disable() flips lock.isLocked and Svelte unmounts the
+      // gate one paint early, flashing the dashboard.
+      lock.clearStorage();
       clearSyncKey();
       localStorage.removeItem("wimg_sync_last_ts");
       clearDemoFlag();
@@ -201,7 +204,7 @@
         disabled={resetting}
         class="w-full py-3.5 rounded-2xl bg-rose-600 text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-60 mb-2"
       >
-        {resetting ? "Lösche…" : "Ja, alles löschen"}
+        {resetting ? "Lösche..." : "Ja, alles löschen"}
       </button>
       <button
         type="button"

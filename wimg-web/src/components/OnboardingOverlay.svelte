@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { setSyncKey, syncPull, connectSync, clearSyncKey } from "$lib/sync";
+  import { setSyncKey, syncPull, connectSync, clearSyncKey, isValidSyncKey } from "$lib/sync";
 
   let { onclose }: { onclose: () => void } = $props();
 
@@ -11,8 +11,13 @@
   let linkSuccess = $state("");
 
   async function handleLink() {
-    const key = pasteInput.trim();
-    if (!key) return;
+    const raw = pasteInput.trim();
+    if (!raw) return;
+    if (!isValidSyncKey(raw)) {
+      linkError = "Ungültiger Sync-Schlüssel.";
+      return;
+    }
+    const key = raw.toLowerCase();
     linking = true;
     linkError = "";
     linkSuccess = "";
@@ -188,8 +193,11 @@
             <input
               type="text"
               bind:value={pasteInput}
-              placeholder="XXXX-XXXX-XXXX-XXXX"
-              class="flex-1 bg-(--color-bg) rounded-xl px-3 py-2 text-xs font-mono text-(--color-text) outline-none border border-(--color-border) focus:border-(--color-text)"
+              oninput={() => (linkError = "")}
+              placeholder="xxxxxxxx-xxxx-4xxx-xxxx-xxxxxxxxxxxx"
+              class="flex-1 bg-(--color-bg) rounded-xl px-3 py-2 text-xs font-mono text-(--color-text) outline-none border focus:border-(--color-text) {linkError
+                ? 'border-red-400'
+                : 'border-(--color-border)'}"
               autocomplete="off"
               autocapitalize="off"
               spellcheck="false"

@@ -247,12 +247,7 @@ class LockStore {
 
   /** Tear everything down. */
   disable() {
-    localStorage.removeItem(PIN_HASH_KEY);
-    localStorage.removeItem(PIN_SALT_KEY);
-    localStorage.removeItem(PASSKEY_ID_KEY);
-    localStorage.removeItem(FAIL_COUNT_KEY);
-    localStorage.removeItem(COOLDOWN_UNTIL_KEY);
-    sessionStorage.removeItem(UNLOCKED_KEY);
+    this.clearStorage();
     this.#pinHash = null;
     this.#salt = null;
     this.#passkeyId = null;
@@ -263,6 +258,22 @@ class LockStore {
       clearTimeout(this.#idleTimer);
       this.#idleTimer = null;
     }
+  }
+
+  /**
+   * Remove persisted lock keys without flipping the reactive `#locked`
+   * flag. Used by the LockScreen "PIN vergessen" reset where we want the
+   * overlay to stay mounted until `window.location.reload()` actually
+   * navigates — otherwise Svelte unmounts the gate one paint before the
+   * reload and briefly exposes the underlying dashboard.
+   */
+  clearStorage() {
+    localStorage.removeItem(PIN_HASH_KEY);
+    localStorage.removeItem(PIN_SALT_KEY);
+    localStorage.removeItem(PASSKEY_ID_KEY);
+    localStorage.removeItem(FAIL_COUNT_KEY);
+    localStorage.removeItem(COOLDOWN_UNTIL_KEY);
+    sessionStorage.removeItem(UNLOCKED_KEY);
   }
 
   /** Drop just the passkey without disabling the PIN. */

@@ -43,6 +43,14 @@ export function getSyncKey(): string | null {
   return localStorage.getItem(LS_SYNC_KEY);
 }
 
+// Sync keys are UUID v4. Both `crypto.randomUUID()` and the local fallback
+// generator emit exactly this shape — accepting anything else just creates
+// an unreachable Durable Object on the server with the user's typo.
+const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export function isValidSyncKey(key: string): boolean {
+  return UUID_V4_RE.test(key.trim());
+}
+
 export function setSyncKey(key: string): void {
   localStorage.setItem(LS_SYNC_KEY, key);
   // Clear stale timestamp so next pull fetches ALL data (since=0)

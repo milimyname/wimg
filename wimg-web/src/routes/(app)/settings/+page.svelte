@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, onDestroy, tick } from "svelte";
   import { APP_VERSION, RELEASES_URL } from "$lib/version";
   import { generateQRSvg } from "$lib/qr";
   import { isDemoLoaded, clearDemoFlag } from "$lib/demo";
@@ -29,6 +29,7 @@
     getLastSyncTimestamp,
     connectSync,
     disconnectSync,
+    isValidSyncKey,
   } from "$lib/sync";
 
   let syncEnabled = $state(false);
@@ -109,6 +110,16 @@
   let pinDraft = $state("");
   let pinConfirm = $state("");
   let pinError = $state("");
+  let confirmPinInput = $state<HTMLInputElement | null>(null);
+
+  // The two PIN inputs sit in {#if}/{:else} branches, so `autofocus` only
+  // fires on the first one. When the wizard advances to "confirm", manually
+  // focus the second input after Svelte has mounted it.
+  $effect(() => {
+    if (pinStep === "confirm") {
+      tick().then(() => confirmPinInput?.focus());
+    }
+  });
 
   function startPinSetup() {
     pinDraft = "";
@@ -204,8 +215,13 @@
   let settingsLinkError = $state("");
 
   async function handleSettingsLink() {
-    const key = settingsLinkInput.trim();
-    if (!key) return;
+    const raw = settingsLinkInput.trim();
+    if (!raw) return;
+    if (!isValidSyncKey(raw)) {
+      settingsLinkError = "Ungültiger Sync-Schlüssel.";
+      return;
+    }
+    const key = raw.toLowerCase();
     settingsLinking = true;
     settingsLinkError = "";
     try {
@@ -266,7 +282,11 @@
 
   async function handleLink() {
     if (!linkInput.trim()) return;
-    const key = linkInput.trim();
+    if (!isValidSyncKey(linkInput)) {
+      syncError = "Ungültiger Sync-Schlüssel.";
+      return;
+    }
+    const key = linkInput.trim().toLowerCase();
     setSyncKey(key);
     syncKey = key;
     syncEnabled = true;
@@ -523,8 +543,11 @@
               <input
                 type="text"
                 bind:value={settingsLinkInput}
-                placeholder="XXXX-XXXX-XXXX-XXXX"
-                class="flex-1 bg-(--color-bg) rounded-xl px-3 py-2 text-xs font-mono text-(--color-text) outline-none border border-(--color-border) focus:border-(--color-text)"
+                oninput={() => (settingsLinkError = "")}
+                placeholder="xxxxxxxx-xxxx-4xxx-xxxx-xxxxxxxxxxxx"
+                class="flex-1 bg-(--color-bg) rounded-xl px-3 py-2 text-xs font-mono text-(--color-text) outline-none border focus:border-(--color-text) {settingsLinkError
+                  ? 'border-red-400'
+                  : 'border-(--color-border)'}"
                 autocomplete="off"
                 autocapitalize="off"
                 spellcheck="false"
@@ -735,10 +758,13 @@
               id="link-input"
               type="text"
               bind:value={linkInput}
+              oninput={() => (syncError = "")}
               autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
               data-1p-ignore
-              placeholder="Sync-Schlüssel einfügen"
-              class="flex-1 min-w-0 bg-(--color-bg) rounded-xl px-3 py-2.5 text-sm text-(--color-text) placeholder:text-(--color-text-secondary)/50 outline-none"
+              placeholder="xxxxxxxx-xxxx-4xxx-xxxx-xxxxxxxxxxxx"
+              class="flex-1 min-w-0 bg-(--color-bg) rounded-xl px-3 py-2.5 text-sm font-mono text-(--color-text) placeholder:text-(--color-text-secondary)/50 outline-none border border-transparent"
             />
             <button
               onclick={handleLink}
@@ -1026,7 +1052,7 @@
             pattern="[0-9]*"
             maxlength="4"
             autocomplete="off"
-            autofocus
+            bind:this={confirmPinInput}
             bind:value={pinConfirm}
             placeholder="••••"
             class="text-center text-2xl tracking-[0.4em] py-3 rounded-2xl bg-(--color-bg) border border-gray-200 outline-none focus:border-(--color-text)"

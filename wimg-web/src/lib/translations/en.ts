@@ -183,6 +183,11 @@ export const en: Record<string, string> = {
     "Your sync key also serves as MCP access. Claude.ai can query and manage your financial data. Personal data (IBANs, card numbers, names) is automatically removed.",
   "Aktiviere...": "Enabling...",
   Abbrechen: "Cancel",
+  "Neuen Sync-Schlüssel erstellen": "Create new sync key",
+  "Erstellt einen zufälligen Schlüssel und lädt deine Daten hoch. Du kannst ihn auf weiteren Geräten verwenden, um sie zu verknüpfen.":
+    "Generates a random key and uploads your data. You can use it on other devices to link them.",
+  oder: "or",
+  "Ungültiger Sync-Schlüssel.": "Invalid sync key.",
 
   // Settings — QR / Link / Delete sheets
   "Scanne diesen Code auf dem anderen Gerät": "Scan this code on the other device",
@@ -769,6 +774,13 @@ export const en: Record<string, string> = {
   nie: "never",
   "1 Stunde": "1 hour",
   "Zu viele falsche Versuche. Erneut versuchen in": "Too many wrong attempts. Try again in",
+  "PIN eingeben": "Enter PIN",
+  "PIN zurücksetzen": "Reset PIN",
+  "PIN vergessen?": "Forgot PIN?",
+  "Zu viele falsche Versuche": "Too many wrong attempts",
+  "Mit Face ID / Touch ID entsperren": "Unlock with Face ID / Touch ID",
+  "Die PIN lässt sich nicht wiederherstellen. Beim Zurücksetzen werden alle lokalen Daten gelöscht. Falls Sync aktiv war, kannst du deine Daten anschließend mit dem Sync-Schlüssel wiederherstellen.":
+    "The PIN cannot be recovered. Resetting deletes all local data. If sync was active, you can restore your data afterwards with your sync key.",
 
   // FinTS hub redesign
   "Banken & Konten": "Banks & Accounts",
