@@ -337,6 +337,13 @@
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
 
+  async function openDataBrowser() {
+    const m = await import("$lib/devtools.svelte");
+    m.devtoolsStore.enable();
+    m.devtoolsStore.activeTab = "sql";
+    if (!m.devtoolsStore.open) m.devtoolsStore.toggle();
+  }
+
   function formatLastSync(ts: number): string {
     if (ts === 0) return "Noch nie";
     const d = new Date(ts);
@@ -1158,6 +1165,49 @@
       <h3 class="font-bold text-(--color-text)">Daten exportieren</h3>
       <p class="text-xs text-(--color-text-secondary)">
         Transaktionen als CSV oder komplettes Backup
+      </p>
+    </div>
+    <svg
+      class="w-4 h-4 text-(--color-text-secondary)"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.5"
+        d="M9 5l7 7-7 7"
+      />
+    </svg>
+  </button>
+
+  <!-- Daten-Browser (SQL viewer) -->
+  <button
+    onclick={openDataBrowser}
+    class="bg-white rounded-3xl p-5 shadow-sm flex items-center gap-3 w-full text-left group active:scale-[0.98] transition-transform"
+  >
+    <div
+      class="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center"
+    >
+      <svg
+        class="w-5 h-5 text-indigo-600"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.5"
+          d="M4 7v10c0 2 1 3 8 3s8-1 8-3V7M4 7c0-2 1-3 8-3s8 1 8 3M4 7c0 2 1 3 8 3s8-1 8-3m-8 7c4 0 8-1 8-3"
+        />
+      </svg>
+    </div>
+    <div class="flex-1">
+      <h3 class="font-bold text-(--color-text)">Daten-Browser</h3>
+      <p class="text-xs text-(--color-text-secondary)">
+        SQL-Abfragen gegen die lokale Datenbank
       </p>
     </div>
     <svg
