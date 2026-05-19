@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.9.1 (2026-05-19)
+
+- fix: update bank count assertion after catalog trim
+
 ## v0.9.0 (2026-05-19)
 
 - feat: settings sync prompt + 4-digit PIN with iOS-style LockScreen
