@@ -1901,7 +1901,7 @@ test "all bank BLZs are 8 digits" {
 }
 
 test "bank count is correct" {
-    try std.testing.expectEqual(@as(usize, 1744), banks.len);
+    try std.testing.expectEqual(@as(usize, 1741), banks.len);
 }
 
 test "detectBankFamily identifies Deutsche Bank" {
