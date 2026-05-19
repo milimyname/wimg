@@ -313,9 +313,7 @@
     resetting = true;
     try {
       const root = await navigator.storage.getDirectory();
-      await Promise.allSettled(
-        ["wimg.db", "e5-small-q8-v7.gguf"].map((n) => root.removeEntry(n)),
-      );
+      await root.removeEntry("wimg.db").catch(() => {});
       clearSyncKey();
       localStorage.removeItem("wimg_sync_last_ts");
       clearDemoFlag();

@@ -642,9 +642,7 @@ const STATIC_ACTIONS: PaletteAction[] = [
     handler: async () => {
       try {
         const root = await navigator.storage.getDirectory();
-        await Promise.allSettled(
-          ["wimg.db", "e5-small-q8-v7.gguf"].map((n) => root.removeEntry(n)),
-        );
+        await root.removeEntry("wimg.db").catch(() => {});
       } catch {
         /* ignore */
       }
@@ -662,9 +660,7 @@ const STATIC_ACTIONS: PaletteAction[] = [
       try {
         close();
         const root = await navigator.storage.getDirectory();
-        await Promise.allSettled(
-          ["wimg.db", "e5-small-q8-v7.gguf"].map((n) => root.removeEntry(n)),
-        );
+        await root.removeEntry("wimg.db").catch(() => {});
       } catch {
         /* ignore */
       }

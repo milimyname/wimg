@@ -14,11 +14,16 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { lock } from "$lib/lock.svelte";
+  import { clearSyncKey } from "$lib/sync";
+  import { clearDemoFlag } from "$lib/demo";
+  import { LS_ONBOARDING_COMPLETED } from "$lib/config";
 
   let pin = $state("");
   let error = $state(false);
   let busy = $state(false);
   let shake = $state(false);
+  let forgotMode = $state(false);
+  let resetting = $state(false);
   // Trigger reactive ticks so the cooldown countdown updates each second
   // even though `lock.cooldownSecondsRemaining` is a getter on Date.now().
   let tick = $state(0);
@@ -129,13 +134,39 @@
     await lock.verifyPasskey();
     busy = false;
   }
+
+  // PIN-forgotten escape hatch. The lock gates the UI but doesn't encrypt
+  // OPFS, so the only honest "reset" is a factory wipe: clear local DB +
+  // sync key + onboarding flags, then reload. Sync users can re-link by
+  // entering their sync key again; non-sync users start fresh. Mirrors the
+  // Settings → Danger Zone reset so the lock has the same teeth either way.
+  async function handleReset() {
+    if (resetting) return;
+    resetting = true;
+    try {
+      const root = await navigator.storage.getDirectory();
+      await root.removeEntry("wimg.db").catch(() => {});
+      lock.disable();
+      clearSyncKey();
+      localStorage.removeItem("wimg_sync_last_ts");
+      clearDemoFlag();
+      localStorage.removeItem(LS_ONBOARDING_COMPLETED);
+      window.location.reload();
+    } catch {
+      resetting = false;
+    }
+  }
 </script>
 
 <div class="fixed inset-0 z-100 bg-(--color-bg) flex flex-col items-center justify-center px-6">
   <!-- Brand mark -->
   <div class="mb-8 flex flex-col items-center">
     <h1 class="text-4xl font-display font-black tracking-tight text-(--color-text)">wimg</h1>
-    {#if isCooldown}
+    {#if forgotMode}
+      <p class="mt-1.5 text-xs font-medium text-(--color-text-secondary)">
+        PIN zurücksetzen
+      </p>
+    {:else if isCooldown}
       <p class="mt-1.5 text-xs font-medium text-rose-600">
         Zu viele falsche Versuche · {cooldownSec}s
       </p>
@@ -145,6 +176,43 @@
       </p>
     {/if}
   </div>
+
+  {#if forgotMode}
+    <!-- Reset confirmation — replaces the keypad. -->
+    <div class="w-full max-w-[320px] flex flex-col items-center">
+      <div class="w-14 h-14 rounded-full bg-rose-500/10 flex items-center justify-center mb-4">
+        <svg class="w-7 h-7 text-rose-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+        </svg>
+      </div>
+      <h2 class="font-display font-extrabold text-lg text-(--color-text) text-center mb-1.5">
+        Alle Daten löschen?
+      </h2>
+      <p class="text-[13px] leading-relaxed text-(--color-text-secondary) text-center mb-6">
+        Die PIN lässt sich nicht wiederherstellen. Beim Zurücksetzen werden
+        alle lokalen Daten gelöscht. Falls Sync aktiv war, kannst du deine
+        Daten anschließend mit dem Sync-Schlüssel wiederherstellen.
+      </p>
+
+      <button
+        type="button"
+        onclick={handleReset}
+        disabled={resetting}
+        class="w-full py-3.5 rounded-2xl bg-rose-600 text-white font-bold text-sm transition-transform active:scale-[0.98] disabled:opacity-60 mb-2"
+      >
+        {resetting ? "Lösche…" : "Ja, alles löschen"}
+      </button>
+      <button
+        type="button"
+        onclick={() => (forgotMode = false)}
+        disabled={resetting}
+        class="w-full py-3 rounded-2xl text-sm font-medium text-(--color-text-secondary) hover:bg-(--color-text)/[0.06] transition-colors disabled:opacity-50"
+      >
+        Abbrechen
+      </button>
+    </div>
+  {:else}
 
   <!-- PIN dots — iOS-style: ring when empty, filled when active -->
   <div
@@ -214,6 +282,16 @@
       </svg>
     </button>
   </div>
+
+  <button
+    type="button"
+    onclick={() => (forgotMode = true)}
+    disabled={busy}
+    class="mt-8 text-xs font-medium text-(--color-text-secondary) hover:text-(--color-text) transition-colors disabled:opacity-50"
+  >
+    PIN vergessen?
+  </button>
+  {/if}
 </div>
 
 <style>
