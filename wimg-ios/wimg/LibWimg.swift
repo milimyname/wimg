@@ -601,7 +601,15 @@ final class LibWimg {
     /// Read a length-prefixed string (4 bytes LE length + data) and decode as JSON.
     private static func decodeLengthPrefixed<T: Decodable>(_ ptr: UnsafePointer<UInt8>) throws -> T {
         let len = UInt32(ptr[0]) | (UInt32(ptr[1]) << 8) | (UInt32(ptr[2]) << 16) | (UInt32(ptr[3]) << 24)
-        let data = Data(bytes: ptr.advanced(by: 4), count: Int(len))
+        var data = Data(bytes: ptr.advanced(by: 4), count: Int(len))
+        // Defensive: FinTS MT940 :86: fields occasionally carry embedded 0x00
+        // bytes that survive into description text. Foundation's JSONDecoder
+        // rejects raw NUL inside string literals ("Unescaped control character
+        // '0x0'"), so swap them for spaces before decoding. Real fix lives in
+        // libwimg's MT940 parser — this is a belt-and-braces guard.
+        if data.contains(0) {
+            data = Data(data.map { $0 == 0 ? UInt8(ascii: " ") : $0 })
+        }
         return try JSONDecoder().decode(T.self, from: data)
     }
 

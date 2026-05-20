@@ -266,10 +266,22 @@ fn finalizeTxnDescription(maybe_txn: ?*Transaction, field86: []const u8, account
         desc = field86;
     }
 
-    // Write description to transaction
-    const copy_len = @min(desc.len, 256);
-    @memcpy(txn.description[0..copy_len], desc[0..copy_len]);
-    txn.description_len = @intCast(copy_len);
+    // Write description to transaction. Strip NUL bytes (and other C0 control
+    // bytes except whitespace) — they leak in occasionally from FinTS @len@
+    // binary segments that get re-assembled into the :86: stream. SQLite stores
+    // them, the JSON formatter would re-emit them, and Foundation's
+    // JSONDecoder rejects them as "Unescaped control character" on read.
+    const cap = @min(desc.len, 256);
+    var written: usize = 0;
+    var k: usize = 0;
+    while (k < cap) : (k += 1) {
+        const b = desc[k];
+        if (b == 0) continue;
+        if (b < 0x20 and b != '\t' and b != '\n' and b != '\r') continue;
+        txn.description[written] = b;
+        written += 1;
+    }
+    txn.description_len = @intCast(written);
 
     // Set account
     parser.setAccount(txn, account);

@@ -56,9 +56,19 @@ fn parseEntry(entry: []const u8, account: []const u8, out_txn: *Transaction) boo
         (extractTagText(entry, "AddtlNtryInf") orelse "CAMT Buchung");
     const desc_trimmed = std.mem.trim(u8, desc, " \t\r\n");
     const desc_effective = if (desc_trimmed.len > 0) desc_trimmed else "CAMT Buchung";
-    const copy_len = @min(desc_effective.len, out_txn.description.len);
-    @memcpy(out_txn.description[0..copy_len], desc_effective[0..copy_len]);
-    out_txn.description_len = @intCast(copy_len);
+    // Strip NUL and other C0 control bytes (see mt940.zig finalizeTxnDescription
+    // for the rationale — same JSONDecoder pitfall).
+    const cap = @min(desc_effective.len, out_txn.description.len);
+    var written: usize = 0;
+    var k: usize = 0;
+    while (k < cap) : (k += 1) {
+        const b = desc_effective[k];
+        if (b == 0) continue;
+        if (b < 0x20 and b != '\t' and b != '\n' and b != '\r') continue;
+        out_txn.description[written] = b;
+        written += 1;
+    }
+    out_txn.description_len = @intCast(written);
 
     setCurrency(out_txn, amount.ccy);
     out_txn.category = .uncategorized;

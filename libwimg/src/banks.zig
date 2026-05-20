@@ -556,7 +556,6 @@ pub const banks = blk: {
         makeBank("39060180", "GENODED1AAC", "Aachener Bank eG", "https://fints1.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("39070020", "DEUTDEDK390", "Deutsche Bank", "https://fints.deutsche-bank.de/"),
         makeBank("39070024", "DEUTDEDB390", "Deutsche Bank Privat und Geschäftskunden", "https://fints.deutsche-bank.de/"),
-        makeBank("39162980", "GENODED1WUR", "VR-Bank eG", "https://fints1.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("39362254", "GENODED1RSC", "Raiffeisenbank Eschweiler eG", "https://fints1.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("39540052", "COBADEFFXXX", "Commerzbank", "https://fints.commerzbank.de/fints"),
         makeBank("39550110", "SDUEDE33XXX", "Sparkasse Düren", "https://banking-rl5.s-fints-pt-rl.de/fints30"),
@@ -975,10 +974,8 @@ pub const banks = blk: {
         makeBank("57062675", "GENODE51NWA", "Raiffeisenbk. Niederwallmenach", "https://fints1.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("57069144", "GENODED1KAI", "Raiffeisenbank MEHR eG", "https://fints1.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("57069238", "GENODED1ASN", "Raiba Asbach-Neustadt eG", "https://fints1.atruvia.de/cgi-bin/hbciservlet"),
-        makeBank("57069361", "GENODED1WLG", "Raiffeisenbank Welling eG", "https://fints1.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("57070024", "DEUTDEDB570", "Deutsche Bank Privat und Geschäftskunden", "https://fints.deutsche-bank.de/"),
         makeBank("57070045", "DEUTDE5M570", "Deutsche Bank", "https://fints.deutsche-bank.de/"),
-        makeBank("57090900", "GENODEF1P12", "PSD Bank Koblenz eG", "https://fints2.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("57091100", "GENODE51HGR", "Volksbank Höhr-Grenzhausen -alt-", "https://fints2.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("57092800", "GENODE51DIE", "Volksbank Rhein-Lahn eG", "https://fints2.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("57351030", "MALADE51AKI", "Sparkasse Westerwald-Sieg", "https://banking-rp1.s-fints-pt-rp.de/fints30"),
@@ -1001,7 +998,6 @@ pub const banks = blk: {
         makeBank("58650030", "MALADE51BIT", "Kreissparkasse Bitburg-Prüm", "https://banking-rp1.s-fints-pt-rp.de/fints30"),
         makeBank("58651240", "MALADE51DAU", "Kreissparkasse Vulkaneifel", "https://banking-rp1.s-fints-pt-rp.de/fints30"),
         makeBank("58660101", "GENODED1BIT", "Volksbank Trier Eifel eG", "https://fints1.atruvia.de/cgi-bin/hbciservlet"),
-        makeBank("58661901", "GENODED1WSC", "Raiffeisenbank Westeifel eG", "https://fints1.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("58751230", "MALADE51BKS", "Sparkasse Mittelmosel-Eifel-Mosel-Hunsrück", "https://banking-rp1.s-fints-pt-rp.de/fints30"),
         makeBank("58771224", "DEUTDEDB587", "Deutsche Bank Privat und Geschäftskunden", "https://fints.deutsche-bank.de/"),
         makeBank("58771242", "DEUTDE5M587", "Deutsche Bank", "https://fints.deutsche-bank.de/"),
@@ -1499,7 +1495,6 @@ pub const banks = blk: {
         makeBank("73369821", "GENODEF1LBB", "VR SüdBank eG", "https://fints2.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("73369826", "GENODEF1LIA", "Volksbank Lindenberg eG", "https://fints2.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("73369851", "GENODEF1AIT", "Raiffeisenbank Aitrang-Ruderatshofen", "https://fints2.atruvia.de/cgi-bin/hbciservlet"),
-        makeBank("73369859", "GENODEF1BIN", "Raiffeisenbank", "https://fints2.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("73369871", "GENODEF1EGB", "Raiffeisenbank Baisweil-Eggenthal-Friesenried", "https://fints2.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("73369918", "GENODEF1OKI", "Raiffeisenbank Kirchweihtal", "https://fints2.atruvia.de/cgi-bin/hbciservlet"),
         makeBank("73369920", "GENODEF1SFO", "VR Bank Kempten-Oberallgäu eG", "https://fints2.atruvia.de/cgi-bin/hbciservlet"),
@@ -1814,7 +1809,6 @@ pub const banks = blk: {
         // Subsembly FinTS Dummy test server (BLZ 99000354, BIC SUBSDE00)
         // Credentials: user from Subsembly, PIN 123456 (no SCA) or 654321 (SCA required)
         // Account: Kontonummer 2000, IBAN DE86 9900 0354 0000 0020 00
-        makeBank("99000354", "SUBSDE00XXX", "Subsembly FinTS Dummy", "https://fints.subsembly.net/fints"),
     };
 };
 
@@ -1879,12 +1873,6 @@ test "findByBlz returns null for wrong length" {
     try std.testing.expect(findByBlz("123456789") == null);
 }
 
-test "findByBlz returns Subsembly test bank" {
-    const bank = findByBlz("99000354") orelse return error.TestUnexpectedResult;
-    try std.testing.expectEqualStrings("Subsembly FinTS Dummy", bank.nameSlice());
-    try std.testing.expectEqualStrings("https://fints.subsembly.net/fints", bank.urlSlice());
-}
-
 test "all bank URLs start with https" {
     for (&banks) |*bank| {
         const url = bank.urlSlice();
@@ -1901,7 +1889,7 @@ test "all bank BLZs are 8 digits" {
 }
 
 test "bank count is correct" {
-    try std.testing.expectEqual(@as(usize, 1741), banks.len);
+    try std.testing.expectEqual(@as(usize, 1735), banks.len);
 }
 
 test "detectBankFamily identifies Deutsche Bank" {

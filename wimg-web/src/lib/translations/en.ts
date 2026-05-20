@@ -677,6 +677,16 @@ export const en: Record<string, string> = {
   "Transaktionen ansehen": "View Transactions",
   "Verbindung fehlgeschlagen": "Connection failed",
   "TAN erforderlich": "TAN required",
+  "Letzter Umsatz": "Last transaction",
+  "Erstmaliger Abruf – 12 Monate Historie": "First fetch – 12 months of history",
+  "PIN nicht gespeichert. Bitte erneut anmelden.": "PIN not saved. Please sign in again.",
+  "Anmeldung fehlgeschlagen": "Sign-in failed",
+  "3 Monate": "3 months",
+  "6 Monate": "6 months",
+  "1 Jahr": "1 year",
+  "2 Jahre": "2 years",
+  "Kategorisiere...": "Categorizing...",
+  kategorisiert: "categorized",
   "Abruf fehlgeschlagen": "Fetch failed",
 
   // iOS-only: all remaining view strings

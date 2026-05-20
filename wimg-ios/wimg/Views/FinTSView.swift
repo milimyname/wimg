@@ -51,12 +51,17 @@ struct FinTSView: View {
     @State private var loadingTanMedia = false
 
     // Date range
-    @State private var dateFrom = Calendar.current.date(byAdding: .day, value: -90, to: Date())!
+    @State private var dateFrom = Calendar.current.date(byAdding: .month, value: -12, to: Date())!
     @State private var dateTo = Date()
+    // Latest known transaction date for the active account (nil = first import).
+    // Drives smart date defaults: incremental from latest, full history otherwise.
+    @State private var latestImportDate: Date?
 
     // Result
     @State private var importedCount = 0
     @State private var duplicateCount = 0
+    @State private var categorizing = false
+    @State private var categorizedCount: Int? = nil
 
     private var photoTanImage: UIImage? {
         guard let data = photoTanData else { return nil }
@@ -66,9 +71,12 @@ struct FinTSView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Error banner — always at the top of the scroll content so
-                // the user actually sees it without scrolling.
-                if let error = errorMessage {
+                // Error banner — top of the scroll content for most stages so
+                // the user sees it without scrolling. On the credentials stage
+                // the form is long enough that a top banner can scroll out of
+                // view, so we render the banner inline just above the CTA
+                // button instead (see credentialsSection).
+                if let error = errorMessage, stage != .credentials {
                     errorBanner(classify(error))
                         .padding(.horizontal, stage == .bankSelect ? 20 : 16)
                         .transition(.move(edge: .top).combined(with: .opacity))
@@ -729,7 +737,7 @@ struct FinTSView: View {
                         .foregroundStyle(WimgTheme.textSecondary)
                     TextField(#L("Benutzername / Anmeldekennung"), text: $kennung)
                         .font(.subheadline)
-                        .textContentType(.username)
+                        .textContentType(.oneTimeCode) // suppress iCloud Keychain AutoFill scan (no user has a FinTS credential saved there)
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
                         .padding(12)
@@ -744,7 +752,7 @@ struct FinTSView: View {
                         .foregroundStyle(WimgTheme.textSecondary)
                     SecureField("Online-Banking PIN", text: $pin)
                         .font(.subheadline)
-                        .textContentType(.password)
+                        .textContentType(.oneTimeCode)
                         .padding(12)
                         .background(WimgTheme.bg)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -785,6 +793,13 @@ struct FinTSView: View {
             .overlay {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .stroke(Color.orange.opacity(0.2), lineWidth: 1)
+            }
+
+            // Inline error banner — placed right above the CTA so the user
+            // doesn't miss it after the form scrolls past the top of the view.
+            if let error = errorMessage {
+                errorBanner(classify(error))
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
 
             // Connect button
@@ -1087,14 +1102,29 @@ struct FinTSView: View {
                         .font(.system(.subheadline, design: .rounded))
                         .foregroundStyle(WimgTheme.textSecondary)
                 }
+
+                // Smart-default hint: tell the user where the "Von" picker came
+                // from so they can trust it without checking the calendar.
+                if let latest = latestImportDate {
+                    Text("\(#L("Letzter Umsatz")): \(formatShortDate(latest))")
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                } else {
+                    Text(#L("Erstmaliger Abruf – 12 Monate Historie"))
+                        .font(.system(.caption, design: .rounded))
+                        .foregroundStyle(WimgTheme.textSecondary)
+                }
             }
 
             VStack(spacing: 12) {
-                DatePicker(#L("Von"), selection: $dateFrom, displayedComponents: .date)
+                // Clamp `Von` to between (today - 10 years) and the chosen `Bis`.
+                DatePicker(#L("Von"), selection: $dateFrom, in: tenYearsAgo...dateTo, displayedComponents: .date)
                     .font(.system(.subheadline, design: .rounded))
                     .environment(\.locale, Locale(identifier: UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE"))
 
-                DatePicker(#L("Bis"), selection: $dateTo, displayedComponents: .date)
+                // `Bis` must never be in the future — banks reject it and the
+                // result screen showed "21.05.2026 – future" before this clamp.
+                DatePicker(#L("Bis"), selection: $dateTo, in: dateFrom...Date(), displayedComponents: .date)
                     .font(.system(.subheadline, design: .rounded))
                     .environment(\.locale, Locale(identifier: UserDefaults.standard.string(forKey: "wimg_locale") == "en" ? "en_US" : "de_DE"))
             }
@@ -1102,9 +1132,34 @@ struct FinTSView: View {
             .background(WimgTheme.bg)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
+            // Quick presets — bank history limits vary (Comdirect ~25 months,
+            // Sparkasse 90 days, DKB 2 years). "Alle" sends a 5-year-back date
+            // and lets the bank truncate; that's the closest FinTS gives us to
+            // "fetch everything" since the protocol has no "account opening
+            // date" call. Tap a chip → updates dateFrom (dateTo stays today).
+            HStack(spacing: 8) {
+                ForEach(datePresets, id: \.label) { preset in
+                    Button {
+                        let cal = Calendar.current
+                        dateFrom = cal.date(byAdding: preset.component, value: -preset.value, to: Date()) ?? dateFrom
+                        dateTo = Date()
+                    } label: {
+                        Text(preset.label)
+                            .font(.system(.caption, design: .rounded, weight: .semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color(.systemGray6))
+                            .foregroundStyle(WimgTheme.text)
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             Button {
-                stage = .fetching
-                Task { await handleFetch() }
+                // Always re-establish the dialog first — the previous one was
+                // closed by HKEND on the prior successful fetch.
+                Task { await handleReFetch() }
             } label: {
                 Label(#L("Kontoauszüge abrufen"), systemImage: "arrow.down.doc")
                     .font(.system(.headline, design: .rounded, weight: .bold))
@@ -1114,8 +1169,15 @@ struct FinTSView: View {
                     .foregroundStyle(WimgTheme.bg)
                     .clipShape(Capsule())
             }
+            .disabled(connecting)
         }
         .padding(24)
+        .task {
+            // Refresh the smart default each time the user lands on this view —
+            // they may have just completed an import that moved the latest date.
+            await loadLatestImportDate(forBank: selectedBank?.name)
+            applySmartDateDefaults()
+        }
         .wimgCard(radius: WimgTheme.radiusLarge)
         .padding(.horizontal)
     }
@@ -1213,20 +1275,46 @@ struct FinTSView: View {
 
             if importedCount > 0 {
                 Button {
-                    let count = LibWimg.autoCategorize()
-                    if count > 0 {
-                        NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+                    guard !categorizing, categorizedCount == nil else { return }
+                    categorizing = true
+                    // Off-main: autoCategorize iterates all uncategorized rows
+                    // and runs the rules table — synchronous SQLite work that
+                    // would freeze the result screen briefly otherwise.
+                    Task.detached(priority: .userInitiated) {
+                        let count = LibWimg.autoCategorize()
+                        await MainActor.run {
+                            categorizing = false
+                            categorizedCount = count
+                            // Refresh dashboards/transactions even on a zero
+                            // match — imported rows still need to surface
+                            // somewhere when no rule fires.
+                            NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
+                        }
                     }
                 } label: {
-                    Label("Kategorisieren (\(importedCount))", systemImage: "tag")
-                        .font(.system(.subheadline, design: .rounded, weight: .bold))
-                        .frame(maxWidth: .infinity)
-                        .padding(16)
-                        .background(WimgTheme.accent)
-                        .foregroundStyle(WimgTheme.heroText)
-                        .clipShape(Capsule())
+                    HStack(spacing: 8) {
+                        if categorizing {
+                            ProgressView().tint(WimgTheme.heroText)
+                            Text(#L("Kategorisiere..."))
+                        } else if let done = categorizedCount {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text("\(done) \(#L("kategorisiert"))")
+                        } else {
+                            Image(systemName: "tag")
+                            Text("\(#L("Kategorisieren")) (\(importedCount))")
+                        }
+                    }
+                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                    .frame(maxWidth: .infinity)
+                    .padding(16)
+                    .background(categorizedCount != nil ? Color.green.opacity(0.85) : WimgTheme.accent)
+                    .foregroundStyle(WimgTheme.heroText)
+                    .clipShape(Capsule())
                 }
+                .disabled(categorizing || categorizedCount != nil)
                 .padding(.horizontal)
+                .animation(.easeInOut(duration: 0.18), value: categorizing)
+                .animation(.easeInOut(duration: 0.18), value: categorizedCount)
             }
 
             if let onViewTransactions {
@@ -1584,6 +1672,8 @@ struct FinTSView: View {
                 } else {
                     importedCount = result.imported ?? 0
                     duplicateCount = result.duplicates ?? 0
+                    categorizing = false
+                    categorizedCount = nil
                     stage = .result
                     if importedCount > 0 {
                         NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
@@ -1640,9 +1730,13 @@ struct FinTSView: View {
                         stage = .tanMediumSelect
                         Task { await handleFetchTanMedia() }
                     } else {
-                        // Skip dateRange — fetch last 90d immediately
-                        stage = .fetching
-                        Task { await handleFetch() }
+                        // Manual sign-in: show dateRange so the user picks how
+                        // far back to fetch UP FRONT (previously this jumped
+                        // straight to a 90-day fetch and forced the user to
+                        // re-fetch via "Anderen Zeitraum wählen" if they
+                        // wanted more history). Schnellabfrage stays silent —
+                        // it has its own flow that fetches immediately.
+                        stage = .dateRange
                     }
                 } else if result.needsTan {
                     isDecoupledChallenge = result.decoupled ?? false
@@ -1851,6 +1945,8 @@ struct FinTSView: View {
                 } else {
                     importedCount = result.imported ?? 0
                     duplicateCount = result.duplicates ?? 0
+                    categorizing = false
+                    categorizedCount = nil
                     stage = .result
                     if importedCount > 0 {
                         NotificationCenter.default.post(name: .wimgDataChanged, object: nil)
@@ -1874,6 +1970,31 @@ struct FinTSView: View {
         }
     }
 
+    // Lower bound for the DatePicker. 10 years is well beyond any bank's
+    // history retention — keeps the picker usable without letting the user
+    // accidentally roll back to 1970.
+    private var tenYearsAgo: Date {
+        Calendar.current.date(byAdding: .year, value: -10, to: Date()) ?? Date()
+    }
+
+    // Quick-pick chips on the dateRange screen. `value` is a positive number
+    // of units to subtract from today. "Alle" subtracts 5 years and lets the
+    // bank truncate — closest FinTS gives us to "fetch everything".
+    private struct DatePreset {
+        let label: String
+        let value: Int
+        let component: Calendar.Component
+    }
+    private var datePresets: [DatePreset] {
+        [
+            .init(label: #L("3 Monate"), value: 3, component: .month),
+            .init(label: #L("6 Monate"), value: 6, component: .month),
+            .init(label: #L("1 Jahr"), value: 1, component: .year),
+            .init(label: #L("2 Jahre"), value: 2, component: .year),
+            .init(label: #L("Alle"), value: 5, component: .year),
+        ]
+    }
+
     private func resetToBank() {
         stage = .bankSelect
         selectedBank = nil
@@ -1887,11 +2008,117 @@ struct FinTSView: View {
         errorMessage = nil
         importedCount = 0
         duplicateCount = 0
+        categorizing = false
+        categorizedCount = nil
         refreshing = false
         tanMedia = []
         loadingTanMedia = false
-        dateFrom = Calendar.current.date(byAdding: .day, value: -90, to: Date())!
+        latestImportDate = nil
+        dateFrom = Calendar.current.date(byAdding: .month, value: -12, to: Date())!
         dateTo = Date()
         refreshCachedKeychainState()
+    }
+
+    /// Scan existing transactions for the active bank and pick the most recent
+    /// posting date. Used to default the "Von" picker to right after the last
+    /// known transaction instead of always going back 90 days.
+    private func loadLatestImportDate(forBank bankName: String?) async {
+        // Off-main: scanning 200+ rows + JSON decode is too heavy for the
+        // SwiftUI render path (decisions.md: "iOS reload() via Task.detached").
+        let latest = await Task.detached(priority: .userInitiated) { () -> Date? in
+            let txns = (try? LibWimg.getTransactions()) ?? []
+            let pool: [Transaction] = if let name = bankName?.lowercased(), !name.isEmpty {
+                txns.filter { ($0.account ?? "").lowercased().contains(name) }
+            } else {
+                txns
+            }
+            return pool.compactMap { $0.parsedDate }.max()
+        }.value
+        await MainActor.run { latestImportDate = latest }
+    }
+
+    /// Pick a sane "Von" date based on what's already imported:
+    ///   - first import (no rows for this bank) → 12 months back (matches
+    ///     what most German banks still return; user can extend manually)
+    ///   - incremental fetch → latest known date minus 7 days for overlap
+    ///     (catches late-posting transactions without flooding the request)
+    private func applySmartDateDefaults() {
+        let cal = Calendar.current
+        if let latest = latestImportDate {
+            dateFrom = cal.date(byAdding: .day, value: -7, to: latest) ?? latest
+        } else {
+            dateFrom = cal.date(byAdding: .month, value: -12, to: Date()) ?? Date()
+        }
+        dateTo = Date()
+    }
+
+    /// Re-establish FinTS dialog and refetch with the user-chosen range.
+    /// The previous dialog ended with HKEND after the successful first fetch,
+    /// so a bare fintsFetch returns "Authentication failed". This path silently
+    /// reconnects with the saved PIN, then fetches. Without a saved PIN we drop
+    /// the user back into the credentials form so they can re-enter manually.
+    private func handleReFetch() async {
+        guard let bank = selectedBank else {
+            await MainActor.run {
+                errorMessage = "Bank nicht ausgewählt"
+                stage = .bankSelect
+            }
+            return
+        }
+        let savedKennung = KeychainService.get(KeychainService.fintsKennung) ?? kennung
+        guard let savedPIN = KeychainService.get(KeychainService.fintsPIN), !savedPIN.isEmpty else {
+            await MainActor.run {
+                kennung = savedKennung
+                errorMessage = #L("PIN nicht gespeichert. Bitte erneut anmelden.")
+                stage = .credentials
+            }
+            return
+        }
+
+        await MainActor.run {
+            connecting = true
+            errorMessage = nil
+        }
+
+        do {
+            let connectResult: FintsStatusResult = try await withCheckedThrowingContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        let r = try LibWimg.fintsConnect(blz: bank.blz, user: savedKennung, pin: savedPIN)
+                        continuation.resume(returning: r)
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+            }
+            await MainActor.run {
+                connecting = false
+                if connectResult.isOk {
+                    stage = .fetching
+                    Task { await handleFetch() }
+                } else if connectResult.needsTan {
+                    isDecoupledChallenge = connectResult.decoupled ?? false
+                    challengeText = connectResult.challenge ?? #L("TAN erforderlich")
+                    if let b64 = connectResult.phototan, let data = Data(base64Encoded: b64) {
+                        photoTanData = data
+                        showInvertedPhotoTan = false
+                    }
+                    tanInput = ""
+                    stage = .tanChallenge
+                    if isDecoupledChallenge {
+                        Task { await handleSendTan() }
+                    }
+                } else {
+                    errorMessage = connectResult.message ?? #L("Anmeldung fehlgeschlagen")
+                    stage = .credentials
+                }
+            }
+        } catch {
+            await MainActor.run {
+                connecting = false
+                errorMessage = error.localizedDescription
+                stage = .credentials
+            }
+        }
     }
 }
