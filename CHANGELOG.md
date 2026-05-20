@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.9.2 (2026-05-21)
+
+- fix: FinTS NUL bytes + date UX, refetch auth, categorize feedback
+- fix: sync-key validation, PIN confirm focus, lock reset polish
+- feat: PIN-vergessen reset on LockScreen + drop dead gguf refs
+- feat: add Daten-Browser entry in Settings opening SQL tab
+
 ## v0.9.1 (2026-05-19)
 
 - fix: update bank count assertion after catalog trim
