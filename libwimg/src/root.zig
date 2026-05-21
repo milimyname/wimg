@@ -1954,7 +1954,11 @@ fn wimg_fints_send_tan(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
 
                 const wait_secs: u8 = if (poll_count == 0) first_wait else next_wait;
                 poll_count += 1;
-                if (wait_secs > 0) std.Thread.sleep(@as(u64, wait_secs) * std.time.ns_per_s);
+                if (wait_secs > 0) {
+                    // std.Thread.sleep removed in Zig 0.16 — call libc nanosleep directly.
+                    var ts: std.c.timespec = .{ .sec = @intCast(wait_secs), .nsec = 0 };
+                    _ = std.c.nanosleep(&ts, null);
+                }
                 tan_payload = "";
                 continue;
             }

@@ -420,7 +420,9 @@ fn fillCurrentDateTime(date_buf: *[8]u8, time_buf: *[6]u8) void {
         return;
     }
 
-    const now_secs = std.time.timestamp();
+    var tv: std.c.timeval = undefined;
+    _ = std.c.gettimeofday(&tv, null);
+    const now_secs: i64 = tv.sec;
     const epoch_secs = std.time.epoch.EpochSeconds{ .secs = @intCast(@max(now_secs, 0)) };
     const epoch_day = epoch_secs.getEpochDay();
     const day_secs = epoch_secs.getDaySeconds();
@@ -447,7 +449,12 @@ fn writeFixedWidthUnsigned(buf: []u8, value: anytype) void {
 }
 
 fn generateSecurityReference(out: *[7]u8) []const u8 {
-    const n = std.crypto.random.intRangeAtMost(u32, 1_000_000, 9_999_999);
+    var tv: std.c.timeval = undefined;
+    _ = std.c.gettimeofday(&tv, null);
+    const seed: u64 = @as(u64, @bitCast(@as(i64, tv.sec))) ^
+        (@as(u64, @bitCast(@as(i64, tv.usec))) << 20);
+    var prng = std.Random.DefaultPrng.init(seed);
+    const n = prng.random().intRangeAtMost(u32, 1_000_000, 9_999_999);
     writeFixedWidthUnsigned(out[0..7], n);
     return out[0..7];
 }

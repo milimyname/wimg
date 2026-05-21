@@ -9,7 +9,9 @@ const Date = types.Date;
 const Category = types.Category;
 const ImportResult = types.ImportResult;
 
-// Time: on WASM, import from JS host; on native, use std.time
+// Time: on WASM, import from JS host; on native, call libc gettimeofday
+// (std.time.milliTimestamp was removed in Zig 0.16 — the new Io-based API
+// would require plumbing an Io instance through every call site).
 const is_wasm = builtin.cpu.arch == .wasm32;
 extern fn js_time_ms() i64;
 
@@ -17,7 +19,9 @@ pub fn nowMs() i64 {
     if (is_wasm) {
         return js_time_ms();
     } else {
-        return std.time.milliTimestamp();
+        var tv: std.c.timeval = undefined;
+        _ = std.c.gettimeofday(&tv, null);
+        return @as(i64, tv.sec) * 1000 + @divTrunc(@as(i64, tv.usec), 1000);
     }
 }
 
@@ -418,8 +422,8 @@ pub const Db = struct {
             col_names[i] = c.sqlite3_column_name(s, @intCast(i)) orelse "?";
         }
 
-        var stream = std.io.fixedBufferStream(buf[0..buf_size]);
-        const w = stream.writer();
+        var w_storage = std.Io.Writer.fixed(buf[0..buf_size]);
+        const w = &w_storage;
 
         w.writeAll("{\"columns\":[") catch return null;
         for (0..cols) |i| {
@@ -443,13 +447,13 @@ pub const Db = struct {
                     w.writeAll("null") catch return null;
                 } else if (col_type == 1) { // INTEGER
                     const v = c.sqlite3_column_int64(s, @intCast(i));
-                    std.fmt.format(w, "{d}", .{v}) catch return null;
+                    w.print("{d}", .{v}) catch return null;
                 } else if (col_type == 2) { // FLOAT
                     const v = c.sqlite3_column_double(s, @intCast(i));
-                    std.fmt.format(w, "{d}", .{v}) catch return null;
+                    w.print("{d}", .{v}) catch return null;
                 } else if (col_type == 4) { // SQLITE_BLOB
                     const len: usize = @intCast(c.sqlite3_column_bytes(s, @intCast(i)));
-                    std.fmt.format(w, "\"<BLOB {d} bytes>\"", .{len}) catch return null;
+                    w.print("\"<BLOB {d} bytes>\"", .{len}) catch return null;
                 } else { // TEXT
                     const ptr = c.sqlite3_column_text(s, @intCast(i));
                     const len: usize = @intCast(c.sqlite3_column_bytes(s, @intCast(i)));
@@ -467,7 +471,7 @@ pub const Db = struct {
                                 else => {
                                     if (ch < 0x20) {
                                         // Escape control characters as \u00XX
-                                        std.fmt.format(w, "\\u{d:0>4}", .{@as(u16, ch)}) catch return null;
+                                        w.print("\\u{d:0>4}", .{@as(u16, ch)}) catch return null;
                                     } else {
                                         w.writeByte(ch) catch return null;
                                     }
@@ -484,9 +488,9 @@ pub const Db = struct {
 
         w.writeAll("]") catch return null;
         // Add row count + truncated flag
-        std.fmt.format(w, ",\"count\":{d},\"truncated\":{s}}}", .{ row_idx, if (row_idx >= max_rows) "true" else "false" }) catch return null;
+        w.print(",\"count\":{d},\"truncated\":{s}}}", .{ row_idx, if (row_idx >= max_rows) "true" else "false" }) catch return null;
 
-        return stream.pos;
+        return w.end;
     }
 
     /// Get the last SQLite error message

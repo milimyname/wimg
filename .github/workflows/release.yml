@@ -62,7 +62,7 @@ jobs:
 
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.15.2
+          version: 0.16.0
 
       - uses: oven-sh/setup-bun@v2
 
@@ -118,7 +118,7 @@ jobs:
 
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.15.2
+          version: 0.16.0
 
       - uses: oven-sh/setup-bun@v2
 
@@ -161,9 +161,9 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   build-libwimg-ios:
-    # Zig 0.15.2's build runner can't link on macos-26 (missing
-    # __availability_version_check in libSystem). Build the static
-    # .a on macos-15 — XCFramework is portable across SDK versions.
+    # Historical: Zig 0.15.2's build runner couldn't link on macos-26
+    # (missing __availability_version_check). Keeping macos-15 for now
+    # under 0.16.0 to avoid regressing the iOS build; revisit later.
     needs: [check, detect-changes]
     if: needs.detect-changes.outputs.ios == 'true'
     runs-on: macos-15
@@ -172,7 +172,7 @@ jobs:
 
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.15.2
+          version: 0.16.0
 
       - name: Download SQLite amalgamation
         working-directory: libwimg/vendor
@@ -280,7 +280,7 @@ jobs:
 
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.15.2
+          version: 0.16.0
 
       - name: Setup Android NDK
         uses: android-actions/setup-android@v3

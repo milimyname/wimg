@@ -149,7 +149,7 @@ pub fn build(b: *std.Build) void {
         if (target.result.os.tag.isDarwin()) {
             addAppleSdkPaths(b, lib) catch @panic("Apple SDK not found — is Xcode installed?");
         } else {
-            lib.linkLibC();
+            lib.root_module.link_libc = true;
         }
 
         b.installArtifact(lib);
@@ -202,7 +202,7 @@ pub fn build(b: *std.Build) void {
         .file = b.path("vendor/sqlite3.c"),
         .flags = native_sqlite_flags,
     });
-    db_tests.linkLibC();
+    db_tests.root_module.link_libc = true;
     const run_db_tests = b.addRunArtifact(db_tests);
     test_step.dependOn(&run_db_tests.step);
 
@@ -217,7 +217,7 @@ pub fn build(b: *std.Build) void {
         .file = b.path("vendor/sqlite3.c"),
         .flags = native_sqlite_flags,
     });
-    recurring_tests.linkLibC();
+    recurring_tests.root_module.link_libc = true;
     const run_recurring_tests = b.addRunArtifact(recurring_tests);
     test_step.dependOn(&run_recurring_tests.step);
 
@@ -271,7 +271,6 @@ pub fn build(b: *std.Build) void {
     });
     const run_crypto_tests = b.addRunArtifact(crypto_tests);
     test_step.dependOn(&run_crypto_tests.step);
-
 }
 
 /// Detect Apple SDK via xcrun and configure include/framework/library paths.
@@ -279,14 +278,18 @@ pub fn build(b: *std.Build) void {
 fn addAppleSdkPaths(b: *std.Build, step: *std.Build.Step.Compile) !void {
     const target_val = step.rootModuleTarget();
 
-    const libc = try std.zig.LibCInstallation.findNative(.{
-        .allocator = b.allocator,
-        .target = &target_val,
-        .verbose = false,
-    });
+    const libc = try std.zig.LibCInstallation.findNative(
+        b.allocator,
+        b.graph.io,
+        .{
+            .target = &target_val,
+            .environ_map = &b.graph.environ_map,
+            .verbose = false,
+        },
+    );
 
     // Render libc.txt compatible with Zig's --libc flag
-    var stream: std.io.Writer.Allocating = .init(b.allocator);
+    var stream: std.Io.Writer.Allocating = .init(b.allocator);
     defer stream.deinit();
     try libc.render(&stream.writer);
 

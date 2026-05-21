@@ -67,10 +67,13 @@ fn eqlIgnoreCase(a: []const u8, b: []const u8) bool {
 /// numbers, and filler words. Returns the first meaningful word, or null.
 pub fn extractKeyword(desc: []const u8) ?[]const u8 {
     const skip_prefixes = [_][]const u8{
-        "LASTSCHRIFT", "KARTENZAHLUNG", "SEPA",       "ÜBERWEISUNG", "GUTSCHRIFT",
-        "VISA",        "MASTERCARD",    "ABRECHNUNG", "DAUERAUFTRAG", "EINZAHLUNG",
-        "AUSZAHLUNG",  "BARGELD",       "FOLGENR",    "VERRECHNUNG",  "BASISLASTSCHRIFT",
-        "ECHTZEIT",    "PAYPAL",
+        "LASTSCHRIFT", "KARTENZAHLUNG",    "SEPA",
+        "ÜBERWEISUNG",
+        "GUTSCHRIFT",  "VISA",             "MASTERCARD",
+        "ABRECHNUNG",  "DAUERAUFTRAG",     "EINZAHLUNG",
+        "AUSZAHLUNG",  "BARGELD",          "FOLGENR",
+        "VERRECHNUNG", "BASISLASTSCHRIFT", "ECHTZEIT",
+        "PAYPAL",
     };
     const skip_filler = [_][]const u8{
         "GMBH", "UG",    "AG",     "KG",   "OHG", "GBR", "INC", "LTD",   "LLC",

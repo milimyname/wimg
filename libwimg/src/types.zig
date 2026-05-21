@@ -108,7 +108,7 @@ pub const Category = enum(u8) {
     }
 
     pub fn fromInt(val: u8) Category {
-        return std.meta.intToEnum(Category, val) catch .uncategorized;
+        return std.enums.fromInt(Category, val) orelse .uncategorized;
     }
 };
 

@@ -83,48 +83,17 @@ pub fn sendFintsMessage(
     return sendViaStdlib(allocator, url, enc_buf, out_buf);
 }
 
-/// Zig stdlib HTTP — only available on platforms with filesystem CA certs.
-/// Excluded from iOS builds entirely (URLSession callback used instead).
-const sendViaStdlib = if (builtin.target.os.tag == .ios)
-    struct {
-        fn f(_: std.mem.Allocator, _: []const u8, _: []const u8, _: []u8) HttpError!usize {
-            return HttpError.NoCallback;
-        }
-    }.f
-else
-    sendViaStdlibImpl;
-
-fn sendViaStdlibImpl(
-    allocator: std.mem.Allocator,
-    url: []const u8,
-    body: []const u8,
-    out_buf: []u8,
+/// Stdlib HTTP fallback is stubbed under Zig 0.16: std.http.Client now
+/// requires an Io instance threaded through, and the API is still in flux.
+/// All platforms (iOS, macOS, Android) wire an http_callback in production;
+/// the stdlib path was only ever a CLI/test convenience.
+fn sendViaStdlib(
+    _: std.mem.Allocator,
+    _: []const u8,
+    _: []const u8,
+    _: []u8,
 ) HttpError!usize {
-    var client: std.http.Client = .{ .allocator = allocator };
-    defer client.deinit();
-
-    var response_body: std.Io.Writer.Allocating = .init(allocator);
-    defer response_body.deinit();
-
-    const result = client.fetch(.{
-        .location = .{ .url = url },
-        .method = .POST,
-        .payload = body,
-        .headers = .{
-            .content_type = .{ .override = "text/plain" },
-        },
-        .response_writer = &response_body.writer,
-    }) catch return HttpError.RequestFailed;
-
-    if (result.status != .ok) {
-        return HttpError.RequestFailed;
-    }
-
-    const resp_data = response_body.written();
-    if (resp_data.len == 0) return HttpError.RequestFailed;
-
-    const decoded_len = fints.base64Decode(out_buf, resp_data) orelse return HttpError.Base64Error;
-    return decoded_len;
+    return HttpError.NoCallback;
 }
 
 // ============================================================
@@ -132,9 +101,10 @@ fn sendViaStdlibImpl(
 // ============================================================
 
 test "sendFintsMessage integration with Subsembly" {
-    // Only run when WIMG_FINTS_INTEGRATION is set
-    const env = std.process.getEnvVarOwned(std.testing.allocator, "WIMG_FINTS_INTEGRATION") catch return;
-    defer std.testing.allocator.free(env);
+    // Only run when WIMG_FINTS_INTEGRATION is set.
+    // libc getenv returns null when unset; std.process.getEnvVarOwned was
+    // removed in Zig 0.16 (the new Environ API requires plumbed Io).
+    if (std.c.getenv("WIMG_FINTS_INTEGRATION") == null) return;
 
     // Build a simple anonymous init message against Subsembly FinTS Dummy
     var session = fints.FintsSession.init(
