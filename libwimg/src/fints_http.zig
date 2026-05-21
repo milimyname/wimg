@@ -83,10 +83,9 @@ pub fn sendFintsMessage(
     return sendViaStdlib(allocator, url, enc_buf, out_buf);
 }
 
-/// Stdlib HTTP fallback is stubbed under Zig 0.16: std.http.Client now
-/// requires an Io instance threaded through, and the API is still in flux.
-/// All platforms (iOS, macOS, Android) wire an http_callback in production;
-/// the stdlib path was only ever a CLI/test convenience.
+/// Stdlib HTTP fallback is stubbed: std.http.Client requires an Io instance
+/// threaded through. All platforms wire an http_callback in production; the
+/// stdlib path was only ever a CLI/test convenience.
 fn sendViaStdlib(
     _: std.mem.Allocator,
     _: []const u8,
@@ -102,8 +101,6 @@ fn sendViaStdlib(
 
 test "sendFintsMessage integration with Subsembly" {
     // Only run when WIMG_FINTS_INTEGRATION is set.
-    // libc getenv returns null when unset; std.process.getEnvVarOwned was
-    // removed in Zig 0.16 (the new Environ API requires plumbed Io).
     if (std.c.getenv("WIMG_FINTS_INTEGRATION") == null) return;
 
     // Build a simple anonymous init message against Subsembly FinTS Dummy

@@ -10,8 +10,7 @@ const Category = types.Category;
 const ImportResult = types.ImportResult;
 
 // Time: on WASM, import from JS host; on native, call libc gettimeofday
-// (std.time.milliTimestamp was removed in Zig 0.16 — the new Io-based API
-// would require plumbing an Io instance through every call site).
+// directly to avoid threading an Io instance through every call site.
 const is_wasm = builtin.cpu.arch == .wasm32;
 extern fn js_time_ms() i64;
 
