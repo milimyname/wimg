@@ -517,10 +517,14 @@ struct SearchView: View {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
         try? content.write(to: url, atomically: true, encoding: .utf8)
         let av = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let root = scene.windows.first?.rootViewController {
-            root.present(av, animated: true)
+        guard let top = UIApplication.shared.topViewController else { return }
+        // iPad: anchor the popover or UIKit raises an exception.
+        if let pop = av.popoverPresentationController {
+            pop.sourceView = top.view
+            pop.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
+            pop.permittedArrowDirections = []
         }
+        top.present(av, animated: true)
     }
 }
 

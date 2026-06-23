@@ -828,10 +828,14 @@ struct SettingsView: View {
         try? data.write(to: tempURL)
 
         let activityVC = UIActivityViewController(activityItems: [tempURL], applicationActivities: nil)
-        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let rootVC = scene.windows.first?.rootViewController {
-            rootVC.present(activityVC, animated: true)
+        guard let top = UIApplication.shared.topViewController else { return }
+        // iPad: anchor the popover or UIKit raises an exception.
+        if let pop = activityVC.popoverPresentationController {
+            pop.sourceView = top.view
+            pop.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
+            pop.permittedArrowDirections = []
         }
+        top.present(activityVC, animated: true)
     }
 
     private func formatLastSync(_ ts: Int) -> String {

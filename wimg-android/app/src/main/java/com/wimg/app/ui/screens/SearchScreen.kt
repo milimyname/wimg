@@ -36,6 +36,7 @@ import com.wimg.app.i18n.L
 
 @Composable
 fun SearchScreen(selectedAccount: String?, navController: NavController) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var query by remember { mutableStateOf("") }
     var transactions by remember { mutableStateOf<List<Transaction>>(emptyList()) }
     var selectedCategories by remember { mutableStateOf<Set<Int>>(emptySet()) }
@@ -175,8 +176,12 @@ fun SearchScreen(selectedAccount: String?, navController: NavController) {
                             undoMessage = "Snapshot erstellt"
                         }
                         ActionRow("CSV exportieren", Icons.Outlined.FileUpload, Color(0xFF5856D6)) {
-                            // TODO: share export
-                            undoMessage = "Export wird vorbereitet..."
+                            val csv = WimgJni.nativeExportCsv()
+                            if (csv != null) {
+                                com.wimg.app.ui.util.shareTextFile(context, csv, "wimg-export.csv")
+                            } else {
+                                undoMessage = "Export fehlgeschlagen"
+                            }
                         }
                     }
                 }

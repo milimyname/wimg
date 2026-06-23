@@ -594,8 +594,14 @@ final class LibWimg {
     /// Read a length-prefixed raw string (4 bytes LE length + data).
     private static func readLengthPrefixedString(_ ptr: UnsafePointer<UInt8>) -> String? {
         let len = UInt32(ptr[0]) | (UInt32(ptr[1]) << 8) | (UInt32(ptr[2]) << 16) | (UInt32(ptr[3]) << 24)
-        let data = Data(bytes: ptr.advanced(by: 4), count: Int(len))
-        return String(data: data, encoding: .utf8)
+        var bytes = [UInt8](UnsafeBufferPointer(start: ptr.advanced(by: 4), count: Int(len)))
+        // Belt-and-braces: legacy FinTS imports can leave embedded NUL/control
+        // bytes or truncated multi-byte sequences in description text. A strict
+        // UTF-8 decode would return nil and make the whole export silently fail
+        // ("nothing happens"). Swap NULs for spaces and decode leniently so the
+        // export always succeeds with the data we have.
+        for i in bytes.indices where bytes[i] == 0 { bytes[i] = UInt8(ascii: " ") }
+        return String(decoding: bytes, as: UTF8.self)
     }
 
     /// Read a length-prefixed string (4 bytes LE length + data) and decode as JSON.
