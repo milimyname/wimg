@@ -10,6 +10,7 @@ pub const Mt940Result = struct {
     currency: [3]u8,
     opening_balance: i64, // cents
     closing_balance: i64, // cents
+    closing_balance_date: u32, // YYYYMMDD of the closing balance (0 = unknown)
     errors: u32,
 };
 
@@ -22,6 +23,7 @@ pub fn parseMt940(data: []const u8, account: []const u8, out: []Transaction) Mt9
         .currency = "EUR".*,
         .opening_balance = 0,
         .closing_balance = 0,
+        .closing_balance_date = 0,
         .errors = 0,
     };
 
@@ -53,10 +55,18 @@ pub fn parseMt940(data: []const u8, account: []const u8, out: []Transaction) Mt9
 
             if (startsWith(line, ":60F:") or startsWith(line, ":60M:")) {
                 // Opening balance: :60F:D260301EUR1234,56
-                parseBalance(line[5..], &result.opening_balance, &result.currency);
+                parseBalance(line[5..], &result.opening_balance, &result.currency, null);
             } else if (startsWith(line, ":62F:") or startsWith(line, ":62M:")) {
-                // Closing balance
-                parseBalance(line[5..], &result.closing_balance, &result.currency);
+                // Closing balance. A response may carry several statements; keep
+                // the one with the latest value date so the stored balance is
+                // the most recent (touchdown pages can arrive in any order).
+                var bal: i64 = 0;
+                var bal_date: u32 = 0;
+                parseBalance(line[5..], &bal, &result.currency, &bal_date);
+                if (bal_date >= result.closing_balance_date) {
+                    result.closing_balance = bal;
+                    result.closing_balance_date = bal_date;
+                }
             } else if (startsWith(line, ":61:")) {
                 // Transaction line
                 if (result.count < out.len) {
@@ -201,7 +211,7 @@ fn parseGermanAmount(s: []const u8) ?i64 {
 
 /// Parse balance field: D/C + YYMMDD + currency + amount
 /// Example: D260301EUR1234,56
-fn parseBalance(data: []const u8, balance: *i64, currency: *[3]u8) void {
+fn parseBalance(data: []const u8, balance: *i64, currency: *[3]u8, date_out: ?*u32) void {
     if (data.len < 14) return; // D + YYMMDD + EUR + at least 1 digit
 
     var is_debit = false;
@@ -214,8 +224,15 @@ fn parseBalance(data: []const u8, balance: *i64, currency: *[3]u8) void {
         pos += 1;
     } else return;
 
-    // Skip date (YYMMDD)
+    // Date (YYMMDD)
     if (pos + 6 > data.len) return;
+    if (date_out) |out| {
+        const yy = parseDigits2(data[pos .. pos + 2]) orelse 0;
+        const mm = parseDigits2(data[pos + 2 .. pos + 4]) orelse 0;
+        const dd = parseDigits2(data[pos + 4 .. pos + 6]) orelse 0;
+        const yyyy: u32 = if (yy < 80) 2000 + @as(u32, yy) else 1900 + @as(u32, yy);
+        out.* = yyyy * 10000 + @as(u32, mm) * 100 + @as(u32, dd);
+    }
     pos += 6;
 
     // Currency (3 chars)

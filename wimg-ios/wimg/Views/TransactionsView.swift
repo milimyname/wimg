@@ -39,6 +39,9 @@ struct TransactionsView: View {
     @State private var displayLimit = 30
     @State private var refilterToken = UUID()
     @State private var visibleTxIds: Set<String> = []
+    // Real account balance (latest FinTS statement closing balance) in cents.
+    // 0 = unknown (CSV-only); anchoring falls back to a plain transaction sum.
+    @State private var accountBalanceCents: Int = 0
 
     /// Filter key excludes searchText (debounced separately).
     private var filterKey: String {
@@ -221,9 +224,39 @@ struct TransactionsView: View {
         filteredGrouped.flatMap { $0.1 }
     }
 
+    /// Anchor the running balance to the real account balance only in the
+    /// unfiltered "Alle" view — a filtered subset would make the math wrong.
+    private var balanceAnchorActive: Bool {
+        accountBalanceCents != 0
+            && filter == .all
+            && selectedCategory == nil
+            && activeFilterCount == 0
+            && !showExcluded
+    }
+
     private var visibleSumStats: (sum: Double, count: Int) {
         let flat = flatTransactions
         guard !flat.isEmpty else { return (0, 0) }
+
+        if balanceAnchorActive {
+            // Real, bank-accurate running balance: at the topmost visible row it
+            // equals the statement closing balance, then walks back through
+            // history as you scroll (Comdirect-style).
+            let anchor = Double(accountBalanceCents) / 100
+            guard !visibleTxIds.isEmpty else { return (anchor, flat.count) }
+            var topIdx = flat.count
+            for (i, tx) in flat.enumerated() where visibleTxIds.contains(tx.id) {
+                if i < topIdx { topIdx = i }
+            }
+            guard topIdx < flat.count else { return (anchor, 0) }
+            // Subtract the transactions newer than the topmost visible row
+            // (indices above it — list is newest-first).
+            var newer: Double = 0
+            for i in 0..<topIdx { newer += flat[i].amount }
+            return (anchor - newer, flat.count - topIdx)
+        }
+
+        // Fallback (CSV-only or filtered view): plain sum, no opening balance.
         // Before any row reports visible, fall back to the full filtered set —
         // matches the web behavior so the card shows the lifetime balance on mount.
         guard !visibleTxIds.isEmpty else {
@@ -247,7 +280,7 @@ struct TransactionsView: View {
         let stats = visibleSumStats
         let amountColor: Color = stats.sum > 0 ? .green : (stats.sum < 0 ? .red : WimgTheme.text)
         return VStack(alignment: .leading, spacing: 4) {
-            Text(#L("Gesamtsaldo"))
+            Text(balanceAnchorActive ? L("Kontostand") : L("Gesamtsaldo"))
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .foregroundStyle(WimgTheme.textSecondary)
                 .textCase(.uppercase)
@@ -472,9 +505,16 @@ struct TransactionsView: View {
         Task.detached {
             do {
                 let tx = try LibWimg.getTransactionsFiltered(account: account).sorted { $0.date > $1.date }
+                // Sum the stored closing balance(s) for the selected account, or
+                // all accounts when viewing "Alle".
+                let accts = LibWimg.getAccounts()
+                let balCents = accts
+                    .filter { account == nil || $0.id == account }
+                    .reduce(0) { $0 + $1.balanceCents }
                 await MainActor.run {
                     loadError = nil
                     transactions = tx
+                    accountBalanceCents = balCents
                     refilter()
                 }
             } catch {

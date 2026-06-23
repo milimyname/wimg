@@ -8,7 +8,13 @@ data class Account(
     val name: String,
     val bank: String = "",
     val color: String = "#007AFF",
-)
+    // Closing balance from the latest FinTS statement (cents). 0 = unknown.
+    val balance_cents: Long = 0,
+    val balance_date: String = "",
+) {
+    /// Statement closing balance in major units, or null if unknown (CSV-only).
+    val balance: Double? get() = if (balance_date.isEmpty()) null else balance_cents / 100.0
+}
 
 @Serializable
 data class Debt(

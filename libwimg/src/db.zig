@@ -32,7 +32,7 @@ pub const DbError = error{
     StepFailed,
 };
 
-const CURRENT_SCHEMA_VERSION = 14;
+const CURRENT_SCHEMA_VERSION = 15;
 const MAX_UNDO_ENTRIES = 50;
 
 pub const Db = struct {
@@ -80,6 +80,8 @@ pub const Db = struct {
         \\  bank TEXT NOT NULL DEFAULT '',
         \\  color TEXT NOT NULL DEFAULT '#4361ee',
         \\  deleted INTEGER NOT NULL DEFAULT 0,
+        \\  balance_cents INTEGER NOT NULL DEFAULT 0,
+        \\  balance_date TEXT NOT NULL DEFAULT '',
         \\  updated_at INTEGER NOT NULL DEFAULT 0
         \\);
         \\CREATE TABLE IF NOT EXISTS undo_history (
@@ -277,9 +279,15 @@ pub const Db = struct {
             ) catch {};
         }
 
+        if (version < 15) {
+            // v15: per-account balance from FinTS statement closing balance
+            self.exec("ALTER TABLE accounts ADD COLUMN balance_cents INTEGER NOT NULL DEFAULT 0;") catch {};
+            self.exec("ALTER TABLE accounts ADD COLUMN balance_date TEXT NOT NULL DEFAULT '';") catch {};
+        }
+
         // Store current version
         if (version < CURRENT_SCHEMA_VERSION) {
-            self.setMeta("schema_version", "14") catch {};
+            self.setMeta("schema_version", "15") catch {};
         }
     }
 
@@ -1869,8 +1877,29 @@ pub const Db = struct {
         if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
     }
 
+    /// Update an account's balance, but only when `balance_date` is at least as
+    /// recent as the stored one — touchdown statement pages can arrive in any
+    /// order and we want the latest closing balance to win. `balance_date` is
+    /// ISO "YYYY-MM-DD" (lexically comparable); empty string means unknown.
+    pub fn setAccountBalance(self: *Db, account_id: []const u8, balance_cents: i64, balance_date: []const u8) DbError!void {
+        const sql =
+            \\UPDATE accounts
+            \\SET balance_cents = ?2, balance_date = ?3, updated_at = ?4
+            \\WHERE id = ?1 AND ?3 >= balance_date;
+        ;
+        var stmt: ?*c.sqlite3_stmt = null;
+        if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
+        defer _ = c.sqlite3_finalize(stmt.?);
+        const s = stmt.?;
+        if (c.sqlite3_bind_text(s, 1, @ptrCast(account_id.ptr), @intCast(account_id.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 2, balance_cents) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_text(s, 3, @ptrCast(balance_date.ptr), @intCast(balance_date.len), c.SQLITE_STATIC) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_bind_int64(s, 4, nowMs()) != c.SQLITE_OK) return DbError.BindFailed;
+        if (c.sqlite3_step(s) != c.SQLITE_DONE) return DbError.StepFailed;
+    }
+
     pub fn getAccountsJson(self: *Db, buf: [*]u8, buf_len: usize) DbError!?usize {
-        const sql = "SELECT id, name, bank, color FROM accounts WHERE deleted = 0 ORDER BY name;";
+        const sql = "SELECT id, name, bank, color, balance_cents, balance_date FROM accounts WHERE deleted = 0 ORDER BY name;";
         var stmt: ?*c.sqlite3_stmt = null;
         if (c.sqlite3_prepare_v2(self.handle, sql, -1, &stmt, null) != c.SQLITE_OK or stmt == null) return DbError.PrepareFailed;
         defer _ = c.sqlite3_finalize(stmt.?);
@@ -1892,6 +1921,9 @@ pub const Db = struct {
             const bank_len: usize = @intCast(c.sqlite3_column_bytes(s, 2));
             const color_ptr = c.sqlite3_column_text(s, 3) orelse continue;
             const color_len: usize = @intCast(c.sqlite3_column_bytes(s, 3));
+            const balance_cents = c.sqlite3_column_int64(s, 4);
+            const bal_date_ptr = c.sqlite3_column_text(s, 5);
+            const bal_date_len: usize = @intCast(c.sqlite3_column_bytes(s, 5));
 
             if (!first) {
                 if (pos >= buf_len) return null;
@@ -1924,10 +1956,24 @@ pub const Db = struct {
             pos += p4.len;
             pos += jsonEscapeString(buf[pos..buf_len], color_ptr[0..color_len]) orelse return null;
 
-            const p5 = "\"}";
+            const p5 = "\",\"balance_cents\":";
             if (pos + p5.len > buf_len) return null;
             @memcpy(buf[pos .. pos + p5.len], p5);
             pos += p5.len;
+            pos += formatInt(buf[pos..buf_len], balance_cents) orelse return null;
+
+            const p6 = ",\"balance_date\":\"";
+            if (pos + p6.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p6.len], p6);
+            pos += p6.len;
+            if (bal_date_ptr) |bp| {
+                pos += jsonEscapeString(buf[pos..buf_len], bp[0..bal_date_len]) orelse return null;
+            }
+
+            const p7 = "\"}";
+            if (pos + p7.len > buf_len) return null;
+            @memcpy(buf[pos .. pos + p7.len], p7);
+            pos += p7.len;
 
             first = false;
         }

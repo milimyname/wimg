@@ -2200,6 +2200,10 @@ fn wimg_fints_fetch(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
     var duplicates: u32 = 0;
     var saw_mt940 = false;
     var saw_camt = false;
+    // Track the latest closing balance across all statement pages. The page with
+    // the newest value date carries the current account balance.
+    var balance_cents: i64 = 0;
+    var balance_date_int: u32 = 0; // YYYYMMDD
     var fetch_mode: FetchMode = .mt940;
     var used_camt_fallback = false;
     var page_count: u8 = 0;
@@ -2296,6 +2300,11 @@ fn wimg_fints_fetch(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
                 &txn_buf,
             );
 
+            if (mt940_result.closing_balance_date > balance_date_int) {
+                balance_date_int = mt940_result.closing_balance_date;
+                balance_cents = mt940_result.closing_balance;
+            }
+
             if (!is_wasm) {
                 std.debug.print("[FinTS Zig] fetch hkkaz mt940 parsed count={d}, errors={d}, mt940_len={d}\n", .{
                     mt940_result.count,
@@ -2336,6 +2345,11 @@ fn wimg_fints_fetch(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
                 account_name,
                 &txn_buf,
             );
+
+            if (camt_result.closing_balance_date > balance_date_int) {
+                balance_date_int = camt_result.closing_balance_date;
+                balance_cents = camt_result.closing_balance;
+            }
 
             if (!is_wasm) {
                 std.debug.print("[FinTS Zig] fetch hkcaz camt parsed count={d}, errors={d}, camt_len={d}\n", .{
@@ -2457,6 +2471,19 @@ fn wimg_fints_fetch(data: [*]const u8, len: u32) callconv(.c) ?[*]const u8 {
 
     // Auto-create account entry
     database.ensureAccount(account_name, account_name, "#4361ee") catch {};
+
+    // Persist the statement closing balance so the UI can show a real account
+    // balance instead of a meaningless sum of fetched transactions.
+    if (balance_date_int > 0) {
+        var date_buf: [10]u8 = undefined;
+        const y = balance_date_int / 10000;
+        const m = (balance_date_int / 100) % 100;
+        const d = balance_date_int % 100;
+        const date_str = std.fmt.bufPrint(&date_buf, "{d:0>4}-{d:0>2}-{d:0>2}", .{ y, m, d }) catch "";
+        if (date_str.len > 0) {
+            database.setAccountBalance(account_name, balance_cents, date_str) catch {};
+        }
+    }
 
     // End dialog
     _ = sendDialogEnd(&fints_session, fints_session.tanSecFuncSlice(), &msg_buf, &resp_buf);

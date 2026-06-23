@@ -80,6 +80,7 @@ internal let translations: [String: String] = [
     "Für diesen Monat liegen keine Ausgaben vor": "No expenses for this month",
     "Änderungen gespeichert": "Changes saved",
     "Gesamtsaldo": "Total Balance",
+    "Kontostand": "Account Balance",
     "Transaktion im Blickfeld": "transaction in view",
     "Transaktionen im Blickfeld": "transactions in view",
     "Suchen": "Search",

@@ -86,6 +86,7 @@ private val translations: Map<String, String> = mapOf(
     "Für diesen Monat liegen keine Ausgaben vor" to "No expenses for this month",
     "Änderungen gespeichert" to "Changes saved",
     "Gesamtsaldo" to "Total Balance",
+    "Kontostand" to "Account Balance",
     "Transaktion im Blickfeld" to "transaction in view",
     "Transaktionen im Blickfeld" to "transactions in view",
     "Suchen" to "Search",

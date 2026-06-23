@@ -105,6 +105,7 @@ export const en: Record<string, string> = {
   // Transactions
   "Änderungen gespeichert": "Changes saved",
   Gesamtsaldo: "Total Balance",
+  Kontostand: "Account Balance",
   "Transaktion im Blickfeld": "transaction in view",
   "Transaktionen im Blickfeld": "transactions in view",
   Suchen: "Search",

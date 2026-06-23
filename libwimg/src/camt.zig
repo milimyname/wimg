@@ -8,6 +8,8 @@ const Date = types.Date;
 pub const CamtResult = struct {
     count: u32,
     errors: u32,
+    closing_balance: i64 = 0, // cents
+    closing_balance_date: u32 = 0, // YYYYMMDD of the closing balance (0 = unknown)
 };
 
 /// Parse CAMT XML (camt.052/053) into Transaction structs.
@@ -33,7 +35,63 @@ pub fn parseCamt(data: []const u8, account: []const u8, out: []Transaction) Camt
         result.count += 1;
     }
 
+    extractClosingBalance(data, &result);
+
     return result;
+}
+
+/// Scan all `<Bal>` blocks for the closing booked balance (Cd=CLBD) and keep
+/// the one with the latest date. CAMT places these at statement level, outside
+/// the `<Ntry>` entries.
+fn extractClosingBalance(data: []const u8, result: *CamtResult) void {
+    var search_from: usize = 0;
+    while (true) {
+        const open = findBalStart(data, search_from) orelse break;
+        const end_rel = std.mem.indexOfPos(u8, data, open, "</Bal>") orelse break;
+        const end = end_rel + "</Bal>".len;
+        const block = data[open..end];
+        search_from = end;
+
+        // Only the closing booked balance (CLBD). Match "<Cd>" exactly — a
+        // prefix search would also hit "<CdOrPrtry>" and "<CdtDbtInd>".
+        const code_start = std.mem.indexOf(u8, block, "<Cd>") orelse continue;
+        const code_content = code_start + "<Cd>".len;
+        const code_end = std.mem.indexOfPos(u8, block, code_content, "</Cd>") orelse continue;
+        const code = std.mem.trim(u8, block[code_content..code_end], " \t\r\n");
+        if (!std.mem.eql(u8, code, "CLBD")) continue;
+
+        const amt = extractAmountField(block) orelse continue;
+        const abs = parseIsoAmount(amt.text) orelse continue;
+        const cdt_dbt = extractTagText(block, "CdtDbtInd") orelse "";
+        const is_debit = std.mem.eql(u8, std.mem.trim(u8, cdt_dbt, " \t\r\n"), "DBIT");
+        const signed: i64 = if (is_debit) -abs else abs;
+
+        // Date sits in <Dt><Dt>YYYY-MM-DD</Dt></Dt> (or <DtTm>). The generic
+        // tag extractor can't cope with the same-name nesting, so just scan from
+        // the first <Dt to the first digit and let parseIsoDate read the date.
+        var bal_date: u32 = 0;
+        if (std.mem.indexOf(u8, block, "<Dt")) |dt_pos| {
+            var i = dt_pos;
+            while (i < block.len and (block[i] < '0' or block[i] > '9')) : (i += 1) {}
+            if (parseIsoDate(block[i..])) |d| {
+                bal_date = @as(u32, d.year) * 10000 + @as(u32, d.month) * 100 + @as(u32, d.day);
+            }
+        }
+
+        if (bal_date >= result.closing_balance_date) {
+            result.closing_balance = signed;
+            result.closing_balance_date = bal_date;
+        }
+    }
+}
+
+fn findBalStart(data: []const u8, from: usize) ?usize {
+    const direct = std.mem.indexOfPos(u8, data, from, "<Bal>");
+    const with_attrs = std.mem.indexOfPos(u8, data, from, "<Bal ");
+    return switch (direct != null and with_attrs != null) {
+        true => @min(direct.?, with_attrs.?),
+        false => direct orelse with_attrs,
+    };
 }
 
 fn parseEntry(entry: []const u8, account: []const u8, out_txn: *Transaction) bool {
@@ -282,6 +340,30 @@ test "parseCamt concatenates multiple Ustrd tags" {
     const res = parseCamt(xml, "Comdirect", &txns);
     try std.testing.expectEqual(@as(u32, 1), res.count);
     try std.testing.expectEqualStrings("Teil eins Teil zwei", txns[0].descriptionSlice());
+}
+
+test "parseCamt extracts CLBD closing balance" {
+    const xml =
+        "<Document><BkToCstmrStmt><Stmt>" ++
+        "<Bal><Tp><CdOrPrtry><Cd>OPBD</Cd></CdOrPrtry></Tp><Amt Ccy=\"EUR\">100.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-06-01</Dt></Dt></Bal>" ++
+        "<Bal><Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp><Amt Ccy=\"EUR\">265.71</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-06-23</Dt></Dt></Bal>" ++
+        "<Ntry><Amt Ccy=\"EUR\">12.34</Amt><CdtDbtInd>DBIT</CdtDbtInd><BookgDt><Dt>2026-06-18</Dt></BookgDt><AddtlNtryInf>Test</AddtlNtryInf></Ntry>" ++
+        "</Stmt></BkToCstmrStmt></Document>";
+    var txns: [4]Transaction = undefined;
+    const res = parseCamt(xml, "Comdirect", &txns);
+    try std.testing.expectEqual(@as(u32, 1), res.count);
+    try std.testing.expectEqual(@as(i64, 26571), res.closing_balance);
+    try std.testing.expectEqual(@as(u32, 20260623), res.closing_balance_date);
+}
+
+test "parseCamt handles debit closing balance" {
+    const xml =
+        "<Document><BkToCstmrStmt><Stmt>" ++
+        "<Bal><Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp><Amt Ccy=\"EUR\">50.00</Amt><CdtDbtInd>DBIT</CdtDbtInd><Dt><Dt>2026-06-23</Dt></Dt></Bal>" ++
+        "</Stmt></BkToCstmrStmt></Document>";
+    var txns: [1]Transaction = undefined;
+    const res = parseCamt(xml, "Comdirect", &txns);
+    try std.testing.expectEqual(@as(i64, -5000), res.closing_balance);
 }
 
 test "parseCamt reads Amt Ccy attribute" {

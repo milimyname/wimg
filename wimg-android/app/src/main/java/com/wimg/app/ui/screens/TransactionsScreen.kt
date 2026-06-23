@@ -50,9 +50,15 @@ fun TransactionsScreen(selectedAccount: String?) {
     var searchText by remember { mutableStateOf("") }
     var amountMin by remember { mutableFloatStateOf(0f) }
     var amountMax by remember { mutableFloatStateOf(1000f) }
+    // Real account balance (latest FinTS statement closing balance) in cents.
+    // 0 = unknown (CSV-only); anchoring falls back to a plain transaction sum.
+    var accountBalanceCents by remember { mutableStateOf(0L) }
 
     fun reload() {
         transactions = LibWimg.getTransactionsFiltered(selectedAccount).sortedByDescending { it.date }
+        accountBalanceCents = LibWimg.getAccounts()
+            .filter { selectedAccount == null || it.id == selectedAccount }
+            .sumOf { it.balance_cents }
     }
 
     LaunchedEffect(selectedAccount) { reload() }
@@ -81,13 +87,36 @@ fun TransactionsScreen(selectedAccount: String?) {
 
     val grouped = filtered.groupBy { it.date }.toSortedMap(compareByDescending { it })
 
+    // Anchor the running balance to the real account balance only in the
+    // unfiltered "Alle" view — a filtered subset would make the math wrong.
+    val balanceAnchorActive = accountBalanceCents != 0L &&
+        filter == TxFilter.ALL &&
+        quickCategory == null &&
+        activeFilterCount == 0
+
     val listState = rememberLazyListState()
-    val runningBalance by remember(filtered, listState) {
+    val runningBalance by remember(filtered, listState, balanceAnchorActive, accountBalanceCents) {
         derivedStateOf {
             if (filtered.isEmpty()) return@derivedStateOf 0.0 to 0
             val visibleKeys = listState.layoutInfo.visibleItemsInfo
                 .mapNotNull { it.key as? String }
                 .toSet()
+
+            if (balanceAnchorActive) {
+                // Bank-accurate running balance: at the topmost visible row it
+                // equals the statement closing balance, then walks back through
+                // history as you scroll.
+                val anchor = accountBalanceCents / 100.0
+                if (visibleKeys.isEmpty()) return@derivedStateOf anchor to filtered.size
+                val topIdx = filtered.indexOfFirst { visibleKeys.contains(it.id) }
+                if (topIdx < 0) return@derivedStateOf anchor to 0
+                // Subtract transactions newer than the topmost visible row.
+                var newer = 0.0
+                for (i in 0 until topIdx) newer += filtered[i].amount
+                return@derivedStateOf (anchor - newer) to (filtered.size - topIdx)
+            }
+
+            // Fallback (CSV-only or filtered view): plain sum, no opening balance.
             if (visibleKeys.isEmpty()) {
                 return@derivedStateOf filtered.sumOf { it.amount } to filtered.size
             }
@@ -166,7 +195,7 @@ fun TransactionsScreen(selectedAccount: String?) {
             if (grouped.isNotEmpty()) {
                 stickyHeader(key = "gesamtsaldo") {
                     Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
-                        GesamtsaldoCard(sum = runningBalance.first, count = runningBalance.second)
+                        GesamtsaldoCard(sum = runningBalance.first, count = runningBalance.second, isBalance = balanceAnchorActive)
                     }
                 }
             }
@@ -494,7 +523,7 @@ private fun AdvancedFilterSheet(
 }
 
 @Composable
-private fun GesamtsaldoCard(sum: Double, count: Int) {
+private fun GesamtsaldoCard(sum: Double, count: Int, isBalance: Boolean = false) {
     val amountColor = when {
         sum > 0 -> Color(0xFF059669) // emerald-600
         sum < 0 -> Color(0xFFE11D48) // rose-600
@@ -515,7 +544,7 @@ private fun GesamtsaldoCard(sum: Double, count: Int) {
             .wimgCard()
             .padding(20.dp),
     ) {
-        Text(L("Gesamtsaldo"),
+        Text(L(if (isBalance) "Kontostand" else "Gesamtsaldo"),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

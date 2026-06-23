@@ -242,6 +242,16 @@ pub fn build(b: *std.Build) void {
     const run_mt940_tests = b.addRunArtifact(mt940_tests);
     test_step.dependOn(&run_mt940_tests.step);
 
+    const camt_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/camt.zig"),
+            .target = b.resolveTargetQuery(.{}),
+            .optimize = optimize,
+        }),
+    });
+    const run_camt_tests = b.addRunArtifact(camt_tests);
+    test_step.dependOn(&run_camt_tests.step);
+
     const fints_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/fints.zig"),
