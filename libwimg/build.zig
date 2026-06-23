@@ -259,6 +259,8 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
+    // gettimeofday (fints.zig) needs libc — implicit on Darwin, explicit on Linux CI.
+    fints_tests.root_module.link_libc = true;
     const run_fints_tests = b.addRunArtifact(fints_tests);
     test_step.dependOn(&run_fints_tests.step);
 
@@ -269,6 +271,8 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
+    // getenv (fints_http.zig) needs libc — implicit on Darwin, explicit on Linux CI.
+    fints_http_tests.root_module.link_libc = true;
     const run_fints_http_tests = b.addRunArtifact(fints_http_tests);
     test_step.dependOn(&run_fints_http_tests.step);
 
