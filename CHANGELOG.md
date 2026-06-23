@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.9.3 (2026-06-23)
+
+- feat: show real account balance from FinTS statement
+- fix: CSV export silently doing nothing on iOS + Android
+
 ## v0.9.2 (2026-05-21)
 
 - fix: FinTS NUL bytes + date UX, refetch auth, categorize feedback
